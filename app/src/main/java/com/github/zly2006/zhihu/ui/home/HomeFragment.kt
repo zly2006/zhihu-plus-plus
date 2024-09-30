@@ -5,24 +5,17 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AbsListView
-import android.widget.AbsListView.OnScrollListener
-import android.widget.AdapterView
-import android.widget.AdapterView.OnItemClickListener
+import androidx.core.view.children
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
-import com.github.zly2006.zhihu.placeholder.PlaceholderContent
-import com.github.zly2006.zhihu.ui.home.browse.MyHomeArticleItemRecyclerViewAdapter
-import io.ktor.client.*
-import io.ktor.client.call.*
+import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.ui.home.browse.HomeArticleItemAdapter
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.serialization.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -32,7 +25,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlin.math.max
 
 class HomeFragment : Fragment() {
-    private val httpClient by lazy { AccountData.httpClient(requireContext()) }
+    val httpClient by lazy { AccountData.httpClient(requireContext()) }
 
     private var _binding: FragmentHomeBinding? = null
 
@@ -40,13 +33,12 @@ class HomeFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
     private val list = mutableListOf(
-        PlaceholderContent.PlaceholderItem(
+        PlaceholderItem(
             "#1",
             "Item 1",
             "This is item 1"
         ),
-        PlaceholderContent.PlaceholderItem(
-            "#2",
+        PlaceholderItem(
             "Item 2 long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
             "This is item 2, very very" +
                     "very very long. " +
@@ -65,12 +57,13 @@ class HomeFragment : Fragment() {
                     "very very long. " +
                     "very very long. " +
                     "very very long. " +
-                    "very very long. "
+                    "very very long. ",
+            "This is item 2"
         ),
     ).apply {
         repeat(8) {
             add(
-                PlaceholderContent.PlaceholderItem(
+                PlaceholderItem(
                     "#${it + 3}",
                     "Item ${it + 3}",
                     "This is item ${it + 3}"
@@ -92,13 +85,16 @@ class HomeFragment : Fragment() {
                     val data = Json.decodeFromString<Response>(text)
                     val index = list.size
                     list.addAll(data.data.map {
-                        PlaceholderContent.PlaceholderItem(
+                        PlaceholderItem(
                             it.target.question.title,
                             it.target.excerpt,
-                            "${it.target.voteup_count}赞 ${it.target.author.name}"
+                            "${it.target.voteup_count}赞 ${it.target.author.name}",
+                            it
                         )
                     })
-                    binding.list.adapter?.notifyItemRangeInserted(index, data.data.size)
+                    activity?.runOnUiThread {
+                        binding.list.adapter?.notifyItemRangeInserted(index, data.data.size)
+                    }
                 } catch (e: SerializationException) {
                     Log.e("HomeFragment", "Failed to parse JSON: $text", e)
                 }
@@ -118,15 +114,14 @@ class HomeFragment : Fragment() {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        binding.list.adapter = MyHomeArticleItemRecyclerViewAdapter(list, context)
+        binding.list.adapter = HomeArticleItemAdapter(list, this)
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                val lastChild = binding.list.getChildAt(max(0, binding.list.childCount - 5))
-                if (lastChild.bottom <= binding.list.height) {
-                    println("fetch")
-                    GlobalScope.launch {
-                        if (!fetchingNewItems) {
+                if (!binding.list.canScrollVertically(1000)) {
+                    if (!fetchingNewItems) {
+                        GlobalScope.launch {
+                            println("fetch")
                             fetch()
                         }
                     }

@@ -1,13 +1,16 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
+import android.security.identity.AccessControlProfileId
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -26,7 +29,8 @@ object AccountData {
     data class Data(
         val login: Boolean = false,
         val username: String = "",
-        val cookies: Map<String, String> = mutableMapOf(),
+        val cookies: MutableMap<String, String> = mutableMapOf(),
+        val userAgent: String = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0",
     )
 
     private var data = Data()
@@ -44,31 +48,50 @@ object AccountData {
         file.writeText(json.encodeToString(data))
     }
 
-    fun httpClient(context: Context, cookies: Map<String, String>? = null): HttpClient {
-        val data = getData(context)
+    fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
         return HttpClient {
             install(HttpCookies) {
-                storage = ConstantCookiesStorage(
-                    *(cookies ?: data.cookies).map {
-                        Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
-                    }.toTypedArray()
-                )
+                storage = object : CookiesStorage {
+                    override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
+                        if (cookie.domain?.endsWith("zhihu.com") != false) {
+                            if (cookies == null) {
+                                data.cookies[cookie.name] = cookie.value
+                                saveData(context, data)
+                            } else {
+                                cookies[cookie.name] = cookie.value
+                            }
+                        }
+                    }
+
+                    override fun close() {
+                    }
+
+                    override suspend fun get(requestUrl: Url): List<Cookie> {
+                       return (cookies ?: data.cookies).map {
+                            Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
+                        }
+                    }
+                }
             }
             install(ContentNegotiation) {
                 json()
+            }
+            install(UserAgent) {
+                agent = data.userAgent
             }
         }
     }
 
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
-        val httpClient = httpClient(context, cookies)
+        val map = cookies.toMutableMap()
+        val httpClient = httpClient(context, map)
         val response = httpClient.get("https://www.zhihu.com/api/v4/me")
         if (response.status == HttpStatusCode.OK) {
             val body = response.body<JsonObject>()
             saveData(
                 context, Data(
                     login = true,
-                    cookies = cookies,
+                    cookies = map,
                     username = body["name"]!!.jsonPrimitive.content
                 )
             )

@@ -7,6 +7,12 @@
         android:layout_height="match_parent"
         tools:context=".ui.dashboard.DashboardFragment">
 
+    <Button
+            android:text="Login activity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/login"/>
+
     <TextView
             android:id="@+id/text_dashboard"
             android:layout_width="match_parent"

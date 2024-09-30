@@ -51,6 +51,8 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktor")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0-RC")
+
+    implementation("org.jsoup:jsoup:1.14.3")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
     implementation("androidx.recyclerview:recyclerview:1.3.0")
 
