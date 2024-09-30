@@ -133,7 +133,6 @@ class HomeFragment : Fragment() {
                 }
             }
         })
-        binding.list
 
         return root
     }
