@@ -3,6 +3,7 @@
               xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
+              android:layout_marginVertical="3dp"
               android:orientation="vertical">
 
     <TextView
@@ -11,19 +12,26 @@
             android:layout_height="wrap_content"
             android:textStyle="bold"
             android:textSize="18sp"
-            android:textColor="@color/black"
-            android:text="Title"
-            tools:text="Title"/>
+            android:textColor="?android:attr/textColorPrimary"
+            android:maxLines="2"
+            android:ellipsize="end"
+            tools:text="Title\nI am a Title\n11111"/>
 
     <TextView
             android:id="@+id/summary"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/black"/>
+            android:textColor="?android:attr/textColorPrimary"
+            android:maxLines="4"
+            android:ellipsize="end"
+            tools:text="Lorem ipsum dolor sit amet, vide minimum has an, mei splendide adolescens an. Nam ne appetere electram, ne per natum ludus. Sit nisl utamur nonumes te, eam conceptam sadipscing ea, sit ad graeco pertinacia maiestatis. Amet graece epicurei sit ut, omnium saperet an mel. Duo partem similique ad, vis no commune periculis. Ad eum unum constituto complectitur, modo agam abhorreant ex per, eu justo reprimique omittantur usu."
+            />
 
     <TextView
-            android:text="TextView"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/details"/>
+            android:id="@+id/details"
+            android:maxLines="1"
+            tools:text="114514赞同 作者"
+            />
 </LinearLayout>

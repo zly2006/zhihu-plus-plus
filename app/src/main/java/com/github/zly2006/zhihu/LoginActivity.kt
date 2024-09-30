@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -42,6 +43,8 @@ class LoginActivity : AppCompatActivity() {
                                 setPositiveButton("OK") { _, _ ->
                                 }
                             }.create().show()
+                            // back to the main activity
+                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                             return@runBlocking true
                         }
                         else {

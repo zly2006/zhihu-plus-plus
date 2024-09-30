@@ -44,11 +44,12 @@ object AccountData {
         file.writeText(json.encodeToString(data))
     }
 
-    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
-        val httpClient = HttpClient {
+    fun httpClient(context: Context, cookies: Map<String, String>? = null): HttpClient {
+        val data = getData(context)
+        return HttpClient {
             install(HttpCookies) {
                 storage = ConstantCookiesStorage(
-                    *cookies.map {
+                    *(cookies ?: data.cookies).map {
                         Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
                     }.toTypedArray()
                 )
@@ -57,6 +58,10 @@ object AccountData {
                 json()
             }
         }
+    }
+
+    suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
+        val httpClient = httpClient(context, cookies)
         val response = httpClient.get("https://www.zhihu.com/api/v4/me")
         if (response.status == HttpStatusCode.OK) {
             val body = response.body<JsonObject>()

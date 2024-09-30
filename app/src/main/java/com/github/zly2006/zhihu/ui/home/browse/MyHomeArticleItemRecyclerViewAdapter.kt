@@ -27,6 +27,7 @@ class MyHomeArticleItemRecyclerViewAdapter(
         val item = values[position]
         holder.title.text = item.title
         holder.summary.text = item.summary
+        holder.details.text = item.details
         holder.itemView.setOnClickListener {
             if (context != null) {
                 AlertDialog.Builder(context).apply {
@@ -44,6 +45,7 @@ class MyHomeArticleItemRecyclerViewAdapter(
     inner class ViewHolder(binding: FragmentHomeArticleItemBinding) : RecyclerView.ViewHolder(binding.root) {
         val title: TextView = binding.title
         val summary: TextView = binding.summary
+        val details: TextView = binding.details
     }
 
 }
