@@ -4,10 +4,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.AdapterView.OnItemClickListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.RecyclerView
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderContent
 import com.github.zly2006.zhihu.ui.home.browse.MyHomeArticleItemRecyclerViewAdapter
@@ -70,8 +70,10 @@ class HomeFragment : Fragment() {
                         )
                     )
                 }
-            }
+            },
+            context
         )
+        binding.list
 
         return root
     }

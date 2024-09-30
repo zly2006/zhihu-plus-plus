@@ -32,7 +32,7 @@ object PlaceholderContent {
 
     private fun addItem(item: PlaceholderItem) {
         ITEMS.add(item)
-        ITEM_MAP.put(item.id, item)
+        ITEM_MAP.put(item.title, item)
     }
 
     private fun createPlaceholderItem(position: Int): PlaceholderItem {
@@ -51,7 +51,7 @@ object PlaceholderContent {
     /**
      * A placeholder item representing a piece of content.
      */
-    data class PlaceholderItem(val id: String, val content: String, val details: String) {
-        override fun toString(): String = content
+    data class PlaceholderItem(val title: String, val summary: String, val details: String) {
+        override fun toString(): String = summary
     }
 }
