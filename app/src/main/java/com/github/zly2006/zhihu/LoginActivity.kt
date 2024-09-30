@@ -1,24 +1,20 @@
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityLoginBinding
-import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.net.URLDecoder
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
@@ -33,9 +29,6 @@ class LoginActivity : AppCompatActivity() {
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (request?.url.toString() == "https://www.zhihu.com/") {
-                    val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
-                        it.substringBefore("=") to it.substringAfter("=")
-                    }
                     binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
                     return true
                 }

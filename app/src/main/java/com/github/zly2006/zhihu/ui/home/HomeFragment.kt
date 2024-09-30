@@ -5,14 +5,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.children
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
-import com.github.zly2006.zhihu.ui.home.browse.HomeArticleItemAdapter
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -22,7 +20,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlin.math.max
 
 class HomeFragment : Fragment() {
     val httpClient by lazy { AccountData.httpClient(requireContext()) }
@@ -76,7 +73,7 @@ class HomeFragment : Fragment() {
     suspend fun fetch() {
         try {
             fetchingNewItems = true
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true")
+            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&end_offset=${list.size}")
             if (response.status == HttpStatusCode.OK) {
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
