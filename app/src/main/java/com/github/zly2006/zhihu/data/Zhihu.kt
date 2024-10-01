@@ -28,26 +28,32 @@ data class Target(
     val type: String,
     val url: String,
     val author: Author,
-    val created_time: Long,
-    val updated_time: Long,
+    /**
+     * -1 广告
+     */
+    val created_time: Long = -1,
+    val updated_time: Long = -1,
     val voteup_count: Int,
-    val thanks_count: Int,
+    val thanks_count: Int = -1,
     val comment_count: Int,
-    val is_copyable: Boolean,
-    val question: Question,
+    val is_copyable: Boolean = false,
+    val question: Question? = null,
     val thumbnail: String? = null,
     val excerpt: String,
     val excerpt_new: String,
     val preview_type: String,
     val preview_text: String,
-    val reshipment_settings: String,
+    val reshipment_settings: String = "",
     val content: String,
-    val relationship: Relationship,
+    /**
+     * null - 广告
+     */
+    val relationship: Relationship? = null,
     val is_labeled: Boolean,
     val visited_count: Int = 0,
     val thumbnails: List<String> = emptyList(),
     val favorite_count: Int = 0,
-    val answer_type: String
+    val answer_type: String? = null
 )
 
 @Serializable

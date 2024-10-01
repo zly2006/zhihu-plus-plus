@@ -7,7 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
@@ -18,7 +20,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 class HomeFragment : Fragment() {
@@ -79,11 +80,13 @@ class HomeFragment : Fragment() {
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
                 val text = response.bodyAsText()
                 try {
-                    val data = Json.decodeFromString<Response>(text)
+                    val data = json.decodeFromString<Response>(text)
                     val index = list.size
-                    list.addAll(data.data.map {
+                    list.addAll(data.data.filter {
+                        it.target.created_time != -1L && it.target.relationship != null
+                    }.map {
                         PlaceholderItem(
-                            it.target.question.title,
+                            it.target.question!!.title,
                             it.target.excerpt,
                             "${it.target.voteup_count}赞 ${it.target.author.name}",
                             it
@@ -131,6 +134,12 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        val articleFragment = requireActivity().supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main)
+        if (articleFragment != null) {
+            requireActivity().supportFragmentManager.beginTransaction()
+                .remove(articleFragment)
+                .commit()
+        }
         _binding = null
     }
 }

@@ -4,9 +4,8 @@
              android:layout_width="match_parent"
              android:layout_height="match_parent"
              android:forceDarkAllowed="true"
-             tools:context=".ui.home.ReadArticleFragment">
-
-    <!-- TODO: Update blank fragment layout -->
+             tools:context=".ui.home.ReadArticleFragment"
+             android:id="@+id/read_article">
 
     <WebView
             android:forceDarkAllowed="true"
