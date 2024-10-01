@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.view.ContextMenu
 import android.view.LayoutInflater
 import android.view.View
@@ -30,7 +31,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.io.File
 
 class ReadArticleFragment : Fragment() {
     private val ARG_URL = "url"
@@ -106,12 +106,19 @@ class ReadArticleFragment : Fragment() {
                 }
             }
             requireActivity().runOnUiThread {
-                binding.web.loadDataWithBaseURL(url,"""
+                binding.web.isForceDarkAllowed = true
+                runCatching {
+                    // Android 13+
+                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true)
+                }
+                binding.web.loadDataWithBaseURL(
+                    url, """
                     <head>
                     <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
                     <viewport content="width=device-width, initial-scale=1.0">
                     </head>
-                """.trimIndent() + answer.toString(), "text/html", "utf-8", null)
+                """.trimIndent() + answer.toString(), "text/html", "utf-8", null
+                )
             }
         }
 
@@ -185,7 +192,7 @@ class ReadArticleFragment : Fragment() {
                 val bytes = response.readBytes()
 
                 val fileName = Uri.parse(imageUrl).lastPathSegment ?: "downloaded_image"
-                val file = File(requireContext().getExternalFilesDir(null), fileName)
+                val file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).resolve(fileName)
 
                 file.outputStream().use { it.write(bytes) }
 
