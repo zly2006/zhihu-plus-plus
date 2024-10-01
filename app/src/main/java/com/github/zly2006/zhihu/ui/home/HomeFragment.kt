@@ -135,7 +135,7 @@ class HomeFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         val articleFragment = requireActivity().supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main)
-        if (articleFragment != null) {
+        if (articleFragment is ReadArticleFragment) {
             requireActivity().supportFragmentManager.beginTransaction()
                 .remove(articleFragment)
                 .commit()
