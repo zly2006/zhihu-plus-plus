@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui.home
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.RecyclerView
+import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -14,6 +16,7 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.GlobalScope
@@ -21,6 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 
 class HomeFragment : Fragment() {
     val httpClient by lazy { AccountData.httpClient(requireContext()) }
@@ -30,50 +35,30 @@ class HomeFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    private val list = mutableListOf(
-        PlaceholderItem(
-            "#1",
-            "Item 1",
-            "This is item 1"
-        ),
-        PlaceholderItem(
-            "Item 2 long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
-            "This is item 2, very very" +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. " +
-                    "very very long. ",
-            "This is item 2"
-        ),
-    ).apply {
-        repeat(8) {
-            add(
-                PlaceholderItem(
-                    "#${it + 3}",
-                    "Item ${it + 3}",
-                    "This is item ${it + 3}"
-                )
-            )
-        }
-    }
+    private val list = mutableListOf<PlaceholderItem>()
 
     private var fetchingNewItems = false
     suspend fun fetch() {
         try {
-            fetchingNewItems = true
+            GlobalScope.launch {
+                val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
+                    header("x-requested-with", "fetch")
+                    setBody(MultiPartFormDataContent(
+                        formData {
+                            append("items", buildJsonArray {
+                                list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
+                                    add(buildJsonArray {
+                                        add("answer")
+                                        add(item.dto!!.target.id)
+                                        add("touch")
+                                    })
+                                }
+                            }.toString())
+                        }
+                    ))
+                }
+                println(response.bodyAsText())
+            }
             val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&end_offset=${list.size}")
             if (response.status == HttpStatusCode.OK) {
                 @Serializable
@@ -83,7 +68,8 @@ class HomeFragment : Fragment() {
                     val data = json.decodeFromString<Response>(text)
                     val index = list.size
                     list.addAll(data.data.filter {
-                        it.target.created_time != -1L && it.target.relationship != null
+                        it.type != "feed_advert" &&
+                                it.target.created_time != -1L && it.target.relationship != null
                     }.map {
                         PlaceholderItem(
                             it.target.question!!.title,
@@ -93,7 +79,7 @@ class HomeFragment : Fragment() {
                         )
                     })
                     activity?.runOnUiThread {
-                        binding.list.adapter?.notifyItemRangeInserted(index, data.data.size)
+                        _binding?.list?.adapter?.notifyItemRangeInserted(index, data.data.size)
                     }
                 } catch (e: SerializationException) {
                     Log.e("HomeFragment", "Failed to parse JSON: $text", e)
@@ -113,6 +99,19 @@ class HomeFragment : Fragment() {
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
+
+        val data = AccountData.getData(requireContext())
+        if (!data.login) {
+            val myIntent = Intent(requireContext(), LoginActivity::class.java)
+            startActivity(myIntent)
+        }
+        else {
+            GlobalScope.launch {
+                fetch()
+                fetch()
+                fetch()
+            }
+        }
 
         binding.list.adapter = HomeArticleItemAdapter(list, this)
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {

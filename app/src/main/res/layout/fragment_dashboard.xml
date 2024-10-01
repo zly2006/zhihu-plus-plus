@@ -7,11 +7,24 @@
         android:layout_height="match_parent"
         tools:context=".ui.dashboard.DashboardFragment">
 
-    <Button
-            android:text="Login activity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/login"/>
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        <Button
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:text="重新登录"
+                android:id="@+id/login"
+                />
+        <Button
+                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:text="退出登录"
+                android:id="@+id/logout"
+                />
+    </LinearLayout>
 
     <TextView
             android:id="@+id/text_dashboard"

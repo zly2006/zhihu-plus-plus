@@ -6,11 +6,24 @@
              android:forceDarkAllowed="true"
              tools:context=".ui.home.ReadArticleFragment"
              android:id="@+id/read_article">
+<!--    <LinearLayout-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="match_parent"-->
+<!--            android:paddingHorizontal="6dp"-->
+<!--            >-->
 
+<!--        <TextView-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:textSize="20sp"-->
+<!--                tools:text="Title Here"-->
+<!--                android:textStyle="bold"-->
+<!--                android:textColor="?android:attr/textColorPrimary"-->
+<!--            />-->
+<!--    </LinearLayout>-->
     <WebView
             android:forceDarkAllowed="true"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:id="@+id/web"/>
-
 </FrameLayout>
