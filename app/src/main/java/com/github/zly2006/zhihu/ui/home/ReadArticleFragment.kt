@@ -1,9 +1,10 @@
 package com.github.zly2006.zhihu.ui.home
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build.VERSION
+import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import android.os.Environment
 import android.view.ContextMenu
@@ -14,19 +15,19 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewFeature
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
@@ -72,7 +73,6 @@ class ReadArticleFragment : Fragment() {
         val assetLoader = WebViewAssetLoader.Builder()
             .setDomain("zhihu-plus.internal")
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(requireActivity()))
-            .addPathHandler("/res/", WebViewAssetLoader.ResourcesPathHandler(requireActivity()))
             .build()
         binding.web.webViewClient = object : WebViewClientCompat() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
@@ -97,6 +97,8 @@ class ReadArticleFragment : Fragment() {
         GlobalScope.launch {
             val html = httpClient.get(url!!).bodyAsText()
             document = Jsoup.parse(html)
+
+            val title = document.select(".QuestionHeader-title").first()?.text()
             val answer = document.select(".ztext.RichText").first()
             if (answer != null) {
                 answer.select("img").forEach {
@@ -105,11 +107,34 @@ class ReadArticleFragment : Fragment() {
                     }
                 }
             }
+            val avatarSrc = document.select(".Avatar.AuthorInfo-avatar").first()?.attr("src")
+            if (avatarSrc != null) {
+                httpClient.get(avatarSrc).bodyAsChannel().toInputStream().buffered().use {
+                    val bitmap = BitmapFactory.decodeStream(it)
+                    requireActivity().runOnUiThread {
+                        binding.avatar.setImageBitmap(bitmap)
+                    }
+                }
+            }
             requireActivity().runOnUiThread {
-                binding.web.isForceDarkAllowed = true
-                runCatching {
-                    // Android 13+
-                    WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true)
+                binding.title.text = title
+                binding.title.setOnClickListener {
+                    requireActivity().supportFragmentManager.commit {
+                        replace(
+                            R.id.nav_host_fragment_activity_main,
+                            TODO()
+                        )
+                        addToBackStack("Question-Details")
+                    }
+                }
+                binding.author.text = document.select(".UserLink.AuthorInfo-name").first()?.text()
+                binding.bio.text = document.select(".AuthorInfo-badge").first()?.text()
+                if (VERSION.SDK_INT > VERSION_CODES.Q) {
+                    binding.web.isForceDarkAllowed = true
+                    runCatching {
+                        // Android 13+
+                        WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true)
+                    }
                 }
                 binding.web.loadDataWithBaseURL(
                     url, """
@@ -148,34 +173,6 @@ class ReadArticleFragment : Fragment() {
                     true
                 }
             }
-        }
-    }
-
-    private val REQUEST_CODE_PERMISSIONS = 1001
-    private val REQUIRED_PERMISSIONS = arrayOf(
-        Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        Manifest.permission.READ_EXTERNAL_STORAGE
-    )
-
-    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Array<String>>
-
-    private fun checkAndRequestPermissions(imageUrl: String?) {
-        val missingPermissions = REQUIRED_PERMISSIONS.filter {
-            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missingPermissions.isNotEmpty()) {
-            requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-                val allGranted = permissions.entries.all { it.value }
-                if (allGranted) {
-                    saveImage(imageUrl)
-                } else {
-                    Toast.makeText(context, "Permissions not granted", Toast.LENGTH_SHORT).show()
-                }
-            }
-            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
-        } else {
-            saveImage(imageUrl)
         }
     }
 

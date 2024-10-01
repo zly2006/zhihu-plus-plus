@@ -1,29 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:app="http://schemas.android.com/apk/res-auto"
              xmlns:tools="http://schemas.android.com/tools"
              android:layout_width="match_parent"
              android:layout_height="match_parent"
              android:forceDarkAllowed="true"
              tools:context=".ui.home.ReadArticleFragment"
-             android:id="@+id/read_article">
-<!--    <LinearLayout-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="match_parent"-->
-<!--            android:paddingHorizontal="6dp"-->
-<!--            >-->
+             android:id="@+id/read_article"
+        >
 
-<!--        <TextView-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:textSize="20sp"-->
-<!--                tools:text="Title Here"-->
-<!--                android:textStyle="bold"-->
-<!--                android:textColor="?android:attr/textColorPrimary"-->
-<!--            />-->
-<!--    </LinearLayout>-->
-    <WebView
-            android:forceDarkAllowed="true"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:id="@+id/web"/>
+    <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:paddingHorizontal="6dp"
+            android:orientation="vertical"
+            android:background="?android:attr/colorBackground"
+            >
+
+        <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                tools:text="Title Here"
+                android:textStyle="bold"
+                android:textColor="?android:attr/textColorPrimary"
+                android:paddingVertical="4dp"
+                />
+
+        <View
+                android:id="@+id/divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider"
+                />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+            <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:id="@+id/authorLabel"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    >
+
+                <ImageView
+                        android:id="@+id/avatar"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        tools:srcCompat="@mipmap/ic_launcher_foreground"
+                        app:srcCompat="@mipmap/ic_launcher_foreground"
+                        />
+
+                <LinearLayout
+                        android:orientation="vertical"
+                        android:layout_width="255dp"
+                        android:layout_height="match_parent">
+
+                    <TextView
+                            android:text="作者名字"
+                            android:lineHeight="24dp"
+                            android:textStyle="bold"
+                            android:textColor="?android:attr/textColorPrimary"
+                            android:layout_width="255dp"
+                            android:layout_height="24dp"
+                            android:maxLines="1"
+                            android:id="@+id/author"/>
+
+                    <TextView
+                            android:lineHeight="24dp"
+                            android:text="你好，这是介绍"
+                            android:maxLines="1"
+                            android:layout_width="match_parent"
+                            android:layout_height="24dp"
+                            android:id="@+id/bio"/>
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <Button
+                    android:text="关注"
+                    android:layout_width="88dp"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/buttonFollow"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <WebView
+                android:forceDarkAllowed="true"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent"
+                android:id="@+id/web"/>
+    </LinearLayout>
 </FrameLayout>

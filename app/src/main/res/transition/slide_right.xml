@@ -1,0 +1,3 @@
+<slide xmlns:android="http://schemas.android.com/apk/res/android"
+       android:duration="@android:integer/config_shortAnimTime"
+       android:slideEdge="right" />

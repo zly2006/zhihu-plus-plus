@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.commit
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.databinding.FragmentHomeArticleItemBinding
@@ -38,13 +39,19 @@ class HomeArticleItemAdapter(
                 val readArticleFragment =
                     ReadArticleFragment.newInstance("https://www.zhihu.com/question/${item.dto.target.question!!.id}/answer/${item.dto.target.id}")
 
-                fragment.requireActivity().supportFragmentManager.beginTransaction()
-                    .replace(
+                fragment.requireActivity().supportFragmentManager.commit {
+                    setCustomAnimations(
+                        R.anim.slide_in,
+                        R.anim.slide_in,
+                        0,
+                        0
+                    )
+                    replace(
                         R.id.nav_host_fragment_activity_main,
                         readArticleFragment
                     )
-                    .addToBackStack(null)
-                    .commit()
+                    addToBackStack("Read-Article")
+                }
             }
         }
     }

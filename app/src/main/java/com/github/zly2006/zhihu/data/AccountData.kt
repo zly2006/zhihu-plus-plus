@@ -34,8 +34,10 @@ object AccountData {
     private var data = Data()
     fun getData(context: Context): Data {
         val file = File(context.filesDir, "account.json")
-        if (file.exists()) {
-            data = json.decodeFromString<Data>(file.readText())
+        runCatching {
+            if (file.exists()) {
+                data = json.decodeFromString<Data>(file.readText())
+            }
         }
         return data
     }
