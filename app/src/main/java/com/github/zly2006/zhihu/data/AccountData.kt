@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
-import android.security.identity.AccessControlProfileId
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -10,7 +9,6 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -74,7 +72,7 @@ object AccountData {
                 }
             }
             install(ContentNegotiation) {
-                json()
+                json(json)
             }
             install(UserAgent) {
                 agent = data.userAgent

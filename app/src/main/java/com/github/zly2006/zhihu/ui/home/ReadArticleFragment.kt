@@ -18,8 +18,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewFeature
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import io.ktor.client.request.*
@@ -30,12 +32,6 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.io.File
 
-
-/**
- * A simple [Fragment] subclass.
- * Use the [ReadArticleFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class ReadArticleFragment : Fragment() {
     private val ARG_URL = "url"
     private var url: String? = null
@@ -84,6 +80,9 @@ class ReadArticleFragment : Fragment() {
             }
         }
         registerForContextMenu(binding.web)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+            WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true);
+        }
 
         binding.web.setOnLongClickListener { view ->
             val result = (view as WebView).hitTestResult
@@ -117,6 +116,12 @@ class ReadArticleFragment : Fragment() {
         }
 
         return root
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        _binding = null
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?) {

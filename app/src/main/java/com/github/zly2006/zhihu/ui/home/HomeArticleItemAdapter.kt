@@ -26,7 +26,7 @@ class HomeArticleItemAdapter(
         holder.title.text = item.title
         holder.summary.text = item.summary
         holder.details.text = item.details
-        holder.itemView.setOnClickListener {
+        holder.card.setOnClickListener {
             if (item.dto == null) {
                 AlertDialog.Builder(fragment.requireContext()).apply {
                     setTitle("Click " + item.title)
@@ -35,10 +35,13 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
+                val readArticleFragment =
+                    ReadArticleFragment.newInstance("https://www.zhihu.com/question/${item.dto.target.question.id}/answer/${item.dto.target.id}")
+
                 fragment.requireActivity().supportFragmentManager.beginTransaction()
-                    .add(
+                    .replace(
                         R.id.nav_host_fragment_activity_main,
-                        ReadArticleFragment.newInstance("https://www.zhihu.com/question/${item.dto.target.question.id}/answer/${item.dto.target.id}")
+                        readArticleFragment
                     )
                     .addToBackStack(null)
                     .commit()
@@ -52,5 +55,6 @@ class HomeArticleItemAdapter(
         val title: TextView = binding.title
         val summary: TextView = binding.summary
         val details: TextView = binding.details
+        val card = binding.card
     }
 }

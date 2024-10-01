@@ -7,9 +7,6 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="card_background">#FFEEEEEE</color>
-    <color name="pure_background">#FFFFFFFF</color>
-    <color name="gray_300">#FFE0E0E0</color>
-    <color name="gray_800">#FF424242</color>
-    <color name="gray_900">#FF212121</color>
+    <color name="card_background">#FF212121</color>
+    <color name="pure_background">#FF000000</color>
 </resources>
