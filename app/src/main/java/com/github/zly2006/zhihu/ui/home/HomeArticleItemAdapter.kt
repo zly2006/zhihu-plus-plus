@@ -36,8 +36,7 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
-                val readArticleFragment =
-                    ReadArticleFragment.newInstance("https://www.zhihu.com/question/${item.dto.target.question!!.id}/answer/${item.dto.target.id}")
+                val readArticleFragment = ReadArticleFragment.newInstance(item.dto)
 
                 fragment.requireActivity().supportFragmentManager.commit {
                     setCustomAnimations(

@@ -10,10 +10,11 @@ android {
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhihu"
-        minSdk = 24
+        minSdk = 28
+        //noinspection OldTargetApi, my phone is Android 14
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

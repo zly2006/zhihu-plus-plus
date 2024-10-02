@@ -5,10 +5,26 @@
              android:layout_height="match_parent"
              tools:context=".ui.home.QuestionDetailsFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <LinearLayout
+            android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:text="@string/hello_blank_fragment"/>
+            android:layout_height="match_parent">
+
+        <TextView
+                android:text="TextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/title"/>
+
+        <WebView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/webview"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:id="@+id/answers"/>
+    </LinearLayout>
 
 </FrameLayout>

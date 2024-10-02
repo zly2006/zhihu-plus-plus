@@ -57,7 +57,9 @@ class HomeFragment : Fragment() {
                         }
                     ))
                 }
-                println(response.bodyAsText())
+                if (!response.status.isSuccess()) {
+                    Log.e("Browse-Fetch", response.bodyAsText())
+                }
             }
             val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&end_offset=${list.size}")
             if (response.status == HttpStatusCode.OK) {
@@ -74,7 +76,7 @@ class HomeFragment : Fragment() {
                         PlaceholderItem(
                             it.target.question!!.title,
                             it.target.excerpt,
-                            "${it.target.voteup_count}赞 ${it.target.author.name}",
+                            "${it.target.voteup_count}赞 ${it.target.author.name} ${it.target.type}",
                             it
                         )
                     })
@@ -120,7 +122,6 @@ class HomeFragment : Fragment() {
                 if (!binding.list.canScrollVertically(1000)) {
                     if (!fetchingNewItems) {
                         GlobalScope.launch {
-                            println("fetch")
                             fetch()
                         }
                     }

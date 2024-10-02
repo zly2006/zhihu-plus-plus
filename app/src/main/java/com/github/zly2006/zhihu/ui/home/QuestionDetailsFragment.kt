@@ -5,41 +5,62 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 private const val ARG_QUESTION_ID = "q-id"
 
 class QuestionDetailsFragment : Fragment() {
-    private lateinit var questionId: String
+    private var questionId: Long = 0
 
+    private var _binding: FragmentQuestionDetailsBinding? = null
+
+    // This property is only valid between onCreateView and
+    // onDestroyView.
+    private val binding get() = _binding!!
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        questionId = requireArguments().getString(ARG_QUESTION_ID)!!
+        questionId = requireArguments().getLong(ARG_QUESTION_ID)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_question_details, container, false)
+    ): View {
+        _binding = FragmentQuestionDetailsBinding.inflate(inflater, container, false)
+        val root: View = binding.root
+
+
+        val httpClient = AccountData.httpClient(requireContext())
+        GlobalScope.launch {
+//            httpClient.get("https://www.zhihu.com/question/${questionId}")
+//            setupUpDarkMode(binding.webview)
+//            binding.webview.loadData(
+//                """
+//                    <head>
+//                    <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
+//                    <viewport content="width=device-width, initial-scale=1.0">
+//                    </head>
+//                """.trimIndent() + answer.toString(), "text/html", "utf-8", null
+//            )
+        }
+        return root
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+
+        _binding = null
     }
 
     companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment QuestionDetailsFragment.
-         */
-        // TODO: Rename and change types and number of parameters
         @JvmStatic
-        fun newInstance(questionId: String) =
+        fun newInstance(questionId: Long) =
             QuestionDetailsFragment().apply {
                 arguments = Bundle().apply {
-                    putString(ARG_QUESTION_ID, questionId)
+                    putLong(ARG_QUESTION_ID, questionId)
                 }
             }
     }
