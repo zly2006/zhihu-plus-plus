@@ -124,7 +124,7 @@ class HomeFragment : Fragment() {
         }
 
         binding.refreshList.setOnClickListener { refresh() }
-        binding.list.adapter = HomeArticleItemAdapter(list, this)
+        binding.list.adapter = HomeArticleItemAdapter(list, requireActivity())
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)

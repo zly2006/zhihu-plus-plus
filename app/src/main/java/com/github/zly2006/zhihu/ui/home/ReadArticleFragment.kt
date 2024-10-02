@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui.home
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -18,6 +19,10 @@ import android.webkit.WebView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
@@ -27,6 +32,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
+import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.utils.io.jvm.javaio.*
@@ -35,48 +41,78 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import kotlin.properties.Delegates
+
+/**
+ * answer | article
+ */
+private const val ARG_ARTICLE_TYPE = "type"
+private const val ARG_ARTICLE_ID = "id"
+private const val ARG_TITLE = "title"
+private const val ARG_AUTHOR_NAME = "authorName"
+private const val ARG_BIO = "bio"
+private const val ARG_CONTENT = "content"
+private const val ARG_QUESTION_ID = "questionId"
+private const val ARG_AVATAR_SRC = "avatarSrc"
 
 class ReadArticleFragment : Fragment() {
-    /**
-     * answer | article
-     */
-    private val ARG_TYPE = "type"
-    private val ARG_ID = "id"
-    private lateinit var dto: Feed
     private lateinit var document: Document
+    private lateinit var type: String
+    private var articleId by Delegates.notNull<Long>()
     private var _binding: FragmentReadArticleBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+    private val viewModel: ReadArticleViewModel by viewModels()
+
+    class ReadArticleViewModel : ViewModel() {
+        val title = MutableLiveData<String>()
+        val authorName = MutableLiveData<String>()
+        val bio = MutableLiveData<String>()
+        val content = MutableLiveData<String>()
+        val questionId = MutableLiveData<Long>()
+        val avatarSrc = MutableLiveData<String>()
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        arguments?.let {
+            val type = it.getString(ARG_ARTICLE_TYPE) ?: "answer"
+            val id = it.getLong(ARG_ARTICLE_ID)
+            val title = it.getString(ARG_TITLE) ?: "title"
+            val authorName = it.getString(ARG_AUTHOR_NAME) ?: "authorName"
+            val bio = it.getString(ARG_BIO) ?: "bio"
+            val content = it.getString(ARG_CONTENT) ?: "content"
+            val questionId = it.getLong(ARG_QUESTION_ID)
+            val avatarSrc = it.getString(ARG_AVATAR_SRC) ?: ""
+            viewModel.title.value = title
+            viewModel.authorName.value = authorName
+            viewModel.bio.value = bio
+            viewModel.content.value = content
+            viewModel.questionId.value = questionId
+            viewModel.avatarSrc.value = avatarSrc
+            articleId = id
+            this.type = type
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentReadArticleBinding.inflate(inflater, container, false)
+
         val root: View = binding.root
 
         val httpClient = AccountData.httpClient(requireContext())
 
-        binding.title.text = dto.target.question?.title
-        binding.author.text = dto.target.author.name
-        binding.bio.text = dto.target.author.headline
-        val assetLoader = WebViewAssetLoader.Builder()
-            .setDomain("zhihu-plus.internal")
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(requireActivity()))
-            .build()
-        binding.web.webViewClient = object : WebViewClientCompat() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                return assetLoader.shouldInterceptRequest(request.url)
-            }
-        }
         registerForContextMenu(binding.web)
+        setupUpWebview(binding.web, requireContext())
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true);
         }
-
-        setupUpDarkMode(binding.web)
         binding.web.setOnLongClickListener { view ->
             val result = (view as WebView).hitTestResult
             if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
@@ -86,58 +122,66 @@ class ReadArticleFragment : Fragment() {
                 false
             }
         }
-        if (dto.target.question != null) {
-            binding.title.setOnClickListener {
-                requireActivity().supportFragmentManager.commit {
-                    replace(
-                        R.id.nav_host_fragment_activity_main,
-                        QuestionDetailsFragment.newInstance(dto.target.question!!.id)
-                    )
-                    addToBackStack("Question-Details")
-                }
-            }
-        }
 
-        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
-            if (dto.target.type == "answer") {
-                _binding?.title?.text = dto.target.question!!.title
-                val answer = DataHolder.getAnswer(httpClient, dto.target.id)?.value
-                if (answer == null) {
-                    Log.e("ReadArticleFragment", "Answer not found")
-                    return@launch
-                }
-                val avatarSrc = answer.author.avatarUrl
-                if (DataHolder.definitelyAd.any { it in answer.content }) {
-                    Log.i("ReadArticleFragment", "Answer is an ad")
-                    _binding?.web?.loadData("""
-                        <h1>广告</h1>
-                        <p>这个回答被识别为广告，已被隐藏。</p>
-                    """.trimIndent(), "text/html", "utf-8")
-                    return@launch
-                }
-                if (avatarSrc != null) {
-                    launch {
-                        httpClient.get(avatarSrc).bodyAsChannel().toInputStream().buffered().use {
-                            val bitmap = BitmapFactory.decodeStream(it)
-                            requireActivity().runOnUiThread {
-                                _binding?.avatar?.setImageBitmap(bitmap)
-                            }
-                        }
+        viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
+        viewModel.authorName.distinctUntilChanged().observe(viewLifecycleOwner) { binding.author.text = it }
+        viewModel.bio.distinctUntilChanged().observe(viewLifecycleOwner) { binding.bio.text = it }
+        viewModel.questionId.distinctUntilChanged().observe(viewLifecycleOwner) { questionId ->
+            if (questionId != 0L) {
+                binding.title.setOnClickListener {
+                    requireActivity().supportFragmentManager.commit {
+                        replace(
+                            R.id.nav_host_fragment_activity_main,
+                            QuestionDetailsFragment.newInstance(questionId, viewModel.title.value ?: "Loading...")
+                        )
+                        addToBackStack("Question-Details")
                     }
                 }
-
-                _binding?.author?.text = answer.author.name
-                _binding?.bio?.text = answer.author.headline
-                document = Jsoup.parse(answer.content)
-                document.select("img.lazy").forEach { it.remove() }
-                _binding?.web?.loadDataWithBaseURL(
-                    "https://www.zhihu.com/question/${answer.question.id}/answer/${answer.id}", """
+            } else {
+                binding.title.setOnClickListener(null)
+            }
+        }
+        viewModel.content.distinctUntilChanged().observe(viewLifecycleOwner) {
+            document = Jsoup.parse(it)
+            document.select("img.lazy").forEach { it.remove() }
+            binding.web.loadDataWithBaseURL(
+                "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}", """
                     <head>
                     <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
                     <viewport content="width=device-width, initial-scale=1.0">
                     </head>
                 """.trimIndent() + document.toString(), "text/html", "utf-8", null
-                )
+            )
+        }
+        viewModel.avatarSrc.distinctUntilChanged().observe(viewLifecycleOwner) {
+            if (it.isNotEmpty()) {
+                GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+                    httpClient.get(it).bodyAsChannel().toInputStream().buffered().use {
+                        val bitmap = BitmapFactory.decodeStream(it)
+                        binding.avatar.setImageBitmap(bitmap)
+                    }
+                }
+            }
+        }
+
+        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+            if (type == "answer") {
+                val answer = DataHolder.getAnswer(httpClient, articleId)?.value
+                viewModel.questionId.postValue(answer?.question?.id ?: 0)
+                viewModel.title.postValue(answer?.question?.title ?: "title")
+                viewModel.authorName.postValue(answer?.author?.name ?: "authorName")
+                viewModel.bio.postValue(answer?.author?.headline ?: "author bio")
+                if (answer == null) {
+                    Log.e("ReadArticleFragment", "Answer not found")
+                    return@launch
+                }
+                viewModel.avatarSrc.postValue(answer.author.avatarUrl)
+                if (DataHolder.definitelyAd.any { it in answer.content }) {
+                    Log.i("ReadArticleFragment", "Answer is an ad")
+                    viewModel.content.postValue("<h1>广告</h1><p>这个回答被识别为广告，已被隐藏。</p>")
+                    return@launch
+                }
+                viewModel.content.postValue(answer.content)
             }
         }
 
@@ -208,12 +252,32 @@ class ReadArticleFragment : Fragment() {
         @JvmStatic
         fun newInstance(feed: Feed) =
             ReadArticleFragment().apply {
-                dto = feed
+                arguments = Bundle().apply {
+                    putString(ARG_ARTICLE_TYPE, feed.target.type)
+                    putLong(ARG_ARTICLE_ID, feed.target.id)
+                    if (feed.target.type == "answer") {
+                        putString(ARG_TITLE, feed.target.question!!.title)
+                    }
+                    putString(ARG_AUTHOR_NAME, feed.target.author.name)
+                    putString(ARG_BIO, feed.target.author.headline)
+                    putString(ARG_CONTENT, feed.target.content)
+                    putLong(ARG_QUESTION_ID, feed.target.question?.id ?: 0)
+                    putString(ARG_AVATAR_SRC, feed.target.author.avatar_url)
+                }
             }
     }
 }
 
-fun setupUpDarkMode(web: WebView) {
+fun setupUpWebview(web: WebView, context: Context) {
+    val assetLoader = WebViewAssetLoader.Builder()
+        .setDomain("zhihu-plus.internal")
+        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+        .build()
+    web.webViewClient = object : WebViewClientCompat() {
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+            return assetLoader.shouldInterceptRequest(request.url)
+        }
+    }
     if (VERSION.SDK_INT > VERSION_CODES.Q) {
         web.isForceDarkAllowed = true
         runCatching {

@@ -4,19 +4,16 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.commit
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.databinding.FragmentHomeArticleItemBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 
-/**
- * [RecyclerView.Adapter] that can display a [PlaceholderItem].
- * TODO: Replace the implementation with code for your data type.
- */
 class HomeArticleItemAdapter(
     private val values: List<PlaceholderItem>,
-    private val fragment: HomeFragment
+    private val activity: FragmentActivity
 ) : RecyclerView.Adapter<HomeArticleItemAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(FragmentHomeArticleItemBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -29,7 +26,7 @@ class HomeArticleItemAdapter(
         holder.details.text = item.details
         holder.card.setOnClickListener {
             if (item.dto == null) {
-                AlertDialog.Builder(fragment.requireContext()).apply {
+                AlertDialog.Builder(activity).apply {
                     setTitle("Click " + item.title)
                     setMessage(item.summary)
                     setPositiveButton("OK") { _, _ ->
@@ -38,7 +35,7 @@ class HomeArticleItemAdapter(
             } else {
                 val readArticleFragment = ReadArticleFragment.newInstance(item.dto)
 
-                fragment.requireActivity().supportFragmentManager.commit {
+                activity.supportFragmentManager.commit {
                     setCustomAnimations(
                         R.anim.slide_in,
                         R.anim.slide_in,

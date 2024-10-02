@@ -8,11 +8,7 @@
         tools:context=".ui.home.HomeFragment">
 
     <androidx.recyclerview.widget.RecyclerView
-            xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            xmlns:tools="http://schemas.android.com/tools"
             android:id="@+id/list"
-            android:name="com.github.zly2006.zhihu.HomeArticleItemFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginHorizontal="16dp"

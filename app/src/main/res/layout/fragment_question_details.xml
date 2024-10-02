@@ -3,13 +3,13 @@
               xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
               android:paddingHorizontal="6dp"
               android:orientation="vertical"
               android:background="?android:attr/colorBackground"
-              tools:context=".ui.home.QuestionDetailsFragment"
+              tools:context=".ui.home.question.QuestionDetailsFragment"
               android:clickable="true"
         >
-
 
     <TextView
             android:text="这是标题"
@@ -29,9 +29,11 @@
             android:id="@+id/webview"/>
 
     <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/answers"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:id="@+id/answers"/>
-
-
+            android:layout_marginHorizontal="16dp"
+            app:layoutManager="LinearLayoutManager"
+            tools:listitem="@layout/fragment_home_article_item"
+            />
 </LinearLayout>

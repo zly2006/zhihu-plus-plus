@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home
+package com.github.zly2006.zhihu.ui.home.question
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,9 +6,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
+import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -16,6 +21,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 private const val ARG_QUESTION_ID = "q-id"
+private const val ARG_QUESTION_TITLE = "q-title"
 
 class QuestionDetailsFragment : Fragment() {
     private var questionId: Long = 0
@@ -27,9 +33,17 @@ class QuestionDetailsFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    val answers = mutableListOf<DataHolder.Answer>()
+    val viewModel: QuestionViewModel by viewModels()
+    class QuestionViewModel : ViewModel() {
+        val title = MutableLiveData<String>()
+        val detail = MutableLiveData<String>()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         questionId = requireArguments().getLong(ARG_QUESTION_ID)
+        viewModel.title.postValue(requireArguments().getString(ARG_QUESTION_TITLE))
     }
 
     override fun onCreateView(
@@ -39,7 +53,23 @@ class QuestionDetailsFragment : Fragment() {
         _binding = FragmentQuestionDetailsBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        setupUpDarkMode(binding.webview)
+        setupUpWebview(binding.webview, requireContext())
+
+        viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
+        viewModel.detail.distinctUntilChanged().observe(viewLifecycleOwner) {
+            document = Jsoup.parse(it)
+            document.select("img.lazy").forEach { it.remove() }
+            binding.webview.loadData(
+                """
+                    <head>
+                    <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
+                    <viewport content="width=device-width, initial-scale=1.0">
+                    </head>
+                """.trimIndent() + document.toString(), "text/html", "utf-8"
+            )
+        }
+        binding.answers.adapter = AnswerListAdapter(answers, requireActivity())
+
         val httpClient = AccountData.httpClient(requireContext())
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
             val question = DataHolder.getQuestion(httpClient, questionId)?.value
@@ -52,18 +82,8 @@ class QuestionDetailsFragment : Fragment() {
                 }.create().show()
                 return@launch
             }
-            binding.title.text = question.title
-
-            document = Jsoup.parse(question.detail)
-            document.select("img.lazy").forEach { it.remove() }
-            binding.webview.loadData(
-                """
-                    <head>
-                    <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
-                    <viewport content="width=device-width, initial-scale=1.0">
-                    </head>
-                """.trimIndent() + document.toString(), "text/html", "utf-8"
-            )
+            viewModel.title.postValue(question.title)
+            viewModel.detail.postValue(question.detail)
         }
         return root
     }
@@ -76,10 +96,11 @@ class QuestionDetailsFragment : Fragment() {
 
     companion object {
         @JvmStatic
-        fun newInstance(questionId: Long) =
+        fun newInstance(questionId: Long, title: String) =
             QuestionDetailsFragment().apply {
                 arguments = Bundle().apply {
                     putLong(ARG_QUESTION_ID, questionId)
+                    putString(ARG_QUESTION_TITLE, title)
                 }
             }
     }

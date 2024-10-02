@@ -324,7 +324,7 @@ object DataHolder {
         val rEACTIONANSWERNEWESTLIST: String? = null
     )
 
-    class ReferenceCount<T>(
+    data class ReferenceCount<T>(
         val value: T,
         var count: Int = 0
     ): AutoCloseable {
@@ -390,6 +390,10 @@ object DataHolder {
             get(httpClient, "https://www.zhihu.com/question/$id")
         }
         return questions[id]?.also { it.count++ }
+    }
+
+    fun getAnswersFor(questionId: Long): List<ReferenceCount<Answer>> {
+        return answers.filter { it.value.value.question.id == questionId }.values.toList()
     }
 }
 
