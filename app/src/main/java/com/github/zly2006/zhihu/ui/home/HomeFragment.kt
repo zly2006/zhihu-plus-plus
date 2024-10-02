@@ -70,8 +70,8 @@ class HomeFragment : Fragment() {
                     val data = json.decodeFromString<Response>(text)
                     val index = list.size
                     list.addAll(data.data.filter {
-                        it.type != "feed_advert" &&
-                                it.target.created_time != -1L && it.target.relationship != null
+                        (it.type != "feed_advert" && it.created_time != -1L &&
+                                it.target.created_time != -1L && it.target.relationship != null)
                     }.map {
                         PlaceholderItem(
                             it.target.question!!.title,

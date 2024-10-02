@@ -76,6 +76,7 @@ class ReadArticleFragment : Fragment() {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true);
         }
 
+        setupUpDarkMode(binding.web)
         binding.web.setOnLongClickListener { view ->
             val result = (view as WebView).hitTestResult
             if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
@@ -85,33 +86,51 @@ class ReadArticleFragment : Fragment() {
                 false
             }
         }
+        if (dto.target.question != null) {
+            binding.title.setOnClickListener {
+                requireActivity().supportFragmentManager.commit {
+                    replace(
+                        R.id.nav_host_fragment_activity_main,
+                        QuestionDetailsFragment.newInstance(dto.target.question!!.id)
+                    )
+                    addToBackStack("Question-Details")
+                }
+            }
+        }
 
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
             if (dto.target.type == "answer") {
-                binding.title.text = dto.target.question!!.title
+                _binding?.title?.text = dto.target.question!!.title
                 val answer = DataHolder.getAnswer(httpClient, dto.target.id)?.value
                 if (answer == null) {
                     Log.e("ReadArticleFragment", "Answer not found")
                     return@launch
                 }
                 val avatarSrc = answer.author.avatarUrl
+                if (DataHolder.definitelyAd.any { it in answer.content }) {
+                    Log.i("ReadArticleFragment", "Answer is an ad")
+                    _binding?.web?.loadData("""
+                        <h1>广告</h1>
+                        <p>这个回答被识别为广告，已被隐藏。</p>
+                    """.trimIndent(), "text/html", "utf-8")
+                    return@launch
+                }
                 if (avatarSrc != null) {
                     launch {
                         httpClient.get(avatarSrc).bodyAsChannel().toInputStream().buffered().use {
                             val bitmap = BitmapFactory.decodeStream(it)
                             requireActivity().runOnUiThread {
-                                binding.avatar.setImageBitmap(bitmap)
+                                _binding?.avatar?.setImageBitmap(bitmap)
                             }
                         }
                     }
                 }
 
-                binding.author.text = answer.author.name
-                binding.bio.text = answer.author.headline
-                setupUpDarkMode(binding.web)
+                _binding?.author?.text = answer.author.name
+                _binding?.bio?.text = answer.author.headline
                 document = Jsoup.parse(answer.content)
                 document.select("img.lazy").forEach { it.remove() }
-                binding.web.loadDataWithBaseURL(
+                _binding?.web?.loadDataWithBaseURL(
                     "https://www.zhihu.com/question/${answer.question.id}/answer/${answer.id}", """
                     <head>
                     <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
@@ -119,18 +138,6 @@ class ReadArticleFragment : Fragment() {
                     </head>
                 """.trimIndent() + document.toString(), "text/html", "utf-8", null
                 )
-            }
-            if (dto.target.question != null) {
-
-                binding.title.setOnClickListener {
-                    requireActivity().supportFragmentManager.commit {
-                        replace(
-                            R.id.nav_host_fragment_activity_main,
-                            QuestionDetailsFragment.newInstance(dto.target.question!!.id)
-                        )
-                        addToBackStack("Question-Details")
-                    }
-                }
             }
         }
 

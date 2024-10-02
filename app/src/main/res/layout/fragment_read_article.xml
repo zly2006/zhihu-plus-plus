@@ -7,6 +7,7 @@
              android:forceDarkAllowed="true"
              tools:context=".ui.home.ReadArticleFragment"
              android:id="@+id/read_article"
+             android:clickable="true"
         >
 
     <LinearLayout

@@ -10,6 +10,10 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
 
 object DataHolder {
+    val definitelyAd = listOf(
+        "href=\"https://xg.zhihu.com/", // 知乎营销效果统计平台
+    )
+
     @Serializable
     data class Author(
         val avatarUrl: String,
@@ -27,6 +31,7 @@ object DataHolder {
         val url: String,
         val urlToken: String,
         val userType: String,
+        val exposedMedal: ExposedMedal? = null,
         val vipInfo: VipInfo? = null,
         val followerCount: Int = 0,
         val isFollowed: Boolean = false,
@@ -34,6 +39,14 @@ object DataHolder {
         val isBlocking: Boolean = false,
         val isCelebrity: Boolean = false,
         val isFollowing: Boolean = false,
+    )
+
+    @Serializable
+    data class ExposedMedal(
+        val avatarUrl: String,
+        val description: String,
+        val medalId: String,
+        val medalName: String
     )
 
     @Serializable
@@ -367,9 +380,16 @@ object DataHolder {
 
     suspend fun getAnswer(httpClient: HttpClient, id: Long): ReferenceCount<Answer>? {
         if (id !in answers) {
-            get(httpClient, "https://www.zhihu.com/answer/${id}")
+            get(httpClient, "https://www.zhihu.com/answer/$id")
         }
         return answers[id]?.also { it.count++ }
+    }
+
+    suspend fun getQuestion(httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
+        if (id !in questions) {
+            get(httpClient, "https://www.zhihu.com/question/$id")
+        }
+        return questions[id]?.also { it.count++ }
     }
 }
 

@@ -8,14 +8,14 @@ import kotlinx.serialization.Serializable
 data class Feed(
     val id: String,
     val type: String,
-    val offset: Int,
-    val verb: String,
-    val created_time: Long,
-    val updated_time: Long,
+    val offset: Int = -1,
+    val verb: String = "possibly ads, filter me",
+    val created_time: Long = -1,
+    val updated_time: Long = -1,
     val target: Target,
     val brief: String,
     val attached_info: String,
-    val action_card: Boolean,
+    val action_card: Boolean = false,
     /**
      * 屏蔽
      */
