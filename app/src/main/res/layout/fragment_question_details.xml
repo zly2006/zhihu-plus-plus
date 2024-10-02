@@ -7,7 +7,7 @@
               android:orientation="vertical"
               android:background="?android:attr/colorBackground"
               tools:context=".ui.home.QuestionDetailsFragment"
-              android:clickable="false"
+              android:clickable="true"
         >
 
 

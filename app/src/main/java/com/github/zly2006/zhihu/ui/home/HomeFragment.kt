@@ -20,6 +20,7 @@ import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -94,6 +95,17 @@ class HomeFragment : Fragment() {
         }
     }
 
+    fun refresh() {
+        val size = list.size
+        list.clear()
+        binding.list.adapter?.notifyItemRangeRemoved(0, size)
+        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+            repeat(3) {
+                fetch()
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -108,13 +120,10 @@ class HomeFragment : Fragment() {
             startActivity(myIntent)
         }
         else {
-            GlobalScope.launch {
-                fetch()
-                fetch()
-                fetch()
-            }
+            refresh()
         }
 
+        binding.refreshList.setOnClickListener { refresh() }
         binding.list.adapter = HomeArticleItemAdapter(list, this)
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
