@@ -15,6 +15,7 @@ import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -40,6 +41,7 @@ class HomeFragment : Fragment() {
 
     private var fetchingNewItems = false
     suspend fun fetch() {
+        if (context == null) return
         try {
             GlobalScope.launch {
                 val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
@@ -128,7 +130,7 @@ class HomeFragment : Fragment() {
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                if (!binding.list.canScrollVertically(1000)) {
+                if (!binding.list.canScrollVertically(binding.list.height)) {
                     if (!fetchingNewItems) {
                         GlobalScope.launch {
                             fetch()
@@ -144,7 +146,7 @@ class HomeFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         val articleFragment = requireActivity().supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main)
-        if (articleFragment is ReadArticleFragment) {
+        if (articleFragment is ReadArticleFragment || articleFragment is QuestionDetailsFragment) {
             requireActivity().supportFragmentManager.beginTransaction()
                 .remove(articleFragment)
                 .commit()

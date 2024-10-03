@@ -153,7 +153,7 @@ object DataHolder {
         val extras: String,
         val favlistsCount: Int,
         val id: Long,
-        val ipInfo: String,
+        val ipInfo: String? = null,
         val isCollapsed: Boolean,
         val isCopyable: Boolean,
         val isJumpNative: Boolean,
@@ -350,6 +350,7 @@ object DataHolder {
                     val questionModel = Json.decodeFromJsonElement<Question>(question)
                     this.questions[questionModel.id] = ReferenceCount(questionModel)
                 } catch (e: Exception) {
+                    println(jojo.toString())
                     e.printStackTrace()
                 }
             }
@@ -362,11 +363,11 @@ object DataHolder {
                     this.answers[answerModel.id] = ReferenceCount(answerModel)
                     this.questions[answerModel.question.id]!!.count++
                 } catch (e: Exception) {
+                    println(jojo.toString())
                     e.printStackTrace()
                 }
             }
         }
-        println(jojo)
     }
 
     private fun removeAnswer(answerId: Long) {

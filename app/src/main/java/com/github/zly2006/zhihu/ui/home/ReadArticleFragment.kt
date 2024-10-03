@@ -17,6 +17,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.collection.mutableIntSetOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -77,6 +78,8 @@ class ReadArticleFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        mutableIntSetOf(7)
 
         arguments?.let {
             val type = it.getString(ARG_ARTICLE_TYPE) ?: "answer"
@@ -142,6 +145,10 @@ class ReadArticleFragment : Fragment() {
             }
         }
         viewModel.content.distinctUntilChanged().observe(viewLifecycleOwner) {
+            if (DataHolder.definitelyAd.any { keyword -> keyword in it }) {
+                Log.i("ReadArticleFragment", "Answer is an ad")
+                binding.web.loadData("<h1>广告</h1><p>这个回答被识别为广告，已被隐藏。</p>", "text/html", "utf-8")
+            }
             document = Jsoup.parse(it)
             document.select("img.lazy").forEach { it.remove() }
             binding.web.loadDataWithBaseURL(
@@ -158,7 +165,7 @@ class ReadArticleFragment : Fragment() {
                 GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
                     httpClient.get(it).bodyAsChannel().toInputStream().buffered().use {
                         val bitmap = BitmapFactory.decodeStream(it)
-                        binding.avatar.setImageBitmap(bitmap)
+                        _binding?.avatar?.setImageBitmap(bitmap)
                     }
                 }
             }
@@ -167,21 +174,20 @@ class ReadArticleFragment : Fragment() {
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
             if (type == "answer") {
                 val answer = DataHolder.getAnswer(httpClient, articleId)?.value
-                viewModel.questionId.postValue(answer?.question?.id ?: 0)
-                viewModel.title.postValue(answer?.question?.title ?: "title")
-                viewModel.authorName.postValue(answer?.author?.name ?: "authorName")
-                viewModel.bio.postValue(answer?.author?.headline ?: "author bio")
-                if (answer == null) {
+                if (answer != null) {
+                    if (viewModel.content.value.isNullOrEmpty()) {
+                        viewModel.questionId.postValue(answer.question.id)
+                        viewModel.title.postValue(answer.question.title)
+                        viewModel.authorName.postValue(answer.author.name)
+                        viewModel.bio.postValue(answer.author.headline)
+                        viewModel.avatarSrc.postValue(answer.author.avatarUrl)
+                        viewModel.content.postValue(answer.content)
+                    }
+                } else {
+                    viewModel.content.postValue("<h1>Answer not found</p>")
                     Log.e("ReadArticleFragment", "Answer not found")
                     return@launch
                 }
-                viewModel.avatarSrc.postValue(answer.author.avatarUrl)
-                if (DataHolder.definitelyAd.any { it in answer.content }) {
-                    Log.i("ReadArticleFragment", "Answer is an ad")
-                    viewModel.content.postValue("<h1>广告</h1><p>这个回答被识别为广告，已被隐藏。</p>")
-                    return@launch
-                }
-                viewModel.content.postValue(answer.content)
             }
         }
 
@@ -249,7 +255,6 @@ class ReadArticleFragment : Fragment() {
     }
 
     companion object {
-        @JvmStatic
         fun newInstance(feed: Feed) =
             ReadArticleFragment().apply {
                 arguments = Bundle().apply {
@@ -263,6 +268,20 @@ class ReadArticleFragment : Fragment() {
                     putString(ARG_CONTENT, feed.target.content)
                     putLong(ARG_QUESTION_ID, feed.target.question?.id ?: 0)
                     putString(ARG_AVATAR_SRC, feed.target.author.avatar_url)
+                }
+            }
+
+        fun newInstance(answer: DataHolder.Answer) =
+            ReadArticleFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_ARTICLE_TYPE, "answer")
+                    putLong(ARG_ARTICLE_ID, answer.id)
+                    putString(ARG_TITLE, answer.question.title)
+                    putString(ARG_AUTHOR_NAME, answer.author.name)
+                    putString(ARG_BIO, answer.author.headline)
+                    putString(ARG_CONTENT, answer.content)
+                    putLong(ARG_QUESTION_ID, answer.question.id)
+                    putString(ARG_AVATAR_SRC, answer.author.avatarUrl)
                 }
             }
     }

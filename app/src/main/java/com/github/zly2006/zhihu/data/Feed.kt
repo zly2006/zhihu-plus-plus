@@ -6,20 +6,21 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Feed(
-    val id: String,
+    val id: String = "",
     val type: String,
     val offset: Int = -1,
     val verb: String = "possibly ads, filter me",
     val created_time: Long = -1,
     val updated_time: Long = -1,
     val target: Target,
-    val brief: String,
-    val attached_info: String,
+    val brief: String = "<none>",
+    val attached_info: String = "",
     val action_card: Boolean = false,
     /**
      * 屏蔽
      */
     val promotion_extra: String? = null,
+    val cursor: String = ""
 ) {
     @Serializable
     data class Target(
@@ -38,17 +39,17 @@ data class Feed(
         val is_copyable: Boolean = false,
         val question: Question? = null,
         val thumbnail: String? = null,
-        val excerpt: String,
-        val excerpt_new: String,
-        val preview_type: String,
-        val preview_text: String,
+        val excerpt: String = "<none>",
+        val excerpt_new: String? = null,
+        val preview_type: String = "<none>",
+        val preview_text: String = "<none>",
         val reshipment_settings: String = "",
-        val content: String,
+        val content: String = "",
         /**
          * null - 广告
          */
         val relationship: Relationship? = null,
-        val is_labeled: Boolean,
+        val is_labeled: Boolean = false,
         val visited_count: Int = 0,
         val thumbnails: List<String> = emptyList(),
         val favorite_count: Int = 0,
@@ -74,7 +75,7 @@ data class Feed(
         val avatar_url: String,
         val is_org: Boolean,
         val gender: Int,
-        val followers_count: Int,
+        val followers_count: Int = 0,
         val is_following: Boolean,
         val is_followed: Boolean,
         val badge: List<Badge> = emptyList(),
@@ -85,17 +86,17 @@ data class Feed(
         val id: Long,
         val type: String,
         val url: String,
-        val author: Author,
+        val author: Author? = null,
         val title: String,
         val created: Long,
-        val answer_count: Int,
-        val follower_count: Int,
-        val comment_count: Int,
+        val answer_count: Int = 0,
+        val follower_count: Int = 0,
+        val comment_count: Int = 0,
         val bound_topic_ids: List<Long> = emptyList(),
-        val is_following: Boolean,
-        val excerpt: String,
+        val is_following: Boolean = false,
+        val excerpt: String = "<default value, R U in question details page?>",
         val relationship: Relationship,
-        val detail: String,
+        val detail: String = "<default value, R U in question details page?>",
         val question_type: String,
     )
 
