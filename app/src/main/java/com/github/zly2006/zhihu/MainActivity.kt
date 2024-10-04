@@ -12,6 +12,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -23,8 +24,11 @@ data object Dashboard
 @Serializable
 data object Notifications
 
+@Serializable
 enum class ArticleType {
+    @SerialName("article")
     Article,
+    @SerialName("answer")
     Answer,
 }
 

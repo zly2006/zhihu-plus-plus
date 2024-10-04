@@ -57,6 +57,7 @@ private const val ARG_BIO = "bio"
 private const val ARG_CONTENT = "content"
 private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_AVATAR_SRC = "avatarSrc"
+private const val ARG_VOTE_UP_COUNT = "voteUpCount"
 
 class ReadArticleFragment : Fragment() {
     private lateinit var document: Document
@@ -76,6 +77,7 @@ class ReadArticleFragment : Fragment() {
         val content = MutableLiveData<String>()
         val questionId = MutableLiveData<Long>()
         val avatarSrc = MutableLiveData<String>()
+        val voteUpCount = MutableLiveData<Int>()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,22 +86,15 @@ class ReadArticleFragment : Fragment() {
         mutableIntSetOf(7)
 
         arguments?.let {
-            val type = it.getString(ARG_ARTICLE_TYPE) ?: "answer"
-            val id = it.getLong(ARG_ARTICLE_ID)
-            val title = it.getString(ARG_TITLE) ?: "title"
-            val authorName = it.getString(ARG_AUTHOR_NAME) ?: "authorName"
-            val bio = it.getString(ARG_BIO) ?: "bio"
-            val content = it.getString(ARG_CONTENT) ?: "content"
-            val questionId = it.getLong(ARG_QUESTION_ID)
-            val avatarSrc = it.getString(ARG_AVATAR_SRC) ?: ""
-            viewModel.title.value = title
-            viewModel.authorName.value = authorName
-            viewModel.bio.value = bio
-            viewModel.content.value = content
-            viewModel.questionId.value = questionId
-            viewModel.avatarSrc.value = avatarSrc
-            articleId = id
-            this.type = type
+            this.type = it.getString(ARG_ARTICLE_TYPE) ?: "answer"
+            viewModel.title.value = it.getString(ARG_TITLE) ?: "title"
+            viewModel.authorName.value = it.getString(ARG_AUTHOR_NAME) ?: "authorName"
+            viewModel.bio.value = it.getString(ARG_BIO) ?: "bio"
+            viewModel.content.value = it.getString(ARG_CONTENT) ?: ""
+            viewModel.questionId.value = it.getLong(ARG_QUESTION_ID)
+            viewModel.avatarSrc.value = it.getString(ARG_AVATAR_SRC) ?: ""
+            viewModel.voteUpCount.value = it.getInt(ARG_VOTE_UP_COUNT)
+            articleId = it.getLong(ARG_ARTICLE_ID)
         }
     }
 
@@ -177,6 +172,9 @@ class ReadArticleFragment : Fragment() {
                     }
                 }
             }
+        }
+        viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner) {
+            binding.voteUp.text = it.toString() + "赞同"
         }
 
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
@@ -276,6 +274,7 @@ class ReadArticleFragment : Fragment() {
                     putString(ARG_CONTENT, feed.target.content)
                     putLong(ARG_QUESTION_ID, feed.target.question?.id ?: 0)
                     putString(ARG_AVATAR_SRC, feed.target.author.avatar_url)
+                    putInt(ARG_VOTE_UP_COUNT, feed.target.voteup_count)
                 }
             }
 
@@ -290,6 +289,7 @@ class ReadArticleFragment : Fragment() {
                     putString(ARG_CONTENT, answer.content)
                     putLong(ARG_QUESTION_ID, answer.question.id)
                     putString(ARG_AVATAR_SRC, answer.author.avatarUrl)
+                    putInt(ARG_VOTE_UP_COUNT, answer.voteupCount)
                 }
             }
     }
