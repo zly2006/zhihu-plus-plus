@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
@@ -28,6 +29,10 @@ import org.jsoup.nodes.Document
 private const val ARG_QUESTION_ID = "q-id"
 private const val ARG_QUESTION_TITLE = "q-title"
 
+@Composable
+fun QuestionDetails() {
+
+}
 class QuestionDetailsFragment : Fragment() {
     private val httpClient by lazy { AccountData.httpClient(requireContext()) }
     private var fetchingNewItems = false
@@ -61,8 +66,10 @@ class QuestionDetailsFragment : Fragment() {
             _binding?.answers?.adapter?.notifyItemRangeInserted(start, feeds.size)
         }
         fetchingNewItems = false
-        if (canFetchMore && !binding.scroll.canScrollVertically(binding.scroll.height)) {
-            fetch()
+        if (canFetchMore) {
+            if (_binding != null && !binding.scroll.canScrollVertically(binding.scroll.height)) {
+                fetch()
+            }
         }
     }
 

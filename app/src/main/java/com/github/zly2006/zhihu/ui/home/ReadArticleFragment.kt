@@ -304,6 +304,18 @@ fun setupUpWebview(web: WebView, context: Context) {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             return assetLoader.shouldInterceptRequest(request.url)
         }
+
+        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+            if (request.url.host == "link.zhihu.com") {
+                val url = request.url.query?.split("&")?.firstOrNull { it.startsWith("target=") }?.substringAfter("target=")
+                if (url != null) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                    return true
+                }
+            }
+            return super.shouldOverrideUrlLoading(view, request)
+        }
     }
     if (VERSION.SDK_INT > VERSION_CODES.Q) {
         web.isForceDarkAllowed = true

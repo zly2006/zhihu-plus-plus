@@ -23,7 +23,7 @@
             android:id="@+id/title"
             />
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
             android:id="@+id/scroll"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
@@ -41,7 +41,7 @@
                     tools:ignore="WebViewLayout"/>
 
             <androidx.recyclerview.widget.RecyclerView
-                    android:nestedScrollingEnabled="true"
+                    android:nestedScrollingEnabled="false"
                     android:id="@+id/answers"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -49,5 +49,5 @@
                     tools:listitem="@layout/fragment_home_article_item"
                     />
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 </LinearLayout>
