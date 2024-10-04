@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu.ui.home
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -124,6 +126,12 @@ class ReadArticleFragment : Fragment() {
             } else {
                 false
             }
+        }
+        binding.copyLink.setOnClickListener {
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Link", "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}")
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
         }
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }

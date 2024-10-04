@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.data.AccountData.json
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -52,7 +53,7 @@ object DataHolder {
     @Serializable
     data class VipInfo(
         val isVip: Boolean,
-        val vipIcon: VipIcon
+        val vipIcon: VipIcon? = null
     )
 
     @Serializable
@@ -153,7 +154,6 @@ object DataHolder {
         val extras: String,
         val favlistsCount: Int,
         val id: Long,
-        val ipInfo: String? = null,
         val isCollapsed: Boolean,
         val isCopyable: Boolean,
         val isJumpNative: Boolean,
@@ -167,13 +167,15 @@ object DataHolder {
         val relevantInfo: RelevantInfo,
         val reshipmentSettings: String,
         val rewardInfo: RewardInfo,
-        val settings: Settings? = null,
         val suggestEdit: SuggestEdit,
         val thanksCount: Int,
         val type: String,
         val updatedTime: Long,
         val url: String,
-        val voteupCount: Int
+        val voteupCount: Int,
+        val ipInfo: String? = null,
+        val settings: Settings? = null,
+        val attachedInfo: JsonElement? = null
     )
 
     @Serializable
@@ -313,15 +315,19 @@ object DataHolder {
     )
 
     @Serializable
+    @Suppress("SpellCheckingInspection")
     data class ReactionInstruction(
         val isRelevant: Boolean = false,
         val relevantText: String = "",
         val relevantType: String = "",
-        @Suppress("SpellCheckingInspection")
         /**
          * `HIDE` = 隐藏"最新回答"
          */
-        val rEACTIONANSWERNEWESTLIST: String? = null
+        val rEACTIONANSWERNEWESTLIST: String? = null,
+        /**
+         * `HIDE` = 隐藏"类似回答"
+         */
+        val rEACTIONCONTENTSEGMENTLIKE: String? = null,
     )
 
     data class ReferenceCount<T>(
@@ -352,6 +358,9 @@ object DataHolder {
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
+
+                    val questionModel = json.decodeFromJsonElement<Question>(question)
+                    this.questions[questionModel.id] = ReferenceCount(questionModel)
                 }
             }
         }
@@ -365,6 +374,10 @@ object DataHolder {
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
+
+                    val answerModel = json.decodeFromJsonElement<Answer>(answer)
+                    this.answers[answerModel.id] = ReferenceCount(answerModel)
+                    this.questions[answerModel.question.id]!!.count++
                 }
             }
         }

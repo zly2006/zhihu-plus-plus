@@ -10,7 +10,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.DataHolder
@@ -47,21 +46,23 @@ class QuestionDetailsFragment : Fragment() {
     val answers = mutableListOf<Feed>()
     val viewModel: QuestionViewModel by viewModels()
 
-    fun fetch() {
+    suspend fun fetch() {
         fetchingNewItems = true
-        GlobalScope.launch {
-            val response = httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
-            val jojo = response.body<JsonObject>()
-            val feeds = json.decodeFromJsonElement<List<Feed>>(jojo["data"]!!)
-            cursor = feeds.last().cursor
-            session = jojo["session"]!!.jsonObject["id"]!!.jsonPrimitive.content
-            canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean
-            activity?.runOnUiThread {
-                val start = answers.size
-                answers.addAll(feeds)
-                _binding?.answers?.adapter?.notifyItemRangeInserted(start, answers.size)
-            }
-            fetchingNewItems = false
+        val response =
+            httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
+        val jojo = response.body<JsonObject>()
+        val feeds = json.decodeFromJsonElement<List<Feed>>(jojo["data"]!!)
+        cursor = feeds.last().cursor
+        session = jojo["session"]!!.jsonObject["id"]!!.jsonPrimitive.content
+        canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean
+        activity?.runOnUiThread {
+            val start = answers.size
+            answers.addAll(feeds)
+            _binding?.answers?.adapter?.notifyItemRangeInserted(start, feeds.size)
+        }
+        fetchingNewItems = false
+        if (canFetchMore && !binding.scroll.canScrollVertically(binding.scroll.height)) {
+            fetch()
         }
     }
 
@@ -83,7 +84,9 @@ class QuestionDetailsFragment : Fragment() {
         _binding = FragmentQuestionDetailsBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        fetch()
+        GlobalScope.launch {
+            fetch()
+        }
         setupUpWebview(binding.webview, requireContext())
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
@@ -105,14 +108,12 @@ class QuestionDetailsFragment : Fragment() {
             )
         }
         binding.answers.adapter = AnswerListAdapter(answers, requireActivity())
-        binding.answers.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                if (!canFetchMore || fetchingNewItems) return
-                if (!binding.answers.canScrollVertically(binding.answers.height)) {
-                    fetch()
-                }
+        binding.scroll.setOnScrollChangeListener { view, i, i2, i3, i4 ->
+            if (!canFetchMore || fetchingNewItems) return@setOnScrollChangeListener
+            if (!binding.scroll.canScrollVertically(binding.scroll.height)) {
+                GlobalScope.launch { fetch() }
             }
-        })
+        }
 
         val httpClient = AccountData.httpClient(requireContext())
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {

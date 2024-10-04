@@ -22,6 +22,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -43,28 +44,30 @@ class HomeFragment : Fragment() {
     suspend fun fetch() {
         if (context == null) return
         try {
-            GlobalScope.launch {
-                val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
-                    header("x-requested-with", "fetch")
-                    setBody(MultiPartFormDataContent(
-                        formData {
-                            append("items", buildJsonArray {
-                                list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
-                                    add(buildJsonArray {
-                                        add("answer")
-                                        add(item.dto!!.target.id)
-                                        add("touch")
-                                    })
-                                }
-                            }.toString())
-                        }
-                    ))
-                }
-                if (!response.status.isSuccess()) {
-                    Log.e("Browse-Fetch", response.bodyAsText())
+            coroutineScope {
+                launch {
+                    val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
+                        header("x-requested-with", "fetch")
+                        setBody(MultiPartFormDataContent(
+                            formData {
+                                append("items", buildJsonArray {
+                                    list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
+                                        add(buildJsonArray {
+                                            add("answer")
+                                            add(item.dto!!.target.id)
+                                            add("touch")
+                                        })
+                                    }
+                                }.toString())
+                            }
+                        ))
+                    }
+                    if (!response.status.isSuccess()) {
+                        Log.e("Browse-Fetch", response.bodyAsText())
+                    }
                 }
             }
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&end_offset=${list.size}")
+            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${list.size}")
             if (response.status == HttpStatusCode.OK) {
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)

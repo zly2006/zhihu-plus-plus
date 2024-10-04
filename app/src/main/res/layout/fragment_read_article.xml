@@ -96,7 +96,18 @@
         <WebView
                 android:forceDarkAllowed="true"
                 android:layout_width="fill_parent"
-                android:layout_height="fill_parent"
+                android:layout_height="wrap_content"
                 android:id="@+id/web"/>
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+            <Button
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="复制链接"
+                    android:id="@+id/copy_link"
+                    />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
