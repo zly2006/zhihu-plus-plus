@@ -7,8 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -38,7 +40,7 @@ class HomeFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    private val list = mutableListOf<PlaceholderItem>()
+    val viewModel: MainActivity.MainActivityViewModel by activityViewModels()
 
     private var fetchingNewItems = false
     suspend fun fetch() {
@@ -51,7 +53,7 @@ class HomeFragment : Fragment() {
                         setBody(MultiPartFormDataContent(
                             formData {
                                 append("items", buildJsonArray {
-                                    list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
+                                    viewModel.list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
                                         add(buildJsonArray {
                                             add("answer")
                                             add(item.dto!!.target.id)
@@ -67,15 +69,15 @@ class HomeFragment : Fragment() {
                     }
                 }
             }
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${list.size}")
+            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}")
             if (response.status == HttpStatusCode.OK) {
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
                 val text = response.bodyAsText()
                 try {
                     val data = json.decodeFromString<Response>(text)
-                    val index = list.size
-                    list.addAll(data.data.filter {
+                    val index = viewModel.list.size
+                    viewModel.list.addAll(data.data.filter {
                         (it.type != "feed_advert" && it.created_time != -1L &&
                                 it.target.created_time != -1L && it.target.relationship != null)
                     }.map {
@@ -101,8 +103,8 @@ class HomeFragment : Fragment() {
     }
 
     fun refresh() {
-        val size = list.size
-        list.clear()
+        val size = viewModel.list.size
+        viewModel.list.clear()
         binding.list.adapter?.notifyItemRangeRemoved(0, size)
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
             repeat(3) {
@@ -125,11 +127,15 @@ class HomeFragment : Fragment() {
             startActivity(myIntent)
         }
         else {
-            refresh()
+            GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+                repeat(3) {
+                    fetch()
+                }
+            }
         }
 
         binding.refreshList.setOnClickListener { refresh() }
-        binding.list.adapter = HomeArticleItemAdapter(list, requireActivity())
+        binding.list.adapter = HomeArticleItemAdapter(viewModel.list, requireActivity())
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)

@@ -53,7 +53,7 @@ private const val ARG_ARTICLE_TYPE = "type"
 private const val ARG_ARTICLE_ID = "id"
 private const val ARG_TITLE = "title"
 private const val ARG_AUTHOR_NAME = "authorName"
-private const val ARG_BIO = "bio"
+private const val ARG_BIO = "authorBio"
 private const val ARG_CONTENT = "content"
 private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_AVATAR_SRC = "avatarSrc"
@@ -182,13 +182,13 @@ class ReadArticleFragment : Fragment() {
                 val answer = DataHolder.getAnswer(httpClient, articleId)?.value
                 if (answer != null) {
                     if (viewModel.content.value.isNullOrEmpty()) {
-                        viewModel.questionId.postValue(answer.question.id)
-                        viewModel.title.postValue(answer.question.title)
-                        viewModel.authorName.postValue(answer.author.name)
-                        viewModel.bio.postValue(answer.author.headline)
-                        viewModel.avatarSrc.postValue(answer.author.avatarUrl)
                         viewModel.content.postValue(answer.content)
                     }
+                    viewModel.questionId.postValue(answer.question.id)
+                    viewModel.title.postValue(answer.question.title)
+                    viewModel.authorName.postValue(answer.author.name)
+                    viewModel.bio.postValue(answer.author.headline)
+                    viewModel.avatarSrc.postValue(answer.author.avatarUrl)
                 } else {
                     viewModel.content.postValue("<h1>Answer not found</p>")
                     Log.e("ReadArticleFragment", "Answer not found")
