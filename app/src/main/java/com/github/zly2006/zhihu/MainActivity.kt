@@ -9,12 +9,15 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.createGraph
 import androidx.navigation.findNavController
 import androidx.navigation.fragment.fragment
+import androidx.navigation.get
 import androidx.navigation.ui.setupWithNavController
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.ui.dashboard.DashboardFragment
 import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
+import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -85,14 +88,23 @@ class MainActivity : AppCompatActivity() {
             fragment<HomeFragment, Home> {
                 label = "Home"
             }
-            fragment<HomeFragment, Dashboard> {
+            fragment<DashboardFragment, Dashboard> {
                 label = "Dashboard"
             }
-            fragment<HomeFragment, Notifications> {
+            fragment<NotificationsFragment, Notifications> {
                 label = "Notifications"
             }
             fragment<ReadArticleFragment, Article>(
             )
+        }
+        navView.menu.add(0, navController.graph[Home].id, 0, "主页").apply {
+            icon = getDrawable(R.drawable.ic_home_black_24dp)
+        }
+        navView.menu.add(0, navController.graph[Dashboard].id, 0, "状态").apply {
+            icon = getDrawable(R.drawable.ic_dashboard_black_24dp)
+        }
+        navView.menu.add(0, navController.graph[Notifications].id, 0, "通知").apply {
+            icon = getDrawable(R.drawable.ic_notifications_black_24dp)
         }
         navView.setupWithNavController(navController)
 
