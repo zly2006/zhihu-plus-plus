@@ -1,0 +1,54 @@
+<PreferenceScreen
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference
+            app:key="version"
+            app:title="Version"
+            app:summary="1.0.0"/>
+
+    <PreferenceCategory
+            app:title="@string/messages_header">
+
+        <EditTextPreference
+                app:key="signature"
+                app:title="@string/signature_title"
+                app:useSimpleSummaryProvider="true"/>
+
+        <ListPreference
+                app:key="reply"
+                app:title="@string/reply_title"
+                app:entries="@array/reply_entries"
+                app:entryValues="@array/reply_values"
+                app:defaultValue="reply"
+                app:useSimpleSummaryProvider="true"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+            app:title="@string/sync_header">
+
+        <SwitchPreferenceCompat
+                app:key="sync"
+                app:title="@string/sync_title"/>
+
+        <SwitchPreferenceCompat
+                app:key="attachment"
+                app:title="@string/attachment_title"
+                app:summaryOn="@string/attachment_summary_on"
+                app:summaryOff="@string/attachment_summary_off"
+                app:dependency="sync"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+            app:isPreferenceVisible="false"
+            app:key="developers"
+            app:title="Developers">
+        <SwitchPreferenceCompat
+                app:key="developer"
+                app:title="Developer Mode"
+                app:summary="Enable developer mode"
+                app:defaultValue="false"
+                app:useSimpleSummaryProvider="true"/>
+    </PreferenceCategory>
+
+</PreferenceScreen>

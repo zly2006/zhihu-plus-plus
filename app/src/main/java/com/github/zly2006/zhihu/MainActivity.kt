@@ -14,6 +14,7 @@ import androidx.navigation.ui.setupWithNavController
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.ui.SettingsFragment
 import com.github.zly2006.zhihu.ui.dashboard.DashboardFragment
 import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
@@ -30,6 +31,9 @@ data object Dashboard
 
 @Serializable
 data object Notifications
+
+@Serializable
+data object Settings
 
 @Serializable
 enum class ArticleType {
@@ -56,11 +60,10 @@ data class Article(
 )
 
 
-
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
-    class MainActivityViewModel: ViewModel() {
+    class MainActivityViewModel : ViewModel() {
         val list = mutableListOf<PlaceholderItem>()
     }
 
@@ -96,6 +99,8 @@ class MainActivity : AppCompatActivity() {
             }
             fragment<ReadArticleFragment, Article>(
             )
+            fragment<SettingsFragment, Settings>(
+            )
         }
         navView.menu.add(0, navController.graph[Home].id, 0, "主页").apply {
             icon = getDrawable(R.drawable.ic_home_black_24dp)
@@ -103,7 +108,7 @@ class MainActivity : AppCompatActivity() {
         navView.menu.add(0, navController.graph[Dashboard].id, 0, "状态").apply {
             icon = getDrawable(R.drawable.ic_dashboard_black_24dp)
         }
-        navView.menu.add(0, navController.graph[Notifications].id, 0, "通知").apply {
+        navView.menu.add(0, navController.graph[Settings].id, 0, "设置").apply {
             icon = getDrawable(R.drawable.ic_notifications_black_24dp)
         }
         navView.setupWithNavController(navController)
@@ -111,12 +116,10 @@ class MainActivity : AppCompatActivity() {
         navController.addOnDestinationChangedListener { _, destination, _ ->
             if (destination.hasRoute<Home>() ||
                 destination.hasRoute<Dashboard>() ||
-                destination.hasRoute<Notifications>()
-                )
-            {
+                destination.hasRoute<Settings>()
+            ) {
                 navView.visibility = View.VISIBLE
-            }
-            else {
+            } else {
                 navView.visibility = View.GONE
             }
         }

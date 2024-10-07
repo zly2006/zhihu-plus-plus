@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+    id("org.ajoberstar.grgit") version "5.2.2"
 }
 
 android {
@@ -20,9 +21,14 @@ android {
     }
 
     buildTypes {
+        val gitHash = grgit.head().abbreviatedId
+        debug {
+            buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
     }
     compileOptions {
@@ -35,6 +41,7 @@ android {
     buildFeatures {
         viewBinding = true
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -50,6 +57,7 @@ android {
 
 val ktor = "2.3.12"
 dependencies {
+    implementation("androidx.preference:preference:1.2.1")
     val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
     implementation (composeBom)
     androidTestImplementation (composeBom)

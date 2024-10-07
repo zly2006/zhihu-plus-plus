@@ -6,6 +6,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity.MODE_PRIVATE
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
@@ -121,6 +123,20 @@ class HomeFragment : Fragment() {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
+        val preferences = requireActivity().getSharedPreferences(
+            "com.github.zly2006.zhihu_preferences",
+            MODE_PRIVATE
+        )
+        val developer = preferences.getBoolean("developer", false)
+        if (!developer) {
+            AlertDialog.Builder(requireActivity()).apply {
+                setTitle("登录失败")
+                setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
+                setPositiveButton("OK") { _, _ ->
+                }
+            }.create().show()
+            return root
+        }
         val data = AccountData.getData(requireContext())
         if (!data.login) {
             val myIntent = Intent(requireContext(), LoginActivity::class.java)
