@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu
 import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import io.ktor.client.*
@@ -21,11 +22,15 @@ fun loadImage(
     consumer: (Bitmap) -> Unit
 ) {
     GlobalScope.launch(activity.mainExecutor.asCoroutineDispatcher()) {
-        httpClient.get(url).bodyAsChannel().toInputStream().buffered().use {
-            val bitmap = BitmapFactory.decodeStream(it)
-            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                consumer(bitmap)
+        try {
+            httpClient.get(url).bodyAsChannel().toInputStream().buffered().use {
+                val bitmap = BitmapFactory.decodeStream(it)
+                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                    consumer(bitmap)
+                }
             }
+        } catch (e: Exception) {
+            Log.e("loadImage", "Failed to load image", e)
         }
     }
 }

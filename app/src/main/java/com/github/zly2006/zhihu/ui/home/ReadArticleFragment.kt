@@ -23,15 +23,14 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import androidx.navigation.findNavController
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewFeature
 import com.github.zly2006.zhihu.Question
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.request.*
@@ -105,7 +104,6 @@ class ReadArticleFragment : Fragment() {
         val root: View = binding.root
 
         val httpClient = AccountData.httpClient(requireContext())
-        val navController = requireActivity().findNavController(R.id.nav_host_fragment_activity_main)
         registerForContextMenu(binding.web)
         setupUpWebview(binding.web, requireContext())
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -139,7 +137,7 @@ class ReadArticleFragment : Fragment() {
         viewModel.questionId.distinctUntilChanged().observe(viewLifecycleOwner) { questionId ->
             if (questionId != 0L) {
                 binding.title.setOnClickListener {
-                    navController.navigate(
+                    requireActivity().navigate(
                         Question(
                             questionId, viewModel.title.value ?: "Question"
                         )

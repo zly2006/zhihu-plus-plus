@@ -6,11 +6,10 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsAnswerBinding
 import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.*
@@ -32,12 +31,11 @@ class AnswerListAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
-        val navController = activity.findNavController(R.id.nav_host_fragment_activity_main)
         holder.summary.text = item.target.excerpt
         holder.details.text = "${item.target.voteup_count} 赞同 · ${item.target.comment_count} 评论"
         holder.author.text = item.target.author.name
         holder.card.setOnClickListener {
-            navController.navigate(
+            activity.navigate(
                 Article(
                     "${item.target.author.name}的回答",
                     item.target.type,

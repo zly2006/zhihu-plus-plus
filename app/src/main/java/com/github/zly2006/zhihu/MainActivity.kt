@@ -13,6 +13,7 @@ import androidx.navigation.fragment.fragment
 import androidx.navigation.get
 import androidx.navigation.ui.setupWithNavController
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 import com.github.zly2006.zhihu.ui.SettingsFragment
@@ -86,7 +87,7 @@ data class Question(
 }
 
 class MainActivity : AppCompatActivity() {
-//    val history = HistoryStorage(this)
+    lateinit var history: HistoryStorage
     private lateinit var binding: ActivityMainBinding
 
     class MainActivityViewModel : ViewModel() {
@@ -97,6 +98,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val data = AccountData.getData(this)
+        history = HistoryStorage(this)
         if (!data.login) {
             val myIntent = Intent(this, LoginActivity::class.java)
             startActivity(myIntent)

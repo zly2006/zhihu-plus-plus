@@ -5,10 +5,9 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.FragmentActivity
-import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.FragmentHomeArticleItemBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 
@@ -22,7 +21,6 @@ class HomeArticleItemAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
-        val navController = activity.findNavController(R.id.nav_host_fragment_activity_main)
         holder.title.text = item.title
         holder.summary.text = item.summary
         holder.details.text = item.details
@@ -35,7 +33,7 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
-                navController.navigate(Article(
+                activity.navigate(Article(
                     item.title,
                     item.dto.target.type,
                     item.dto.target.id,
