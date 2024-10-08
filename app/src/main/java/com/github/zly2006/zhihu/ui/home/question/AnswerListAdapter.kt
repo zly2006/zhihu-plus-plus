@@ -4,13 +4,13 @@ import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentActivity
-import androidx.fragment.app.commit
+import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
+import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsAnswerBinding
-import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.utils.io.jvm.javaio.*
@@ -28,25 +28,22 @@ class AnswerListAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
+        val navController = activity.findNavController(R.id.nav_host_fragment_activity_main)
         holder.summary.text = item.target.excerpt
         holder.details.text = "${item.target.voteup_count} 赞同 · ${item.target.comment_count} 评论"
         holder.author.text = item.target.author.name
         holder.card.setOnClickListener {
-            val readArticleFragment = ReadArticleFragment.newInstance(item)
-
-            activity.supportFragmentManager.commit {
-                setCustomAnimations(
-                    R.anim.slide_in,
-                    R.anim.slide_in,
-                    0,
-                    0
+            navController.navigate(
+                Article(
+                    "${item.target.author.name}的回答",
+                    item.target.type,
+                    item.target.id,
+                    item.target.author.name,
+                    item.target.author.headline,
+                    item.target.content,
+                    item.target.author.avatar_url,
                 )
-                replace(
-                    R.id.nav_host_fragment_activity_main,
-                    readArticleFragment
-                )
-                addToBackStack("Read-Article")
-            }
+            )
         }
         if (item.target.author.avatar_url.isNotEmpty()) {
             GlobalScope.launch(activity.mainExecutor.asCoroutineDispatcher()) {

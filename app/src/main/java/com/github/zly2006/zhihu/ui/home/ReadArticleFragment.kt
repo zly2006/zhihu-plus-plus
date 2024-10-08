@@ -21,21 +21,20 @@ import android.webkit.WebView
 import android.widget.Toast
 import androidx.collection.mutableIntSetOf
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
+import androidx.navigation.findNavController
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import androidx.webkit.WebViewFeature
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
-import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.utils.io.jvm.javaio.*
@@ -77,7 +76,9 @@ class ReadArticleFragment : Fragment() {
         val content = MutableLiveData<String>()
         val questionId = MutableLiveData<Long>()
         val avatarSrc = MutableLiveData<String>()
-        val voteUpCount = MutableLiveData<Int>()
+        val votedUp = MutableLiveData(false)
+        val voteUpCount = MutableLiveData(0)
+        val commentCount = MutableLiveData(0)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,7 +108,7 @@ class ReadArticleFragment : Fragment() {
         val root: View = binding.root
 
         val httpClient = AccountData.httpClient(requireContext())
-
+        val navController = requireActivity().findNavController(R.id.nav_host_fragment_activity_main)
         registerForContextMenu(binding.web)
         setupUpWebview(binding.web, requireContext())
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -124,9 +125,15 @@ class ReadArticleFragment : Fragment() {
         }
         binding.copyLink.setOnClickListener {
             val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Link", "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}")
+            val clip = ClipData.newPlainText(
+                "Link",
+                "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}"
+            )
             clipboard.setPrimaryClip(clip)
             Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+        }
+        binding.voteUp.setOnClickListener {
+            viewModel.votedUp.value = !viewModel.votedUp.value!!
         }
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
@@ -135,13 +142,11 @@ class ReadArticleFragment : Fragment() {
         viewModel.questionId.distinctUntilChanged().observe(viewLifecycleOwner) { questionId ->
             if (questionId != 0L) {
                 binding.title.setOnClickListener {
-                    requireActivity().supportFragmentManager.commit {
-                        replace(
-                            R.id.nav_host_fragment_activity_main,
-                            QuestionDetailsFragment.newInstance(questionId, viewModel.title.value ?: "Loading...")
+                    navController.navigate(
+                        Question(
+                            questionId, viewModel.title.value ?: "Question"
                         )
-                        addToBackStack("Question-Details")
-                    }
+                    )
                 }
             } else {
                 binding.title.setOnClickListener(null)
@@ -174,7 +179,14 @@ class ReadArticleFragment : Fragment() {
             }
         }
         viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner) {
-            binding.voteUp.text = it.toString() + "赞同"
+            binding.voteUp.text = "$it 赞同"
+        }
+        viewModel.votedUp.observe(viewLifecycleOwner) {
+            if (!it) {
+                binding.voteUp.setBackgroundColor(0xFF29B6F6.toInt())
+            } else {
+                binding.voteUp.setBackgroundColor(0xFF0D47A1.toInt())
+            }
         }
 
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
@@ -189,6 +201,8 @@ class ReadArticleFragment : Fragment() {
                     viewModel.authorName.postValue(answer.author.name)
                     viewModel.bio.postValue(answer.author.headline)
                     viewModel.avatarSrc.postValue(answer.author.avatarUrl)
+                    viewModel.voteUpCount.postValue(answer.voteupCount)
+                    viewModel.commentCount.postValue(answer.commentCount)
                 } else {
                     viewModel.content.postValue("<h1>Answer not found</p>")
                     Log.e("ReadArticleFragment", "Answer not found")
@@ -239,7 +253,8 @@ class ReadArticleFragment : Fragment() {
                 val bytes = response.readBytes()
 
                 val fileName = Uri.parse(imageUrl).lastPathSegment ?: "downloaded_image"
-                val file = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).resolve(fileName)
+                val file =
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).resolve(fileName)
 
                 file.outputStream().use { it.write(bytes) }
 
@@ -259,40 +274,6 @@ class ReadArticleFragment : Fragment() {
         intent.data = Uri.parse(imageUrl)
         context?.startActivity(intent)
     }
-
-    companion object {
-        fun newInstance(feed: Feed) =
-            ReadArticleFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_ARTICLE_TYPE, feed.target.type)
-                    putLong(ARG_ARTICLE_ID, feed.target.id)
-                    if (feed.target.type == "answer") {
-                        putString(ARG_TITLE, feed.target.question!!.title)
-                    }
-                    putString(ARG_AUTHOR_NAME, feed.target.author.name)
-                    putString(ARG_BIO, feed.target.author.headline)
-                    putString(ARG_CONTENT, feed.target.content)
-                    putLong(ARG_QUESTION_ID, feed.target.question?.id ?: 0)
-                    putString(ARG_AVATAR_SRC, feed.target.author.avatar_url)
-                    putInt(ARG_VOTE_UP_COUNT, feed.target.voteup_count)
-                }
-            }
-
-        fun newInstance(answer: DataHolder.Answer) =
-            ReadArticleFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_ARTICLE_TYPE, "answer")
-                    putLong(ARG_ARTICLE_ID, answer.id)
-                    putString(ARG_TITLE, answer.question.title)
-                    putString(ARG_AUTHOR_NAME, answer.author.name)
-                    putString(ARG_BIO, answer.author.headline)
-                    putString(ARG_CONTENT, answer.content)
-                    putLong(ARG_QUESTION_ID, answer.question.id)
-                    putString(ARG_AVATAR_SRC, answer.author.avatarUrl)
-                    putInt(ARG_VOTE_UP_COUNT, answer.voteupCount)
-                }
-            }
-    }
 }
 
 fun setupUpWebview(web: WebView, context: Context) {
@@ -307,7 +288,8 @@ fun setupUpWebview(web: WebView, context: Context) {
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
-                val url = request.url.query?.split("&")?.firstOrNull { it.startsWith("target=") }?.substringAfter("target=")
+                val url =
+                    request.url.query?.split("&")?.firstOrNull { it.startsWith("target=") }?.substringAfter("target=")
                 if (url != null) {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)

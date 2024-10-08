@@ -35,8 +35,6 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
-                val readArticleFragment = ReadArticleFragment.newInstance(item.dto)
-
                 navController.navigate(Article(
                     item.title,
                     item.dto.target.type,
@@ -46,19 +44,6 @@ class HomeArticleItemAdapter(
                     item.dto.target.content,
                     item.dto.target.author.avatar_url,
                 ))
-//                activity.supportFragmentManager.commit {
-//                    setCustomAnimations(
-//                        R.anim.slide_in,
-//                        R.anim.slide_in,
-//                        0,
-//                        0
-//                    )
-//                    replace(
-//                        R.id.nav_host_fragment_activity_main,
-//                        readArticleFragment
-//                    )
-//                    addToBackStack("Read-Article")
-//                }
             }
         }
     }

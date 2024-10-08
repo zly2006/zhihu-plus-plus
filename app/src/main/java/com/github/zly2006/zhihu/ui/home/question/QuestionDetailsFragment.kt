@@ -26,8 +26,8 @@ import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
-private const val ARG_QUESTION_ID = "q-id"
-private const val ARG_QUESTION_TITLE = "q-title"
+private const val ARG_QUESTION_ID = "questionId"
+private const val ARG_QUESTION_TITLE = "title"
 
 @Composable
 fun QuestionDetails() {
@@ -144,16 +144,5 @@ class QuestionDetailsFragment : Fragment() {
         super.onDestroyView()
 
         _binding = null
-    }
-
-    companion object {
-        @JvmStatic
-        fun newInstance(questionId: Long, title: String) =
-            QuestionDetailsFragment().apply {
-                arguments = Bundle().apply {
-                    putLong(ARG_QUESTION_ID, questionId)
-                    putString(ARG_QUESTION_TITLE, title)
-                }
-            }
     }
 }

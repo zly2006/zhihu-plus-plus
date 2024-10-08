@@ -18,6 +18,7 @@ import com.github.zly2006.zhihu.ui.SettingsFragment
 import com.github.zly2006.zhihu.ui.dashboard.DashboardFragment
 import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
+import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.serialization.SerialName
@@ -59,6 +60,11 @@ data class Article(
     val avatarSrc: String? = null
 )
 
+@Serializable
+data class Question(
+    val questionId: Long,
+    val title: String
+)
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -101,6 +107,7 @@ class MainActivity : AppCompatActivity() {
             )
             fragment<SettingsFragment, Settings>(
             )
+            fragment<QuestionDetailsFragment, Question>()
         }
         navView.menu.add(0, navController.graph[Home].id, 0, "主页").apply {
             icon = getDrawable(R.drawable.ic_home_black_24dp)
