@@ -56,6 +56,7 @@ enum class ArticleType {
 @Serializable
 data class Article(
     val title: String,
+    @SerialName("article_type_1")
     val type: String,
     val id: Long,
     var authorName: String,
