@@ -70,7 +70,9 @@ class QuestionDetailsFragment : Fragment() {
                 }
             }
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Failed to load answers", Toast.LENGTH_LONG).show()
+            if (activity != null) {
+                Toast.makeText(requireContext(), "Failed to load answers", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

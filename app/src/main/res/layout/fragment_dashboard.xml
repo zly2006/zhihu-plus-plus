@@ -33,8 +33,7 @@
             <EditText
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:text="URL"
+                    android:inputType="textUri"
                     android:ems="10"
                     android:id="@+id/url"
                     android:layout_weight="1"/>

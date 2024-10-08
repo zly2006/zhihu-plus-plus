@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -155,13 +156,59 @@ class MainActivity : AppCompatActivity() {
         }
 
         val uri = intent.data
-        if (uri?.host == "zhihu.com" || uri?.host == "www.zhihu.com") {
-            if (uri.pathSegments.size == 4
-                && uri.pathSegments[0] == "question"
-                && uri.pathSegments[2] == "answer"
-            ) {
-                val questionId = uri.pathSegments[1].toLong()
-                val answerId = uri.pathSegments[3].toLong()
+        Log.i("MainActivity", "Intent data: $uri")
+        if (uri?.scheme == "http" || uri?.scheme == "https") {
+            if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
+                if (uri.pathSegments.size == 4
+                    && uri.pathSegments[0] == "question"
+                    && uri.pathSegments[2] == "answer"
+                ) {
+                    val questionId = uri.pathSegments[1].toLong()
+                    val answerId = uri.pathSegments[3].toLong()
+                    navController.navigate(
+                        Article(
+                            "loading...",
+                            "answer",
+                            answerId,
+                            "loading...",
+                            "loading...",
+                            null,
+                            null
+                        )
+                    )
+                } else if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "answer"
+                ) {
+                    val answerId = uri.pathSegments[1].toLong()
+                    navController.navigate(
+                        Article(
+                            "loading...",
+                            "answer",
+                            answerId,
+                            "loading...",
+                            "loading...",
+                            null,
+                            null
+                        )
+                    )
+                } else if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "question"
+                ) {
+                    val questionId = uri.pathSegments[1].toLong()
+                    navController.navigate(
+                        Question(
+                            questionId,
+                            "loading...",
+                        )
+                    )
+                } else {
+                    Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        if (uri?.scheme == "zhihu") {
+            if (uri.host == "answers") {
+                val answerId = uri.pathSegments[0].toLong()
                 navController.navigate(
                     Article(
                         "loading...",
@@ -173,33 +220,6 @@ class MainActivity : AppCompatActivity() {
                         null
                     )
                 )
-            } else if (uri.pathSegments.size == 2
-                && uri.pathSegments[0] == "answer"
-            ) {
-                val answerId = uri.pathSegments[1].toLong()
-                navController.navigate(
-                    Article(
-                        "loading...",
-                        "answer",
-                        answerId,
-                        "loading...",
-                        "loading...",
-                        null,
-                        null
-                    )
-                )
-            } else if (uri.pathSegments.size == 2
-                && uri.pathSegments[0] == "question"
-            ) {
-                val questionId = uri.pathSegments[1].toLong()
-                navController.navigate(
-                    Question(
-                        questionId,
-                        "loading...",
-                    )
-                )
-            } else {
-                Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
             }
         }
     }

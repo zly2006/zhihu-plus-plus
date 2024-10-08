@@ -30,6 +30,21 @@
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="http"/>
+                <data android:scheme="https"/>
+                <data android:host="www.zhihu.com"/>
+                <data android:pathPrefix="/question/.*"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zhihu" />
+            </intent-filter>
 
             <intent-filter
                     android:autoVerify="true">
@@ -239,13 +254,267 @@
                         android:pathPattern="/remix/albums/.*" />
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="http"/>
-                <data android:scheme="https"/>
-                <data android:host="www.zhihu.com"/>
-                <data android:pathPrefix="/question/.*"/>
+
+                <action
+                        android:name="android.intent.action.VIEW" />
+
+                <category
+                        android:name="android.intent.category.DEFAULT" />
+
+                <category
+                        android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:scheme="https"
+                        android:host="activity.zhihu.com"
+                        android:pathPattern="/.*/.*" />
+
+                <data
+                        android:scheme="zhihu"
+                        android:host="activity"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="zhihu"
+                        android:host="activity"
+                        android:pathPattern="/.*/.*" />
+            </intent-filter>
+            <intent-filter
+                    android:autoVerify="true">
+
+                <action
+                        android:name="android.intent.action.VIEW" />
+
+                <category
+                        android:name="android.intent.category.DEFAULT" />
+
+                <category
+                        android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:scheme="http"
+                        android:host="ms.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="oia.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/question/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/question/.*/answer/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/answer/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/collection/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/people/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/topic/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/roundtable/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/lives/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/org/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="zhuanlan.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="zhuanlan.zhihu.com"
+                        android:pathPattern="/.*/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="promotion.zhihu.com"
+                        android:pathPattern="/p/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/publications/.*/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/zhihu" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/collection/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/book/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pin/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/links/.*" />
+
+                <data
+                        android:scheme="http"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/coupon/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="ms.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="oia.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/question/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/question/.*/answer/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/answer/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/collection/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/people/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/topic/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/roundtable/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/lives/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/org/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="zhuanlan.zhihu.com"
+                        android:pathPattern="/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="zhuanlan.zhihu.com"
+                        android:pathPattern="/.*/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="promotion.zhihu.com"
+                        android:pathPattern="/p/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/publications/.*/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/zhihu" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/collection/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pub/book/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/pin/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/links/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/coupon/.*" />
+
+                <data
+                        android:scheme="https"
+                        android:host="www.zhihu.com"
+                        android:pathPattern="/remix/albums/.*" />
             </intent-filter>
         </activity>
     </application>
