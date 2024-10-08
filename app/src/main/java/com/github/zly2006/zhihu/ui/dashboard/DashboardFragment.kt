@@ -11,9 +11,8 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.findNavController
-import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentDashboardBinding
@@ -56,51 +55,8 @@ class DashboardFragment : Fragment() {
                     Toast.makeText(context, "Invalid URL (not zhihu)", Toast.LENGTH_LONG).show()
                     return@let
                 }
-                if (uri.pathSegments.size == 4
-                    && uri.pathSegments[0] == "question"
-                    && uri.pathSegments[2] == "answer"
-                ) {
-                    val questionId = uri.pathSegments[1].toLong()
-                    val answerId = uri.pathSegments[3].toLong()
-                    navController.navigate(
-                        Article(
-                            "loading...",
-                            "answer",
-                            answerId,
-                            "loading...",
-                            "loading...",
-                            null,
-                            null
-                        )
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "answer"
-                ) {
-                    val answerId = uri.pathSegments[1].toLong()
-                    navController.navigate(
-                        Article(
-                            "loading...",
-                            "answer",
-                            answerId,
-                            "loading...",
-                            "loading...",
-                            null,
-                            null
-                        )
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "question"
-                ) {
-                    val questionId = uri.pathSegments[1].toLong()
-                    navController.navigate(
-                        Question(
-                            questionId,
-                            "loading...",
-                        )
-                    )
-                } else {
-                    Toast.makeText(context, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
-                }
+                val intent = Intent(Intent.ACTION_VIEW, uri, requireContext(), MainActivity::class.java)
+                startActivity(intent)
             }
         }
         return root

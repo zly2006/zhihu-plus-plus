@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -20,21 +21,23 @@ import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
 import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object Home
+sealed interface NavDestination
 
 @Serializable
-data object Dashboard
+data object Home: NavDestination
 
 @Serializable
-data object Notifications
+data object Dashboard: NavDestination
 
 @Serializable
-data object Settings
+data object Notifications: NavDestination
+
+@Serializable
+data object Settings: NavDestination
 
 @Serializable
 enum class ArticleType {
@@ -54,19 +57,36 @@ data class Article(
     val title: String,
     val type: String,
     val id: Long,
-    val authorName: String,
-    val authorBio: String,
-    val content: String? = null,
-    val avatarSrc: String? = null
-)
+    var authorName: String,
+    var authorBio: String,
+    var content: String? = null,
+    var avatarSrc: String? = null
+): NavDestination {
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is Article && other.id == id
+    }
+}
 
 @Serializable
 data class Question(
     val questionId: Long,
     val title: String
-)
+): NavDestination {
+    override fun hashCode(): Int {
+        return questionId.hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other is Question && other.questionId == questionId
+    }
+}
 
 class MainActivity : AppCompatActivity() {
+//    val history = HistoryStorage(this)
     private lateinit var binding: ActivityMainBinding
 
     class MainActivityViewModel : ViewModel() {
@@ -86,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val navView: BottomNavigationView = binding.navView
+        val navView = binding.navView
 
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
 
@@ -128,6 +148,55 @@ class MainActivity : AppCompatActivity() {
                 navView.visibility = View.VISIBLE
             } else {
                 navView.visibility = View.GONE
+            }
+        }
+
+        val uri = intent.data
+        if (uri?.host == "zhihu.com" || uri?.host == "www.zhihu.com") {
+            if (uri.pathSegments.size == 4
+                && uri.pathSegments[0] == "question"
+                && uri.pathSegments[2] == "answer"
+            ) {
+                val questionId = uri.pathSegments[1].toLong()
+                val answerId = uri.pathSegments[3].toLong()
+                navController.navigate(
+                    Article(
+                        "loading...",
+                        "answer",
+                        answerId,
+                        "loading...",
+                        "loading...",
+                        null,
+                        null
+                    )
+                )
+            } else if (uri.pathSegments.size == 2
+                && uri.pathSegments[0] == "answer"
+            ) {
+                val answerId = uri.pathSegments[1].toLong()
+                navController.navigate(
+                    Article(
+                        "loading...",
+                        "answer",
+                        answerId,
+                        "loading...",
+                        "loading...",
+                        null,
+                        null
+                    )
+                )
+            } else if (uri.pathSegments.size == 2
+                && uri.pathSegments[0] == "question"
+            ) {
+                val questionId = uri.pathSegments[1].toLong()
+                navController.navigate(
+                    Question(
+                        questionId,
+                        "loading...",
+                    )
+                )
+            } else {
+                Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
             }
         }
     }

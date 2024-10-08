@@ -18,7 +18,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
-import androidx.collection.mutableIntSetOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
@@ -83,8 +82,6 @@ class ReadArticleFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        mutableIntSetOf(7)
 
         arguments?.let {
             this.type = it.getString(ARG_ARTICLE_TYPE) ?: "answer"
@@ -199,7 +196,9 @@ class ReadArticleFragment : Fragment() {
                     viewModel.voteUpCount.postValue(answer.voteupCount)
                     viewModel.commentCount.postValue(answer.commentCount)
                 } else {
-                    viewModel.content.postValue("<h1>Answer not found</p>")
+                    if (viewModel.content.value.isNullOrEmpty()) {
+                        viewModel.content.postValue("<h1>Answer not found</p>")
+                    }
                     Log.e("ReadArticleFragment", "Answer not found")
                     return@launch
                 }

@@ -4,15 +4,14 @@
              xmlns:tools="http://schemas.android.com/tools"
              android:layout_width="match_parent"
              android:layout_height="match_parent"
-             android:forceDarkAllowed="true"
              tools:context=".ui.home.ReadArticleFragment"
              android:id="@+id/read_article"
              android:clickable="true"
         >
 
     <LinearLayout
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:paddingHorizontal="6dp"
             android:orientation="vertical"
             android:background="?android:attr/colorBackground"
@@ -109,34 +108,34 @@
                         android:id="@+id/web"
                         tools:ignore="WebViewLayout"/>
 
-                <LinearLayout
-                        android:orientation="horizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content">
-
-                    <Button
-                            android:drawableLeft="@drawable/outline_thumb_up_24"
-                            android:id="@+id/vote_up"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="赞同"
-                            />
-
-                    <Space
-                            android:layout_width="8dp"
-                            android:layout_height="match_parent"
-                            />
-
-                    <Button
-                            android:drawableLeft="@drawable/baseline_content_copy_24"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="复制链接"
-                            android:id="@+id/copy_link"
-                            />
-                </LinearLayout>
             </LinearLayout>
 
         </androidx.core.widget.NestedScrollView>
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+            <Button
+                    android:drawableLeft="@drawable/outline_thumb_up_24"
+                    android:id="@+id/vote_up"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="赞同"
+                    />
+
+            <Space
+                    android:layout_width="8dp"
+                    android:layout_height="match_parent"
+                    />
+
+            <Button
+                    android:drawableLeft="@drawable/baseline_content_copy_24"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="复制链接"
+                    android:id="@+id/copy_link"
+                    />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
