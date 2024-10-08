@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
@@ -35,9 +34,10 @@ import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
+import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
-import io.ktor.utils.io.jvm.javaio.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -152,12 +152,12 @@ class ReadArticleFragment : Fragment() {
                 binding.title.setOnClickListener(null)
             }
         }
-        viewModel.content.distinctUntilChanged().observe(viewLifecycleOwner) {
-            if (DataHolder.definitelyAd.any { keyword -> keyword in it }) {
+        viewModel.content.distinctUntilChanged().observe(viewLifecycleOwner) { html ->
+            if (DataHolder.definitelyAd.any { keyword -> keyword in html }) {
                 Log.i("ReadArticleFragment", "Answer is an ad")
                 binding.web.loadData("<h1>广告</h1><p>这个回答被识别为广告，已被隐藏。</p>", "text/html", "utf-8")
             }
-            document = Jsoup.parse(it)
+            document = Jsoup.parse(html)
             document.select("img.lazy").forEach { it.remove() }
             binding.web.loadDataWithBaseURL(
                 "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}", """
@@ -170,12 +170,7 @@ class ReadArticleFragment : Fragment() {
         }
         viewModel.avatarSrc.distinctUntilChanged().observe(viewLifecycleOwner) {
             if (it.isNotEmpty()) {
-                GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
-                    httpClient.get(it).bodyAsChannel().toInputStream().buffered().use {
-                        val bitmap = BitmapFactory.decodeStream(it)
-                        _binding?.avatar?.setImageBitmap(bitmap)
-                    }
-                }
+                loadImage(viewLifecycleOwner, requireActivity(), httpClient, it, binding.avatar::setImageBitmap)
             }
         }
         viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner) {
@@ -189,9 +184,9 @@ class ReadArticleFragment : Fragment() {
             }
         }
 
-        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+        launch {
             if (type == "answer") {
-                val answer = DataHolder.getAnswer(httpClient, articleId)?.value
+                val answer = DataHolder.getAnswer(requireActivity(), httpClient, articleId)?.value
                 if (answer != null) {
                     if (viewModel.content.value.isNullOrEmpty()) {
                         viewModel.content.postValue(answer.content)
@@ -246,7 +241,7 @@ class ReadArticleFragment : Fragment() {
             return
         }
 
-        GlobalScope.launch {
+        launch {
             try {
                 val httpClient = AccountData.httpClient(requireContext())
                 val response: HttpResponse = httpClient.get(imageUrl)
@@ -273,6 +268,10 @@ class ReadArticleFragment : Fragment() {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.data = Uri.parse(imageUrl)
         context?.startActivity(intent)
+    }
+
+    private fun launch(block: suspend CoroutineScope.() -> Unit) {
+        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher(), block = block)
     }
 }
 

@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity.MODE_PRIVATE
 import androidx.fragment.app.Fragment
@@ -13,21 +14,16 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
-import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
@@ -35,14 +31,14 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
 class HomeFragment : Fragment() {
-    val httpClient by lazy { AccountData.httpClient(requireContext()) }
+    private val httpClient by lazy { AccountData.httpClient(requireContext()) }
 
     private var _binding: FragmentHomeBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    val viewModel: MainActivity.MainActivityViewModel by activityViewModels()
+    private val viewModel: MainActivity.MainActivityViewModel by activityViewModels()
 
     private var fetchingNewItems = false
     suspend fun fetch() {
@@ -73,6 +69,7 @@ class HomeFragment : Fragment() {
             }
             val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}")
             if (response.status == HttpStatusCode.OK) {
+                @Suppress("PropertyName")
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
                 val text = response.bodyAsText()
@@ -86,7 +83,7 @@ class HomeFragment : Fragment() {
                         PlaceholderItem(
                             it.target.question!!.title,
                             it.target.excerpt,
-                            "${it.target.voteup_count}赞 ${it.target.author.name} ${it.target.type}",
+                            "${it.target.voteup_count}赞 ${it.target.author.name}",
                             it
                         )
                     })
@@ -98,17 +95,18 @@ class HomeFragment : Fragment() {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("HomeFragment", "Failed to fetch", e)
+            Toast.makeText(requireContext(), "Failed to fetch recommends", Toast.LENGTH_LONG).show()
         } finally {
             fetchingNewItems = false
         }
     }
 
-    fun refresh() {
+    private fun refresh() {
         val size = viewModel.list.size
         viewModel.list.clear()
         binding.list.adapter?.notifyItemRangeRemoved(0, size)
-        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+        launch {
             repeat(3) {
                 fetch()
             }
@@ -143,7 +141,7 @@ class HomeFragment : Fragment() {
             startActivity(myIntent)
         }
         else {
-            GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
+            launch {
                 repeat(3) {
                     fetch()
                 }
@@ -170,12 +168,10 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        val articleFragment = requireActivity().supportFragmentManager.findFragmentById(R.id.nav_host_fragment_activity_main)
-        if (articleFragment is ReadArticleFragment || articleFragment is QuestionDetailsFragment) {
-            requireActivity().supportFragmentManager.beginTransaction()
-                .remove(articleFragment)
-                .commit()
-        }
         _binding = null
+    }
+
+    private fun launch(block: suspend CoroutineScope.() -> Unit) {
+        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher(), block = block)
     }
 }

@@ -1,5 +1,8 @@
 package com.github.zly2006.zhihu.data
 
+import android.util.Log
+import android.widget.Toast
+import androidx.fragment.app.FragmentActivity
 import com.github.zly2006.zhihu.data.AccountData.json
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -333,7 +336,7 @@ object DataHolder {
     data class ReferenceCount<T>(
         val value: T,
         var count: Int = 0
-    ): AutoCloseable {
+    ) : AutoCloseable {
         override fun close() {
             count--
         }
@@ -392,18 +395,30 @@ object DataHolder {
         answers.remove(answerId)
     }
 
-    suspend fun getAnswer(httpClient: HttpClient, id: Long): ReferenceCount<Answer>? {
-        if (id !in answers) {
-            get(httpClient, "https://www.zhihu.com/answer/$id")
+    suspend fun getAnswer(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Answer>? {
+        try {
+            if (id !in answers) {
+                get(httpClient, "https://www.zhihu.com/answer/$id")
+            }
+            return answers[id]?.also { it.count++ }
+        } catch (e: Exception) {
+            Log.e("DataHolder", "Failed to get answer $id", e)
+            Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
+            return null
         }
-        return answers[id]?.also { it.count++ }
     }
 
-    suspend fun getQuestion(httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
-        if (id !in questions) {
-            get(httpClient, "https://www.zhihu.com/question/$id")
+    suspend fun getQuestion(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
+        try {
+            if (id !in questions) {
+                get(httpClient, "https://www.zhihu.com/question/$id")
+            }
+            return questions[id]?.also { it.count++ }
+        } catch (e: Exception) {
+            Log.e("DataHolder", "Failed to get question $id", e)
+            Toast.makeText(activity, "Failed to get question $id", Toast.LENGTH_LONG).show()
+            return null
         }
-        return questions[id]?.also { it.count++ }
     }
 
     fun getAnswersFor(questionId: Long): List<ReferenceCount<Answer>> {

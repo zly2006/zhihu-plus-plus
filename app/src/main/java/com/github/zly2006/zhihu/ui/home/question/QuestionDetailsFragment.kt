@@ -4,8 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
@@ -19,6 +19,7 @@ import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
 import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -29,10 +30,6 @@ import org.jsoup.nodes.Document
 private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_QUESTION_TITLE = "title"
 
-@Composable
-fun QuestionDetails() {
-
-}
 class QuestionDetailsFragment : Fragment() {
     private val httpClient by lazy { AccountData.httpClient(requireContext()) }
     private var fetchingNewItems = false
@@ -48,28 +45,32 @@ class QuestionDetailsFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    val answers = mutableListOf<Feed>()
-    val viewModel: QuestionViewModel by viewModels()
+    private val answers = mutableListOf<Feed>()
+    private val viewModel: QuestionViewModel by viewModels()
 
-    suspend fun fetch() {
-        fetchingNewItems = true
-        val response =
-            httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
-        val jojo = response.body<JsonObject>()
-        val feeds = json.decodeFromJsonElement<List<Feed>>(jojo["data"]!!)
-        cursor = feeds.last().cursor
-        session = jojo["session"]!!.jsonObject["id"]!!.jsonPrimitive.content
-        canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean
-        activity?.runOnUiThread {
-            val start = answers.size
-            answers.addAll(feeds)
-            _binding?.answers?.adapter?.notifyItemRangeInserted(start, feeds.size)
-        }
-        fetchingNewItems = false
-        if (canFetchMore) {
-            if (_binding != null && !binding.scroll.canScrollVertically(binding.scroll.height)) {
-                fetch()
+    private suspend fun fetch() {
+        try {
+            fetchingNewItems = true
+            val response =
+                httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
+            val jojo = response.body<JsonObject>()
+            val feeds = json.decodeFromJsonElement<List<Feed>>(jojo["data"]!!)
+            cursor = feeds.last().cursor
+            session = jojo["session"]!!.jsonObject["id"]!!.jsonPrimitive.content
+            canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean
+            activity?.runOnUiThread {
+                val start = answers.size
+                answers.addAll(feeds)
+                _binding?.answers?.adapter?.notifyItemRangeInserted(start, feeds.size)
             }
+            fetchingNewItems = false
+            if (canFetchMore) {
+                if (_binding != null && !binding.scroll.canScrollVertically(binding.scroll.height)) {
+                    fetch()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Failed to load answers", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -91,14 +92,15 @@ class QuestionDetailsFragment : Fragment() {
         _binding = FragmentQuestionDetailsBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        GlobalScope.launch {
+        val httpClient = AccountData.httpClient(requireContext())
+        launch {
             fetch()
         }
         setupUpWebview(binding.webview, requireContext())
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
-        viewModel.detail.distinctUntilChanged().observe(viewLifecycleOwner) {
-            document = Jsoup.parse(it)
+        viewModel.detail.distinctUntilChanged().observe(viewLifecycleOwner) { html ->
+            document = Jsoup.parse(html)
             document.select("img.lazy").forEach { it.remove() }
             document.select("img").forEach {
                 it.removeAttr("width")
@@ -114,17 +116,18 @@ class QuestionDetailsFragment : Fragment() {
                 """.trimIndent() + document.toString(), "text/html", "utf-8", null
             )
         }
-        binding.answers.adapter = AnswerListAdapter(answers, requireActivity())
-        binding.scroll.setOnScrollChangeListener { view, i, i2, i3, i4 ->
+        binding.answers.adapter = AnswerListAdapter(answers, requireActivity(), httpClient)
+        binding.scroll.setOnScrollChangeListener { _, _, _, _, _ ->
             if (!canFetchMore || fetchingNewItems) return@setOnScrollChangeListener
             if (!binding.scroll.canScrollVertically(binding.scroll.height)) {
-                GlobalScope.launch { fetch() }
+                launch {
+                    fetch()
+                }
             }
         }
 
-        val httpClient = AccountData.httpClient(requireContext())
-        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher()) {
-            val question = DataHolder.getQuestion(httpClient, questionId)?.value
+        launch {
+            val question = DataHolder.getQuestion(requireActivity(), httpClient, questionId)?.value
             if (question == null) {
                 AlertDialog.Builder(requireContext()).apply {
                     setTitle("Error")
@@ -138,6 +141,10 @@ class QuestionDetailsFragment : Fragment() {
             viewModel.detail.postValue(question.detail)
         }
         return root
+    }
+
+    private fun launch(block: suspend CoroutineScope.() -> Unit) {
+        GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher(), block = block)
     }
 
     override fun onDestroyView() {

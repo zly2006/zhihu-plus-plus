@@ -99,4 +99,8 @@ object AccountData {
         }
         return false
     }
+
+    fun delete(requireContext: Context) {
+        saveData(requireContext, Data())
+    }
 }

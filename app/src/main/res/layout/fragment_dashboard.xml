@@ -24,6 +24,29 @@
                 android:text="退出登录"
                 android:id="@+id/logout"
                 />
+
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+            <EditText
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:text="URL"
+                    android:ems="10"
+                    android:id="@+id/url"
+                    android:layout_weight="1"/>
+
+            <Button
+                    android:text="Open"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/open_url"
+                    android:layout_weight="1"/>
+        </LinearLayout>
+
     </LinearLayout>
 
     <TextView

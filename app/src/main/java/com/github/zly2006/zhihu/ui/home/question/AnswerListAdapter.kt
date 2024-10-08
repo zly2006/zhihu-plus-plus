@@ -1,29 +1,33 @@
 package com.github.zly2006.zhihu.ui.home.question
 
-import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.R
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsAnswerBinding
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.utils.io.jvm.javaio.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
+import com.github.zly2006.zhihu.loadImage
+import io.ktor.client.*
 
 class AnswerListAdapter(
     private val values: List<Feed>,
-    private val activity: FragmentActivity
+    private val activity: FragmentActivity,
+    private val httpClient: HttpClient
 ) : RecyclerView.Adapter<AnswerListAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(FragmentQuestionDetailsAnswerBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        return ViewHolder(
+            FragmentQuestionDetailsAnswerBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+        )
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -46,24 +50,45 @@ class AnswerListAdapter(
             )
         }
         if (item.target.author.avatar_url.isNotEmpty()) {
-            GlobalScope.launch(activity.mainExecutor.asCoroutineDispatcher()) {
-                AccountData.httpClient(activity).get(item.target.author.avatar_url).bodyAsChannel().toInputStream().buffered().use {
-                    if (values[position] === item) { // avoid sync loading bug
-                        val bitmap = BitmapFactory.decodeStream(it)
-                        holder.avatar.setImageBitmap(bitmap)
-                    }
-                }
+            loadImage(holder, activity, httpClient, item.target.author.avatar_url) {
+                holder.avatar.setImageBitmap(it)
             }
         }
     }
 
     override fun getItemCount(): Int = values.size
 
-    inner class ViewHolder(binding: FragmentQuestionDetailsAnswerBinding) : RecyclerView.ViewHolder(binding.root) {
+    override fun onViewAttachedToWindow(holder: ViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        holder.onAppear()
+    }
+
+    override fun onViewRecycled(holder: ViewHolder) {
+        super.onViewRecycled(holder)
+        holder.onDisappear()
+    }
+
+    inner class ViewHolder(binding: FragmentQuestionDetailsAnswerBinding) : RecyclerView.ViewHolder(binding.root),
+        LifecycleOwner {
+        private val lifecycleRegistry = LifecycleRegistry(this)
         val summary = binding.summary
         val details = binding.details
         val author = binding.author
         val avatar = binding.avatar
         val card = binding.root
+
+        init {
+            lifecycleRegistry.currentState = Lifecycle.State.INITIALIZED
+        }
+
+        fun onAppear() {
+            lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        }
+
+        fun onDisappear() {
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        }
+
+        override val lifecycle: Lifecycle get() = lifecycleRegistry
     }
 }
