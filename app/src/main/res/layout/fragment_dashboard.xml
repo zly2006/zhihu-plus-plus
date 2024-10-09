@@ -18,6 +18,7 @@
                 android:text="重新登录"
                 android:id="@+id/login"
                 />
+
         <Button
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
@@ -28,7 +29,7 @@
         <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="wrap_content">
 
             <EditText
                     android:layout_width="wrap_content"
@@ -46,19 +47,16 @@
                     android:layout_weight="1"/>
         </LinearLayout>
 
+        <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/view_history"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="LinearLayoutManager"
+                tools:listitem="@layout/item_view_history"
+
+                />
+
     </LinearLayout>
 
-    <TextView
-            android:id="@+id/text_dashboard"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
-            android:textAlignment="center"
-            android:textSize="20sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -44,6 +44,7 @@ class AnswerListAdapter(
                     item.target.author.headline,
                     item.target.content,
                     item.target.author.avatar_url,
+                    item.target.excerpt
                 )
             )
         }

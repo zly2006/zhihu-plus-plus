@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui.home
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -21,21 +22,29 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.*
+import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
+import com.github.zly2006.zhihu.data.HistoryStorage.Companion.postHistory
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import com.github.zly2006.zhihu.loadImage
+import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import kotlin.properties.Delegates
@@ -53,6 +62,28 @@ private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_AVATAR_SRC = "avatarSrc"
 private const val ARG_VOTE_UP_COUNT = "voteUpCount"
 
+@Serializable
+data class Reaction(
+    val reaction_count: Int,
+    val reaction_state: Boolean,
+    val reaction_value: String,
+    val success: Boolean,
+    val is_thanked: Boolean,
+    val thanks_count: Int,
+    val red_heart_count: Int,
+    val red_heart_has_set: Boolean,
+    val is_liked: Boolean,
+    val liked_count: Int,
+    val is_up: Boolean,
+    val voteup_count: Int,
+    val is_upped: Boolean,
+    val up_count: Int,
+    val is_down: Boolean,
+    val voting: Int,
+    val heavy_up_result: String,
+    val is_auto_send_moments: Boolean
+)
+
 class ReadArticleFragment : Fragment() {
     private lateinit var document: Document
     private lateinit var type: String
@@ -65,13 +96,18 @@ class ReadArticleFragment : Fragment() {
     private val viewModel: ReadArticleViewModel by viewModels()
 
     class ReadArticleViewModel : ViewModel() {
+        enum class VoteUpState(val key: String) {
+            Up("up"),
+            Down("down"),
+            Neutral("neutral"),
+        }
         val title = MutableLiveData<String>()
         val authorName = MutableLiveData<String>()
         val bio = MutableLiveData<String>()
         val content = MutableLiveData<String>()
         val questionId = MutableLiveData<Long>()
         val avatarSrc = MutableLiveData<String>()
-        val votedUp = MutableLiveData(false)
+        val votedUp = MutableLiveData(Neutral)
         val voteUpCount = MutableLiveData(0)
         val commentCount = MutableLiveData(0)
     }
@@ -125,7 +161,24 @@ class ReadArticleFragment : Fragment() {
             Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
         }
         binding.voteUp.setOnClickListener {
-            viewModel.votedUp.value = !viewModel.votedUp.value!!
+            val value = when (viewModel.votedUp.value) {
+                null -> Up
+                Up -> Neutral
+                Neutral -> Up
+                Down -> Up
+            }
+            viewModel.votedUp.value = value
+            launch {
+                val reaction = httpClient.post("https://www.zhihu.com/api/v4/answers/3077409061/voters") {
+                    setBody(
+                        mapOf(
+                            "type" to value.key
+                        )
+                    )
+                    contentType(ContentType.Application.Json)
+                }.body<Reaction>()
+                viewModel.voteUpCount.postValue(reaction.voteup_count)
+            }
         }
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
@@ -165,20 +218,23 @@ class ReadArticleFragment : Fragment() {
                 loadImage(viewLifecycleOwner, requireActivity(), httpClient, it, binding.avatar::setImageBitmap)
             }
         }
-        viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner) {
-            binding.voteUp.text = "$it 赞同"
+        val voteUp = Observer<Any> {
+            @SuppressLint("SetTextI18n")
+            binding.voteUp.text = "${viewModel.voteUpCount.value} " + if (viewModel.votedUp.value == Up) "已赞同" else "赞同"
         }
+        viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner, voteUp)
         viewModel.votedUp.observe(viewLifecycleOwner) {
-            if (!it) {
+            if (it == Neutral) {
                 binding.voteUp.setBackgroundColor(0xFF29B6F6.toInt())
-            } else {
+            } else if (it == Up) {
                 binding.voteUp.setBackgroundColor(0xFF0D47A1.toInt())
             }
+            voteUp.onChanged(it)
         }
 
         launch {
             if (type == "answer") {
-                val answer = DataHolder.getAnswer(requireActivity(), httpClient, articleId)?.value
+                val answer = activity?.let { DataHolder.getAnswer(it, httpClient, articleId) }?.value
                 if (answer != null) {
                     if (viewModel.content.value.isNullOrEmpty()) {
                         viewModel.content.postValue(answer.content)
@@ -190,6 +246,20 @@ class ReadArticleFragment : Fragment() {
                     viewModel.avatarSrc.postValue(answer.author.avatarUrl)
                     viewModel.voteUpCount.postValue(answer.voteupCount)
                     viewModel.commentCount.postValue(answer.commentCount)
+                    if (activity is MainActivity) {
+                        requireActivity().postHistory(
+                            Article(
+                                answer.question.title,
+                                "answer",
+                                articleId,
+                                answer.author.name,
+                                answer.author.headline,
+                                answer.content,
+                                answer.author.avatarUrl,
+                                answer.excerpt
+                            )
+                        )
+                    }
                 } else {
                     if (viewModel.content.value.isNullOrEmpty()) {
                         viewModel.content.postValue("<h1>Answer not found</p>")

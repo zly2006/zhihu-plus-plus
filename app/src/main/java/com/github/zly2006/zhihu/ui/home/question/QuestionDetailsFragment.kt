@@ -131,12 +131,14 @@ class QuestionDetailsFragment : Fragment() {
         launch {
             val question = DataHolder.getQuestion(requireActivity(), httpClient, questionId)?.value
             if (question == null) {
-                AlertDialog.Builder(requireContext()).apply {
-                    setTitle("Error")
-                    setMessage("Failed to load question details $questionId")
-                    setPositiveButton("OK") { _, _ ->
-                    }
-                }.create().show()
+                if (context != null) {
+                    AlertDialog.Builder(requireContext()).apply {
+                        setTitle("Error")
+                        setMessage("Failed to load question details $questionId")
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                    }.create().show()
+                }
                 return@launch
             }
             viewModel.title.postValue(question.title)

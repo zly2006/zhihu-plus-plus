@@ -41,6 +41,7 @@ class HomeArticleItemAdapter(
                     item.dto.target.author.headline,
                     item.dto.target.content,
                     item.dto.target.author.avatar_url,
+                    item.dto.target.excerpt
                 ))
             }
         }

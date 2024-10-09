@@ -56,14 +56,15 @@ enum class ArticleType {
 
 @Serializable
 data class Article(
-    val title: String,
+    var title: String,
     @SerialName("article_type_1")
     val type: String,
     val id: Long,
     var authorName: String,
     var authorBio: String,
     var content: String? = null,
-    var avatarSrc: String? = null
+    var avatarSrc: String? = null,
+    var excerpt: String? = null,
 ): NavDestination {
     override fun hashCode(): Int {
         return id.hashCode()
