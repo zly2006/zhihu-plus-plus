@@ -69,6 +69,7 @@
                             android:layout_width="255dp"
                             android:layout_height="24dp"
                             android:maxLines="1"
+                            android:gravity="bottom"
                             android:id="@+id/author"/>
 
                     <TextView
@@ -137,7 +138,8 @@
                         android:id="@+id/vote_up"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="赞同"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
                         />
 
                 <Space
@@ -151,6 +153,22 @@
                         android:layout_height="wrap_content"
                         android:text="复制链接"
                         android:id="@+id/copy_link"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
+                        />
+
+                <Space
+                        android:layout_width="8dp"
+                        android:layout_height="match_parent"
+                        />
+
+                <Button
+                        android:drawableLeft="@drawable/outline_comment_24"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/open_comments"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
                         />
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>

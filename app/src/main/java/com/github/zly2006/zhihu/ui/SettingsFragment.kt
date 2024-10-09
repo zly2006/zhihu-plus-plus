@@ -11,9 +11,8 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.R
 
 class SettingsFragment : PreferenceFragmentCompat() {
-    var clickCounter = 0
-
-    val developer = MutableLiveData(false)
+    private var clickCounter = 0
+    private val developer = MutableLiveData(false)
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey)
@@ -30,7 +29,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         developer.value = developerPreference?.isChecked
 
         val versionPreference: Preference? = findPreference("version")
-        versionPreference?.summary = BuildConfig.GIT_HASH
+        versionPreference?.summary = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
         versionPreference?.setOnPreferenceClickListener {
             clickCounter++
             if (clickCounter == 3) {

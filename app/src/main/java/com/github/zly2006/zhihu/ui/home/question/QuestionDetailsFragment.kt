@@ -120,7 +120,7 @@ class QuestionDetailsFragment : Fragment() {
                 """.trimIndent() + document.toString(), "text/html", "utf-8", null
             )
         }
-        binding.answers.adapter = AnswerListAdapter(answers, requireActivity(), httpClient)
+        binding.answers.adapter = AnswerListAdapter(answers, requireActivity(), httpClient, viewModel)
         binding.scroll.setOnScrollChangeListener { _, _, _, _, _ ->
             if (!canFetchMore || fetchingNewItems) return@setOnScrollChangeListener
             if (!binding.scroll.canScrollVertically(binding.scroll.height)) {

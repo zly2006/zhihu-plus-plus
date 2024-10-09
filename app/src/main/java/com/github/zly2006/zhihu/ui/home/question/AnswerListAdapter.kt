@@ -17,7 +17,8 @@ import io.ktor.client.*
 class AnswerListAdapter(
     private val values: List<Feed>,
     private val activity: FragmentActivity,
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val viewModel: QuestionDetailsFragment.QuestionViewModel
 ) : RecyclerView.Adapter<AnswerListAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
@@ -37,7 +38,7 @@ class AnswerListAdapter(
         holder.card.setOnClickListener {
             activity.navigate(
                 Article(
-                    "${item.target.author.name}的回答",
+                    viewModel.title.value ?: "${item.target.author.name}的回答",
                     item.target.type,
                     item.target.id,
                     item.target.author.name,

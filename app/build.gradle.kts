@@ -26,7 +26,8 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }

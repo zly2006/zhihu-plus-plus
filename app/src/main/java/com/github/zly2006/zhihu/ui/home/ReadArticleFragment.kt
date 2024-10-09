@@ -159,6 +159,7 @@ class ReadArticleFragment : Fragment() {
             val clip = ClipData.newPlainText(
                 "Link",
                 "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}"
+                        + "\n【${viewModel.title.value} - ${viewModel.authorName.value}的回答】"
             )
             clipboard.setPrimaryClip(clip)
             gViewModel.toast.postValue("Link copied")
@@ -184,6 +185,9 @@ class ReadArticleFragment : Fragment() {
                     viewModel.voteUpCount.postValue(reaction.voteup_count)
                 }
             }
+        }
+        binding.openComments.setOnClickListener {
+
         }
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
@@ -225,7 +229,7 @@ class ReadArticleFragment : Fragment() {
         }
         val voteUp = Observer<Any> {
             @SuppressLint("SetTextI18n")
-            binding.voteUp.text = "${viewModel.voteUpCount.value} " + if (viewModel.votedUp.value == Up) "已赞同" else "赞同"
+            binding.voteUp.text = "${viewModel.voteUpCount.value} " + if (viewModel.votedUp.value == Up) "已赞" else "赞同"
         }
         viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner, voteUp)
         viewModel.votedUp.observe(viewLifecycleOwner) {
@@ -235,6 +239,9 @@ class ReadArticleFragment : Fragment() {
                 binding.voteUp.setBackgroundColor(0xFF0D47A1.toInt())
             }
             voteUp.onChanged(it)
+        }
+        viewModel.commentCount.observe(viewLifecycleOwner) {
+            binding.openComments.text = it.toString()
         }
 
         launch {
