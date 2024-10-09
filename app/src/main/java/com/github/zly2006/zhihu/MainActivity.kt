@@ -5,8 +5,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.distinctUntilChanged
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.createGraph
 import androidx.navigation.findNavController
@@ -95,7 +98,10 @@ class MainActivity : AppCompatActivity() {
 
     class MainActivityViewModel : ViewModel() {
         val list = mutableListOf<PlaceholderItem>()
+        val toast = MutableLiveData<String>()
     }
+
+    private val gViewModel: MainActivityViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,8 +117,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        gViewModel.toast.distinctUntilChanged().observe(this) {
+            if (it.isNotEmpty()) {
+                Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            }
+        }
         val navView = binding.navView
-
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
 
 

@@ -18,8 +18,8 @@ import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
@@ -28,6 +28,7 @@ import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.*
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -112,6 +113,8 @@ class ReadArticleFragment : Fragment() {
         val commentCount = MutableLiveData(0)
     }
 
+    val gViewModel: MainActivityViewModel by activityViewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -158,7 +161,7 @@ class ReadArticleFragment : Fragment() {
                 "https://www.zhihu.com/question/${viewModel.questionId.value}/answer/${articleId}"
             )
             clipboard.setPrimaryClip(clip)
-            Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+            gViewModel.toast.postValue("Link copied")
         }
         binding.voteUp.setOnClickListener {
             val value = when (viewModel.votedUp.value) {
@@ -169,15 +172,17 @@ class ReadArticleFragment : Fragment() {
             }
             viewModel.votedUp.value = value
             launch {
-                val reaction = httpClient.post("https://www.zhihu.com/api/v4/answers/3077409061/voters") {
-                    setBody(
-                        mapOf(
-                            "type" to value.key
+                if (type == "answer") {
+                    val reaction = httpClient.post("https://www.zhihu.com/api/v4/answers/${articleId}/voters") {
+                        setBody(
+                            mapOf(
+                                "type" to value.key
+                            )
                         )
-                    )
-                    contentType(ContentType.Application.Json)
-                }.body<Reaction>()
-                viewModel.voteUpCount.postValue(reaction.voteup_count)
+                        contentType(ContentType.Application.Json)
+                    }.body<Reaction>()
+                    viewModel.voteUpCount.postValue(reaction.voteup_count)
+                }
             }
         }
 
@@ -301,7 +306,7 @@ class ReadArticleFragment : Fragment() {
 
     private fun saveImage(imageUrl: String?) {
         if (imageUrl == null) {
-            Toast.makeText(context, "Image URL is null", Toast.LENGTH_SHORT).show()
+            gViewModel.toast.postValue("Image URL is null")
             return
         }
 
@@ -317,21 +322,20 @@ class ReadArticleFragment : Fragment() {
 
                 file.outputStream().use { it.write(bytes) }
 
-                requireActivity().runOnUiThread {
-                    Toast.makeText(context, "Image saved: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
-                }
+                gViewModel.toast.postValue("Image saved: ${file.absolutePath}")
             } catch (e: Exception) {
-                requireActivity().runOnUiThread {
-                    Toast.makeText(context, "Failed to save image: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                Log.e("ReadArticleFragment", "Failed to save image", e)
+                gViewModel.toast.postValue("Failed to save image: ${e.message}")
             }
         }
     }
 
     private fun viewImage(imageUrl: String?) {
-        val intent = Intent(Intent.ACTION_VIEW)
-        intent.data = Uri.parse(imageUrl)
-        context?.startActivity(intent)
+        if (imageUrl != null) {
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.data = Uri.parse(imageUrl)
+            context?.startActivity(intent)
+        }
     }
 
     private fun launch(block: suspend CoroutineScope.() -> Unit) {
