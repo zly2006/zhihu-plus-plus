@@ -115,7 +115,8 @@
                             android:layout_width="fill_parent"
                             android:layout_height="wrap_content"
                             android:id="@+id/web"
-                            tools:ignore="WebViewLayout"/>
+                            tools:ignore="WebViewLayout"
+                            />
 
                     <Space
                             android:layout_width="match_parent"
@@ -140,6 +141,27 @@
                         android:layout_height="wrap_content"
                         android:minHeight="0dp"
                         android:minWidth="0dp"
+                        android:padding="3dp"
+                        />
+
+                <Button
+                        android:id="@+id/vote_down"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableLeft="@drawable/outline_thumb_down_24"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
+                        android:padding="3dp"
+                        />
+
+                <Button
+                        android:id="@+id/report"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:drawableLeft="@drawable/baseline_report_problem_24"
+                        android:minHeight="0dp"
+                        android:minWidth="0dp"
+                        android:padding="3dp"
                         />
 
                 <Space
@@ -151,10 +173,11 @@
                         android:drawableLeft="@drawable/baseline_content_copy_24"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="复制链接"
                         android:id="@+id/copy_link"
                         android:minHeight="0dp"
+
                         android:minWidth="0dp"
+                        android:padding="3dp"
                         />
 
                 <Space
@@ -169,6 +192,7 @@
                         android:id="@+id/open_comments"
                         android:minHeight="0dp"
                         android:minWidth="0dp"
+                        android:padding="3dp"
                         />
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>

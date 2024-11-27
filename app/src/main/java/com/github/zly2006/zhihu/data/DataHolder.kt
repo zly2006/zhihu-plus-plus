@@ -50,7 +50,9 @@ object DataHolder {
         val avatarUrl: String,
         val description: String,
         val medalId: String,
-        val medalName: String
+        val medalName: String,
+        val medalAvatarFrame: String = "",
+        val miniAvatarUrl: String? = null,
     )
 
     @Serializable
@@ -143,7 +145,6 @@ object DataHolder {
         val annotationAction: String?,
         val answerType: String,
         val author: Author,
-        val bizExt: BizExt,
         val canComment: CanComment,
         val collapseReason: String,
         val collapsedBy: String,
@@ -155,13 +156,14 @@ object DataHolder {
         val editableContent: String,
         val excerpt: String,
         val extras: String,
-        val favlistsCount: Int,
+        val favlistsCount: Int = 0,
         val id: Long,
         val isCollapsed: Boolean,
         val isCopyable: Boolean,
         val isJumpNative: Boolean,
         val isLabeled: Boolean,
         val isNormal: Boolean,
+        val isMine: Boolean = false,
         val isSticky: Boolean,
         val isVisible: Boolean,
         val question: AnswerModelQuestion,
@@ -176,6 +178,14 @@ object DataHolder {
         val updatedTime: Long,
         val url: String,
         val voteupCount: Int,
+        val bizExt: BizExt? = null,
+        val contentMark: JsonObject? = null,
+        val decorativeLabels: List<JsonElement> = emptyList(),
+        val visibleOnlyToAuthor: Boolean = false,
+        val zhiPlusExtraInfo: String = "",
+        val thumbnailInfo: ThumbnailInfo? = null,
+        val preload: Boolean = false,
+        val stickyInfo: String = "",
         val ipInfo: String? = null,
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null
@@ -263,10 +273,11 @@ object DataHolder {
     @Serializable
     data class BadgeV2(
         val title: String,
-        val mergedBadges: List<JsonElement>,
-        val detailBadges: List<JsonElement>,
-        val icon: String,
-        val nightIcon: String
+        val mergedBadges: List<JsonElement>? = null,
+        val detailBadges: List<JsonElement>? = null,
+        val icon: String = "",
+        val nightIcon: String = "",
+        val canClick: Boolean = false,
     )
 
     @Serializable
@@ -331,6 +342,123 @@ object DataHolder {
          * `HIDE` = 隐藏"类似回答"
          */
         val rEACTIONCONTENTSEGMENTLIKE: String? = null,
+    )
+
+    @Serializable
+    data class Comment(
+        val id: String,
+        val type: String,
+        @SerialName("resource_type") val resourceType: String,
+        @SerialName("member_id") val memberId: Long,
+        val url: String,
+        val hot: Boolean,
+        val top: Boolean,
+        val content: String,
+        val score: Int,
+        @SerialName("created_time") val createdTime: Long,
+        @SerialName("is_delete") val isDelete: Boolean,
+        val collapsed: Boolean,
+        val reviewing: Boolean,
+        @SerialName("reply_comment_id") val replyCommentId: String,
+        @SerialName("reply_root_comment_id") val replyRootCommentId: String,
+        val liked: Boolean,
+        @SerialName("like_count") val likeCount: Int,
+        val disliked: Boolean,
+        @SerialName("dislike_count") val dislikeCount: Int,
+        @SerialName("is_author") val isAuthor: Boolean,
+        @SerialName("can_like") val canLike: Boolean,
+        @SerialName("can_dislike") val canDislike: Boolean,
+        @SerialName("can_delete") val canDelete: Boolean,
+        @SerialName("can_reply") val canReply: Boolean,
+        @SerialName("can_hot") val canHot: Boolean,
+        @SerialName("can_author_top") val canAuthorTop: Boolean,
+        @SerialName("is_author_top") val isAuthorTop: Boolean,
+        @SerialName("can_collapse") val canCollapse: Boolean,
+        @SerialName("can_share") val canShare: Boolean,
+        @SerialName("can_unfold") val canUnfold: Boolean,
+        @SerialName("can_truncate") val canTruncate: Boolean,
+        @SerialName("can_more") val canMore: Boolean,
+        val author: Author,
+        @SerialName("author_tag") val authorTag: List<JsonElement>,
+        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement>,
+        @SerialName("content_tag") val contentTag: List<JsonElement>,
+        @SerialName("comment_tag") val commentTag: List<CommentTag>,
+        @SerialName("child_comment_count") val childCommentCount: Int,
+        @SerialName("child_comment_next_offset") val childCommentNextOffset: JsonElement?,
+        @SerialName("child_comments") val childComments: List<ChildComment>,
+        @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean,
+        @SerialName("_") val underscore: JsonElement?
+    ) {
+
+        @Serializable
+        data class Author(
+            val id: String,
+            @SerialName("url_token") val urlToken: String,
+            val name: String,
+            @SerialName("avatar_url") val avatarUrl: String,
+            @SerialName("avatar_url_template") val avatarUrlTemplate: String,
+            @SerialName("is_org") val isOrg: Boolean,
+            val type: String,
+            val url: String,
+            @SerialName("user_type") val userType: String,
+            val headline: String,
+            val gender: Int,
+            @SerialName("is_advertiser") val isAdvertiser: Boolean,
+            @SerialName("badge_v2") val badgeV2: JsonElement? = null,
+            @SerialName("exposed_medal") val exposedMedal: JsonElement? = null,
+            @SerialName("vip_info") val vipInfo: JsonElement? = null,
+            @SerialName("level_info") val levelInfo: JsonElement? = null,
+            @SerialName("is_anonymous") val isAnonymous: Boolean
+        )
+
+        @Serializable
+        data class CommentTag(
+            val type: String,
+            val text: String,
+            val color: String,
+            @SerialName("night_color") val nightColor: String,
+            @SerialName("has_border") val hasBorder: Boolean
+        )
+    }
+
+    @Serializable
+    data class CommentTag(
+        val type: String,
+        val text: String,
+        val color: String,
+        @SerialName("night_color") val nightColor: String,
+        @SerialName("has_border") val hasBorder: Boolean
+    )
+
+    @Serializable
+    data class ChildComment(
+        val id: String,
+        val type: String,
+        @SerialName("resource_type") val resourceType: String,
+        @SerialName("member_id") val memberId: Long,
+        val url: String,
+        val content: String,
+        @SerialName("created_time") val createdTime: Long,
+        @SerialName("is_delete") val isDelete: Boolean,
+        val collapsed: Boolean,
+        val reviewing: Boolean,
+        @SerialName("reply_comment_id") val replyCommentId: String,
+        @SerialName("reply_root_comment_id") val replyRootCommentId: String,
+        val liked: Boolean,
+        @SerialName("like_count") val likeCount: Int,
+        val disliked: Boolean,
+        @SerialName("dislike_count") val dislikeCount: Int,
+        @SerialName("is_author") val isAuthor: Boolean,
+        @SerialName("can_like") val canLike: Boolean,
+        @SerialName("can_dislike") val canDislike: Boolean,
+        @SerialName("can_delete") val canDelete: Boolean,
+        @SerialName("can_reply") val canReply: Boolean,
+        @SerialName("can_share") val canShare: Boolean,
+        val author: Author,
+        @SerialName("author_tag") val authorTag: List<JsonElement>,
+        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement>,
+        @SerialName("content_tag") val contentTag: List<JsonElement>,
+        @SerialName("comment_tag") val commentTag: List<CommentTag>
     )
 
     data class ReferenceCount<T>(
@@ -425,4 +553,3 @@ object DataHolder {
         return answers.filter { it.value.value.question.id == questionId }.values.toList()
     }
 }
-
