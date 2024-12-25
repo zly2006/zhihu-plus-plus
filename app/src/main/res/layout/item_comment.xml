@@ -58,12 +58,22 @@
         <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="24dp"
+                android:drawableLeft="@drawable/outline_comment_24"
+                android:id="@+id/reply"
+                android:textSize="12sp"
+                android:gravity="center_vertical"
+                android:textColor="?android:attr/textColorSecondary"
+                tools:text="114514 Replys"
+                />
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
                 android:drawableLeft="@drawable/outline_thumb_up_24"
                 android:id="@+id/like"
                 android:textSize="12sp"
                 android:gravity="center_vertical"
                 android:textColor="?android:attr/textColorSecondary"
-                tools:text="114514 Like"
+                tools:text="114514 Likes"
                 />
     </LinearLayout>
 </LinearLayout>

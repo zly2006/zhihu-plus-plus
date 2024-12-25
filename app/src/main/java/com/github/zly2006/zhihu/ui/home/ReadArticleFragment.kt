@@ -25,7 +25,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import androidx.webkit.*
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewFeature
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
@@ -350,16 +353,7 @@ class ReadArticleFragment : Fragment() {
     }
 }
 
-class WebViewListener {
-    fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
-    }
-
-    fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
-    }
-}
-
 fun setupUpWebview(web: WebView, context: Context) {
-
     val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

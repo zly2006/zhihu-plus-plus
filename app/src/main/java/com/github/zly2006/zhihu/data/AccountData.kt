@@ -4,6 +4,7 @@ import android.content.Context
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.cache.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
@@ -50,6 +51,7 @@ object AccountData {
 
     fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
         return HttpClient {
+            install(HttpCache)
             install(HttpCookies) {
                 storage = object : CookiesStorage {
                     override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {

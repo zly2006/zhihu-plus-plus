@@ -15,15 +15,4 @@
             app:layoutManager="LinearLayoutManager"
             tools:listitem="@layout/item_home_article_feed"/>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/refresh_list"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginBottom="80dp"
-            android:contentDescription="TODO"
-            android:src="@drawable/baseline_refresh_24"
-            >
-    </com.google.android.material.floatingactionbutton.FloatingActionButton>
 </androidx.constraintlayout.widget.ConstraintLayout>

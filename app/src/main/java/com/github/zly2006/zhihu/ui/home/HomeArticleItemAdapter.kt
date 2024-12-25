@@ -8,7 +8,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
-import com.github.zly2006.zhihu.databinding.FragmentHomeArticleItemBinding
+import com.github.zly2006.zhihu.databinding.ItemHomeArticleFeedBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 
 class HomeArticleItemAdapter(
@@ -16,7 +16,7 @@ class HomeArticleItemAdapter(
     private val activity: FragmentActivity
 ) : RecyclerView.Adapter<HomeArticleItemAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(FragmentHomeArticleItemBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        return ViewHolder(ItemHomeArticleFeedBinding.inflate(LayoutInflater.from(parent.context), parent, false))
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -49,7 +49,7 @@ class HomeArticleItemAdapter(
 
     override fun getItemCount(): Int = values.size
 
-    inner class ViewHolder(binding: FragmentHomeArticleItemBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(binding: ItemHomeArticleFeedBinding) : RecyclerView.ViewHolder(binding.root) {
         val title: TextView = binding.title
         val summary: TextView = binding.summary
         val details: TextView = binding.details
