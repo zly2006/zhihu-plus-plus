@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -231,6 +232,24 @@ class MainActivity : AppCompatActivity() {
                         null
                     )
                 )
+            }
+            else if (uri.host == "questions") {
+                val questionId = uri.pathSegments[0].toLong()
+                navController.navigate(
+                    Question(
+                        questionId,
+                        "loading...",
+                    )
+                )
+            }
+//            else if (uri.host == "feed")
+            else {
+                AlertDialog.Builder(this).apply {
+                    setTitle("Invalid URL")
+                    setMessage("Unknown zhihu URL: $uri\nPlease report to the developer")
+                    setPositiveButton("OK") { _, _ ->
+                    }
+                }.create().show()
             }
         }
     }
