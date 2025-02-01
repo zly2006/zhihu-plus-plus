@@ -11,7 +11,15 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.ItemCommentBinding
 import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.*
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
+
+private val HMS = SimpleDateFormat("HH:mm:ss")
+private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
+private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
 class CommentAdapter(
     private val values: List<DataHolder.Comment>,
@@ -30,10 +38,21 @@ class CommentAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
-        holder.like.text = "${item.likeCount}赞"
-        holder.reply.text = "${item.childCommentCount}回复"
-        holder.content.text = item.content
-        holder.time.text = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(item.createdTime * 1000)
+        val html = Jsoup.parse(item.content)
+        holder.like.text = "${item.likeCount} 赞"
+        holder.reply.text = "${item.childCommentCount} 回复"
+        holder.content.text = html.text()
+        val instant = Instant.fromEpochSeconds(item.createdTime)
+        val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+        val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
+        val nowLocalDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
+        if (localDateTime.date == nowLocalDateTime.date) {
+            holder.time.text = HMS.format(item.createdTime * 1000)
+        } else if (localDateTime.year == nowLocalDateTime.year) {
+            holder.time.text = MDHMS.format(item.createdTime * 1000)
+        } else {
+            holder.time.text = YMDHMS.format(item.createdTime * 1000)
+        }
         holder.author.text = item.author.member.name
         if (item.author.member.avatarUrl.isNotEmpty()) {
             loadImage(holder, activity, httpClient, item.author.member.avatarUrl) {

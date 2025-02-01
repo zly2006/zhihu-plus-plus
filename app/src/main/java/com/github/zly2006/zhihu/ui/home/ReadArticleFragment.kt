@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -191,6 +192,10 @@ class ReadArticleFragment : Fragment() {
             }
         }
         binding.openComments.setOnClickListener {
+            if (viewModel.commentCount.value == 0) {
+                Toast.makeText(requireContext(), "还没有评论", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             val frag = CommentsDialog(
                 httpClient, Article(
                     viewModel.title.value ?: "title",
