@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.data
 import android.util.Log
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
-import com.github.zly2006.zhihu.data.AccountData.json
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -96,6 +95,7 @@ object DataHolder {
         val isAuthor: Boolean = false,
         val isAuthorized: Boolean = false,
         val isNothelp: Boolean = false,
+        val isFavorited: Boolean = false,
         val isThanked: Boolean = false,
         val upvotedFollowees: List<String> = emptyList(),
         val voting: Int = 0
@@ -237,7 +237,8 @@ object DataHolder {
         val showEncourageAuthor: Boolean,
         val voteupCount: Int,
         val canVote: Boolean,
-        val reactionInstruction: ReactionInstruction
+        val reactionInstruction: ReactionInstruction,
+        val invisibleAuthor: Boolean = false,
     )
 
     @Serializable
@@ -349,45 +350,45 @@ object DataHolder {
         val id: String,
         val type: String,
         @SerialName("resource_type") val resourceType: String,
-        @SerialName("member_id") val memberId: Long,
+//        @SerialName("member_id") val memberId: Long,
         val url: String,
-        val hot: Boolean,
+//        val hot: Boolean,
         val top: Boolean,
         val content: String,
-        val score: Int,
+//        val score: Int,
         @SerialName("created_time") val createdTime: Long,
         @SerialName("is_delete") val isDelete: Boolean,
         val collapsed: Boolean,
         val reviewing: Boolean,
-        @SerialName("reply_comment_id") val replyCommentId: String,
-        @SerialName("reply_root_comment_id") val replyRootCommentId: String,
-        val liked: Boolean,
-        @SerialName("like_count") val likeCount: Int,
-        val disliked: Boolean,
-        @SerialName("dislike_count") val dislikeCount: Int,
+        @SerialName("reply_comment_id") val replyCommentId: String? = null,
+        @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
+        val liked: Boolean = false,
+        @SerialName("like_count") val likeCount: Int = 0,
+        val disliked: Boolean = false,
+        @SerialName("dislike_count") val dislikeCount: Int = 0,
         @SerialName("is_author") val isAuthor: Boolean,
-        @SerialName("can_like") val canLike: Boolean,
-        @SerialName("can_dislike") val canDislike: Boolean,
-        @SerialName("can_delete") val canDelete: Boolean,
-        @SerialName("can_reply") val canReply: Boolean,
-        @SerialName("can_hot") val canHot: Boolean,
-        @SerialName("can_author_top") val canAuthorTop: Boolean,
-        @SerialName("is_author_top") val isAuthorTop: Boolean,
+//        @SerialName("can_like") val canLike: Boolean,
+//        @SerialName("can_dislike") val canDislike: Boolean,
+//        @SerialName("can_delete") val canDelete: Boolean,
+//        @SerialName("can_reply") val canReply: Boolean,
+//        @SerialName("can_hot") val canHot: Boolean,
+//        @SerialName("can_author_top") val canAuthorTop: Boolean,
+        @SerialName("is_author_top") val isAuthorTop: Boolean = false,
         @SerialName("can_collapse") val canCollapse: Boolean,
-        @SerialName("can_share") val canShare: Boolean,
-        @SerialName("can_unfold") val canUnfold: Boolean,
-        @SerialName("can_truncate") val canTruncate: Boolean,
-        @SerialName("can_more") val canMore: Boolean,
-        val author: Author,
-        @SerialName("author_tag") val authorTag: List<JsonElement>,
-        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement>,
-        @SerialName("content_tag") val contentTag: List<JsonElement>,
-        @SerialName("comment_tag") val commentTag: List<CommentTag>,
+//        @SerialName("can_share") val canShare: Boolean,
+//        @SerialName("can_unfold") val canUnfold: Boolean,
+//        @SerialName("can_truncate") val canTruncate: Boolean,
+//        @SerialName("can_more") val canMore: Boolean,
+        val author: AuthorData,
+        @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
+        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
+        @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
+        @SerialName("comment_tag") val commentTag: List<CommentTag> = emptyList(),
         @SerialName("child_comment_count") val childCommentCount: Int,
-        @SerialName("child_comment_next_offset") val childCommentNextOffset: JsonElement?,
+        @SerialName("child_comment_next_offset") val childCommentNextOffset: JsonElement? = null,
         @SerialName("child_comments") val childComments: List<ChildComment>,
-        @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean,
-        @SerialName("_") val underscore: JsonElement?
+        @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean = false,
+        @SerialName("_") val underscore: JsonElement? = null
     ) {
 
         @Serializable
@@ -408,7 +409,13 @@ object DataHolder {
             @SerialName("exposed_medal") val exposedMedal: JsonElement? = null,
             @SerialName("vip_info") val vipInfo: JsonElement? = null,
             @SerialName("level_info") val levelInfo: JsonElement? = null,
-            @SerialName("is_anonymous") val isAnonymous: Boolean
+            @SerialName("kvip_info") val kvipInfo: JsonElement? = null,
+        )
+
+        @Serializable
+        data class AuthorData(
+            val role: String,
+            val member: Author
         )
 
         @Serializable
@@ -435,30 +442,24 @@ object DataHolder {
         val id: String,
         val type: String,
         @SerialName("resource_type") val resourceType: String,
-        @SerialName("member_id") val memberId: Long,
+//        @SerialName("member_id") val memberId: Long,
         val url: String,
         val content: String,
         @SerialName("created_time") val createdTime: Long,
         @SerialName("is_delete") val isDelete: Boolean,
         val collapsed: Boolean,
         val reviewing: Boolean,
-        @SerialName("reply_comment_id") val replyCommentId: String,
-        @SerialName("reply_root_comment_id") val replyRootCommentId: String,
-        val liked: Boolean,
-        @SerialName("like_count") val likeCount: Int,
-        val disliked: Boolean,
-        @SerialName("dislike_count") val dislikeCount: Int,
-        @SerialName("is_author") val isAuthor: Boolean,
-        @SerialName("can_like") val canLike: Boolean,
-        @SerialName("can_dislike") val canDislike: Boolean,
-        @SerialName("can_delete") val canDelete: Boolean,
-        @SerialName("can_reply") val canReply: Boolean,
-        @SerialName("can_share") val canShare: Boolean,
-        val author: Author,
-        @SerialName("author_tag") val authorTag: List<JsonElement>,
-        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement>,
-        @SerialName("content_tag") val contentTag: List<JsonElement>,
-        @SerialName("comment_tag") val commentTag: List<CommentTag>
+        @SerialName("reply_comment_id") val replyCommentId: String? = null,
+        @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
+        val liked: Boolean = false,
+        @SerialName("like_count") val likeCount: Int = 0,
+        val disliked: Boolean = false,
+        @SerialName("dislike_count") val dislikeCount: Int = 0,
+        val author: Comment.AuthorData,
+        @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
+        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
+        @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
+        @SerialName("comment_tag") val commentTag: List<CommentTag> = emptyList()
     )
 
     data class ReferenceCount<T>(
@@ -490,7 +491,7 @@ object DataHolder {
                     println(jojo.toString())
                     e.printStackTrace()
 
-                    val questionModel = json.decodeFromJsonElement<Question>(question)
+                    val questionModel = AccountData.decodeJson<Question>(question)
                     this.questions[questionModel.id] = ReferenceCount(questionModel)
                 }
             }
@@ -506,7 +507,7 @@ object DataHolder {
                     println(jojo.toString())
                     e.printStackTrace()
 
-                    val answerModel = json.decodeFromJsonElement<Answer>(answer)
+                    val answerModel = AccountData.decodeJson<Answer>(answer)
                     this.answers[answerModel.id] = ReferenceCount(answerModel)
                     this.questions[answerModel.question.id]!!.count++
                 }

@@ -40,6 +40,7 @@ import com.github.zly2006.zhihu.data.HistoryStorage.Companion.postHistory
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import com.github.zly2006.zhihu.loadImage
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
+import com.github.zly2006.zhihu.ui.home.comment.CommentsDialog
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -190,7 +191,19 @@ class ReadArticleFragment : Fragment() {
             }
         }
         binding.openComments.setOnClickListener {
-
+            val frag = CommentsDialog(
+                httpClient, Article(
+                    viewModel.title.value ?: "title",
+                    type,
+                    articleId,
+                    viewModel.authorName.value ?: "authorName",
+                    viewModel.bio.value ?: "bio",
+                    viewModel.content.value ?: "",
+                    viewModel.avatarSrc.value ?: "",
+                    ""
+                )
+            )
+            frag.show(parentFragmentManager, "comments")
         }
 
         viewModel.title.distinctUntilChanged().observe(viewLifecycleOwner) { binding.title.text = it }
@@ -377,9 +390,9 @@ fun setupUpWebview(web: WebView, context: Context) {
         }
     }
     if (VERSION.SDK_INT > VERSION_CODES.Q) {
+        // Android 13+
         web.isForceDarkAllowed = true
         runCatching {
-            // Android 13+
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(web.settings, true)
         }
     }

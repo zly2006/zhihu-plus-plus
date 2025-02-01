@@ -14,10 +14,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
@@ -71,9 +71,9 @@ class HomeFragment : Fragment() {
                 @Suppress("PropertyName")
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
-                val text = response.bodyAsText()
+                val text = response.body<JsonObject>()
                 try {
-                    val data = json.decodeFromString<Response>(text)
+                    val data = AccountData.decodeJson<Response>(text)
                     val index = viewModel.list.size
                     viewModel.list.addAll(data.data.filter {
                         (it.type != "feed_advert" && it.created_time != -1L &&

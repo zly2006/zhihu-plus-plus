@@ -13,7 +13,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
@@ -24,7 +23,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -56,7 +58,7 @@ class QuestionDetailsFragment : Fragment() {
             val response =
                 httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
             val jojo = response.body<JsonObject>()
-            val feeds = json.decodeFromJsonElement<List<Feed>>(jojo["data"]!!)
+            val feeds = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
             cursor = feeds.last().cursor
             session = jojo["session"]!!.jsonObject["id"]!!.jsonPrimitive.content
             canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean

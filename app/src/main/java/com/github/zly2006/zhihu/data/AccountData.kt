@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
+import android.util.Log
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -11,14 +12,13 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 import java.io.File
 
 object AccountData {
-    val json = Json {
+    private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true
@@ -37,6 +37,7 @@ object AccountData {
         val file = File(context.filesDir, "account.json")
         runCatching {
             if (file.exists()) {
+                data.component3()[""].toBoolean()
                 data = json.decodeFromString<Data>(file.readText())
             }
         }
@@ -69,7 +70,7 @@ object AccountData {
                     }
 
                     override suspend fun get(requestUrl: Url): List<Cookie> {
-                       return (cookies ?: data.cookies).map {
+                        return (cookies ?: data.cookies).map {
                             Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
                         }
                     }
@@ -104,5 +105,14 @@ object AccountData {
 
     fun delete(requireContext: Context) {
         saveData(requireContext, Data())
+    }
+
+    internal inline fun <reified T> decodeJson(json: JsonElement): T {
+        try {
+            return this.json.decodeFromJsonElement<T>(json)
+        } catch (e: SerializationException) {
+            Log.e("AccountData", "Failed to parse JSON: $json", e)
+            throw SerializationException("Failed to parse JSON: $json", e)
+        }
     }
 }

@@ -11,7 +11,6 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 
 fun loadImage(
@@ -21,12 +20,14 @@ fun loadImage(
     url: String,
     consumer: (Bitmap) -> Unit
 ) {
-    GlobalScope.launch(activity.mainExecutor.asCoroutineDispatcher()) {
+    GlobalScope.launch {
         try {
             httpClient.get(url).bodyAsChannel().toInputStream().buffered().use {
                 val bitmap = BitmapFactory.decodeStream(it)
-                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                    consumer(bitmap)
+                activity.runOnUiThread {
+                    if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                        consumer(bitmap)
+                    }
                 }
             }
         } catch (e: Exception) {

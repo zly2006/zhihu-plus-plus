@@ -35,9 +35,11 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="http"/>
+                <data android:scheme="zhihu" />
                 <data android:scheme="https"/>
                 <data android:host="www.zhihu.com"/>
                 <data android:host="zhihu.com"/>
+                <data android:host="*.zhihu.com"/>
                 <data android:pathPattern="/.*"/>
             </intent-filter>
             <intent-filter>

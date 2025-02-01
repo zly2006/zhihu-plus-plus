@@ -32,10 +32,11 @@ class CommentAdapter(
         val item = values[position]
         holder.like.text = "${item.likeCount}赞"
         holder.reply.text = "${item.childCommentCount}回复"
-        holder.time.text = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(item.createdTime)
-        holder.author.text = item.author.name
-        if (item.author.avatarUrl.isNotEmpty()) {
-            loadImage(holder, activity, httpClient, item.author.avatarUrl) {
+        holder.content.text = item.content
+        holder.time.text = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(item.createdTime * 1000)
+        holder.author.text = item.author.member.name
+        if (item.author.member.avatarUrl.isNotEmpty()) {
+            loadImage(holder, activity, httpClient, item.author.member.avatarUrl) {
                 holder.avatar.setImageBitmap(it)
             }
         }
@@ -58,6 +59,7 @@ class CommentAdapter(
         private val lifecycleRegistry = LifecycleRegistry(this)
         val author = binding.author
         val avatar = binding.avatar
+        val content = binding.content
         val time = binding.time
         val like = binding.like
         val reply = binding.reply

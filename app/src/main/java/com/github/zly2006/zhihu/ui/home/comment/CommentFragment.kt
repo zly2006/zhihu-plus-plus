@@ -10,8 +10,7 @@ import androidx.fragment.app.activityViewModels
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
+import com.github.zly2006.zhihu.databinding.FragmentCommentsBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -27,7 +26,7 @@ class CommentFragment : Fragment() {
     private var session = ""
     private var cursor = ""
 
-    private var _binding: FragmentQuestionDetailsBinding? = null
+    private var _binding: FragmentCommentsBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -43,11 +42,11 @@ class CommentFragment : Fragment() {
             fetchingNewItems = true
             activity?.runOnUiThread {
                 val start = comments.size
-                _binding?.answers?.adapter?.notifyItemRangeInserted(start, 0)
+                _binding?.list?.adapter?.notifyItemRangeInserted(start, 0)
             }
             fetchingNewItems = false
             if (canFetchMore) {
-                if (_binding != null && !binding.scroll.canScrollVertically(binding.scroll.height)) {
+                if (_binding != null && !binding.list.canScrollVertically(binding.list.height)) {
                     fetch()
                 }
             }
@@ -67,19 +66,18 @@ class CommentFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentQuestionDetailsBinding.inflate(inflater, container, false)
+        _binding = FragmentCommentsBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         val httpClient = AccountData.httpClient(requireContext())
         launch {
             fetch()
         }
-        setupUpWebview(binding.webview, requireContext())
 
-        binding.answers.adapter = CommentAdapter(comments, requireActivity(), httpClient)
-        binding.scroll.setOnScrollChangeListener { _, _, _, _, _ ->
+        binding.list.adapter = CommentAdapter(comments, requireActivity(), httpClient)
+        binding.list.setOnScrollChangeListener { _, _, _, _, _ ->
             if (!canFetchMore || fetchingNewItems) return@setOnScrollChangeListener
-            if (!binding.scroll.canScrollVertically(binding.scroll.height)) {
+            if (!binding.list.canScrollVertically(binding.list.height)) {
                 launch {
                     fetch()
                 }
