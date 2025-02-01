@@ -36,6 +36,12 @@ class CommentsDialog(
     private var _binding: FragmentCommentsBinding? = null
     val binding get() = _binding!!
 
+    override fun onStart() {
+        super.onStart()
+        // Full screen
+        dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         _binding = FragmentCommentsBinding.inflate(inflater, container, false)
 

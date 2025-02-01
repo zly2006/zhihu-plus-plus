@@ -17,6 +17,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import org.jsoup.nodes.Document
 
+@Deprecated("Use CommentsDialog instead", ReplaceWith("CommentsDialog"))
 class CommentFragment : Fragment() {
     private val httpClient by lazy { AccountData.httpClient(requireContext()) }
     private var fetchingNewItems = false
