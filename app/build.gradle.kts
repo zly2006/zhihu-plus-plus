@@ -1,3 +1,8 @@
+@file:OptIn(ExperimentalEncodingApi::class)
+
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -21,6 +26,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        register("env") {
+            storeFile = file("zhihu.jks").apply {
+                writeBytes(Base64.decode(System.getenv("signingKey")))
+            }
+            storePassword = System.getenv("keyStorePassword")
+            keyAlias = System.getenv("keyAlias")
+            keyPassword = System.getenv("keyPassword")
+        }
+    }
+
     buildTypes {
         val gitHash = grgit.head().abbreviatedId
         debug {
@@ -31,6 +47,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            signingConfig = signingConfigs["env"]
         }
     }
     compileOptions {
