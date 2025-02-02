@@ -20,20 +20,22 @@ android {
         minSdk = 28
         //noinspection OldTargetApi, my phone is Android 14
         targetSdk = 34
-        versionCode = 10
-        versionName = "0.3.5"
+        versionCode = 11
+        versionName = "0.3.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        register("env") {
-            storeFile = file("zhihu.jks").apply {
-                writeBytes(Base64.decode(System.getenv("signingKey")))
+        if (System.getenv("signingKey") != null) {
+            register("env") {
+                storeFile = file("zhihu.jks").apply {
+                    writeBytes(Base64.decode(System.getenv("signingKey")))
+                }
+                storePassword = System.getenv("keyStorePassword")
+                keyAlias = System.getenv("keyAlias")
+                keyPassword = System.getenv("keyPassword")
             }
-            storePassword = System.getenv("keyStorePassword")
-            keyAlias = System.getenv("keyAlias")
-            keyPassword = System.getenv("keyPassword")
         }
     }
 
@@ -47,7 +49,9 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            signingConfig = signingConfigs["env"]
+            if (System.getenv("signingKey") != null) {
+                signingConfig = signingConfigs["env"]
+            }
         }
     }
     compileOptions {

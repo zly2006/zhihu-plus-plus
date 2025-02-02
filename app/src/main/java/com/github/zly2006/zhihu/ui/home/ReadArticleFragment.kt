@@ -6,8 +6,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build.VERSION
-import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -26,10 +24,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
-import androidx.webkit.WebViewFeature
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
@@ -146,9 +142,6 @@ class ReadArticleFragment : Fragment() {
         val httpClient = AccountData.httpClient(requireContext())
         registerForContextMenu(binding.web)
         setupUpWebview(binding.web, requireContext())
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-            WebSettingsCompat.setAlgorithmicDarkeningAllowed(binding.web.settings, true);
-        }
         binding.web.setOnLongClickListener { view ->
             val result = (view as WebView).hitTestResult
             if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
@@ -390,13 +383,6 @@ fun setupUpWebview(web: WebView, context: Context) {
                 }
             }
             return super.shouldOverrideUrlLoading(view, request)
-        }
-    }
-    if (VERSION.SDK_INT > VERSION_CODES.Q) {
-        // Android 13+
-        web.isForceDarkAllowed = true
-        runCatching {
-            WebSettingsCompat.setAlgorithmicDarkeningAllowed(web.settings, true)
         }
     }
 }

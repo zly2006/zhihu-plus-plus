@@ -1,10 +1,39 @@
 img {
-    display: inline;
-    height: auto;
-    max-width: 100%;
+  display: inline;
+  height: auto;
+  max-width: 100%;
 }
 
 pre {
-    width: 100%;
-    overflow-x: auto;
+  width: 100%;
+  overflow-x: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #111;
+    color: #fff;
+  }
+
+  pre {
+    background-color: #444;
+    color: #fff;
+  }
+
+  code {
+    color: #fff;
+  }
+
+  blockquote {
+    background-color: #444;
+    color: #fff;
+  }
+
+  hr {
+    border-color: #666;
+  }
+
+  img {
+    background-color: white;
+  }
 }
