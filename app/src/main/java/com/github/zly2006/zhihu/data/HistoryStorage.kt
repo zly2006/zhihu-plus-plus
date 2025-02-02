@@ -5,6 +5,7 @@ import androidx.navigation.findNavController
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.catching
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -46,22 +47,28 @@ class HistoryStorage(
     companion object {
         inline fun <reified T: NavDestination> FragmentActivity.recordHistory(data: T) {
             if (this is MainActivity) {
-                Json.encodeToString(data)
-                this.history.add(data)
+                catching {
+                    Json.encodeToString(data)
+                    this.history.add(data)
+                }
             }
         }
 
         inline fun <reified T: NavDestination> FragmentActivity.navigate(data: T) {
             if (this is MainActivity) {
-                val navController = findNavController(R.id.nav_host_fragment_activity_main)
-                navController.navigate(data)
-                recordHistory(data)
+                catching {
+                    val navController = findNavController(R.id.nav_host_fragment_activity_main)
+                    navController.navigate(data)
+                    recordHistory(data)
+                }
             }
         }
 
         inline fun <reified T: NavDestination> FragmentActivity.postHistory(data: T) {
             if (this is MainActivity) {
-                this.history.post(data)
+                catching {
+                    this.history.post(data)
+                }
             }
         }
     }

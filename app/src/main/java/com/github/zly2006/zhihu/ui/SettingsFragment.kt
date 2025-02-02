@@ -9,6 +9,7 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.catching
 
 class SettingsFragment : PreferenceFragmentCompat() {
     private var clickCounter = 0
@@ -23,6 +24,18 @@ class SettingsFragment : PreferenceFragmentCompat() {
             developer.value = newValue as Boolean
             true
         }
+        developerCategory?.addPreference(
+            Preference(requireContext()).apply {
+                key = "crash_test"
+                title = "Crash Test"
+                setOnPreferenceClickListener {
+                    activity?.catching {
+                        throw RuntimeException("Crash Test")
+                    }
+                    return@setOnPreferenceClickListener true
+                }
+            }
+        )
         developer.observe(this) {
             developerCategory?.isVisible = it
         }

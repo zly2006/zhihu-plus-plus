@@ -1,6 +1,9 @@
 package com.github.zly2006.zhihu
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -8,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
@@ -29,26 +33,28 @@ import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.lang.Thread.UncaughtExceptionHandler
 
 @Serializable
 sealed interface NavDestination
 
 @Serializable
-data object Home: NavDestination
+data object Home : NavDestination
 
 @Serializable
-data object Dashboard: NavDestination
+data object Dashboard : NavDestination
 
 @Serializable
-data object Notifications: NavDestination
+data object Notifications : NavDestination
 
 @Serializable
-data object Settings: NavDestination
+data object Settings : NavDestination
 
 @Serializable
 enum class ArticleType {
     @SerialName("article")
     Article,
+
     @SerialName("answer")
     Answer,
     ;
@@ -69,7 +75,7 @@ data class Article(
     var content: String? = null,
     var avatarSrc: String? = null,
     var excerpt: String? = null,
-): NavDestination {
+) : NavDestination {
     override fun hashCode(): Int {
         return id.hashCode()
     }
@@ -83,7 +89,7 @@ data class Article(
 data class Question(
     val questionId: Long,
     val title: String
-): NavDestination {
+) : NavDestination {
     override fun hashCode(): Int {
         return questionId.hashCode()
     }
@@ -104,8 +110,29 @@ class MainActivity : AppCompatActivity() {
 
     private val gViewModel: MainActivityViewModel by viewModels()
 
+    val exceptionHandler = UncaughtExceptionHandler { t, e ->
+        Log.e("UncaughtException", "Uncaught exception", e)
+        AlertDialog.Builder(this).apply {
+            setTitle("Application crashed")
+            setMessage(e.toString())
+            setNeutralButton("Report") { _, _ ->
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this@MainActivity, "Copied bug details to clipboard", Toast.LENGTH_LONG).show()
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.data = Uri.parse("https://github.com/zly2006/zhihu-plus-plus/issues/new")
+                startActivity(intent)
+            }
+            setPositiveButton("OK") { _, _ ->
+            }
+        }.create().show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Thread.setDefaultUncaughtExceptionHandler(exceptionHandler)
+        Thread.currentThread().uncaughtExceptionHandler = exceptionHandler
 
         val data = AccountData.getData(this)
         history = HistoryStorage(this)
@@ -232,8 +259,7 @@ class MainActivity : AppCompatActivity() {
                         null
                     )
                 )
-            }
-            else if (uri.host == "questions") {
+            } else if (uri.host == "questions") {
                 val questionId = uri.pathSegments[0].toLong()
                 navController.navigate(
                     Question(
@@ -253,4 +279,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+}
+
+fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is MainActivity) {
+    try {
+        action()
+    } catch (e: Exception) {
+        exceptionHandler.uncaughtException(Thread.currentThread(), e)
+        null
+    }
+} else {
+    action()
 }

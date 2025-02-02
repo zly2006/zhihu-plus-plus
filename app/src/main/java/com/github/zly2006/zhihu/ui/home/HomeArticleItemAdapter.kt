@@ -33,16 +33,18 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
-                activity.navigate(Article(
-                    item.title,
-                    item.dto.target.type,
-                    item.dto.target.id,
-                    item.dto.target.author.name,
-                    item.dto.target.author.headline,
-                    item.dto.target.content,
-                    item.dto.target.author.avatar_url,
-                    item.dto.target.excerpt
-                ))
+                activity.navigate(
+                    Article(
+                        item.title,
+                        item.dto.target.type,
+                        item.dto.target.id,
+                        item.dto.target.author.name,
+                        item.dto.target.author.headline,
+                        item.dto.target.content,
+                        item.dto.target.author.avatar_url,
+                        item.dto.target.excerpt
+                    )
+                )
             }
         }
     }

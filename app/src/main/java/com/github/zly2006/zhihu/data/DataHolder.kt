@@ -171,7 +171,7 @@ object DataHolder {
         val relationship: Relationship,
         val relevantInfo: RelevantInfo,
         val reshipmentSettings: String,
-        val rewardInfo: RewardInfo,
+        val rewardInfo: RewardInfo? = null,
         val suggestEdit: SuggestEdit,
         val thanksCount: Int,
         val type: String,
