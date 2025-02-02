@@ -13,6 +13,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.catchingS
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
@@ -25,9 +26,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.*
 
 class HomeFragment : Fragment() {
     private val httpClient by lazy { AccountData.httpClient(requireContext()) }
@@ -45,24 +44,28 @@ class HomeFragment : Fragment() {
         try {
             coroutineScope {
                 launch {
-                    val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
-                        header("x-requested-with", "fetch")
-                        setBody(MultiPartFormDataContent(
-                            formData {
-                                append("items", buildJsonArray {
-                                    viewModel.list.filter { !it.touched && it.dto?.target?.type == "answer" }.forEach { item ->
-                                        add(buildJsonArray {
-                                            add("answer")
-                                            add(item.dto!!.target.id)
-                                            add("touch")
-                                        })
-                                    }
-                                }.toString())
-                            }
-                        ))
-                    }
-                    if (!response.status.isSuccess()) {
-                        Log.e("Browse-Fetch", response.bodyAsText())
+                    activity?.catchingS {
+                        val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
+                            header("x-requested-with", "fetch")
+                            setBody(
+                                MultiPartFormDataContent(
+                                formData {
+                                    append("items", buildJsonArray {
+                                        viewModel.list.filter { !it.touched && it.dto?.target is Feed.AnswerTarget }
+                                            .forEach { item ->
+                                                add(buildJsonArray {
+                                                    add("answer")
+                                                    add((item.dto!!.target as Feed.AnswerTarget).id)
+                                                    add("touch")
+                                                })
+                                            }
+                                    }.toString())
+                                }
+                            ))
+                        }
+                        if (!response.status.isSuccess()) {
+                            Log.e("Browse-Fetch", response.bodyAsText())
+                        }
                     }
                 }
             }
@@ -73,18 +76,31 @@ class HomeFragment : Fragment() {
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
                 val text = response.body<JsonObject>()
                 try {
+                    "${text["data"]!!.jsonArray.size} " + text["data"]!!.jsonArray.count { it.jsonObject["target"]!!.jsonObject["type"]!!.jsonPrimitive.content == "zvideo" }
                     val data = AccountData.decodeJson<Response>(text)
                     val index = viewModel.list.size
-                    viewModel.list.addAll(data.data.filter {
-                        (it.type != "feed_advert" && it.created_time != -1L &&
-                                it.target.created_time != -1L && it.target.relationship != null)
+                    viewModel.list.addAll(data.data
+                        .filter {
+//                        (it.type != "feed_advert" && it.created_time != -1L &&
+//                                it.target.created_time != -1L && it.target.relationship != null)
+                            it.target !is Feed.AdvertTarget
                     }.map {
-                        PlaceholderItem(
-                            it.target.question!!.title,
-                            it.target.excerpt,
-                            "${it.target.voteup_count}赞 ${it.target.author.name}",
-                            it
-                        )
+                        if (it.target is Feed.AnswerTarget) {
+                            PlaceholderItem(
+                                it.target.question.title,
+                                it.target.excerpt,
+                                "${it.target.voteup_count}赞 ${it.target.author.name}",
+                                it
+                            )
+                        }
+                        else {
+                            PlaceholderItem(
+                                it.target.javaClass.simpleName,
+                                if (it.target is Feed.VideoTarget) "知乎视频通常过于低质，不建议观看" else "",
+                                "Unknown",
+                                it
+                            )
+                        }
                     })
                     activity?.runOnUiThread {
                         _binding?.list?.adapter?.notifyItemRangeInserted(index, data.data.size)

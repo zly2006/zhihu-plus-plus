@@ -48,7 +48,7 @@ class QuestionDetailsFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    private val answers = mutableListOf<Feed>()
+    private val answers = mutableListOf<Feed.AnswerTarget>()
     private val viewModel: QuestionViewModel by viewModels()
     val gViewModel: MainActivityViewModel by activityViewModels()
 
@@ -64,7 +64,7 @@ class QuestionDetailsFragment : Fragment() {
             canFetchMore = !jojo["paging"]!!.jsonObject["is_end"]!!.jsonPrimitive.boolean
             activity?.runOnUiThread {
                 val start = answers.size
-                answers.addAll(feeds)
+                answers.addAll(feeds.map { it.target }.filterIsInstance<Feed.AnswerTarget>())
                 _binding?.answers?.adapter?.notifyItemRangeInserted(start, feeds.size)
             }
             fetchingNewItems = false

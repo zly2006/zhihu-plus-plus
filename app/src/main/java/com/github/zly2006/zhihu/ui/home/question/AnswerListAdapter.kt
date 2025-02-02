@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.*
 
 class AnswerListAdapter(
-    private val values: List<Feed>,
+    private val values: List<Feed.AnswerTarget>,
     private val activity: FragmentActivity,
     private val httpClient: HttpClient,
     private val viewModel: QuestionDetailsFragment.QuestionViewModel
@@ -33,25 +33,27 @@ class AnswerListAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
-        holder.summary.text = item.target.excerpt
-        holder.details.text = "${item.target.voteup_count} 赞同 · ${item.target.comment_count} 评论"
-        holder.author.text = item.target.author.name
+        holder.summary.text = item.excerpt
+        holder.details.text = "${item.voteup_count} 赞同 · ${item.comment_count} 评论"
+        holder.author.text = item.author.name
         holder.card.setOnClickListener {
-            DataHolder.putFeed(item)
+            DataHolder.putFeed(
+                Feed(target = item, type = "mock")
+            )
             activity.navigate(
                 Article(
-                    viewModel.title.value ?: "${item.target.author.name}的回答",
-                    item.target.type,
-                    item.target.id,
-                    item.target.author.name,
-                    item.target.author.headline,
-                    item.target.author.avatar_url,
-                    item.target.excerpt
+                    viewModel.title.value ?: "${item.author.name}的回答",
+                    "answer",
+                    item.id,
+                    item.author.name,
+                    item.author.headline,
+                    item.author.avatar_url,
+                    item.excerpt
                 )
             )
         }
-        if (item.target.author.avatar_url.isNotEmpty()) {
-            loadImage(holder, activity, httpClient, item.target.author.avatar_url) {
+        if (item.author.avatar_url.isNotEmpty()) {
+            loadImage(holder, activity, httpClient, item.author.avatar_url) {
                 holder.avatar.setImageBitmap(it)
             }
         }

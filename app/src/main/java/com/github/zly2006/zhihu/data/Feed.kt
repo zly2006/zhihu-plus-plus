@@ -2,7 +2,9 @@
 
 package com.github.zly2006.zhihu.data
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 
 @Serializable
 data class Feed(
@@ -23,9 +25,11 @@ data class Feed(
     val cursor: String = ""
 ) {
     @Serializable
-    data class Target(
+    sealed interface Target
+    @Serializable
+    @SerialName("answer")
+    data class AnswerTarget(
         val id: Long,
-        val type: String,
         val url: String,
         val author: Author,
         /**
@@ -33,28 +37,78 @@ data class Feed(
          */
         val created_time: Long = -1,
         val updated_time: Long = -1,
-        val voteup_count: Int,
+        val voteup_count: Int = -1,
         val thanks_count: Int = -1,
-        val comment_count: Int,
+        val comment_count: Int = -1,
         val is_copyable: Boolean = false,
-        val question: Question? = null,
+        val question: Question,
         val thumbnail: String? = null,
-        val excerpt: String = "<none>",
-        val excerpt_new: String? = null,
-        val preview_type: String = "<none>",
-        val preview_text: String = "<none>",
+        val excerpt: String,
+        val excerpt_new: String,
         val reshipment_settings: String = "",
         val content: String = "",
         /**
          * null - 广告
          */
-        val relationship: Relationship? = null,
+        val relationship: Relationship,
         val is_labeled: Boolean = false,
         val visited_count: Int = 0,
         val thumbnails: List<String> = emptyList(),
         val favorite_count: Int = 0,
         val answer_type: String? = null
-    )
+    ) : Target
+    @Serializable
+    @SerialName("zvideo")
+    data class VideoTarget(
+        val id: Long,
+        val author: Author,
+        val vote_count: Int = -1,
+        val comment_count: Int,
+        val title: String,
+        val description: String,
+        val excerpt: String,
+    ) : Target
+
+    @Serializable
+    @SerialName("article")
+    data class ArticleTarget(
+        val id: Long,
+        val url: String,
+        val author: Author,
+        val voteup_count: Int,
+        val created_time: Long,
+        val updated_time: Long,
+        val thanks_count: Int,
+        val comment_count: Int,
+        val title: String,
+        val excerpt: String,
+        val content: String,
+        val relationship: Relationship,
+        val is_labeled: Boolean,
+        val visited_count: Int,
+        val thumbnail: String,
+        val favorite_count: Int,
+        val answer_type: String
+    ) : Target
+
+    @Serializable
+    @SerialName("pin")
+    /**
+     * 知乎想法
+     */
+    data class PinTarget(
+        val id: Long,
+        val url: String,
+        val author: Author,
+        val comment_count: Int,
+        val content: JsonArray,
+        val favorite_count: Int,
+    ) : Target
+    @Serializable
+    @SerialName("feed_advert")
+    data class AdvertTarget(
+        val title: String
+    ) : Target
 
     @Serializable
     data class Badge(

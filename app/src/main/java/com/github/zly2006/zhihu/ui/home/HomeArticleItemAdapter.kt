@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ItemHomeArticleFeedBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
@@ -36,15 +37,17 @@ class HomeArticleItemAdapter(
             } else {
                 DataHolder.putFeed(item.dto)
                 activity.navigate(
-                    Article(
-                        item.title,
-                        item.dto.target.type,
-                        item.dto.target.id,
-                        item.dto.target.author.name,
-                        item.dto.target.author.headline,
-                        item.dto.target.author.avatar_url,
-                        item.dto.target.excerpt
-                    )
+                    if (item.dto.target is Feed.AnswerTarget) {
+                        Article(
+                            item.title,
+                            "answer",
+                            item.dto.target.id,
+                            item.dto.target.author.name,
+                            item.dto.target.author.headline,
+                            item.dto.target.author.avatar_url,
+                            item.dto.target.excerpt
+                        )
+                    } else error("Unknown target type: ${item.dto.target::class.simpleName}")
                 )
             }
         }

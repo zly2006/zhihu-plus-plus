@@ -543,8 +543,8 @@ object DataHolder {
     fun getAnswerCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
             try {
-                if ("answer/$id" !in feeds) {
-                    val feed = feeds["answer/$id"]!!.target
+                if ("answer/$id" in feeds) {
+                    val feed = feeds["answer/$id"]!!.target as Feed.AnswerTarget
                     callback(
                         Answer(
                             adminClosedComment = false,
@@ -577,19 +577,19 @@ object DataHolder {
                             id = feed.id,
                             question = AnswerModelQuestion(
                                 created = 0,
-                                id = feed.question?.id ?: 0,
+                                id = feed.question.id,
                                 questionType = "",
                                 relationship = Relationship(),
-                                title = feed.question?.title ?: "",
+                                title = feed.question.title,
                                 type = "",
                                 updatedTime = 0,
-                                url = feed.question?.url ?: ""
+                                url = feed.question.url
                             ),
                             reshipmentSettings = "",
                             thanksCount = feed.thanks_count,
-                            type = feed.type,
+                            type = "answer",
                             updatedTime = feed.updated_time,
-                            url = feed.url,
+                            url = feed.url ?: "",
                             voteupCount = feed.voteup_count,
                         )
                     )
@@ -624,7 +624,7 @@ object DataHolder {
     }
 
     fun putFeed(feed: Feed) {
-        if (feed.target.type == "answer") {
+        if (feed.target is Feed.AnswerTarget) {
             feeds["answer/${feed.target.id}"] = feed
         }
     }

@@ -289,3 +289,14 @@ fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is MainActivit
 } else {
     action()
 }
+
+suspend fun <T> FragmentActivity.catchingS(action: suspend () -> T): T? = if (this is MainActivity) {
+    try {
+        action()
+    } catch (e: Exception) {
+        exceptionHandler.uncaughtException(Thread.currentThread(), e)
+        null
+    }
+} else {
+    action()
+}
