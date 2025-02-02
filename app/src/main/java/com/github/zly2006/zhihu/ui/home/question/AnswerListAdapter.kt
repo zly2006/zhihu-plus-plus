@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsAnswerBinding
@@ -36,6 +37,7 @@ class AnswerListAdapter(
         holder.details.text = "${item.target.voteup_count} 赞同 · ${item.target.comment_count} 评论"
         holder.author.text = item.target.author.name
         holder.card.setOnClickListener {
+            DataHolder.putFeed(item)
             activity.navigate(
                 Article(
                     viewModel.title.value ?: "${item.target.author.name}的回答",
@@ -43,7 +45,6 @@ class AnswerListAdapter(
                     item.target.id,
                     item.target.author.name,
                     item.target.author.headline,
-                    item.target.content,
                     item.target.author.avatar_url,
                     item.target.excerpt
                 )

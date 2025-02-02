@@ -128,7 +128,6 @@ class ReadArticleFragment : Fragment() {
             viewModel.title.value = it.getString(ARG_TITLE) ?: "title"
             viewModel.authorName.value = it.getString(ARG_AUTHOR_NAME) ?: "authorName"
             viewModel.bio.value = it.getString(ARG_BIO) ?: "bio"
-            viewModel.content.value = it.getString(ARG_CONTENT) ?: ""
             viewModel.questionId.value = it.getLong(ARG_QUESTION_ID)
             viewModel.avatarSrc.value = it.getString(ARG_AVATAR_SRC) ?: ""
             viewModel.voteUpCount.value = it.getInt(ARG_VOTE_UP_COUNT)
@@ -203,9 +202,8 @@ class ReadArticleFragment : Fragment() {
                     articleId,
                     viewModel.authorName.value ?: "authorName",
                     viewModel.bio.value ?: "bio",
-                    viewModel.content.value ?: "",
-                    viewModel.avatarSrc.value ?: "",
-                    ""
+                    viewModel.avatarSrc.value,
+                    null
                 )
             )
             frag.show(parentFragmentManager, "comments")
@@ -267,38 +265,38 @@ class ReadArticleFragment : Fragment() {
 
         launch {
             if (type == "answer") {
-                val answer = activity?.let { DataHolder.getAnswer(it, httpClient, articleId) }?.value
-                if (answer != null) {
-                    if (viewModel.content.value.isNullOrEmpty()) {
-                        viewModel.content.postValue(answer.content)
-                    }
-                    viewModel.questionId.postValue(answer.question.id)
-                    viewModel.title.postValue(answer.question.title)
-                    viewModel.authorName.postValue(answer.author.name)
-                    viewModel.bio.postValue(answer.author.headline)
-                    viewModel.avatarSrc.postValue(answer.author.avatarUrl)
-                    viewModel.voteUpCount.postValue(answer.voteupCount)
-                    viewModel.commentCount.postValue(answer.commentCount)
-                    if (activity is MainActivity) {
-                        requireActivity().postHistory(
-                            Article(
-                                answer.question.title,
-                                "answer",
-                                articleId,
-                                answer.author.name,
-                                answer.author.headline,
-                                answer.content,
-                                answer.author.avatarUrl,
-                                answer.excerpt
+                if (activity == null) return@launch
+                DataHolder.getAnswerCallback(requireActivity(), httpClient, articleId) { answer ->
+                    if (answer != null) {
+                        if (viewModel.content.value.isNullOrEmpty()) {
+                            viewModel.content.postValue(answer.content)
+                        }
+                        viewModel.questionId.postValue(answer.question.id)
+                        viewModel.title.postValue(answer.question.title)
+                        viewModel.authorName.postValue(answer.author.name)
+                        viewModel.bio.postValue(answer.author.headline)
+                        viewModel.avatarSrc.postValue(answer.author.avatarUrl)
+                        viewModel.voteUpCount.postValue(answer.voteupCount)
+                        viewModel.commentCount.postValue(answer.commentCount)
+                        if (activity is MainActivity) {
+                            requireActivity().postHistory(
+                                Article(
+                                    answer.question.title,
+                                    "answer",
+                                    articleId,
+                                    answer.author.name,
+                                    answer.author.headline,
+                                    answer.author.avatarUrl,
+                                    answer.excerpt
+                                )
                             )
-                        )
+                        }
+                    } else {
+                        if (viewModel.content.value.isNullOrEmpty()) {
+                            viewModel.content.postValue("<h1>Answer not found</p>")
+                        }
+                        Log.e("ReadArticleFragment", "Answer not found")
                     }
-                } else {
-                    if (viewModel.content.value.isNullOrEmpty()) {
-                        viewModel.content.postValue("<h1>Answer not found</p>")
-                    }
-                    Log.e("ReadArticleFragment", "Answer not found")
-                    return@launch
                 }
             }
         }

@@ -95,7 +95,7 @@ class HomeFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e("HomeFragment", "Failed to fetch", e)
-            viewModel.toast.postValue("Failed to fetch recommends")
+            viewModel.toast.postValue("Failed to fetch recommends, ${e.message}")
         } finally {
             fetchingNewItems = false
         }

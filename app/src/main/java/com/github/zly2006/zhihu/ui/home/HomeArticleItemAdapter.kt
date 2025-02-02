@@ -7,6 +7,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ItemHomeArticleFeedBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
@@ -33,6 +34,7 @@ class HomeArticleItemAdapter(
                     }
                 }.create().show()
             } else {
+                DataHolder.putFeed(item.dto)
                 activity.navigate(
                     Article(
                         item.title,
@@ -40,7 +42,6 @@ class HomeArticleItemAdapter(
                         item.dto.target.id,
                         item.dto.target.author.name,
                         item.dto.target.author.headline,
-                        item.dto.target.content,
                         item.dto.target.author.avatar_url,
                         item.dto.target.excerpt
                     )

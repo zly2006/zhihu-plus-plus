@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui.dashboard
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -51,6 +52,10 @@ class DashboardFragment : Fragment() {
         if (requireActivity() is MainActivity) {
             val httpClient = AccountData.httpClient(requireContext())
             val history = (requireActivity() as MainActivity).history.history
+            if (binding.viewHistory.adapter != null) {
+                @SuppressLint("NotifyDataSetChanged")
+                binding.viewHistory.adapter!!.notifyDataSetChanged()
+            }
             binding.viewHistory.adapter = ViewHistoryAdapter(history, requireActivity(), httpClient)
         }
         return root

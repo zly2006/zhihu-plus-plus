@@ -6,6 +6,8 @@ import androidx.fragment.app.FragmentActivity
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
@@ -21,8 +23,6 @@ object DataHolder {
     data class Author(
         val avatarUrl: String,
         val avatarUrlTemplate: String,
-        val badge: List<JsonElement>,
-        val badgeV2: BadgeV2,
         val gender: Int,
         val headline: String,
         val id: String,
@@ -34,6 +34,8 @@ object DataHolder {
         val url: String,
         val urlToken: String,
         val userType: String,
+        val badge: List<JsonElement> = emptyList(),
+        val badgeV2: BadgeV2? = null,
         val exposedMedal: ExposedMedal? = null,
         val vipInfo: VipInfo? = null,
         val followerCount: Int = 0,
@@ -141,38 +143,38 @@ object DataHolder {
 
     @Serializable
     data class Answer(
-        val adminClosedComment: Boolean,
-        val annotationAction: String?,
+        val adminClosedComment: Boolean = false,
+        val annotationAction: String? = null,
         val answerType: String,
         val author: Author,
         val canComment: CanComment,
-        val collapseReason: String,
-        val collapsedBy: String,
-        val commentCount: Int,
-        val commentPermission: String,
+        val collapseReason: String? = null,
+        val collapsedBy: String? = null,
+        val commentCount: Int = 0,
+        val commentPermission: String? = null,
         val content: String,
-        val contentNeedTruncated: Boolean,
+        val contentNeedTruncated: Boolean = false,
         val createdTime: Long,
-        val editableContent: String,
+        val editableContent: String? = null,
         val excerpt: String,
-        val extras: String,
+        val extras: String? = null,
         val favlistsCount: Int = 0,
         val id: Long,
-        val isCollapsed: Boolean,
-        val isCopyable: Boolean,
-        val isJumpNative: Boolean,
-        val isLabeled: Boolean,
-        val isNormal: Boolean,
+        val isCollapsed: Boolean = false,
+        val isCopyable: Boolean = false,
+        val isJumpNative: Boolean = false,
+        val isLabeled: Boolean = false,
+        val isNormal: Boolean = false,
         val isMine: Boolean = false,
-        val isSticky: Boolean,
-        val isVisible: Boolean,
+        val isSticky: Boolean = false,
+        val isVisible: Boolean = false,
         val question: AnswerModelQuestion,
-        val reactionInstruction: ReactionInstruction,
-        val relationship: Relationship,
-        val relevantInfo: RelevantInfo,
-        val reshipmentSettings: String,
+        val reactionInstruction: ReactionInstruction? = null,
+        val relationship: Relationship? = null,
+        val relevantInfo: RelevantInfo? = null,
+        val reshipmentSettings: String? = null,
         val rewardInfo: RewardInfo? = null,
-        val suggestEdit: SuggestEdit,
+        val suggestEdit: SuggestEdit? = null,
         val thanksCount: Int,
         val type: String,
         val updatedTime: Long,
@@ -473,6 +475,7 @@ object DataHolder {
 
     private val questions = mutableMapOf<Long, ReferenceCount<Question>>()
     private val answers = mutableMapOf<Long, ReferenceCount<Answer>>()
+    private val feeds = mutableMapOf<String, Feed>()
 
     private suspend fun get(httpClient: HttpClient, url: String) {
         val html = httpClient.get(url).bodyAsText()
@@ -537,6 +540,72 @@ object DataHolder {
         }
     }
 
+    fun getAnswerCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
+        GlobalScope.launch {
+            try {
+                if ("answer/$id" !in feeds) {
+                    val feed = feeds["answer/$id"]!!.target
+                    callback(
+                        Answer(
+                            adminClosedComment = false,
+                            annotationAction = null,
+                            answerType = feed.answer_type ?: "",
+                            author = Author(
+                                avatarUrl = feed.author.avatar_url,
+                                avatarUrlTemplate = "",
+                                gender = feed.author.gender,
+                                headline = feed.author.headline,
+                                id = feed.author.id,
+                                isAdvertiser = false,
+                                isOrg = false,
+                                isPrivacy = false,
+                                name = feed.author.name,
+                                type = "mock",
+                                url = feed.author.url,
+                                urlToken = feed.author.url_token,
+                                userType = feed.author.user_type
+                            ),
+                            canComment = CanComment(
+                                status = false,
+                                reason = ""
+                            ),
+                            commentCount = feed.comment_count,
+                            content = feed.content,
+                            createdTime = feed.created_time,
+                            excerpt = feed.excerpt,
+                            favlistsCount = feed.favorite_count,
+                            id = feed.id,
+                            question = AnswerModelQuestion(
+                                created = 0,
+                                id = feed.question?.id ?: 0,
+                                questionType = "",
+                                relationship = Relationship(),
+                                title = feed.question?.title ?: "",
+                                type = "",
+                                updatedTime = 0,
+                                url = feed.question?.url ?: ""
+                            ),
+                            reshipmentSettings = "",
+                            thanksCount = feed.thanks_count,
+                            type = feed.type,
+                            updatedTime = feed.updated_time,
+                            url = feed.url,
+                            voteupCount = feed.voteup_count,
+                        )
+                    )
+                }
+                if (id !in answers) {
+                    get(httpClient, "https://www.zhihu.com/answer/$id")
+                }
+                callback(answers[id]?.also { it.count++ }?.value)
+            } catch (e: Exception) {
+                Log.e("DataHolder", "Failed to get answer $id", e)
+                Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
+                callback(null)
+            }
+        }
+    }
+
     suspend fun getQuestion(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
         try {
             if (id !in questions) {
@@ -552,5 +621,11 @@ object DataHolder {
 
     fun getAnswersFor(questionId: Long): List<ReferenceCount<Answer>> {
         return answers.filter { it.value.value.question.id == questionId }.values.toList()
+    }
+
+    fun putFeed(feed: Feed) {
+        if (feed.target.type == "answer") {
+            feeds["answer/${feed.target.id}"] = feed
+        }
     }
 }

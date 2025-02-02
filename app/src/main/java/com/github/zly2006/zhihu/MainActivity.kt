@@ -72,7 +72,6 @@ data class Article(
     val id: Long,
     var authorName: String,
     var authorBio: String,
-    var content: String? = null,
     var avatarSrc: String? = null,
     var excerpt: String? = null,
 ) : NavDestination {
@@ -114,7 +113,7 @@ class MainActivity : AppCompatActivity() {
         Log.e("UncaughtException", "Uncaught exception", e)
         AlertDialog.Builder(this).apply {
             setTitle("Application crashed")
-            setMessage(e.toString())
+            setMessage(e.toString().substring(0, 100))
             setNeutralButton("Report") { _, _ ->
                 val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())
@@ -212,7 +211,6 @@ class MainActivity : AppCompatActivity() {
                             "loading...",
                             "loading...",
                             null,
-                            null
                         )
                     )
                 } else if (uri.pathSegments.size == 2
