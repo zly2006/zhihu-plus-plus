@@ -44,7 +44,6 @@ data class Feed(
         val question: Question,
         val thumbnail: String? = null,
         val excerpt: String,
-        val excerpt_new: String,
         val reshipment_settings: String = "",
         val content: String = "",
         /**

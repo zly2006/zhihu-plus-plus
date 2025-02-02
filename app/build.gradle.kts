@@ -15,8 +15,8 @@ android {
         minSdk = 28
         //noinspection OldTargetApi, my phone is Android 14
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.3.4"
+        versionCode = 10
+        versionName = "0.3.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -59,10 +59,10 @@ android {
     }
 }
 
-val ktor = "2.3.12"
+val ktor = "2.3.13"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
-    val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
+//    val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
 //    implementation (composeBom)
 //    androidTestImplementation (composeBom)
 //    implementation ("androidx.compose.material3:material3")
