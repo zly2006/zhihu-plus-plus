@@ -23,6 +23,8 @@ class HomeArticleItemAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
+        holder.title.visibility = if (item.title == "已屏蔽") TextView.GONE
+        else TextView.VISIBLE
         holder.title.text = item.title
         holder.summary.text = item.summary
         holder.details.text = item.details

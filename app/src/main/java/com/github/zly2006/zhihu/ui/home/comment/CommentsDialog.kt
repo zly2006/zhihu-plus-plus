@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
@@ -23,12 +24,17 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 
+data class CommentItem(
+    val item: DataHolder.Comment,
+    val clickTarget: CommentHolder?
+)
+
 class CommentsDialog(
     private val httpClient: HttpClient,
     private val content: NavDestination
 ) : DialogFragment() {
     init {
-        require(content is Article || content is Question) {
+        require(content is Article || content is Question || content is CommentHolder) {
             "Only Article and Question can have comments"
         }
     }
@@ -47,7 +53,7 @@ class CommentsDialog(
 
         val root: View = binding.root
 
-        val list = mutableListOf<DataHolder.Comment>()
+        val list = mutableListOf<CommentItem>()
         Log.i("CommentsDialog", "Loading comments for $content")
         GlobalScope.launch {
             if (content is Article && content.type == "answer") {
@@ -67,6 +73,13 @@ class CommentsDialog(
                             Toast.makeText(requireContext(), "Failed to decode comments", Toast.LENGTH_SHORT).show()
                         }
                         return@launch
+                    }.map {
+                        CommentItem(
+                            it, CommentHolder(
+                                it.id,
+                                content
+                            )
+                        )
                     }
                     val posStart = list.size
                     list.addAll(commentsList)

@@ -7,7 +7,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.ItemCommentBinding
 import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.*
@@ -22,7 +21,7 @@ private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
 private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
 class CommentAdapter(
-    private val values: List<DataHolder.Comment>,
+    private val values: List<CommentItem>,
     private val activity: FragmentActivity,
     private val httpClient: HttpClient,
 ) : RecyclerView.Adapter<CommentAdapter.ViewHolder>() {
@@ -38,25 +37,34 @@ class CommentAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = values[position]
-        val html = Jsoup.parse(item.content)
-        holder.like.text = "${item.likeCount} 赞"
-        holder.reply.text = "${item.childCommentCount} 回复"
+        val html = Jsoup.parse(item.item.content)
+        holder.like.text = "${item.item.likeCount} 赞"
+        holder.reply.text = "${item.item.childCommentCount} 回复"
         holder.content.text = html.text()
-        val instant = Instant.fromEpochSeconds(item.createdTime)
+        val instant = Instant.fromEpochSeconds(item.item.createdTime)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
         val nowLocalDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
         if (localDateTime.date == nowLocalDateTime.date) {
-            holder.time.text = HMS.format(item.createdTime * 1000)
+            holder.time.text = HMS.format(item.item.createdTime * 1000)
         } else if (localDateTime.year == nowLocalDateTime.year) {
-            holder.time.text = MDHMS.format(item.createdTime * 1000)
+            holder.time.text = MDHMS.format(item.item.createdTime * 1000)
         } else {
-            holder.time.text = YMDHMS.format(item.createdTime * 1000)
+            holder.time.text = YMDHMS.format(item.item.createdTime * 1000)
         }
-        holder.author.text = item.author.member.name
-        if (item.author.member.avatarUrl.isNotEmpty()) {
-            loadImage(holder, activity, httpClient, item.author.member.avatarUrl) {
+        holder.author.text = item.item.author.member.name
+        if (item.item.author.member.avatarUrl.isNotEmpty()) {
+            loadImage(holder, activity, httpClient, item.item.author.member.avatarUrl) {
                 holder.avatar.setImageBitmap(it)
+            }
+        }
+
+        if (item.clickTarget != null) {
+            holder.card.setOnClickListener {
+                val frag = CommentsDialog(
+                    httpClient, item.clickTarget
+                )
+                frag.show(activity.supportFragmentManager, "comments_holder")
             }
         }
     }

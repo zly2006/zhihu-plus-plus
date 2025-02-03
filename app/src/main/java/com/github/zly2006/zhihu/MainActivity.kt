@@ -85,6 +85,12 @@ data class Article(
 }
 
 @Serializable
+data class CommentHolder(
+    val commentId: String,
+    val article: Article,
+) : NavDestination
+
+@Serializable
 data class Question(
     val questionId: Long,
     val title: String

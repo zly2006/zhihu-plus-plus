@@ -85,20 +85,35 @@ class HomeFragment : Fragment() {
 //                                it.target.created_time != -1L && it.target.relationship != null)
                             it.target !is Feed.AdvertTarget
                     }.map {
+                        if (it.target.filterReason() != null) {
+                            return@map PlaceholderItem(
+                                "已屏蔽",
+                                it.target.filterReason()!!,
+                                it.target.detailsText(),
+                                it
+                            )
+                        }
                         if (it.target is Feed.AnswerTarget) {
                             PlaceholderItem(
                                 it.target.question.title,
                                 it.target.excerpt,
-                                "${it.target.voteup_count}赞 ${it.target.author.name}",
+                                it.target.detailsText(),
+                                it
+                            )
+                        }
+                        else if (it.target is Feed.ArticleTarget) {
+                            PlaceholderItem(
+                                it.target.title,
+                                it.target.excerpt,
+                                it.target.detailsText(),
                                 it
                             )
                         }
                         else {
                             PlaceholderItem(
                                 it.target.javaClass.simpleName,
-                                if (it.target is Feed.VideoTarget) "知乎视频通常过于低质，不建议观看" else "",
-                                "Unknown",
-                                it
+                                "Not Implemented",
+                                it.target.detailsText(),
                             )
                         }
                     })

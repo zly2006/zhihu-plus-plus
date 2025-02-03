@@ -25,7 +25,23 @@ data class Feed(
     val cursor: String = ""
 ) {
     @Serializable
-    sealed interface Target
+    sealed interface Target {
+        fun filterReason(): String? {
+            return null
+        }
+
+        fun description(): String {
+            return when (this) {
+                is AnswerTarget -> "回答"
+                is VideoTarget -> "视频"
+                is ArticleTarget -> "文章"
+                is PinTarget -> "想法"
+                is AdvertTarget -> "广告"
+            }
+        }
+
+        fun detailsText(): String
+    }
     @Serializable
     @SerialName("answer")
     data class AnswerTarget(
@@ -55,7 +71,17 @@ data class Feed(
         val thumbnails: List<String> = emptyList(),
         val favorite_count: Int = 0,
         val answer_type: String? = null
-    ) : Target
+    ) : Target {
+        override fun filterReason(): String? {
+            return if (voteup_count < 10 && !author.is_following) {
+                "规则：回答；赞数 < 10，未关注作者"
+            } else null
+        }
+
+        override fun detailsText(): String {
+            return "回答 - $voteup_count 赞同 · $comment_count 评论"
+        }
+    }
     @Serializable
     @SerialName("zvideo")
     data class VideoTarget(
@@ -66,7 +92,17 @@ data class Feed(
         val title: String,
         val description: String,
         val excerpt: String,
-    ) : Target
+    ) : Target {
+        override fun filterReason(): String? {
+            return if (author.followers_count < 50 && vote_count < 20 && !author.is_following) {
+                "规则：所有视频"
+            } else null
+        }
+
+        override fun detailsText(): String {
+            return "视频 - $vote_count 赞 · $comment_count 评论"
+        }
+    }
 
     @Serializable
     @SerialName("article")
@@ -75,20 +111,24 @@ data class Feed(
         val url: String,
         val author: Author,
         val voteup_count: Int,
-        val created_time: Long,
-        val updated_time: Long,
-        val thanks_count: Int,
         val comment_count: Int,
         val title: String,
         val excerpt: String,
         val content: String,
-        val relationship: Relationship,
         val is_labeled: Boolean,
         val visited_count: Int,
-        val thumbnail: String,
         val favorite_count: Int,
-        val answer_type: String
-    ) : Target
+    ) : Target {
+        override fun filterReason(): String? {
+            return if ((author.followers_count < 50 || voteup_count < 20) && !author.is_following) {
+                "规则：文章；作者粉丝数 < 50 || 文章赞数 < 20，未关注作者"
+            } else null
+        }
+
+        override fun detailsText(): String {
+            return "文章 - $voteup_count 赞 · $comment_count 评论"
+        }
+    }
 
     @Serializable
     @SerialName("pin")
@@ -102,12 +142,28 @@ data class Feed(
         val comment_count: Int,
         val content: JsonArray,
         val favorite_count: Int,
-    ) : Target
+    ) : Target {
+        override fun filterReason(): String? {
+            return null
+        }
+
+        override fun detailsText(): String {
+            return "想法 - $favorite_count 赞 · $comment_count 评论"
+        }
+    }
     @Serializable
     @SerialName("feed_advert")
     data class AdvertTarget(
         val title: String
-    ) : Target
+    ) : Target {
+        override fun filterReason(): String? {
+            return "广告"
+        }
+
+        override fun detailsText(): String {
+            return "广告"
+        }
+    }
 
     @Serializable
     data class Badge(
