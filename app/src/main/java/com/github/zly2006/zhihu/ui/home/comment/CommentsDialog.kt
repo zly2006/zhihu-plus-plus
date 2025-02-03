@@ -101,7 +101,38 @@ class CommentsDialog(
                 }
             } else if (content is CommentHolder) {
                 // 楼中楼
+                val response =
+                    httpClient.get("https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment?order_by=ts&limit=20&offset=")
 
+                if (response.status.isSuccess()) {
+                    val comments = response.body<JsonObject>()
+                    val ja = comments["data"]!!.jsonArray
+                    val commentsList = try {
+                        AccountData.decodeJson<List<DataHolder.Comment>>(ja)
+                    } catch (e: Exception) {
+                        Log.e("CommentsDialog", "Failed to decode comments", e)
+                        Log.e("", ja.toString())
+                        activity?.runOnUiThread {
+                            Toast.makeText(requireContext(), "Failed to decode comments", Toast.LENGTH_SHORT).show()
+                        }
+                        return@launch
+                    }.map { CommentItem(it, null) }
+                    val posStart = list.size
+                    list.addAll(commentsList)
+                    Log.i("CommentsDialog", "Loaded ${commentsList.size} comments")
+                    activity?.runOnUiThread {
+                        binding.list.adapter?.notifyItemRangeInserted(posStart, commentsList.size)
+                    }
+                } else {
+                    Log.e("CommentsDialog", "Failed to load comments: ${response.status}, ${response.bodyAsText()}")
+                    activity?.runOnUiThread {
+                        Toast.makeText(
+                            requireContext(),
+                            "Failed to load comments: ${response.status}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             } else {
                 activity?.runOnUiThread {
                     Toast.makeText(requireContext(), "Comments are not supported for this content", Toast.LENGTH_SHORT)

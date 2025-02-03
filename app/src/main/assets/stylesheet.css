@@ -9,6 +9,12 @@ pre {
   overflow-x: auto;
 }
 
+a {
+  color: #007bff;
+  text-decoration: none;
+  white-space: pre-wrap;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     background-color: #111;
