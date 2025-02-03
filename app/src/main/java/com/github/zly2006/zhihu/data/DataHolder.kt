@@ -8,8 +8,10 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
@@ -441,8 +443,25 @@ object DataHolder {
         @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean = false,
         @SerialName("_") val underscore: JsonElement? = null
     ) {
-        @Serializable
-        sealed interface MaybeAuthor
+        private object MaybeAuthorSerializer : JsonContentPolymorphicSerializer<MaybeAuthor>(MaybeAuthor::class) {
+            override fun selectDeserializer(element: JsonElement): DeserializationStrategy<MaybeAuthor> {
+                if (element !is JsonObject) {
+                    error("MaybeAuthorSerializer: Expected JsonObject as JSON element")
+                }
+                return if ("role" in element.jsonObject) {
+                    AuthorData.serializer()
+                } else {
+                    Author.serializer()
+                }
+            }
+        }
+
+        @Serializable(with = MaybeAuthorSerializer::class)
+        sealed interface MaybeAuthor {
+            @Transient
+            val user: Author
+                get() = if (this is AuthorData) member else this as Author
+        }
 
         @Serializable
         data class Author(
