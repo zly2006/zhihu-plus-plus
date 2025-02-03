@@ -40,12 +40,12 @@ class DashboardFragment : Fragment() {
         binding.openUrl.setOnClickListener {
             val url = binding.url.text.toString()
             Uri.parse(url)?.let { uri ->
-                if (uri.host != "www.zhihu.com") {
-                    Toast.makeText(context, "Invalid URL (not zhihu)", Toast.LENGTH_LONG).show()
+                if (uri.host == "www.zhihu.com" || uri.host == "zhuanlan.zhihu.com") {
+                    val intent = Intent(Intent.ACTION_VIEW, uri, requireContext(), MainActivity::class.java)
+                    startActivity(intent)
                     return@let
                 }
-                val intent = Intent(Intent.ACTION_VIEW, uri, requireContext(), MainActivity::class.java)
-                startActivity(intent)
+                Toast.makeText(context, "Invalid URL (not zhihu)", Toast.LENGTH_LONG).show()
             }
         }
 

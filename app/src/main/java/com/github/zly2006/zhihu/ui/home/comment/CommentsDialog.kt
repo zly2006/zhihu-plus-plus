@@ -75,7 +75,9 @@ class CommentsDialog(
                         return@launch
                     }.map {
                         CommentItem(
-                            it, CommentHolder(
+                            it,
+                            if (it.childCommentCount == 0) null
+                            else CommentHolder(
                                 it.id,
                                 content
                             )
@@ -97,6 +99,9 @@ class CommentsDialog(
                         ).show()
                     }
                 }
+            } else if (content is CommentHolder) {
+                // 楼中楼
+
             } else {
                 activity?.runOnUiThread {
                     Toast.makeText(requireContext(), "Comments are not supported for this content", Toast.LENGTH_SHORT)

@@ -27,7 +27,6 @@ import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
@@ -54,12 +53,11 @@ import kotlin.properties.Delegates
 /**
  * answer | article
  */
-private const val ARG_ARTICLE_TYPE = "type"
+private const val ARG_ARTICLE_TYPE = "article_type_1"
 private const val ARG_ARTICLE_ID = "id"
 private const val ARG_TITLE = "title"
 private const val ARG_AUTHOR_NAME = "authorName"
 private const val ARG_BIO = "authorBio"
-private const val ARG_CONTENT = "content"
 private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_AVATAR_SRC = "avatarSrc"
 private const val ARG_VOTE_UP_COUNT = "voteUpCount"
@@ -271,19 +269,17 @@ class ReadArticleFragment : Fragment() {
                         viewModel.avatarSrc.postValue(answer.author.avatarUrl)
                         viewModel.voteUpCount.postValue(answer.voteupCount)
                         viewModel.commentCount.postValue(answer.commentCount)
-                        if (activity is MainActivity) {
-                            requireActivity().postHistory(
-                                Article(
-                                    answer.question.title,
-                                    "answer",
-                                    articleId,
-                                    answer.author.name,
-                                    answer.author.headline,
-                                    answer.author.avatarUrl,
-                                    answer.excerpt
-                                )
+                        activity?.postHistory(
+                            Article(
+                                answer.question.title,
+                                "answer",
+                                articleId,
+                                answer.author.name,
+                                answer.author.headline,
+                                answer.author.avatarUrl,
+                                answer.excerpt
                             )
-                        }
+                        )
                     } else {
                         if (viewModel.content.value.isNullOrEmpty()) {
                             viewModel.content.postValue("<h1>Answer not found</p>")
@@ -297,25 +293,23 @@ class ReadArticleFragment : Fragment() {
                         if (viewModel.content.value.isNullOrEmpty()) {
                             viewModel.content.postValue(article.content)
                         }
-//                        viewModel.title.postValue(article.title)
-//                        viewModel.authorName.postValue(article.authorName)
-//                        viewModel.bio.postValue(article.authorBio)
-//                        viewModel.avatarSrc.postValue(article.avatarSrc)
-//                        viewModel.voteUpCount.postValue(article.voteUpCount)
-//                        viewModel.commentCount.postValue(article.commentCount)
-//                        if (activity is MainActivity) {
-//                            requireActivity().postHistory(
-//                                Article(
-//                                    article.title,
-//                                    "article",
-//                                    articleId,
-//                                    article.authorName,
-//                                    article.authorBio,
-//                                    article.avatarSrc,
-//                                    article.content
-//                                )
-//                            )
-//                        }
+                        viewModel.title.postValue(article.title)
+                        viewModel.authorName.postValue(article.author.name)
+                        viewModel.bio.postValue(article.author.headline)
+                        viewModel.avatarSrc.postValue(article.author.avatarUrl)
+                        viewModel.voteUpCount.postValue(article.voteupCount)
+                        viewModel.commentCount.postValue(article.commentCount)
+                        activity?.postHistory(
+                            Article(
+                                article.title,
+                                "article",
+                                articleId,
+                                article.author.name,
+                                article.author.headline,
+                                article.author.avatarUrl,
+                                article.excerpt
+                            )
+                        )
                     } else {
                         if (viewModel.content.value.isNullOrEmpty()) {
                             viewModel.content.postValue("<h1>Article not found</p>")

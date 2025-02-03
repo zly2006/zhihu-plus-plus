@@ -28,7 +28,7 @@ object DataHolder {
         val id: String,
         val isAdvertiser: Boolean,
         val isOrg: Boolean,
-        val isPrivacy: Boolean,
+        val isPrivacy: Boolean = false,
         val name: String,
         val type: String,
         val url: String,
@@ -128,7 +128,7 @@ object DataHolder {
         val status: Boolean,
         val tip: String,
         val title: String,
-        val unnormalDetails: UnnormalDetails,
+        val unnormalDetails: UnnormalDetails? = null,
         val url: String
     )
 
@@ -178,6 +178,55 @@ object DataHolder {
         val thanksCount: Int,
         val type: String,
         val updatedTime: Long,
+        val url: String,
+        val voteupCount: Int,
+        val bizExt: BizExt? = null,
+        val contentMark: JsonObject? = null,
+        val decorativeLabels: List<JsonElement> = emptyList(),
+        val visibleOnlyToAuthor: Boolean = false,
+        val zhiPlusExtraInfo: String = "",
+        val thumbnailInfo: ThumbnailInfo? = null,
+        val preload: Boolean = false,
+        val stickyInfo: String = "",
+        val ipInfo: String? = null,
+        val settings: Settings? = null,
+        val attachedInfo: JsonElement? = null
+    )
+
+    @Serializable
+    data class Article(
+        val adminClosedComment: Boolean = false,
+        val author: Author,
+        val canComment: CanComment,
+        val collapseReason: String? = null,
+        val collapsedBy: String? = null,
+        val commentCount: Int = 0,
+        val commentPermission: String? = null,
+        val title: String,
+        val content: String,
+        val contentNeedTruncated: Boolean = false,
+        val editableContent: String? = null,
+        val excerpt: String,
+        val extras: String? = null,
+        val favlistsCount: Int = 0,
+        val id: Long,
+        val isCollapsed: Boolean = false,
+        val isCopyable: Boolean = false,
+        val isJumpNative: Boolean = false,
+        val isLabeled: Boolean = false,
+        val isNormal: Boolean = false,
+        val isMine: Boolean = false,
+        val isSticky: Boolean = false,
+        val isVisible: Boolean = false,
+        val reactionInstruction: ReactionInstruction? = null,
+        val relationship: Relationship? = null,
+        val relevantInfo: RelevantInfo? = null,
+        val reshipmentSettings: String? = null,
+        val rewardInfo: RewardInfo? = null,
+        val suggestEdit: SuggestEdit? = null,
+        val type: String,
+        val created: Long,
+        val updated: Long,
         val url: String,
         val voteupCount: Int,
         val bizExt: BizExt? = null,
@@ -475,6 +524,7 @@ object DataHolder {
 
     private val questions = mutableMapOf<Long, ReferenceCount<Question>>()
     private val answers = mutableMapOf<Long, ReferenceCount<Answer>>()
+    private val articles = mutableMapOf<Long, ReferenceCount<Article>>()
     private val feeds = mutableMapOf<String, Feed>()
 
     private suspend fun get(httpClient: HttpClient, url: String) {
@@ -503,16 +553,24 @@ object DataHolder {
             val answers = entities["answers"]!!.jsonObject
             for ((_, answer) in answers) {
                 try {
-                    val answerModel = Json.decodeFromJsonElement<Answer>(answer)
+                    val answerModel = AccountData.decodeJson<Answer>(answer)
                     this.answers[answerModel.id] = ReferenceCount(answerModel)
                     this.questions[answerModel.question.id]!!.count++
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
-
-                    val answerModel = AccountData.decodeJson<Answer>(answer)
-                    this.answers[answerModel.id] = ReferenceCount(answerModel)
-                    this.questions[answerModel.question.id]!!.count++
+                }
+            }
+        }
+        if ("articles" in entities) {
+            val articles = entities["articles"]!!.jsonObject
+            for ((_, article) in articles) {
+                try {
+                    val articleModel = AccountData.decodeJson<Article>(article)
+                    this.articles[articleModel.id] = ReferenceCount(articleModel)
+                } catch (e: Exception) {
+                    println(jojo.toString())
+                    e.printStackTrace()
                 }
             }
         }
@@ -527,18 +585,20 @@ object DataHolder {
         answers.remove(answerId)
     }
 
-    suspend fun getAnswer(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Answer>? {
-        try {
-            if (id !in answers) {
-                get(httpClient, "https://www.zhihu.com/answer/$id")
-            }
-            return answers[id]?.also { it.count++ }
-        } catch (e: Exception) {
-            Log.e("DataHolder", "Failed to get answer $id", e)
-            Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
-            return null
-        }
-    }
+    private fun Feed.Author.mock() = Author(
+        avatarUrl = avatar_url,
+        avatarUrlTemplate = "",
+        gender = gender,
+        headline = headline,
+        id = id,
+        isAdvertiser = false,
+        isOrg = false,
+        name = name,
+        type = "mock",
+        url = url,
+        urlToken = url_token,
+        userType = user_type
+    )
 
     fun getAnswerCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
@@ -550,21 +610,7 @@ object DataHolder {
                             adminClosedComment = false,
                             annotationAction = null,
                             answerType = feed.answer_type ?: "",
-                            author = Author(
-                                avatarUrl = feed.author.avatar_url,
-                                avatarUrlTemplate = "",
-                                gender = feed.author.gender,
-                                headline = feed.author.headline,
-                                id = feed.author.id,
-                                isAdvertiser = false,
-                                isOrg = false,
-                                isPrivacy = false,
-                                name = feed.author.name,
-                                type = "mock",
-                                url = feed.author.url,
-                                urlToken = feed.author.url_token,
-                                userType = feed.author.user_type
-                            ),
+                            author = feed.author.mock(),
                             canComment = CanComment(
                                 status = false,
                                 reason = ""
@@ -589,7 +635,7 @@ object DataHolder {
                             thanksCount = feed.thanks_count,
                             type = "answer",
                             updatedTime = feed.updated_time,
-                            url = feed.url ?: "",
+                            url = feed.url,
                             voteupCount = feed.voteup_count,
                         )
                     )
@@ -619,17 +665,48 @@ object DataHolder {
         }
     }
 
-    fun getAnswersFor(questionId: Long): List<ReferenceCount<Answer>> {
-        return answers.filter { it.value.value.question.id == questionId }.values.toList()
-    }
-
     fun putFeed(feed: Feed) {
         if (feed.target is Feed.AnswerTarget) {
             feeds["answer/${feed.target.id}"] = feed
+        } else if (feed.target is Feed.ArticleTarget) {
+            feeds["article/${feed.target.id}"] = feed
         }
     }
 
-    fun getArticleCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
-
+    fun getArticleCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
+        GlobalScope.launch {
+            try {
+                if ("article/$id" in feeds) {
+                    val feed = feeds["article/$id"]!!.target as Feed.ArticleTarget
+                    callback(
+                        Article(
+                            adminClosedComment = false,
+                            author = feed.author.mock(),
+                            content = feed.content,
+                            contentNeedTruncated = false,
+                            excerpt = feed.excerpt,
+                            title = feed.title,
+                            commentCount = feed.comment_count,
+                            id = feed.id,
+                            canComment = CanComment(
+                                status = false,
+                                reason = ""
+                            ),
+                            type = "article",
+                            created = feed.created,
+                            updated = feed.updated,
+                            voteupCount = feed.voteup_count,
+                            url = feed.url,
+                        )
+                    )
+                }
+                get(httpClient, "https://zhuanlan.zhihu.com/p/$id")
+                callback(articles[id]?.also { it.count++ }?.value)
+            } catch (e: Exception) {
+                Log.e("DataHolder", "Failed to get article $id", e)
+                Toast.makeText(activity, "Failed to get article $id", Toast.LENGTH_LONG).show()
+                callback(null)
+            }
+        }
     }
 }

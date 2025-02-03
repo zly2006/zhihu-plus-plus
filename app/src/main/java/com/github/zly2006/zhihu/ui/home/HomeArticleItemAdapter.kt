@@ -7,6 +7,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.catching
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
@@ -29,39 +30,40 @@ class HomeArticleItemAdapter(
         holder.summary.text = item.summary
         holder.details.text = item.details
         holder.card.setOnClickListener {
-            if (item.dto == null) {
-                AlertDialog.Builder(activity).apply {
-                    setTitle("Click " + item.title)
-                    setMessage(item.summary)
-                    setPositiveButton("OK") { _, _ ->
-                    }
-                }.create().show()
-            } else {
-                DataHolder.putFeed(item.dto)
-                activity.navigate(
-                    if (item.dto.target is Feed.AnswerTarget) {
-                        Article(
-                            item.dto.target.question.title,
-                            "answer",
-                            item.dto.target.id,
-                            item.dto.target.author.name,
-                            item.dto.target.author.headline,
-                            item.dto.target.author.avatar_url,
-                            item.dto.target.excerpt
-                        )
-                    } else if (item.dto.target is Feed.ArticleTarget) {
-                        Article(
-                            item.dto.target.title,
-                            "article",
-                            item.dto.target.id,
-                            item.dto.target.author.name,
-                            item.dto.target.author.headline,
-                            item.dto.target.author.avatar_url,
-                            item.dto.target.excerpt
-                        )
-                    }
-                    else error("Unknown target type: ${item.dto.target::class.simpleName}")
-                )
+            activity.catching {
+                if (item.dto == null) {
+                    AlertDialog.Builder(activity).apply {
+                        setTitle("Click " + item.title)
+                        setMessage(item.summary)
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                    }.create().show()
+                } else {
+                    DataHolder.putFeed(item.dto)
+                    activity.navigate(
+                        if (item.dto.target is Feed.AnswerTarget) {
+                            Article(
+                                item.dto.target.question.title,
+                                "answer",
+                                item.dto.target.id,
+                                item.dto.target.author.name,
+                                item.dto.target.author.headline,
+                                item.dto.target.author.avatar_url,
+                                item.dto.target.excerpt
+                            )
+                        } else if (item.dto.target is Feed.ArticleTarget) {
+                            Article(
+                                item.dto.target.title,
+                                "article",
+                                item.dto.target.id,
+                                item.dto.target.author.name,
+                                item.dto.target.author.headline,
+                                item.dto.target.author.avatar_url,
+                                item.dto.target.excerpt
+                            )
+                        } else error("Unknown target type: ${item.dto.target::class.simpleName}")
+                    )
+                }
             }
         }
     }

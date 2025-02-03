@@ -115,6 +115,8 @@ data class Feed(
         val title: String,
         val excerpt: String,
         val content: String,
+        val created: Long,
+        val updated: Long,
         val is_labeled: Boolean,
         val visited_count: Int,
         val favorite_count: Int,

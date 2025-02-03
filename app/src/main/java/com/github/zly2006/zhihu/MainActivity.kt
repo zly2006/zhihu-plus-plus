@@ -249,6 +249,40 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
                 }
             }
+            else if (uri.host == "zhuanlan.zhihu.com") {
+                if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "p"
+                ) {
+                    val articleId = uri.pathSegments[1].toLong()
+                    navController.navigate(
+                        Article(
+                            "loading...",
+                            "article",
+                            articleId,
+                            "loading...",
+                            "loading...",
+                            null,
+                            null
+                        )
+                    )
+                }
+                else {
+                    AlertDialog.Builder(this).apply {
+                        setTitle("Unsupported URL")
+                        setMessage("Unknown URL: $uri")
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                    }.create().show()
+                }
+            }
+            else {
+                AlertDialog.Builder(this).apply {
+                    setTitle("Unsupported URL")
+                    setMessage("Unknown URL: $uri")
+                    setPositiveButton("OK") { _, _ ->
+                    }
+                }.create().show()
+            }
         }
         if (uri?.scheme == "zhihu") {
             if (uri.host == "answers") {
