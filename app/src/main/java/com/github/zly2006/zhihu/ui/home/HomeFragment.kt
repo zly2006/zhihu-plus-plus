@@ -13,7 +13,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.catchingS
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
@@ -23,7 +22,10 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
@@ -42,31 +44,26 @@ class HomeFragment : Fragment() {
     suspend fun fetch() {
         if (context == null) return
         try {
-            coroutineScope {
-                launch {
-                    activity?.catchingS {
-                        val response = httpClient.post("https://www.zhihu.com/lastread/touch") {
-                            header("x-requested-with", "fetch")
-                            setBody(
-                                MultiPartFormDataContent(
-                                formData {
-                                    append("items", buildJsonArray {
-                                        viewModel.list.filter { !it.touched && it.dto?.target is Feed.AnswerTarget }
-                                            .forEach { item ->
-                                                add(buildJsonArray {
-                                                    add("answer")
-                                                    add((item.dto!!.target as Feed.AnswerTarget).id)
-                                                    add("touch")
-                                                })
-                                            }
-                                    }.toString())
-                                }
-                            ))
+            httpClient.post("https://www.zhihu.com/lastread/touch") {
+                header("x-requested-with", "fetch")
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append("items", buildJsonArray {
+                                viewModel.list.filter { !it.touched && it.dto?.target is Feed.AnswerTarget }
+                                    .forEach { item ->
+                                        add(buildJsonArray {
+                                            add("answer")
+                                            add((item.dto!!.target as Feed.AnswerTarget).id)
+                                            add("touch")
+                                        })
+                                    }
+                            }.toString())
                         }
-                        if (!response.status.isSuccess()) {
-                            Log.e("Browse-Fetch", response.bodyAsText())
-                        }
-                    }
+                    ))
+            }.let { response ->
+                if (!response.status.isSuccess()) {
+                    Log.e("Browse-Touch", response.bodyAsText())
                 }
             }
             val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}")

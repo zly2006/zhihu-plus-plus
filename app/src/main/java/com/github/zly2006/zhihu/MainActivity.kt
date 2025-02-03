@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.lang.Thread.UncaughtExceptionHandler
+import kotlin.math.min
 
 @Serializable
 sealed interface NavDestination
@@ -119,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         Log.e("UncaughtException", "Uncaught exception", e)
         AlertDialog.Builder(this).apply {
             setTitle("Application crashed")
-            setMessage(e.toString().substring(0, 100))
+            setMessage(e.toString().substring(0, min(e.toString().length, 100)))
             setNeutralButton("Report") { _, _ ->
                 val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())

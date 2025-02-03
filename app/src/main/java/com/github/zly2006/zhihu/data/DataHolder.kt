@@ -628,4 +628,8 @@ object DataHolder {
             feeds["answer/${feed.target.id}"] = feed
         }
     }
+
+    fun getArticleCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
+
+    }
 }

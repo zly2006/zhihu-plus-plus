@@ -41,7 +41,7 @@ class HomeArticleItemAdapter(
                 activity.navigate(
                     if (item.dto.target is Feed.AnswerTarget) {
                         Article(
-                            item.title,
+                            item.dto.target.question.title,
                             "answer",
                             item.dto.target.id,
                             item.dto.target.author.name,
@@ -49,7 +49,18 @@ class HomeArticleItemAdapter(
                             item.dto.target.author.avatar_url,
                             item.dto.target.excerpt
                         )
-                    } else error("Unknown target type: ${item.dto.target::class.simpleName}")
+                    } else if (item.dto.target is Feed.ArticleTarget) {
+                        Article(
+                            item.dto.target.title,
+                            "article",
+                            item.dto.target.id,
+                            item.dto.target.author.name,
+                            item.dto.target.author.headline,
+                            item.dto.target.author.avatar_url,
+                            item.dto.target.excerpt
+                        )
+                    }
+                    else error("Unknown target type: ${item.dto.target::class.simpleName}")
                 )
             }
         }

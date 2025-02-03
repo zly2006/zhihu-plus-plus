@@ -257,8 +257,8 @@ class ReadArticleFragment : Fragment() {
         }
 
         launch {
+            if (activity == null) return@launch
             if (type == "answer") {
-                if (activity == null) return@launch
                 DataHolder.getAnswerCallback(requireActivity(), httpClient, articleId) { answer ->
                     if (answer != null) {
                         if (viewModel.content.value.isNullOrEmpty()) {
@@ -289,6 +289,38 @@ class ReadArticleFragment : Fragment() {
                             viewModel.content.postValue("<h1>Answer not found</p>")
                         }
                         Log.e("ReadArticleFragment", "Answer not found")
+                    }
+                }
+            } else if (type == "article") {
+                DataHolder.getArticleCallback(requireActivity(), httpClient, articleId) { article ->
+                    if (article != null) {
+                        if (viewModel.content.value.isNullOrEmpty()) {
+                            viewModel.content.postValue(article.content)
+                        }
+//                        viewModel.title.postValue(article.title)
+//                        viewModel.authorName.postValue(article.authorName)
+//                        viewModel.bio.postValue(article.authorBio)
+//                        viewModel.avatarSrc.postValue(article.avatarSrc)
+//                        viewModel.voteUpCount.postValue(article.voteUpCount)
+//                        viewModel.commentCount.postValue(article.commentCount)
+//                        if (activity is MainActivity) {
+//                            requireActivity().postHistory(
+//                                Article(
+//                                    article.title,
+//                                    "article",
+//                                    articleId,
+//                                    article.authorName,
+//                                    article.authorBio,
+//                                    article.avatarSrc,
+//                                    article.content
+//                                )
+//                            )
+//                        }
+                    } else {
+                        if (viewModel.content.value.isNullOrEmpty()) {
+                            viewModel.content.postValue("<h1>Article not found</p>")
+                        }
+                        Log.e("ReadArticleFragment", "Article not found")
                     }
                 }
             }
