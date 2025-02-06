@@ -2,11 +2,14 @@ package com.github.zly2006.zhihu.ui.home.comment
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isInvisible
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
+import com.github.zly2006.zhihu.CommentHolder
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.databinding.ItemCommentBinding
 import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.*
@@ -24,6 +27,7 @@ class CommentAdapter(
     private val values: List<CommentItem>,
     private val activity: FragmentActivity,
     private val httpClient: HttpClient,
+    private val navDestination: NavDestination,
 ) : RecyclerView.Adapter<CommentAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
@@ -40,6 +44,7 @@ class CommentAdapter(
         val html = Jsoup.parse(item.item.content)
         holder.like.text = "${item.item.likeCount} 赞"
         holder.reply.text = "${item.item.childCommentCount} 回复"
+        holder.reply.isInvisible = navDestination is CommentHolder
         holder.content.text = html.text()
         val instant = Instant.fromEpochSeconds(item.item.createdTime)
         val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())

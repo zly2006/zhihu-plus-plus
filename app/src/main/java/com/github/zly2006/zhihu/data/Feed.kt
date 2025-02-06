@@ -79,7 +79,7 @@ data class Feed(
         }
 
         override fun detailsText(): String {
-            return "回答 - $voteup_count 赞同 · $comment_count 评论"
+            return "回答 · $voteup_count 赞同 · $comment_count 评论"
         }
     }
     @Serializable
@@ -100,7 +100,7 @@ data class Feed(
         }
 
         override fun detailsText(): String {
-            return "视频 - $vote_count 赞 · $comment_count 评论"
+            return "视频 · $vote_count 赞 · $comment_count 评论"
         }
     }
 
@@ -128,7 +128,7 @@ data class Feed(
         }
 
         override fun detailsText(): String {
-            return "文章 - $voteup_count 赞 · $comment_count 评论"
+            return "文章 · $voteup_count 赞 · $comment_count 评论"
         }
     }
 
@@ -150,7 +150,7 @@ data class Feed(
         }
 
         override fun detailsText(): String {
-            return "想法 - $favorite_count 赞 · $comment_count 评论"
+            return "想法 · $favorite_count 赞 · $comment_count 评论"
         }
     }
     @Serializable

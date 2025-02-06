@@ -140,7 +140,7 @@ class CommentsDialog(
                 }
             }
         }
-        binding.list.adapter = CommentAdapter(list, requireActivity(), httpClient)
+        binding.list.adapter = CommentAdapter(list, requireActivity(), httpClient, content)
 
         return root
     }

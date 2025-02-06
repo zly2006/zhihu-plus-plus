@@ -416,7 +416,8 @@ object DataHolder {
         @SerialName("reply_comment_id") val replyCommentId: String? = null,
         @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
         val liked: Boolean = false,
-        @SerialName("like_count") val likeCount: Int = 0,
+        @SerialName("like_count") val _likeCount: Int = 0,
+        @SerialName("vote_count") val _voteCount: Int = 0,
         val disliked: Boolean = false,
         @SerialName("dislike_count") val dislikeCount: Int = 0,
         @SerialName("is_author") val isAuthor: Boolean,
@@ -443,6 +444,7 @@ object DataHolder {
         @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean = false,
         @SerialName("_") val underscore: JsonElement? = null
     ) {
+        val likeCount: Int get() = _likeCount + _voteCount
         private object MaybeAuthorSerializer : JsonContentPolymorphicSerializer<MaybeAuthor>(MaybeAuthor::class) {
             override fun selectDeserializer(element: JsonElement): DeserializationStrategy<MaybeAuthor> {
                 if (element !is JsonObject) {
