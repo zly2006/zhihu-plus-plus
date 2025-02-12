@@ -33,35 +33,13 @@ class LoginActivity : AppCompatActivity() {
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (request?.url.toString() == "https://www.zhihu.com/") {
-                    val preferences = this@LoginActivity.getSharedPreferences(
-                        "com.github.zly2006.zhihu_preferences",
-                        MODE_PRIVATE
-                    )
-                    val developer = preferences.getBoolean("developer", false)
-                    if (!developer) {
-                        AlertDialog.Builder(this@LoginActivity).apply {
-                            setTitle("登录失败")
-                            setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
-                            setPositiveButton("OK") { _, _ ->
-                            }
-                        }.create().show()
-                        return false
-                    }
-                    else {
-                        binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
-                        return true
-                    }
+                    binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
+                    return true
+                }
+                if (request?.url?.scheme == "zhihu") {
+                    return true
                 }
                 return false
-            }
-
-            var loadedJS = false
-
-            override fun onLoadResource(view: WebView?, url: String?) {
-                super.onLoadResource(view, url)
-                if (url == "https://static.zhihu.com/zse-ck/v3.js") {
-                    loadedJS = true
-                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -71,7 +49,7 @@ class LoginActivity : AppCompatActivity() {
                         it.substringBefore("=").trim() to it.substringAfter("=")
                     }
                     runBlocking {
-                        if (loadedJS && AccountData.verifyLogin(this@LoginActivity, cookies)) {
+                        if (AccountData.verifyLogin(this@LoginActivity, cookies)) {
                             val data = AccountData.getData(this@LoginActivity)
 
                             val preferences = this@LoginActivity.getSharedPreferences(
