@@ -33,7 +33,7 @@ class LoginActivity : AppCompatActivity() {
         binding.web.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 if (request?.url.toString() == "https://www.zhihu.com/") {
-                    binding.web.loadUrl("https://www.zhihu.com/question/586608436/answer/3122557790")
+                    binding.web.loadUrl("https://www.zhihu.com/question/11474985081")
                     return true
                 }
                 if (request?.url?.scheme == "zhihu") {
@@ -42,13 +42,36 @@ class LoginActivity : AppCompatActivity() {
                 return false
             }
 
+            var loadedJs = false
+
+            override fun onLoadResource(view: WebView?, url: String) {
+                super.onLoadResource(view, url)
+                if (url.startsWith("https://static.zhihu.com/zse-ck/v4/")) {
+                    if (!loadedJs) {
+                        loadedJs = true
+                    }
+                }
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                if (url == "https://www.zhihu.com/question/586608436/answer/3122557790") {
+                if (url == "https://www.zhihu.com/question/11474985081") {
                     val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
                         it.substringBefore("=").trim() to it.substringAfter("=")
                     }
                     runBlocking {
+                        if (!loadedJs) {
+                            delay(1000)
+                            if (!loadedJs) {
+                                AlertDialog.Builder(this@LoginActivity).apply {
+                                    setTitle("登录失败")
+                                    setMessage("模拟正常登录环境失败，请检查网络")
+                                    setPositiveButton("OK") { _, _ ->
+                                    }
+                                }.create().show()
+                                return@runBlocking false
+                            }
+                        }
                         if (AccountData.verifyLogin(this@LoginActivity, cookies)) {
                             val data = AccountData.getData(this@LoginActivity)
 

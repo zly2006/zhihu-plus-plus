@@ -103,8 +103,8 @@ object AccountData {
         return false
     }
 
-    fun delete(requireContext: Context) {
-        saveData(requireContext, Data())
+    fun delete(context: Context) {
+        saveData(context, Data())
     }
 
     internal inline fun <reified T> decodeJson(json: JsonElement): T {

@@ -1,8 +1,11 @@
 package com.github.zly2006.zhihu.data
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import com.github.zly2006.zhihu.LoginActivity
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -550,9 +553,23 @@ object DataHolder {
     private val articles = mutableMapOf<Long, ReferenceCount<Article>>()
     private val feeds = mutableMapOf<String, Feed>()
 
-    private suspend fun get(httpClient: HttpClient, url: String) {
+    private suspend fun get(httpClient: HttpClient, url: String, activity: FragmentActivity) {
         val html = httpClient.get(url).bodyAsText()
         val document = Jsoup.parse(html)
+        if (document.getElementById("js-initialData") == null) {
+            activity.runOnUiThread {
+                AlertDialog.Builder(activity)
+                    .setTitle("登录过期")
+                    .setMessage("登录过期或无效，需重新登录")
+                    .setPositiveButton("重新登录") { _, _ ->
+                        AccountData.delete(activity)
+                        val myIntent = Intent(activity, LoginActivity::class.java)
+                        activity.startActivity(myIntent)
+                    }
+                    .show()
+            }
+            return
+        }
         val jojo = Json.decodeFromString<JsonObject>(
             (document.getElementById("js-initialData")?.childNode(0) as? DataNode)?.wholeData ?: "{}"
         )
@@ -664,7 +681,7 @@ object DataHolder {
                     )
                 }
                 if (id !in answers) {
-                    get(httpClient, "https://www.zhihu.com/answer/$id")
+                    get(httpClient, "https://www.zhihu.com/answer/$id", activity)
                 }
                 callback(answers[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {
@@ -678,7 +695,7 @@ object DataHolder {
     suspend fun getQuestion(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
         try {
             if (id !in questions) {
-                get(httpClient, "https://www.zhihu.com/question/$id")
+                get(httpClient, "https://www.zhihu.com/question/$id", activity)
             }
             return questions[id]?.also { it.count++ }
         } catch (e: Exception) {
@@ -723,7 +740,7 @@ object DataHolder {
                         )
                     )
                 }
-                get(httpClient, "https://zhuanlan.zhihu.com/p/$id")
+                get(httpClient, "https://zhuanlan.zhihu.com/p/$id", activity)
                 callback(articles[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {
                 Log.e("DataHolder", "Failed to get article $id", e)
