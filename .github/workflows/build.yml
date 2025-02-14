@@ -41,7 +41,8 @@ jobs:
             ~/.m2/repository
             ./.gradle
             ./**/.gradle
-          key: gradle-cache-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          # dont invalidate cache if only gradle.properties is changed -- they
+          key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       # Run Tests Build
