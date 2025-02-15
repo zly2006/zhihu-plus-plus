@@ -307,8 +307,9 @@ class MainActivity : AppCompatActivity() {
                     )
                 )
             }
-//            else if (uri.host == "feed")
-            else {
+            else if (uri.host == "feed") {
+                navController.navigate(Home)
+            } else {
                 AlertDialog.Builder(this).apply {
                     setTitle("Invalid URL")
                     setMessage("Unknown zhihu URL: $uri\nPlease report to the developer")
