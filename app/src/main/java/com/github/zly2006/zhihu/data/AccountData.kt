@@ -37,12 +37,13 @@ object AccountData {
         val file = File(context.filesDir, "account.json")
         runCatching {
             if (file.exists()) {
-                data.component3()[""].toBoolean()
                 data = json.decodeFromString<Data>(file.readText())
             }
         }
         return data
     }
+
+    fun getData() = data
 
     fun saveData(context: Context, data: Data) {
         this.data = data

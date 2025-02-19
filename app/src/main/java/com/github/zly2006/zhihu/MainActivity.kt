@@ -118,21 +118,23 @@ class MainActivity : AppCompatActivity() {
 
     val exceptionHandler = UncaughtExceptionHandler { t, e ->
         Log.e("UncaughtException", "Uncaught exception", e)
-        AlertDialog.Builder(this).apply {
-            setTitle("Application crashed")
-            setMessage(e.toString().substring(0, min(e.toString().length, 100)))
-            setNeutralButton("Report") { _, _ ->
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this@MainActivity, "Copied bug details to clipboard", Toast.LENGTH_LONG).show()
-                val intent = Intent(Intent.ACTION_VIEW)
-                intent.data = Uri.parse("https://github.com/zly2006/zhihu-plus-plus/issues/new")
-                startActivity(intent)
-            }
-            setPositiveButton("OK") { _, _ ->
-            }
-        }.create().show()
+        runOnUiThread {
+            AlertDialog.Builder(this).apply {
+                setTitle("Application crashed")
+                setMessage(e.toString().substring(0, min(e.toString().length, 100)))
+                setNeutralButton("Report") { _, _ ->
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(this@MainActivity, "Copied bug details to clipboard", Toast.LENGTH_LONG).show()
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = Uri.parse("https://github.com/zly2006/zhihu-plus-plus/issues/new")
+                    startActivity(intent)
+                }
+                setPositiveButton("OK") { _, _ ->
+                }
+            }.create().show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
