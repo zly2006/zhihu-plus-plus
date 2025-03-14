@@ -31,12 +31,12 @@ class LoginActivity : AppCompatActivity() {
         binding.web.settings.javaScriptEnabled = true
         CookieManager.getInstance().removeAllCookies { }
         binding.web.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                if (request?.url.toString() == "https://www.zhihu.com/") {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean {
+                if (request.url.toString() == "https://www.zhihu.com/") {
                     binding.web.loadUrl("https://www.zhihu.com/question/11474985081")
                     return true
                 }
-                if (request?.url?.scheme == "zhihu") {
+                if (request.url?.scheme == "zhihu") {
                     return true
                 }
                 return false

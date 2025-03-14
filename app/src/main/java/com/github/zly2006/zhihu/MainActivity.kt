@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -151,6 +152,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
+        window.statusBarColor = Color.TRANSPARENT
         setContentView(binding.root)
 
         gViewModel.toast.distinctUntilChanged().observe(this) {

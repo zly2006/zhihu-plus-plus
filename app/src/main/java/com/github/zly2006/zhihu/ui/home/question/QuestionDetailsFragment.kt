@@ -1,10 +1,10 @@
 package com.github.zly2006.zhihu.ui.home.question
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -57,6 +57,18 @@ class QuestionDetailsFragment : Fragment() {
             fetchingNewItems = true
             val response =
                 httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}")
+            if (response.status.value == 403) {
+                val res = response.body<JsonObject>()
+                activity?.runOnUiThread {
+                    AlertDialog.Builder(requireContext()).apply {
+                        setTitle("Error")
+                        setMessage(res.toString())
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                    }.create().show()
+                }
+                return
+            }
             val jojo = response.body<JsonObject>()
             val feeds = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
             cursor = feeds.last().cursor

@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.data
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
 import android.util.Log
@@ -22,6 +23,7 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
+import java.security.MessageDigest
 
 object DataHolder {
     val definitelyAd = listOf(
@@ -558,17 +560,27 @@ object DataHolder {
     private val articles = mutableMapOf<Long, ReferenceCount<Article>>()
     private val feeds = mutableMapOf<String, Feed>()
 
+    @SuppressLint("SetJavaScriptEnabled")
     private suspend fun get(httpClient: HttpClient, url: String, activity: FragmentActivity, retry: Int = 1) {
+        val dc0 = AccountData.getData().cookies["d_c0"] ?: ""
+        val zse93 = "101_3_3.0"
+        val pathname = "/" + url.substringAfter("//").substringAfter('/')
+        val signSource = "$zse93+$pathname+$dc0"
+        val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).joinToString("") {
+            "%02x".format(it)
+        }
         val html = httpClient.get(url).bodyAsText()
         val document = Jsoup.parse(html)
         val zhSecScript = document.select("[data-assets-tracker-config]").getOrNull(0)?.attribute("src")?.value
         if (document.getElementById("js-initialData") == null) {
+            // 知乎安全cookie v4检验
             if (zhSecScript != null) {
                 val job = Job()
                 activity.runOnUiThread {
                     val webView = WebView(activity)
                     val cm = CookieManager.getInstance()
                     cm.removeAllCookies { }
+                    webView.settings.javaScriptEnabled = true
                     AccountData.getData().cookies.forEach { (key, value) ->
                         cm.setCookie("https://www.zhihu.com", "$key=$value")
                     }
