@@ -5,9 +5,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.android") version "2.1.0"
     id("kotlin-parcelize")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.10"
     id("org.ajoberstar.grgit") version "5.2.2"
 }
 
@@ -45,8 +45,8 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+  //          isMinifyEnabled = true
+  //          isShrinkResources = true
   //          proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             if (System.getenv("signingKey") != null) {
