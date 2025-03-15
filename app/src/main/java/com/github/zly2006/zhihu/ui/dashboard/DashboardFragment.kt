@@ -35,6 +35,12 @@ class DashboardFragment : Fragment() {
 
         val connectivityManager = requireContext().getSystemService(ConnectivityManager::class.java)
         val activeNetwork = connectivityManager.activeNetwork
+        val data = AccountData.getData(requireContext())
+        binding.userStatus.text = if (data.login) {
+            "已登录，${data.username}"
+        } else {
+            "未登录"
+        }
         binding.networkStatus.text =
             buildString {
                 append("网络状态：")
