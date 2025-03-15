@@ -83,17 +83,13 @@ android {
 val ktor = "2.3.13"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
-//    val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
-//    implementation (composeBom)
-//    androidTestImplementation (composeBom)
-//    implementation ("androidx.compose.material3:material3")
-
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
     implementation("io.ktor:ktor-client-core-jvm:$ktor")
     implementation("io.ktor:ktor-client-apache5:$ktor")
     implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktor")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+    implementation("androidx.browser:browser:1.5.0")
 
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")

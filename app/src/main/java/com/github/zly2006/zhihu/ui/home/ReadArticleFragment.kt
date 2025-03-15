@@ -17,6 +17,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -403,8 +404,9 @@ fun setupUpWebview(web: WebView, context: Context) {
                 val url =
                     request.url.query?.split("&")?.firstOrNull { it.startsWith("target=") }?.substringAfter("target=")
                 if (url != null) {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
+                    val intent: CustomTabsIntent = CustomTabsIntent.Builder()
+                        .build()
+                    intent.launchUrl(context, Uri.parse(url))
                     return true
                 }
             }
