@@ -8,6 +8,9 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
+import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -31,10 +34,13 @@ import com.github.zly2006.zhihu.ui.dashboard.DashboardFragment
 import com.github.zly2006.zhihu.ui.home.HomeFragment
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
 import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
+import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.lang.Thread.UncaughtExceptionHandler
+import java.security.MessageDigest
 import kotlin.math.min
 
 @Serializable
@@ -138,12 +144,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    lateinit var webview: WebView
+
+    suspend fun signRequest96(url: String): String {
+        val dc0 = AccountData.getData().cookies["d_c0"] ?: ""
+        val zse93 = "101_3_3.0"
+        val pathname = "/" + url.substringAfter("//").substringAfter('/')
+        val signSource = "$zse93+$pathname+$dc0"
+        val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).joinToString("") {
+            "%02x".format(it)
+        }
+        val future = CompletableDeferred<String>()
+        webview.evaluateJavascript("exports.encrypt('$md5')") {
+            Log.i("MainActivity", "Sign request: $url")
+            Log.i("MainActivity", "Sign source: $signSource")
+            Log.i("MainActivity", "Sign result: $it")
+            future.complete(it)
+        }
+        return "2.0_" + future.await()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Thread.setDefaultUncaughtExceptionHandler(exceptionHandler)
         Thread.currentThread().uncaughtExceptionHandler = exceptionHandler
 
         val data = AccountData.getData(this)
+        webview = WebView(this)
+        Log.i("MainActivity", "Webview created")
+        setupUpWebview(webview, this)
+        webview.settings.javaScriptEnabled = true
+        webview.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                Log.i("MainActivity", "Console message: ${consoleMessage?.message()}")
+                return true
+            }
+        }
+        webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
         history = HistoryStorage(this)
         if (!data.login) {
             val myIntent = Intent(this, LoginActivity::class.java)
