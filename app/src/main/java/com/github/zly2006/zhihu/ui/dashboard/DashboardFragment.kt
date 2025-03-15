@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui.dashboard
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -22,6 +24,7 @@ class DashboardFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    @SuppressLint("SetTextI18n")
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -30,6 +33,24 @@ class DashboardFragment : Fragment() {
         _binding = FragmentDashboardBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
+        val connectivityManager = requireContext().getSystemService(ConnectivityManager::class.java)
+        val activeNetwork = connectivityManager.activeNetwork
+        binding.networkStatus.text =
+            buildString {
+                append("网络状态：")
+                if (activeNetwork != null) {
+                    append("已连接")
+                    if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                    ) {
+                        append(" (移动数据)")
+                    } else {
+                        append(" (Wi-Fi)")
+                    }
+                } else {
+                    append("未连接")
+                }
+            }
         binding.login.setOnClickListener {
             val myIntent = Intent(context, LoginActivity::class.java)
             startActivity(myIntent)

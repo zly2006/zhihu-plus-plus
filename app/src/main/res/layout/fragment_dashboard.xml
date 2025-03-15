@@ -26,6 +26,12 @@
                 android:id="@+id/logout"
                 />
 
+        <TextView
+                android:text="网络状态"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/networkStatus"/>
+
         <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"
