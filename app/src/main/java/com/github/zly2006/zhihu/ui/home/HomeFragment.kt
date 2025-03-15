@@ -17,6 +17,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -66,7 +67,9 @@ class HomeFragment : Fragment() {
                     Log.e("Browse-Touch", response.bodyAsText())
                 }
             }
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}")
+            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}") {
+                signFetchRequest(context!!)
+            }
             if (response.status == HttpStatusCode.OK) {
                 @Suppress("PropertyName")
                 @Serializable

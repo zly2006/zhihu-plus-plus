@@ -28,6 +28,7 @@ import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
@@ -407,6 +408,13 @@ fun setupUpWebview(web: WebView, context: Context) {
                     val intent: CustomTabsIntent = CustomTabsIntent.Builder()
                         .build()
                     intent.launchUrl(context, Uri.parse(url))
+                    return true
+                }
+            }
+            else if (request.url.host == "www.zhihu.com" && context is MainActivity) {
+                val destination = context.resolveContent(request.url)
+                if (destination != null) {
+                    context.navigate(destination)
                     return true
                 }
             }

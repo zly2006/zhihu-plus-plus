@@ -11,12 +11,12 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
+import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -58,9 +58,7 @@ class QuestionDetailsFragment : Fragment() {
             fetchingNewItems = true
             val response =
                 httpClient.get("https://www.zhihu.com/api/v4/questions/${questionId}/feeds?session_id=${session}&cursor=${cursor}") {
-                    header("x-requested-with", "fetch")
-                    header("x-zse-93", "101_3_3.0")
-                    header("x-zse-96", (activity as MainActivity).signRequest96(this.url.buildString()))
+                    signFetchRequest(context!!)
                 }
             if (response.status.value == 403) {
                 val res = response.body<JsonObject>()

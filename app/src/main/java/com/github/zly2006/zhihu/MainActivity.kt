@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -36,7 +37,10 @@ import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
 import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
 import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
+import io.ktor.client.request.*
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.lang.Thread.UncaughtExceptionHandler
@@ -243,78 +247,10 @@ class MainActivity : AppCompatActivity() {
 
         val uri = intent.data
         Log.i("MainActivity", "Intent data: $uri")
-        if (uri?.scheme == "http" || uri?.scheme == "https") {
-            if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
-                if (uri.pathSegments.size == 4
-                    && uri.pathSegments[0] == "question"
-                    && uri.pathSegments[2] == "answer"
-                ) {
-                    val questionId = uri.pathSegments[1].toLong()
-                    val answerId = uri.pathSegments[3].toLong()
-                    navController.navigate(
-                        Article(
-                            "loading...",
-                            "answer",
-                            answerId,
-                            "loading...",
-                            "loading...",
-                            null,
-                        )
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "answer"
-                ) {
-                    val answerId = uri.pathSegments[1].toLong()
-                    navController.navigate(
-                        Article(
-                            "loading...",
-                            "answer",
-                            answerId,
-                            "loading...",
-                            "loading...",
-                            null,
-                            null
-                        )
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "question"
-                ) {
-                    val questionId = uri.pathSegments[1].toLong()
-                    navController.navigate(
-                        Question(
-                            questionId,
-                            "loading...",
-                        )
-                    )
-                } else {
-                    Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
-                }
-            }
-            else if (uri.host == "zhuanlan.zhihu.com") {
-                if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "p"
-                ) {
-                    val articleId = uri.pathSegments[1].toLong()
-                    navController.navigate(
-                        Article(
-                            "loading...",
-                            "article",
-                            articleId,
-                            "loading...",
-                            "loading...",
-                            null,
-                            null
-                        )
-                    )
-                }
-                else {
-                    AlertDialog.Builder(this).apply {
-                        setTitle("Unsupported URL")
-                        setMessage("Unknown URL: $uri")
-                        setPositiveButton("OK") { _, _ ->
-                        }
-                    }.create().show()
-                }
+        if (uri != null) {
+            val destination = resolveContent(uri)
+            if (destination != null) {
+                navController.navigate(destination)
             }
             else {
                 AlertDialog.Builder(this).apply {
@@ -325,11 +261,29 @@ class MainActivity : AppCompatActivity() {
                 }.create().show()
             }
         }
-        if (uri?.scheme == "zhihu") {
-            if (uri.host == "answers") {
-                val answerId = uri.pathSegments[0].toLong()
-                navController.navigate(
-                    Article(
+    }
+
+    fun resolveContent(uri: Uri): NavDestination? {
+        if (uri.scheme == "http" || uri.scheme == "https") {
+            if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
+                if (uri.pathSegments.size == 4
+                    && uri.pathSegments[0] == "question"
+                    && uri.pathSegments[2] == "answer"
+                ) {
+                    val answerId = uri.pathSegments[3].toLong()
+                    return Article(
+                        "loading...",
+                        "answer",
+                        answerId,
+                        "loading...",
+                        "loading...",
+                        null,
+                    )
+                } else if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "answer"
+                ) {
+                    val answerId = uri.pathSegments[1].toLong()
+                    return Article(
                         "loading...",
                         "answer",
                         answerId,
@@ -338,18 +292,56 @@ class MainActivity : AppCompatActivity() {
                         null,
                         null
                     )
-                )
-            } else if (uri.host == "questions") {
-                val questionId = uri.pathSegments[0].toLong()
-                navController.navigate(
-                    Question(
+                } else if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "question"
+                ) {
+                    val questionId = uri.pathSegments[1].toLong()
+                    return Question(
                         questionId,
                         "loading...",
                     )
+                } else {
+                    Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
+                }
+            }
+            else if (uri.host == "zhuanlan.zhihu.com") {
+                if (uri.pathSegments.size == 2
+                    && uri.pathSegments[0] == "p"
+                ) {
+                    val articleId = uri.pathSegments[1].toLong()
+                    return Article(
+                        "loading...",
+                        "article",
+                        articleId,
+                        "loading...",
+                        "loading...",
+                        null,
+                        null
+                    )
+                }
+            }
+        }
+        if (uri.scheme == "zhihu") {
+            if (uri.host == "answers") {
+                val answerId = uri.pathSegments[0].toLong()
+                return Article(
+                    "loading...",
+                    "answer",
+                    answerId,
+                    "loading...",
+                    "loading...",
+                    null,
+                    null
+                )
+            } else if (uri.host == "questions") {
+                val questionId = uri.pathSegments[0].toLong()
+                return Question(
+                    questionId,
+                    "loading...",
                 )
             }
             else if (uri.host == "feed") {
-                navController.navigate(Home)
+                return Home
             } else {
                 AlertDialog.Builder(this).apply {
                     setTitle("Invalid URL")
@@ -359,6 +351,7 @@ class MainActivity : AppCompatActivity() {
                 }.create().show()
             }
         }
+        return null
     }
 }
 
@@ -382,4 +375,13 @@ suspend fun <T> FragmentActivity.catchingS(action: suspend () -> T): T? = if (th
     }
 } else {
     action()
+}
+
+suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
+    val url = url.buildString()
+    withContext(context.mainExecutor.asCoroutineDispatcher()) {
+        header("x-zse-93", "101_3_3.0")
+        header("x-zse-96", (context as? MainActivity)?.signRequest96(url))
+        header("x-requested-with", "fetch")
+    }
 }

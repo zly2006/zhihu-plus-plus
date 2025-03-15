@@ -7,10 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.CommentHolder
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.FragmentCommentsBinding
@@ -59,7 +56,7 @@ class CommentsDialog(
             if (content is Article && content.type == "answer") {
                 val response =
                     httpClient.get("https://www.zhihu.com/api/v4/answers/${content.id}/root_comments?order_by=score&limit=20") {
-                        header("x-requested-with", "fetch")
+                        signFetchRequest(context!!)
                     }
                 if (response.status.isSuccess()) {
                     val comments = response.body<JsonObject>()
@@ -101,8 +98,11 @@ class CommentsDialog(
                 }
             } else if (content is CommentHolder) {
                 // 楼中楼
-                val response =
-                    httpClient.get("https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment?order_by=ts&limit=20&offset=")
+                val response = httpClient.get(
+                    "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment?order_by=ts&limit=20&offset="
+                ) {
+                    signFetchRequest(context!!)
+                }
 
                 if (response.status.isSuccess()) {
                     val comments = response.body<JsonObject>()
