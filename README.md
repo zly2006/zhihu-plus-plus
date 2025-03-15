@@ -1,5 +1,7 @@
 # Zhihu++
 
+**Update 2025/3/15**：更新，兼容最新版知乎签名算法。
+
 <img src="misc/zhihu_shit.png" width="100" height="100" />
 
 [![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
