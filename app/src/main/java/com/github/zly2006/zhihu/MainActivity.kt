@@ -251,8 +251,7 @@ class MainActivity : AppCompatActivity() {
             val destination = resolveContent(uri)
             if (destination != null) {
                 navController.navigate(destination)
-            }
-            else {
+            } else {
                 AlertDialog.Builder(this).apply {
                     setTitle("Unsupported URL")
                     setMessage("Unknown URL: $uri")
@@ -303,8 +302,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
                 }
-            }
-            else if (uri.host == "zhuanlan.zhihu.com") {
+            } else if (uri.host == "zhuanlan.zhihu.com") {
                 if (uri.pathSegments.size == 2
                     && uri.pathSegments[0] == "p"
                 ) {
@@ -339,9 +337,19 @@ class MainActivity : AppCompatActivity() {
                     questionId,
                     "loading...",
                 )
-            }
-            else if (uri.host == "feed") {
+            } else if (uri.host == "feed") {
                 return Home
+            } else if (uri.host == "articles") {
+                val articleId = uri.pathSegments[0].toLong()
+                return Article(
+                    "loading...",
+                    "article",
+                    articleId,
+                    "loading...",
+                    "loading...",
+                    null,
+                    null
+                )
             } else {
                 AlertDialog.Builder(this).apply {
                     setTitle("Invalid URL")
