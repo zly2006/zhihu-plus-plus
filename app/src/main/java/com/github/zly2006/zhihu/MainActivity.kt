@@ -28,6 +28,7 @@ import androidx.navigation.get
 import androidx.navigation.ui.setupWithNavController
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
 import com.github.zly2006.zhihu.placeholder.PlaceholderItem
 import com.github.zly2006.zhihu.ui.SettingsFragment
@@ -250,7 +251,7 @@ class MainActivity : AppCompatActivity() {
         if (uri != null) {
             val destination = resolveContent(uri)
             if (destination != null) {
-                navController.navigate(destination)
+                navigate(destination)
             } else {
                 AlertDialog.Builder(this).apply {
                     setTitle("Unsupported URL")
