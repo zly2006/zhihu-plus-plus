@@ -16,10 +16,8 @@ import io.ktor.client.statement.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
@@ -424,8 +422,7 @@ object DataHolder {
         @SerialName("reply_comment_id") val replyCommentId: String? = null,
         @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
         val liked: Boolean = false,
-        @SerialName("like_count") val _likeCount: Int = 0,
-        @SerialName("vote_count") val _voteCount: Int = 0,
+        @SerialName("like_count") val likeCount: Int = 0,
         val disliked: Boolean = false,
         @SerialName("dislike_count") val dislikeCount: Int = 0,
         @SerialName("is_author") val isAuthor: Boolean,
@@ -441,7 +438,7 @@ object DataHolder {
 //        @SerialName("can_unfold") val canUnfold: Boolean,
 //        @SerialName("can_truncate") val canTruncate: Boolean,
 //        @SerialName("can_more") val canMore: Boolean,
-        val author: MaybeAuthor,
+        val author: Author,
         @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
         @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
         @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
@@ -452,28 +449,6 @@ object DataHolder {
         @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean = false,
         @SerialName("_") val underscore: JsonElement? = null
     ) {
-        val likeCount: Int get() = _likeCount + _voteCount
-
-        private object MaybeAuthorSerializer : JsonContentPolymorphicSerializer<MaybeAuthor>(MaybeAuthor::class) {
-            override fun selectDeserializer(element: JsonElement): DeserializationStrategy<MaybeAuthor> {
-                if (element !is JsonObject) {
-                    error("MaybeAuthorSerializer: Expected JsonObject as JSON element")
-                }
-                return if ("role" in element.jsonObject) {
-                    AuthorData.serializer()
-                } else {
-                    Author.serializer()
-                }
-            }
-        }
-
-        @Serializable(with = MaybeAuthorSerializer::class)
-        sealed interface MaybeAuthor {
-            @Transient
-            val user: Author
-                get() = if (this is AuthorData) member else this as Author
-        }
-
         @Serializable
         data class Author(
             val id: String,
@@ -493,13 +468,7 @@ object DataHolder {
             @SerialName("vip_info") val vipInfo: JsonElement? = null,
             @SerialName("level_info") val levelInfo: JsonElement? = null,
             @SerialName("kvip_info") val kvipInfo: JsonElement? = null,
-        ) : MaybeAuthor
-
-        @Serializable
-        data class AuthorData(
-            val role: String,
-            val member: Author
-        ) : MaybeAuthor
+        )
 
         @Serializable
         data class CommentTag(
@@ -538,7 +507,7 @@ object DataHolder {
         @SerialName("like_count") val likeCount: Int = 0,
         val disliked: Boolean = false,
         @SerialName("dislike_count") val dislikeCount: Int = 0,
-        val author: Comment.MaybeAuthor,
+        val author: Comment.Author,
         @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
         @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
         @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),

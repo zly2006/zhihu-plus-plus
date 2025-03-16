@@ -55,7 +55,7 @@ class CommentsDialog(
         GlobalScope.launch {
             if (content is Article && content.type == "answer") {
                 val response =
-                    httpClient.get("https://www.zhihu.com/api/v4/answers/${content.id}/root_comments?order_by=score&limit=20") {
+                    httpClient.get("https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment?order_by=score&limit=20") {
                         signFetchRequest(context!!)
                     }
                 if (response.status.isSuccess()) {

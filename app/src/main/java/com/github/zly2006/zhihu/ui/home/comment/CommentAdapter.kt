@@ -57,9 +57,9 @@ class CommentAdapter(
         } else {
             holder.time.text = YMDHMS.format(item.item.createdTime * 1000)
         }
-        holder.author.text = item.item.author.user.name
-        if (item.item.author.user.avatarUrl.isNotEmpty()) {
-            loadImage(holder, activity, httpClient, item.item.author.user.avatarUrl) {
+        holder.author.text = item.item.author.name
+        if (item.item.author.avatarUrl.isNotEmpty()) {
+            loadImage(holder, activity, httpClient, item.item.author.avatarUrl) {
                 holder.avatar.setImageBitmap(it)
             }
         }
