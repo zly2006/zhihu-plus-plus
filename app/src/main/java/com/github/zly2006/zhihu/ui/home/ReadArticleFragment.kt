@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -37,6 +36,7 @@ import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.postHistory
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import com.github.zly2006.zhihu.loadImage
+import com.github.zly2006.zhihu.ui.dialog.ZoomableImageDialog
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
 import com.github.zly2006.zhihu.ui.home.comment.CommentsDialog
 import io.ktor.client.call.*
@@ -103,6 +103,7 @@ class ReadArticleFragment : Fragment() {
             Down("down"),
             Neutral("neutral"),
         }
+
         val title = MutableLiveData<String>()
         val authorName = MutableLiveData<String>()
         val bio = MutableLiveData<String>()
@@ -131,6 +132,8 @@ class ReadArticleFragment : Fragment() {
         }
     }
 
+    val httpClient by lazy { AccountData.httpClient(requireContext()) }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -138,8 +141,6 @@ class ReadArticleFragment : Fragment() {
         _binding = FragmentReadArticleBinding.inflate(inflater, container, false)
 
         val root: View = binding.root
-
-        val httpClient = AccountData.httpClient(requireContext())
         registerForContextMenu(binding.web)
         setupUpWebview(binding.web, requireContext())
         binding.web.setOnLongClickListener { view ->
@@ -241,7 +242,8 @@ class ReadArticleFragment : Fragment() {
         }
         val voteUp = Observer<Any> {
             @SuppressLint("SetTextI18n")
-            binding.voteUp.text = "${viewModel.voteUpCount.value} " + if (viewModel.votedUp.value == Up) "已赞" else "赞同"
+            binding.voteUp.text =
+                "${viewModel.voteUpCount.value} " + if (viewModel.votedUp.value == Up) "已赞" else "赞同"
         }
         viewModel.voteUpCount.distinctUntilChanged().observe(viewLifecycleOwner, voteUp)
         viewModel.votedUp.observe(viewLifecycleOwner) {
@@ -338,12 +340,12 @@ class ReadArticleFragment : Fragment() {
             if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
                 val imgElement = document.select("img[src='${result.extra}']").first()
                 val dataOriginalUrl = imgElement?.attr("data-original")
-                menu.setHeaderTitle("Image Options")
-                menu.add(0, v.id, 0, "Save Image").setOnMenuItemClickListener {
+                menu.setHeaderTitle("图片选项")
+                menu.add(0, v.id, 0, "保存图片").setOnMenuItemClickListener {
                     saveImage(dataOriginalUrl ?: result.extra)
                     true
                 }
-                menu.add(0, v.id, 1, "View Image").setOnMenuItemClickListener {
+                menu.add(0, v.id, 1, "查看图片").setOnMenuItemClickListener {
                     viewImage(dataOriginalUrl ?: result.extra)
                     true
                 }
@@ -359,7 +361,6 @@ class ReadArticleFragment : Fragment() {
 
         launch {
             try {
-                val httpClient = AccountData.httpClient(requireContext())
                 val response: HttpResponse = httpClient.get(imageUrl)
                 val bytes = response.readBytes()
 
@@ -379,9 +380,10 @@ class ReadArticleFragment : Fragment() {
 
     private fun viewImage(imageUrl: String?) {
         if (imageUrl != null) {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.data = Uri.parse(imageUrl)
-            context?.startActivity(intent)
+            loadImage(viewLifecycleOwner, requireActivity(), httpClient, imageUrl) {
+                val dialog = ZoomableImageDialog(requireContext(), it)
+                dialog.show()
+            }
         }
     }
 
@@ -403,12 +405,11 @@ fun setupUpWebview(web: WebView, context: Context) {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
                 Url(request.url.toString()).parameters["target"]?.let {
-                    val intent: CustomTabsIntent = CustomTabsIntent.Builder().build()
+                    val intent = CustomTabsIntent.Builder().build()
                     intent.launchUrl(context, Uri.parse(it))
                     return true
                 }
-            }
-            else if (request.url.host == "www.zhihu.com" && context is MainActivity) {
+            } else if (request.url.host == "www.zhihu.com" && context is MainActivity) {
                 val destination = context.resolveContent(request.url)
                 if (destination != null) {
                     context.navigate(destination)
