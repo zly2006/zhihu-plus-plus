@@ -12,12 +12,10 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ItemViewHistoryBinding
-import io.ktor.client.*
 
 class ViewHistoryAdapter(
     private val values: List<NavDestination>,
     private val activity: FragmentActivity,
-    private val httpClient: HttpClient
 ) : RecyclerView.Adapter<ViewHistoryAdapter.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(ItemViewHistoryBinding.inflate(LayoutInflater.from(parent.context), parent, false))

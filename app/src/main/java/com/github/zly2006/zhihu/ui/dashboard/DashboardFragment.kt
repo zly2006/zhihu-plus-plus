@@ -83,7 +83,7 @@ class DashboardFragment : Fragment() {
                 @SuppressLint("NotifyDataSetChanged")
                 binding.viewHistory.adapter!!.notifyDataSetChanged()
             }
-            binding.viewHistory.adapter = ViewHistoryAdapter(history, requireActivity(), httpClient)
+            binding.viewHistory.adapter = ViewHistoryAdapter(history, requireActivity())
         }
         return root
     }

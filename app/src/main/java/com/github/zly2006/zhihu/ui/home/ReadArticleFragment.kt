@@ -402,12 +402,9 @@ fun setupUpWebview(web: WebView, context: Context) {
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
-                val url =
-                    request.url.query?.split("&")?.firstOrNull { it.startsWith("target=") }?.substringAfter("target=")
-                if (url != null) {
-                    val intent: CustomTabsIntent = CustomTabsIntent.Builder()
-                        .build()
-                    intent.launchUrl(context, Uri.parse(url))
+                Url(request.url.toString()).parameters["target"]?.let {
+                    val intent: CustomTabsIntent = CustomTabsIntent.Builder().build()
+                    intent.launchUrl(context, Uri.parse(it))
                     return true
                 }
             }
