@@ -4,20 +4,21 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
-import android.view.ContextMenu
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.activity.ComponentDialog
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
@@ -26,17 +27,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.MainActivity
+import com.github.chrisbanes.photoview.PhotoView
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
-import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.postHistory
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
-import com.github.zly2006.zhihu.loadImage
-import com.github.zly2006.zhihu.ui.dialog.ZoomableImageDialog
 import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
 import com.github.zly2006.zhihu.ui.home.comment.CommentsDialog
 import io.ktor.client.call.*
@@ -86,8 +84,8 @@ data class Reaction(
     val is_auto_send_moments: Boolean
 )
 
-class ReadArticleFragment : Fragment() {
-    private lateinit var document: Document
+class ReadArticleFragment : Fragment(), HtmlFragment {
+    override lateinit var document: Document
     private lateinit var type: String
     private var articleId by Delegates.notNull<Long>()
     private var _binding: FragmentReadArticleBinding? = null
@@ -349,6 +347,11 @@ class ReadArticleFragment : Fragment() {
                     viewImage(dataOriginalUrl ?: result.extra)
                     true
                 }
+                menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                    val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt()).build()
+                    intent.launchUrl(requireContext(), Uri.parse(dataOriginalUrl ?: result.extra))
+                    true
+                }
             }
         }
     }
@@ -378,17 +381,49 @@ class ReadArticleFragment : Fragment() {
         }
     }
 
-    private fun viewImage(imageUrl: String?) {
-        if (imageUrl != null) {
-            loadImage(viewLifecycleOwner, requireActivity(), httpClient, imageUrl) {
-                val dialog = ZoomableImageDialog(requireContext(), it)
-                dialog.show()
-            }
-        }
-    }
-
     private fun launch(block: suspend CoroutineScope.() -> Unit) {
         GlobalScope.launch(requireActivity().mainExecutor.asCoroutineDispatcher(), block = block)
+    }
+}
+
+private fun Fragment.viewImage(imageUrl: String?) {
+    if (imageUrl != null) {
+        loadImage(viewLifecycleOwner, requireActivity(), AccountData.httpClient(requireContext()), imageUrl) {
+            val dialog = object : ComponentDialog(requireContext()) {
+                init {
+                    activity?.catching {
+                        requestWindowFeature(Window.FEATURE_NO_TITLE)
+                        setContentView(
+                            PhotoView(
+                                requireActivity(),
+                            ).apply {
+                                setImageBitmap(it)
+                                setBackgroundColor(Color.BLACK)
+                                setOnClickListener { dismiss() }
+                                setOnLongClickListener { showContextMenu() }
+                                setOnCreateContextMenuListener { menu, _, _ ->
+                                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                                        dismiss()
+                                        val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt())
+                                            .build()
+                                        intent.launchUrl(context, Uri.parse(imageUrl))
+                                        true
+                                    }
+                                }
+                            }
+                        )
+                        window?.setBackgroundDrawable(ColorDrawable(Color.BLACK))
+                        setCanceledOnTouchOutside(true)
+                    }
+                }
+
+                override fun onCreate(savedInstanceState: Bundle?) {
+                    super.onCreate(savedInstanceState)
+                    window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                }
+            }
+            dialog.show()
+        }
     }
 }
 
@@ -397,6 +432,24 @@ fun setupUpWebview(web: WebView, context: Context) {
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
         .build()
+    // todo
+    web.setOnClickListener {
+        val result = web.hitTestResult
+        if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+            if (context is FragmentActivity) {
+                val fragment = context.supportFragmentManager.primaryNavigationFragment
+                if (fragment is HtmlFragment) {
+                    val imgElement = fragment.document.select("img[src='${result.extra}']").first()
+                    val dataOriginalUrl = imgElement?.attr("data-original")
+                    if (dataOriginalUrl != null) {
+                        fragment.viewImage(dataOriginalUrl)
+                        return@setOnClickListener
+                    }
+                }
+                fragment?.viewImage(result.extra)
+            }
+        }
+    }
     web.webViewClient = object : WebViewClientCompat() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             return assetLoader.shouldInterceptRequest(request.url)
@@ -405,7 +458,7 @@ fun setupUpWebview(web: WebView, context: Context) {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
                 Url(request.url.toString()).parameters["target"]?.let {
-                    val intent = CustomTabsIntent.Builder().build()
+                    val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt()).build()
                     intent.launchUrl(context, Uri.parse(it))
                     return true
                 }

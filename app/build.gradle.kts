@@ -104,6 +104,11 @@ dependencies {
     implementation("androidx.navigation:navigation-fragment-ktx:2.8.2")
     implementation("androidx.navigation:navigation-ui-ktx:2.8.2")
     implementation("androidx.webkit:webkit:1.12.1")
+
+    implementation("com.github.chrisbanes:PhotoView:2.0.0") {
+        exclude(group = "com.android.support")
+    }
+
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

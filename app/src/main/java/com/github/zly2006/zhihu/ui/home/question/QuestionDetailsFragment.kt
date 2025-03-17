@@ -17,6 +17,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.ui.home.HtmlFragment
 import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -34,12 +35,12 @@ import org.jsoup.nodes.Document
 private const val ARG_QUESTION_ID = "questionId"
 private const val ARG_QUESTION_TITLE = "title"
 
-class QuestionDetailsFragment : Fragment() {
+class QuestionDetailsFragment : Fragment(), HtmlFragment {
     private val httpClient by lazy { AccountData.httpClient(requireContext()) }
     private var fetchingNewItems = false
     private var canFetchMore = true
     private var questionId: Long = 0
-    private lateinit var document: Document
+    override lateinit var document: Document
     private var session = ""
     private var cursor = ""
 
