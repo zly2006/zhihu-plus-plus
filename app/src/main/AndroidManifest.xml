@@ -19,6 +19,11 @@
             android:theme="@style/Theme.Zhihu"
             tools:targetApi="31">
         <activity
+                android:name=".v2.ReadActivity"
+                android:exported="false"
+                android:label="@string/title_activity_read"
+                android:theme="@style/Theme.Zhihu"/>
+        <activity
                 android:name=".LoginActivity"
                 android:exported="false"/>
         <activity
@@ -32,10 +37,12 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
+
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+
                 <data android:scheme="http"/>
-                <data android:scheme="zhihu" />
+                <data android:scheme="zhihu"/>
                 <data android:scheme="https"/>
                 <data android:host="www.zhihu.com"/>
                 <data android:host="zhihu.com"/>
@@ -43,10 +50,12 @@
                 <data android:pathPattern="/.*"/>
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="zhihu" />
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+
+                <data android:scheme="zhihu"/>
             </intent-filter>
         </activity>
     </application>
