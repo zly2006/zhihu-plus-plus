@@ -53,6 +53,12 @@ sealed interface NavDestination
 
 @Serializable
 data object Home : NavDestination
+@Serializable
+data object Follow : NavDestination
+@Serializable
+data object History : NavDestination
+@Serializable
+data object Account : NavDestination
 
 @Serializable
 data object Dashboard : NavDestination
