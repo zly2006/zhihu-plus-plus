@@ -5,7 +5,7 @@ img {
 }
 
 html {
-  background-color: #faf8fd;
+  background-color: transparent;
 }
 
 pre {
@@ -21,7 +21,7 @@ a {
 
 @media (prefers-color-scheme: dark) {
   html {
-    background-color: #121318;
+    background-color: transparent;
     color: #fff;
   }
 

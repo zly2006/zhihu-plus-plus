@@ -388,7 +388,10 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     val url = url.buildString()
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
         header("x-zse-93", "101_3_3.0")
-        header("x-zse-96", (context as? MainActivity)?.signRequest96(url))
+        header("x-zse-96",
+            (context as? MainActivity)?.signRequest96(url) ?:
+            (context as? com.github.zly2006.zhihu.v2.MainActivity)?.signRequest96(url)
+        )
         header("x-requested-with", "fetch")
     }
 }

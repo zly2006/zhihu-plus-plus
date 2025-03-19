@@ -271,6 +271,7 @@ fun ArticleScreen(
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
+                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             setupUpWebview(this, ctx)
                             loadDataWithBaseURL(
                                 "https://www.zhihu.com/${article.type}/${article.id}",
@@ -286,9 +287,7 @@ fun ArticleScreen(
                             )
                         }
                     },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .heightIn(min = 200.dp)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
