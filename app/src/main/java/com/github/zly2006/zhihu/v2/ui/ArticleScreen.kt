@@ -7,7 +7,10 @@ import android.util.Log
 import android.webkit.WebView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Share
@@ -20,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -42,6 +46,7 @@ fun ArticleScreen(
     val coroutineScope = rememberCoroutineScope()
     val httpClient = remember { AccountData.httpClient(context) }
 
+    val scrollState = rememberScrollState()
     var content by remember { mutableStateOf("") }
     var voteUpCount by remember { mutableStateOf(0) }
     var commentCount by remember { mutableStateOf(0) }
@@ -109,7 +114,7 @@ fun ArticleScreen(
             // 标题
             Text(
                 text = article.title,
-                fontSize = 20.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -130,7 +135,9 @@ fun ArticleScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isVotedUp) Color(0xFF0D47A1) else Color(0xFF29B6F6)
-                    )
+                    ),
+                    modifier = Modifier.wrapContentWidth(unbounded = false),
+                    shape = RoundedCornerShape(50),
                 ) {
                     Icon(Icons.Filled.ThumbUp, contentDescription = "赞同")
                     Spacer(modifier = Modifier.width(4.dp))
@@ -177,8 +184,9 @@ fun ArticleScreen(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding).verticalScroll(scrollState),
         ) {
+            Text("innerPadding: " + innerPadding)
             // 作者信息
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -240,11 +248,25 @@ fun ArticleScreen(
                         }
                     },
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .heightIn(min = 200.dp)
-                        .padding(vertical = 8.dp)
                 )
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun ArticleScreenPreview() {
+    ArticleScreen(
+        Article(
+            "如何看待《狂暴之翼》中的人物设定？",
+            "answer",
+            123456789,
+            "知乎用户",
+            "知乎用户",
+            "",
+        )
+    )
 }
