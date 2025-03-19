@@ -9,10 +9,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
@@ -136,8 +135,7 @@ fun ArticleScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isVotedUp) Color(0xFF0D47A1) else Color(0xFF29B6F6)
                     ),
-                    modifier = Modifier.wrapContentWidth(unbounded = false),
-                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                 ) {
                     Icon(Icons.Filled.ThumbUp, contentDescription = "赞同")
                     Spacer(modifier = Modifier.width(4.dp))
@@ -149,12 +147,13 @@ fun ArticleScreen(
                     onClick = {
                         // 打开评论
                     },
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
-                    Icon(Icons.Filled.Comment, contentDescription = "评论")
+                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "$commentCount")
                 }
@@ -171,6 +170,7 @@ fun ArticleScreen(
                         )
                         clipboard.setPrimaryClip(clip)
                     },
+                    contentPadding = PaddingValues(horizontal = 8.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -186,11 +186,10 @@ fun ArticleScreen(
         Column(
             modifier = Modifier.padding(innerPadding).verticalScroll(scrollState),
         ) {
-            Text("innerPadding: " + innerPadding)
             // 作者信息
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 // 作者头像
                 if (article.avatarSrc != null) {
