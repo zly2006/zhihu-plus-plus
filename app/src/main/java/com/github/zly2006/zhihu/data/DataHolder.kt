@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.data
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.webkit.CookieManager
@@ -529,7 +530,7 @@ object DataHolder {
     private val feeds = mutableMapOf<String, Feed>()
 
     @SuppressLint("SetJavaScriptEnabled")
-    private suspend fun get(httpClient: HttpClient, url: String, activity: FragmentActivity, retry: Int = 1) {
+    private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
         val html = httpClient.get(url).bodyAsText()
         val document = Jsoup.parse(html)
         val zhSecScript = document.select("[data-assets-tracker-config]").getOrNull(0)?.attribute("src")?.value
@@ -537,7 +538,7 @@ object DataHolder {
             // 知乎安全cookie v4检验
             if (zhSecScript != null) {
                 val job = Job()
-                activity.runOnUiThread {
+                activity.mainExecutor.execute {
                     val webView = WebView(activity)
                     val cm = CookieManager.getInstance()
                     cm.removeAllCookies { }
@@ -569,7 +570,7 @@ object DataHolder {
                     }
                     return
                 } catch (e: Exception) {
-                    activity.runOnUiThread {
+                    activity.mainExecutor.execute {
                         AlertDialog.Builder(activity)
                             .setTitle("登录过期")
                             .setMessage("登录过期或无效，需重新登录")
@@ -654,7 +655,7 @@ object DataHolder {
         userType = user_type
     )
 
-    fun getAnswerCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
+    fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
             try {
                 if ("answer/$id" in feeds) {
@@ -727,7 +728,7 @@ object DataHolder {
         }
     }
 
-    fun getArticleCallback(activity: FragmentActivity, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
+    fun getArticleCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
         GlobalScope.launch {
             try {
                 if ("article/$id" in feeds) {

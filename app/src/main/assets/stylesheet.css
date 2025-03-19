@@ -4,6 +4,10 @@ img {
   max-width: 100%;
 }
 
+html {
+  background-color: #faf8fd;
+}
+
 pre {
   width: 100%;
   overflow-x: auto;
@@ -17,12 +21,12 @@ a {
 
 @media (prefers-color-scheme: dark) {
   html {
-    background-color: #111;
+    background-color: #121318;
     color: #fff;
   }
 
   pre {
-    background-color: #444;
+    background-color: #262626;
     color: #fff;
   }
 
