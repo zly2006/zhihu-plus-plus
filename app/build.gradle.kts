@@ -46,7 +46,7 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
         release {
-            if (System.getenv("GITHUB_ACTIONS") != null) {
+            if (System.getenv("GITHUB_ACTIONS") == null) {
                 isMinifyEnabled = true
                 isShrinkResources = true
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
