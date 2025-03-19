@@ -172,7 +172,6 @@ fun FeedCard(
                 text = item.details,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 3.dp)
             )
         }
     }

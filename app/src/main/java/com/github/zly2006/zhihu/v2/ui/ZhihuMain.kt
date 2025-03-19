@@ -73,7 +73,8 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                                 },
                                 alwaysShowLabel = false,
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xff66ccff)
+                                    selectedIconColor = Color(0xff66ccff),
+                                    indicatorColor = Color.Transparent,
                                 ),
                                 icon = {
                                     Icon(icon, contentDescription = label)
