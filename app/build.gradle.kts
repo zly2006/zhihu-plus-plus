@@ -46,9 +46,11 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
         release {
-  //          isMinifyEnabled = true
-  //          isShrinkResources = true
-  //          proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (System.getenv("GITHUB_ACTIONS") != null) {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            }
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
@@ -64,7 +66,6 @@ android {
     }
     buildFeatures {
         viewBinding = true
-//        compose = true
         buildConfig = true
         compose = true
     }

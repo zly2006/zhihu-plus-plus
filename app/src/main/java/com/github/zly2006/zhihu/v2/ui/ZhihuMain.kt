@@ -3,6 +3,8 @@
 package com.github.zly2006.zhihu.v2.ui
 
 import android.annotation.SuppressLint
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -13,9 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -31,6 +35,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.v2.theme.ZhihuTheme
 import kotlin.reflect.KClass
 
@@ -92,6 +97,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             }
         }
     ) { innerPadding ->
+        val context = LocalContext.current
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),
@@ -118,7 +124,9 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                 LaunchedEffect(Unit) {
 
                 }
-                Column {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
                     @Composable
                     fun displayPadding(padding: PaddingValues) = buildString {
                         append("(")
@@ -137,6 +145,34 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                     Text("当前padding: ${displayPadding(innerPadding)}")
                     Text("statusBars: ${displayPadding(WindowInsets.Companion.statusBars.asPaddingValues())}")
                     Text("contentWindowInsets: ${displayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
+                    val data = remember { AccountData.getData(context) }
+                    Text(
+                        if (data.login) {
+                            "已登录，${data.username}"
+                        } else {
+                            "未登录"
+                        }
+                    )
+                    val networkStatus = remember {
+                        buildString {
+                            val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+                            val activeNetwork = connectivityManager.activeNetwork
+                            append("网络状态：")
+                            if (activeNetwork != null) {
+                                append("已连接")
+                                if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                                        .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                                ) {
+                                    append(" (移动数据)")
+                                } else {
+                                    append(" (Wi-Fi)")
+                                }
+                            } else {
+                                append("未连接")
+                            }
+                        }
+                    }
+                    Text(networkStatus)
                 }
             }
         }
