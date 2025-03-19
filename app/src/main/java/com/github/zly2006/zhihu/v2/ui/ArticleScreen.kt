@@ -62,6 +62,7 @@ fun ArticleScreen(
     var commentCount by remember { mutableStateOf(0) }
     var voteUpState by remember { mutableStateOf(VoteUpState.Neutral) }
     var questionId by remember { mutableStateOf(0L) }
+    var showComments by remember { mutableStateOf(false) }
 
     LaunchedEffect(article.id) {
         withContext(Dispatchers.IO) {
@@ -133,7 +134,7 @@ fun ArticleScreen(
             // 底部操作栏
             if (backStackEntry.hasRoute(Article::class)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     // 点赞按钮
@@ -182,9 +183,7 @@ fun ArticleScreen(
 
                     // 评论按钮
                     Button(
-                        onClick = {
-                            // todo: 跳转到评论dialog
-                        },
+                        onClick = { showComments = true },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -291,6 +290,13 @@ fun ArticleScreen(
                 )
             }
         }
+    }
+
+    if (showComments) {
+        CommentScreen(
+            httpClient = httpClient,
+            content = article,
+        ) { showComments = false }
     }
 }
 

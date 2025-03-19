@@ -171,6 +171,7 @@ fun FeedCard(
             Text(
                 text = item.details,
                 fontSize = 12.sp,
+                lineHeight = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.github.zly2006.zhihu.v2.ui
 
 import android.annotation.SuppressLint
@@ -148,7 +150,7 @@ internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boole
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+private fun GreetingPreview() {
     val navController = rememberNavController()
     ZhihuTheme {
         ZhihuMain(navController = navController)
