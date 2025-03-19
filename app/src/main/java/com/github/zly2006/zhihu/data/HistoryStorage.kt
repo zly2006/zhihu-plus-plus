@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.data
 
+import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.findNavController
 import com.github.zly2006.zhihu.MainActivity
@@ -11,7 +12,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 class HistoryStorage(
-    val activity: MainActivity
+    val activity: Context
 ) {
     private val _history = linkedMapOf<NavDestination, NavDestination>()
     val history: List<NavDestination> get() = _history.values.reversed()

@@ -462,12 +462,17 @@ fun setupUpWebview(web: WebView, context: Context) {
                     intent.launchUrl(context, Uri.parse(it))
                     return true
                 }
-            } else if (request.url.host == "www.zhihu.com" && context is MainActivity) {
-                val destination = context.resolveContent(request.url)
+            } else if (request.url.host == "www.zhihu.com") {
+                val destination = resolveContent(request.url)
                 if (destination != null) {
-                    context.navigate(destination)
-                    return true
+                    if (context is MainActivity) {
+                        context.navigate(destination)
+                    }
+                    if (context is com.github.zly2006.zhihu.v2.MainActivity) {
+                        context.navigate(destination)
+                    }
                 }
+                return true
             }
             return super.shouldOverrideUrlLoading(view, request)
         }

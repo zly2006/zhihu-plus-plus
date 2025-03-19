@@ -269,66 +269,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun resolveContent(uri: Uri): NavDestination? {
-        if (uri.scheme == "http" || uri.scheme == "https") {
-            if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
-                if (uri.pathSegments.size == 4
-                    && uri.pathSegments[0] == "question"
-                    && uri.pathSegments[2] == "answer"
-                ) {
-                    val answerId = uri.pathSegments[3].toLong()
-                    return Article(
-                        "loading...",
-                        "answer",
-                        answerId,
-                        "loading...",
-                        "loading...",
-                        null,
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "answer"
-                ) {
-                    val answerId = uri.pathSegments[1].toLong()
-                    return Article(
-                        "loading...",
-                        "answer",
-                        answerId,
-                        "loading...",
-                        "loading...",
-                        null,
-                        null
-                    )
-                } else if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "question"
-                ) {
-                    val questionId = uri.pathSegments[1].toLong()
-                    return Question(
-                        questionId,
-                        "loading...",
-                    )
-                } else {
-                    Toast.makeText(this, "Invalid URL (not question or answer)", Toast.LENGTH_LONG).show()
-                }
-            } else if (uri.host == "zhuanlan.zhihu.com") {
-                if (uri.pathSegments.size == 2
-                    && uri.pathSegments[0] == "p"
-                ) {
-                    val articleId = uri.pathSegments[1].toLong()
-                    return Article(
-                        "loading...",
-                        "article",
-                        articleId,
-                        "loading...",
-                        "loading...",
-                        null,
-                        null
-                    )
-                }
-            }
-        }
-        if (uri.scheme == "zhihu") {
-            if (uri.host == "answers") {
-                val answerId = uri.pathSegments[0].toLong()
+}
+
+fun resolveContent(uri: Uri): NavDestination? {
+    if (uri.scheme == "http" || uri.scheme == "https") {
+        if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
+            if (uri.pathSegments.size == 4
+                && uri.pathSegments[0] == "question"
+                && uri.pathSegments[2] == "answer"
+            ) {
+                val answerId = uri.pathSegments[3].toLong()
+                return Article(
+                    "loading...",
+                    "answer",
+                    answerId,
+                    "loading...",
+                    "loading...",
+                    null,
+                )
+            } else if (uri.pathSegments.size == 2
+                && uri.pathSegments[0] == "answer"
+            ) {
+                val answerId = uri.pathSegments[1].toLong()
                 return Article(
                     "loading...",
                     "answer",
@@ -338,16 +300,20 @@ class MainActivity : AppCompatActivity() {
                     null,
                     null
                 )
-            } else if (uri.host == "questions") {
-                val questionId = uri.pathSegments[0].toLong()
+            } else if (uri.pathSegments.size == 2
+                && uri.pathSegments[0] == "question"
+            ) {
+                val questionId = uri.pathSegments[1].toLong()
                 return Question(
                     questionId,
                     "loading...",
                 )
-            } else if (uri.host == "feed") {
-                return Home
-            } else if (uri.host == "articles") {
-                val articleId = uri.pathSegments[0].toLong()
+            }
+        } else if (uri.host == "zhuanlan.zhihu.com") {
+            if (uri.pathSegments.size == 2
+                && uri.pathSegments[0] == "p"
+            ) {
+                val articleId = uri.pathSegments[1].toLong()
                 return Article(
                     "loading...",
                     "article",
@@ -357,17 +323,43 @@ class MainActivity : AppCompatActivity() {
                     null,
                     null
                 )
-            } else {
-                AlertDialog.Builder(this).apply {
-                    setTitle("Invalid URL")
-                    setMessage("Unknown zhihu URL: $uri\nPlease report to the developer")
-                    setPositiveButton("OK") { _, _ ->
-                    }
-                }.create().show()
             }
         }
-        return null
     }
+    if (uri.scheme == "zhihu") {
+        if (uri.host == "answers") {
+            val answerId = uri.pathSegments[0].toLong()
+            return Article(
+                "loading...",
+                "answer",
+                answerId,
+                "loading...",
+                "loading...",
+                null,
+                null
+            )
+        } else if (uri.host == "questions") {
+            val questionId = uri.pathSegments[0].toLong()
+            return Question(
+                questionId,
+                "loading...",
+            )
+        } else if (uri.host == "feed") {
+            return Home
+        } else if (uri.host == "articles") {
+            val articleId = uri.pathSegments[0].toLong()
+            return Article(
+                "loading...",
+                "article",
+                articleId,
+                "loading...",
+                "loading...",
+                null,
+                null
+            )
+        }
+    }
+    return null
 }
 
 fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is MainActivity) {

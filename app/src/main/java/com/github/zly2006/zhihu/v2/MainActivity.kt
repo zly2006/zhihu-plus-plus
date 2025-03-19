@@ -6,6 +6,8 @@ import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
@@ -19,9 +21,12 @@ class MainActivity : ComponentActivity() {
     lateinit var webview: WebView
     lateinit var history: HistoryStorage
 
+    lateinit var navController: NavHostController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        history = HistoryStorage(this)
         val data = AccountData.getData(this)
         webview = WebView(this)
         Log.i("MainActivity", "Webview created")
@@ -29,12 +34,16 @@ class MainActivity : ComponentActivity() {
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
-//        history = HistoryStorage(this)
         setContent {
+            navController = rememberNavController()
             ZhihuTheme {
-                ZhihuMain()
+                ZhihuMain(navController = navController)
             }
         }
+    }
+
+    fun navigate(route: NavDestination) {
+        navController.navigate(route)
     }
 
     suspend fun signRequest96(url: String): String {

@@ -2,16 +2,15 @@ package com.github.zly2006.zhihu.v2.ui
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -23,20 +22,19 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.*
-import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.v2.theme.ZhihuTheme
 import kotlin.reflect.KClass
 
 @SuppressLint("RestrictedApi")
 @Composable
-fun ZhihuMain(modifier: Modifier = Modifier.Companion) {
-    val navController = rememberNavController()
+fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     Scaffold(
         bottomBar = {
@@ -93,11 +91,10 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion) {
     ) { innerPadding ->
         NavHost(
             navController,
-            modifier = Modifier.Companion.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding),
             startDestination = Home
         ) {
             composable<Home> {
-                Text("Home")
                 HomeScreen(navController)
             }
             composable<Question> { navEntry ->
@@ -106,7 +103,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion) {
             }
             composable<Article> { navEntry ->
                 val article: Article = navEntry.toRoute()
-                ArticleScreen(article = article)
+                ArticleScreen(article, navController)
             }
             composable<Follow> {
                 Text("Follow")
@@ -143,7 +140,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion) {
     }
 }
 
-private fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
+internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
     return dest.hierarchy.any { it.hasRoute(cls) } == true
 }
@@ -151,53 +148,8 @@ private fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolea
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
+    val navController = rememberNavController()
     ZhihuTheme {
-        ZhihuMain()
-    }
-}
-
-@Composable
-fun FeedItem(
-    feed: Feed,
-    onFeedClick: (Feed) -> Unit
-) {
-    Column(
-        modifier = Modifier.Companion.padding(16.dp)
-    ) {
-//        Text(feed.title)
-//        Text(feed.summary)
-//        Text(feed.details)
-        Button(onClick = { onFeedClick(feed) }) {
-            Text("Click")
-        }
-    }
-}
-
-@Composable
-fun FeedList(
-    data: MutableList<Feed>,
-    modifier: Modifier = Modifier.Companion,
-    onFeedClick: (Feed) -> Unit,
-    loadMore: suspend () -> Unit
-) {
-    val listState = rememberLazyListState()
-    val reachBottom by remember {
-        derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == data.size - 1
-        }
-    }
-    LaunchedEffect(reachBottom) {
-        while (reachBottom) {
-            loadMore()
-        }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = modifier
-    ) {
-        items(data) { feed ->
-            FeedItem(feed, onFeedClick)
-        }
+        ZhihuMain(navController = navController)
     }
 }

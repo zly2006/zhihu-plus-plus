@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,12 +27,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.ui.home.Reaction
+import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
 import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.v2.MainActivity
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,16 +49,18 @@ import org.jsoup.Jsoup
 @Composable
 fun ArticleScreen(
     article: Article,
+    navController: NavController
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val backStackEntry by navController.currentBackStackEntryAsState()
     val httpClient = remember { AccountData.httpClient(context) }
 
     val scrollState = rememberScrollState()
     var content by remember { mutableStateOf("") }
     var voteUpCount by remember { mutableStateOf(0) }
     var commentCount by remember { mutableStateOf(0) }
-    var isVotedUp by remember { mutableStateOf(false) }
+    var voteUpState by remember { mutableStateOf(VoteUpState.Neutral) }
     var questionId by remember { mutableStateOf(0L) }
 
     LaunchedEffect(article.id) {
@@ -120,65 +131,94 @@ fun ArticleScreen(
         },
         bottomBar = {
             // 底部操作栏
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // 点赞按钮
-                Button(
-                    onClick = {
-                        isVotedUp = !isVotedUp
-                        coroutineScope.launch {
-                            // 实现点赞功能
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isVotedUp) Color(0xFF0D47A1) else Color(0xFF29B6F6)
-                    ),
-                    contentPadding = PaddingValues(horizontal = 8.dp),
+            if (backStackEntry.hasRoute(Article::class)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Filled.ThumbUp, contentDescription = "赞同")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = if (isVotedUp) "已赞 $voteUpCount" else "赞同 $voteUpCount")
-                }
+                    // 点赞按钮
+                    Button(
+                        onClick = {
+                            val newState = if (voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up
 
-                // 评论按钮
-                Button(
-                    onClick = {
-                        // 打开评论
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "$commentCount")
-                }
+                            coroutineScope.launch {
+                                try {
+                                    // 统一处理答案和文章的点赞逻辑
+                                    val endpoint = when (article.type) {
+                                        "answer" -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+                                        "article" -> "https://www.zhihu.com/api/v4/articles/${article.id}/vote"
+                                        else -> return@launch
+                                    }
 
-                // 复制链接按钮
-                Button(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val linkType = if (article.type == "answer") "question/${questionId}/answer" else article.type
-                        val clip = ClipData.newPlainText(
-                            "Link",
-                            "https://www.zhihu.com/$linkType/${article.id}"
-                                    + "\n【${article.title} - ${article.authorName}的回答】"
+                                    val response = httpClient.post(endpoint) {
+                                        when (article.type) {
+                                            "answer" -> setBody(mapOf("type" to newState.key))
+                                            "article" -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                                            else -> return@launch
+                                        }
+                                        setBody(body)
+                                        contentType(ContentType.Application.Json)
+                                    }.body<Reaction>()
+
+                                    voteUpState = newState
+                                    voteUpCount = response.voteup_count
+                                } catch (e: Exception) {
+                                    Log.e("ArticleScreen", "Vote up failed", e)
+                                    context.mainExecutor.execute {
+                                        Toast.makeText(context, "点赞失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (voteUpState == VoteUpState.Up) Color(0xFF0D47A1) else Color(0xFF29B6F6)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                    ) {
+                        Icon(Icons.Filled.ThumbUp, contentDescription = "赞同")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = if (voteUpState == VoteUpState.Up) "已赞 $voteUpCount" else "赞同 $voteUpCount")
+                    }
+
+                    // 评论按钮
+                    Button(
+                        onClick = {
+                            // todo: 跳转到评论dialog
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                        clipboard.setPrimaryClip(clip)
-                    },
-                    contentPadding = PaddingValues(horizontal = 8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                ) {
-                    Icon(Icons.Filled.Share, contentDescription = "复制链接")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "复制链接")
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "$commentCount")
+                    }
+
+                    // 复制链接按钮
+                    Button(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val linkType =
+                                if (article.type == "answer") "question/${questionId}/answer" else article.type
+                            val clip = ClipData.newPlainText(
+                                "Link",
+                                "https://www.zhihu.com/$linkType/${article.id}"
+                                        + "\n【${article.title} - ${article.authorName}的回答】"
+                            )
+                            clipboard.setPrimaryClip(clip)
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Filled.Share, contentDescription = "复制链接")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "复制链接")
+                    }
                 }
             }
         }
@@ -258,6 +298,7 @@ fun ArticleScreen(
 @Preview
 @Composable
 fun ArticleScreenPreview() {
+    val navController = rememberNavController()
     ArticleScreen(
         Article(
             "如何看待《狂暴之翼》中的人物设定？",
@@ -266,6 +307,7 @@ fun ArticleScreenPreview() {
             "知乎用户",
             "知乎用户",
             "",
-        )
+        ),
+        navController
     )
 }
