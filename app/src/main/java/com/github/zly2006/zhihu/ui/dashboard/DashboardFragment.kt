@@ -15,7 +15,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentDashboardBinding
-import com.github.zly2006.zhihu.v2.ReadActivity
+import com.github.zly2006.zhihu.v2.MainActivity
 
 class DashboardFragment : Fragment() {
 
@@ -66,7 +66,7 @@ class DashboardFragment : Fragment() {
             AccountData.delete(requireContext())
         }
         binding.v2.setOnClickListener {
-            val myIntent = Intent(context, ReadActivity::class.java)
+            val myIntent = Intent(context, MainActivity::class.java)
             startActivity(myIntent)
         }
         binding.openUrl.setOnClickListener {

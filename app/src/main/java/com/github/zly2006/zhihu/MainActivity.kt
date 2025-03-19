@@ -213,7 +213,7 @@ class MainActivity : AppCompatActivity() {
 
 
         navController.graph = navController.createGraph(
-            startDestination = Home::class,
+            startDestination = Home,
         ) {
             fragment<HomeFragment, Home> {
                 label = "Home"

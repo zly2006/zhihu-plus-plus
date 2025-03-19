@@ -81,8 +81,6 @@ class HomeFragment : Fragment() {
                     val index = viewModel.list.size
                     viewModel.list.addAll(data.data
                         .filter {
-//                        (it.type != "feed_advert" && it.created_time != -1L &&
-//                                it.target.created_time != -1L && it.target.relationship != null)
                             it.target !is Feed.AdvertTarget
                     }.map {
                         if (it.target.filterReason() != null) {
