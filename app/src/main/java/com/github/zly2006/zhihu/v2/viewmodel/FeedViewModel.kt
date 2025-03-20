@@ -30,14 +30,21 @@ class FeedViewModel : ViewModel() {
     
     @Suppress("PropertyName")
     @Serializable
-    class FeedResponse(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
+    class FeedResponse(val data: List<Feed>, val paging: JsonObject)
+    
+    enum class DisplayMode {
+        FEED,       // 首页推荐流模式
+        QUESTION,   // 问题页面模式
+        PROFILE     // 预留个人主页模式
+    }
     
     data class FeedDisplayItem(
         val title: String,
         val summary: String,
         val details: String,
         val feed: Feed?,
-        val isFiltered: Boolean = false
+        val isFiltered: Boolean = false,
+        val displayMode: DisplayMode = DisplayMode.FEED
     )
     
     fun refresh(context: Context) {
@@ -53,6 +60,14 @@ class FeedViewModel : ViewModel() {
         if (isLoading) return
         viewModelScope.launch {
             fetchFeeds(context)
+        }
+    }
+    
+    fun refreshQuestion(context: Context, questionId: Long) {
+        viewModelScope.launch {
+            displayItems.clear()
+            feeds.clear()
+            fetchQuestionAnswers(context, questionId)
         }
     }
     
@@ -89,7 +104,8 @@ class FeedViewModel : ViewModel() {
                                 summary = filterReason,
                                 details = feed.target.detailsText(),
                                 feed = feed,
-                                isFiltered = true
+                                isFiltered = true,
+                                displayMode = DisplayMode.FEED
                             )
                         } else {
                             when (feed.target) {
@@ -98,7 +114,8 @@ class FeedViewModel : ViewModel() {
                                         title = feed.target.question.title,
                                         summary = feed.target.excerpt,
                                         details = feed.target.detailsText(),
-                                        feed = feed
+                                        feed = feed,
+                                        displayMode = DisplayMode.FEED
                                     )
                                 }
                                 is Feed.ArticleTarget -> {
@@ -106,7 +123,8 @@ class FeedViewModel : ViewModel() {
                                         title = feed.target.title,
                                         summary = feed.target.excerpt,
                                         details = feed.target.detailsText(),
-                                        feed = feed
+                                        feed = feed,
+                                        displayMode = DisplayMode.FEED
                                     )
                                 }
                                 else -> {
@@ -114,7 +132,8 @@ class FeedViewModel : ViewModel() {
                                         title = feed.target.javaClass.simpleName,
                                         summary = "Not Implemented",
                                         details = feed.target.detailsText(),
-                                        feed = feed
+                                        feed = feed,
+                                        displayMode = DisplayMode.FEED
                                     )
                                 }
                             }
@@ -130,6 +149,63 @@ class FeedViewModel : ViewModel() {
         } catch (e: Exception) {
             Log.e("FeedViewModel", "Failed to fetch", e)
             errorMessage = "获取推荐内容失败: ${e.message}"
+        } finally {
+            isLoading = false
+        }
+    }
+    
+    private suspend fun fetchQuestionAnswers(context: Context, questionId: Long) {
+        if (isLoading) return
+        isLoading = true
+        
+        try {
+            val httpClient = AccountData.httpClient(context)
+//            val response = httpClient.get("https://www.zhihu.com/api/v4/questions/$questionId/answers?limit=20&offset=${feeds.size}") {
+            val response = httpClient.get("https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}") {
+                signFetchRequest(context)
+            }
+            
+            if (response.status == HttpStatusCode.OK) {
+                val text = response.body<JsonObject>()
+                
+                try {
+                    val data = AccountData.decodeJson<FeedResponse>(text)
+                    val newFeeds = data.data.filter { it.target !is Feed.AdvertTarget }
+                    
+                    feeds.addAll(newFeeds)
+                    
+                    val newItems = newFeeds.map { feed ->
+                        when (feed.target) {
+                            is Feed.AnswerTarget -> {
+                                FeedDisplayItem(
+                                    title = feed.target.author.name, // 在问题模式下，标题显示作者名
+                                    summary = feed.target.excerpt,
+                                    details = feed.target.detailsText(),
+                                    feed = feed,
+                                    displayMode = DisplayMode.QUESTION
+                                )
+                            }
+                            else -> {
+                                FeedDisplayItem(
+                                    title = feed.target.javaClass.simpleName,
+                                    summary = "Not Implemented",
+                                    details = feed.target.detailsText(),
+                                    feed = feed,
+                                    displayMode = DisplayMode.QUESTION
+                                )
+                            }
+                        }
+                    }
+                    
+                    displayItems.addAll(newItems)
+                } catch (e: SerializationException) {
+                    Log.e("FeedViewModel", "Failed to parse JSON: $text", e)
+                    errorMessage = "解析数据失败: ${e.message}"
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("FeedViewModel", "Failed to fetch", e)
+            errorMessage = "获取问题内容失败: ${e.message}"
         } finally {
             isLoading = false
         }

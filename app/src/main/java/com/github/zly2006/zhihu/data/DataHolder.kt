@@ -9,7 +9,6 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.fragment.app.FragmentActivity
 import com.github.zly2006.zhihu.LoginActivity
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -707,7 +706,7 @@ object DataHolder {
         }
     }
 
-    suspend fun getQuestion(activity: FragmentActivity, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
+    suspend fun getQuestion(activity: Context, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
         try {
             if (id !in questions) {
                 get(httpClient, "https://www.zhihu.com/question/$id", activity)

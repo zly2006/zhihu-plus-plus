@@ -428,6 +428,7 @@ private fun Fragment.viewImage(imageUrl: String?) {
 }
 
 fun setupUpWebview(web: WebView, context: Context) {
+    web.setBackgroundColor(Color.TRANSPARENT)
     val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

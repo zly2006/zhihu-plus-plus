@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.ComponentDialog
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +43,7 @@ import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.home.Reaction
@@ -70,6 +72,8 @@ fun ArticleScreen(
     val httpClient = remember { AccountData.httpClient(context) }
 
     val scrollState = rememberScrollState()
+    var title by remember { mutableStateOf(article.title) }
+    var authorName by remember { mutableStateOf(article.authorName) }
     var content by remember { mutableStateOf("") }
     var voteUpCount by remember { mutableStateOf(0) }
     var commentCount by remember { mutableStateOf(0) }
@@ -82,6 +86,8 @@ fun ArticleScreen(
             if (article.type == "answer") {
                 DataHolder.getAnswerCallback(context, httpClient, article.id) { answer ->
                     if (answer != null) {
+                        title = answer.question.title
+                        authorName = answer.author.name
                         content = answer.content
                         voteUpCount = answer.voteupCount
                         commentCount = answer.commentCount
@@ -137,10 +143,16 @@ fun ArticleScreen(
         topBar = {
             // 标题
             Text(
-                text = article.title,
+                text = title,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
+                    .clickable {
+                        navController.navigate(Question(questionId, title)) {
+                            popUpTo(Question(questionId, title))
+                            launchSingleTop = true
+                        }
+                    }
             )
         },
         bottomBar = {
@@ -217,7 +229,7 @@ fun ArticleScreen(
                             val clip = ClipData.newPlainText(
                                 "Link",
                                 "https://www.zhihu.com/$linkType/${article.id}"
-                                        + "\n【${article.title} - ${article.authorName}的回答】"
+                                        + "\n【$title - $authorName 的回答】"
                             )
                             clipboard.setPrimaryClip(clip)
                         },
@@ -266,7 +278,7 @@ fun ArticleScreen(
                 // 作者名称和简介
                 Column {
                     Text(
-                        text = article.authorName,
+                        text = authorName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -283,7 +295,6 @@ fun ArticleScreen(
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
-                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
                             setupUpWebview(this, ctx)
                             loadDataWithBaseURL(
                                 "https://www.zhihu.com/${article.type}/${article.id}",
@@ -303,7 +314,8 @@ fun ArticleScreen(
                             setOnCreateContextMenuListener { menu, v, _ ->
                                 val result = (v as WebView).hitTestResult
                                 if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                                    result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                                    result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+                                ) {
 
                                     menu.add("查看图片").setOnMenuItemClickListener {
                                         val dialog = object : ComponentDialog(context) {
@@ -313,12 +325,13 @@ fun ArticleScreen(
                                                 setContentView(
                                                     PhotoView(context).apply {
                                                         GlobalScope.launch {
-                                                            httpClient.get(url).bodyAsChannel().toInputStream().buffered().use {
-                                                                val bitmap = BitmapFactory.decodeStream(it)
-                                                                context.mainExecutor.execute {
-                                                                    setImageBitmap(bitmap)
+                                                            httpClient.get(url).bodyAsChannel().toInputStream()
+                                                                .buffered().use {
+                                                                    val bitmap = BitmapFactory.decodeStream(it)
+                                                                    context.mainExecutor.execute {
+                                                                        setImageBitmap(bitmap)
+                                                                    }
                                                                 }
-                                                            }
                                                         }
                                                         setImageURI(Uri.parse(url))
                                                         setBackgroundColor(android.graphics.Color.BLACK)
@@ -331,7 +344,10 @@ fun ArticleScreen(
 
                                             override fun onCreate(savedInstanceState: Bundle?) {
                                                 super.onCreate(savedInstanceState)
-                                                window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                                                window?.setLayout(
+                                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                                )
                                             }
                                         }
                                         dialog.show()
@@ -357,9 +373,17 @@ fun ArticleScreen(
                                                         Environment.DIRECTORY_PICTURES
                                                     ).resolve(fileName)
                                                     file.outputStream().use { it.write(bytes) }
-                                                    Toast.makeText(context, "图片已保存至: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        "图片已保存至: ${file.absolutePath}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                 } catch (e: Exception) {
-                                                    Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        "保存失败: ${e.message}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                 }
                                             }
                                         }
@@ -369,6 +393,7 @@ fun ArticleScreen(
                             }
                         }
                     },
+                    onRelease = WebView::destroy,
                     modifier = Modifier.fillMaxSize()
                 )
             }

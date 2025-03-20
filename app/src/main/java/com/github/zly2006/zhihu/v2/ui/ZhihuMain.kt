@@ -108,7 +108,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             }
             composable<Question> { navEntry ->
                 val question: Question = navEntry.toRoute()
-                Text("Question ${question.questionId}")
+                QuestionScreen(question, navController)
             }
             composable<Article> { navEntry ->
                 val article: Article = navEntry.toRoute()

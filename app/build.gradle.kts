@@ -44,6 +44,9 @@ android {
         val gitHash = grgit.head().abbreviatedId
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            kotlinOptions {
+                freeCompilerArgs += "-Xdebug"
+            }
         }
         release {
             if (System.getenv("GITHUB_ACTIONS") == null) {
