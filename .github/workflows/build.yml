@@ -19,6 +19,5 @@ jobs:
     uses: ./.github/workflows/my-build-action.yml
     with:
       name: 'Minified Builds'
-    env:
-      CI_BUILD_MINIFY: true
+      minify: true
     secrets: inherit

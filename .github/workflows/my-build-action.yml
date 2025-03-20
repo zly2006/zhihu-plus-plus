@@ -7,6 +7,9 @@ on:
       args:
         required: false
         type: string
+      minify:
+        required: false
+        type: boolean
     secrets:
       ANDROID_SIGNING_KEY:
         required: true
@@ -69,6 +72,7 @@ jobs:
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CI_BUILD_MINIFY: ${{ inputs.minify }}
       - name: Move files
         run: |
           mkdir -p app/build/upload
