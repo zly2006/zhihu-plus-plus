@@ -1,7 +1,9 @@
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +35,21 @@ fun HomeScreen(
     val viewModel: FeedViewModel = viewModel()
     val context = LocalContext.current
     val listState = rememberLazyListState()
+    val preferences = remember {
+        context.getSharedPreferences(
+            "com.github.zly2006.zhihu_preferences",
+            MODE_PRIVATE
+        )
+    }
+    if (!preferences.getBoolean("developer", false)) {
+        AlertDialog.Builder(context).apply {
+            setTitle("登录失败")
+            setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
+            setPositiveButton("OK") { _, _ ->
+            }
+        }.create().show()
+        return
+    }
     
     // 检查是否需要加载更多内容
     val shouldLoadMore by remember {
