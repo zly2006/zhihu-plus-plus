@@ -10,80 +10,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  build: &build_job
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      # Set Current Date As Env Variable
-      - name: Set current date as env variable
-        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-
-      # Set Repository Name As Env Variable
-      - name: Set repository name as env variable
-        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
-
-      - name: Set Up JDK
-        uses: actions/setup-java@v4
+      - uses: ./.github/workflows/build-action.yml
         with:
-          distribution: 'zulu' # See 'Supported distributions' for available options
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Change wrapper permissions
-        run: chmod +x ./gradlew
-      - name: Cache Gradle
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.m2/repository
-            ./.gradle
-            ./**/.gradle
-          # dont invalidate cache if only gradle.properties is changed -- they
-          key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      # Run Tests Build
-      - name: Run gradle tests
-        run: ./gradlew test
-        env:
-          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
-          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      - name: Build App
-        # Build .apk and .aab
-        run: |
-          bash ./gradlew assembleRelease
-          bash ./gradlew bundleRelease
-        env:
-          signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
-          keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-      - name: Move files
-        run: |
-          mkdir -p app/build/upload
-          mv app/build/outputs/apk/release/app-release.apk app/build/upload/zhihu++.apk
-          mv app/build/outputs/bundle/release/app-release.aab app/build/upload/zhihu++.aab
-      - name: Upload APK / Bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.date_today }} - ${{ env.repository_name }} - Nightly Builds
-          path: app/build/upload/
+          name: 'Nightly Builds'
   build_minified_release:
-    <<: *build_job
-    name: Build Minified Release
+    runs-on: ubuntu-latest
     steps:
-      steps:
-        [ 8 ]:
-          run: |
-            bash ./gradlew assembleRelease
-            bash ./gradlew bundleRelease
-          env:
-            CI_BUILD_MINIFY: true
-        [ 10 ]:
-          with:
-            name: ${{ env.date_today }} - ${{ env.repository_name }} - Nightly Builds (Minified)
+      - uses: ./.github/workflows/build-action.yml
+        with:
+          name: 'Minified Builds'
+        env:
+          CI_BUILD_MINIFY: true
