@@ -3,9 +3,18 @@ package com.github.zly2006.zhihu.v2.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.graphics.drawable.ColorDrawable
+import android.net.Uri
+import android.os.Bundle
+import android.os.Environment
 import android.util.Log
+import android.view.ViewGroup
+import android.view.Window
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.activity.ComponentDialog
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +40,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
+import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -40,8 +50,11 @@ import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.v2.MainActivity
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -134,7 +147,7 @@ fun ArticleScreen(
             // 底部操作栏
             if (backStackEntry.hasRoute(Article::class)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     // 点赞按钮
@@ -284,6 +297,76 @@ fun ArticleScreen(
                                 "utf-8",
                                 null
                             )
+                            setOnLongClickListener { view ->
+                                view.showContextMenu()
+                            }
+                            setOnCreateContextMenuListener { menu, v, _ ->
+                                val result = (v as WebView).hitTestResult
+                                if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
+                                    result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+
+                                    menu.add("查看图片").setOnMenuItemClickListener {
+                                        val dialog = object : ComponentDialog(context) {
+                                            init {
+                                                val url = result.extra!!
+                                                requestWindowFeature(Window.FEATURE_NO_TITLE)
+                                                setContentView(
+                                                    PhotoView(context).apply {
+                                                        GlobalScope.launch {
+                                                            httpClient.get(url).bodyAsChannel().toInputStream().buffered().use {
+                                                                val bitmap = BitmapFactory.decodeStream(it)
+                                                                context.mainExecutor.execute {
+                                                                    setImageBitmap(bitmap)
+                                                                }
+                                                            }
+                                                        }
+                                                        setImageURI(Uri.parse(url))
+                                                        setBackgroundColor(android.graphics.Color.BLACK)
+                                                        setOnClickListener { dismiss() }
+                                                    }
+                                                )
+                                                window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+                                                setCanceledOnTouchOutside(true)
+                                            }
+
+                                            override fun onCreate(savedInstanceState: Bundle?) {
+                                                super.onCreate(savedInstanceState)
+                                                window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                                            }
+                                        }
+                                        dialog.show()
+                                        true
+                                    }
+                                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                                        result.extra?.let { url ->
+                                            CustomTabsIntent.Builder()
+                                                .setToolbarColor(0xff66CCFF.toInt())
+                                                .build()
+                                                .launchUrl(context, Uri.parse(url))
+                                        }
+                                        true
+                                    }
+                                    menu.add("保存图片").setOnMenuItemClickListener {
+                                        result.extra?.let { url ->
+                                            coroutineScope.launch {
+                                                try {
+                                                    val response = httpClient.get(url)
+                                                    val bytes = response.readBytes()
+                                                    val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image"
+                                                    val file = Environment.getExternalStoragePublicDirectory(
+                                                        Environment.DIRECTORY_PICTURES
+                                                    ).resolve(fileName)
+                                                    file.outputStream().use { it.write(bytes) }
+                                                    Toast.makeText(context, "图片已保存至: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                        true
+                                    }
+                                }
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxSize()

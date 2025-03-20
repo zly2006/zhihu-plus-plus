@@ -40,6 +40,7 @@ import com.github.zly2006.zhihu.ui.home.comment.CommentItem
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -93,7 +94,7 @@ fun CommentScreen(
                     }
                     commentsList = parsedComments
                 } else {
-                    errorMessage = "加载评论失败: ${response.status}"
+                    errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
                 }
             } else if (content is CommentHolder) {
                 val response = httpClient.get(
@@ -110,7 +111,7 @@ fun CommentScreen(
                     }
                     commentsList = parsedComments
                 } else {
-                    errorMessage = "加载评论失败: ${response.status}"
+                    errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
                 }
             } else {
                 errorMessage = "此内容不支持评论"
@@ -384,7 +385,7 @@ fun CommentItem(
                     fontSize = 14.sp,
                     modifier = Modifier.clickable {
                         onChildCommentClick(comment)
-                    }
+                    }.fillMaxWidth()
                 )
             }
         }
