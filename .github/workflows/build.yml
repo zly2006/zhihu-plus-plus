@@ -11,18 +11,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/my-build-action.yml
-        with:
-          name: 'Nightly Builds'
+    uses: ./.github/workflows/my-build-action.yml
+    with:
+      name: 'Nightly Builds'
+    secrets: inherit
   build_minified_release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/my-build-action.yml
-        with:
-          name: 'Minified Builds'
-        env:
-          CI_BUILD_MINIFY: true
+    uses: ./.github/workflows/my-build-action.yml
+    with:
+      name: 'Minified Builds'
+    env:
+      CI_BUILD_MINIFY: true
+    secrets: inherit
