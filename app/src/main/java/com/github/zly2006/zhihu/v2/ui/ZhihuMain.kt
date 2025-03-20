@@ -3,8 +3,12 @@
 package com.github.zly2006.zhihu.v2.ui
 
 import android.annotation.SuppressLint
+import android.content.Context.MODE_PRIVATE
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -12,10 +16,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -98,6 +99,21 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
         }
     ) { innerPadding ->
         val context = LocalContext.current
+        val preferences = remember {
+            context.getSharedPreferences(
+                "com.github.zly2006.zhihu_preferences",
+                MODE_PRIVATE
+            )
+        }
+        if (!preferences.getBoolean("developer", false)) {
+            AlertDialog.Builder(context).apply {
+                setTitle("登录失败")
+                setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
+                setPositiveButton("OK") { _, _ ->
+                }
+            }.create().show()
+            return@Scaffold
+        }
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),
@@ -142,6 +158,20 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                         append(")")
                     }
                     Text("Account")
+                    var clickTimes by remember { mutableIntStateOf(0) }
+                    Text(
+                        "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
+                        modifier = Modifier.clickable {
+                            clickTimes++
+                            if (clickTimes == 5) {
+                                clickTimes = 0
+                                preferences.edit()
+                                    .putBoolean("developer", true)
+                                    .apply()
+                                Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
                     Text("当前padding: ${displayPadding(innerPadding)}")
                     Text("statusBars: ${displayPadding(WindowInsets.Companion.statusBars.asPaddingValues())}")
                     Text("contentWindowInsets: ${displayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
