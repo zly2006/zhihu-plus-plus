@@ -22,6 +22,8 @@ on:
 
 jobs:
   build:
+    name: Build Android App
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       # Set Current Date As Env Variable
