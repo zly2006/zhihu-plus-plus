@@ -13,12 +13,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/workflows/build-action.yml
         with:
           name: 'Nightly Builds'
   build_minified_release:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/workflows/build-action.yml
         with:
           name: 'Minified Builds'
