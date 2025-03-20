@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build: &build_job
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,12 +53,8 @@ jobs:
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      # Run Build Project
-#      - name: Build gradle project
-#        run: ./gradlew build
-
       - name: Build App
+        # Build .apk and .aab
         run: |
           bash ./gradlew assembleRelease
           bash ./gradlew bundleRelease
@@ -77,3 +73,17 @@ jobs:
         with:
           name: ${{ env.date_today }} - ${{ env.repository_name }} - Nightly Builds
           path: app/build/upload/
+  build_minified_release:
+    <<: *build_job
+    name: Build Minified Release
+    steps:
+      steps:
+        [ 8 ]:
+          run: |
+            bash ./gradlew assembleRelease
+            bash ./gradlew bundleRelease
+          env:
+            CI_BUILD_MINIFY: true
+        [ 10 ]:
+          with:
+            name: ${{ env.date_today }} - ${{ env.repository_name }} - Nightly Builds (Minified)

@@ -49,7 +49,9 @@ android {
             }
         }
         release {
-            if (System.getenv("GITHUB_ACTIONS") == null) {
+            if (System.getenv("GITHUB_ACTIONS") == null ||
+                System.getenv("CI_BUILD_MINIFY").toBoolean()
+            ) {
                 isMinifyEnabled = true
                 isShrinkResources = true
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
