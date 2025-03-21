@@ -77,6 +77,7 @@ fun QuestionScreen(
                 Text(
                     text = question.title,
                     fontSize = 24.sp,
+                    lineHeight = 32.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(16.dp)
                 )

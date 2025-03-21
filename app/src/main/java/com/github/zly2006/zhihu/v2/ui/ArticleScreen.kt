@@ -154,6 +154,7 @@ fun ArticleScreen(
                 text = title,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
+                lineHeight = 32.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
                     .clickable {
                         navController.navigate(Question(questionId, title)) {

@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
     fun navigate(route: NavDestination) {
         navController.navigate(route)
+        history.add(route)
     }
 
     suspend fun signRequest96(url: String): String {
