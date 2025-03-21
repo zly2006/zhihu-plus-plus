@@ -24,16 +24,36 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.signFetchRequest
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import kotlinx.serialization.json.JsonObject
 
 @Composable
 fun AccountSettingScreen(
     context: Context,
     innerPadding: PaddingValues
 ) {
+    LaunchedEffect(Unit) {
+        val data = AccountData.getData(context)
+        if (data.login) {
+            val httpClient = AccountData.httpClient(context)
+            val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
+                signFetchRequest(context)
+            }.body<JsonObject>()
+            val self = AccountData.decodeJson<Person>(response)
+            AccountData.saveData(
+                context,
+                data.copy(self = self)
+            )
+        }
+    }
     Column(
         modifier = Modifier
             .padding(16.dp)
@@ -75,16 +95,18 @@ fun AccountSettingScreen(
                 }
             }
         )
-        val data = remember { AccountData.getData(context) }
+        val data = AccountData.getData()
         if (data.login) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 这里可以添加头像组件，暂时用 Box 代替
-                Box(
+                AsyncImage(
+                    model = data.self?.avatar_url,
+                    contentDescription = "头像",
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(120.dp)
                         .background(MaterialTheme.colorScheme.primary, CircleShape)
                 )
                 Spacer(modifier = Modifier.width(16.dp))

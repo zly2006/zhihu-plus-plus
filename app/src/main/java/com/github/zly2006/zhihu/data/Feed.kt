@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.data.Feed.Badge
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -47,7 +48,7 @@ data class Feed(
     data class AnswerTarget(
         val id: Long,
         val url: String,
-        val author: Author,
+        val author: Person,
         /**
          * -1 广告
          */
@@ -86,7 +87,7 @@ data class Feed(
     @SerialName("zvideo")
     data class VideoTarget(
         val id: Long,
-        val author: Author,
+        val author: Person,
         val vote_count: Int = -1,
         val comment_count: Int,
         val title: String,
@@ -109,7 +110,7 @@ data class Feed(
     data class ArticleTarget(
         val id: Long,
         val url: String,
-        val author: Author,
+        val author: Person,
         val voteup_count: Int,
         val comment_count: Int,
         val title: String,
@@ -140,7 +141,7 @@ data class Feed(
     data class PinTarget(
         val id: Long,
         val url: String,
-        val author: Author,
+        val author: Person,
         val comment_count: Int,
         val content: JsonArray,
         val favorite_count: Int,
@@ -176,28 +177,11 @@ data class Feed(
     )
 
     @Serializable
-    data class Author(
-        val id: String,
-        val url: String,
-        val user_type: String,
-        val url_token: String,
-        val name: String,
-        val headline: String,
-        val avatar_url: String,
-        val is_org: Boolean,
-        val gender: Int,
-        val followers_count: Int = 0,
-        val is_following: Boolean,
-        val is_followed: Boolean,
-        val badge: List<Badge> = emptyList(),
-    )
-
-    @Serializable
     data class Question(
         val id: Long,
         val type: String,
         val url: String,
-        val author: Author? = null,
+        val author: Person? = null,
         val title: String,
         val created: Long,
         val answer_count: Int = 0,
@@ -219,3 +203,20 @@ data class Feed(
         val voting: Int = 0
     )
 }
+
+@Serializable
+data class Person(
+    val id: String,
+    val url: String,
+    val user_type: String,
+    val url_token: String,
+    val name: String,
+    val headline: String,
+    val avatar_url: String,
+    val is_org: Boolean,
+    val gender: Int,
+    val followers_count: Int = 0,
+    val is_following: Boolean = false,
+    val is_followed: Boolean = false,
+    val badge: List<Badge> = emptyList(),
+)

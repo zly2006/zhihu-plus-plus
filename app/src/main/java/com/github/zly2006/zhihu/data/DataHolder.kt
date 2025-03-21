@@ -639,7 +639,7 @@ object DataHolder {
         answers.remove(answerId)
     }
 
-    private fun Feed.Author.mock() = Author(
+    private fun Person.mock() = Author(
         avatarUrl = avatar_url,
         avatarUrlTemplate = "",
         gender = gender,

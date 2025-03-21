@@ -14,7 +14,9 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 
 object AccountData {
@@ -30,6 +32,7 @@ object AccountData {
         val username: String = "",
         val cookies: MutableMap<String, String> = mutableMapOf(),
         val userAgent: String = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0",
+        val self: Person? = null
     )
 
     private var data = Data()
@@ -91,12 +94,13 @@ object AccountData {
         val httpClient = httpClient(context, map)
         val response = httpClient.get("https://www.zhihu.com/api/v4/me")
         if (response.status == HttpStatusCode.OK) {
-            val body = response.body<JsonObject>()
+            val person = response.body<Person>()
             saveData(
                 context, Data(
                     login = true,
                     cookies = map,
-                    username = body["name"]!!.jsonPrimitive.content
+                    username = person.name,
+                    self = person
                 )
             )
             return true
