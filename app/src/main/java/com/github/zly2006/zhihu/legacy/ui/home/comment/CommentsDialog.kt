@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home.comment
+package com.github.zly2006.zhihu.legacy.ui.home.comment
 
 import android.os.Bundle
 import android.util.Log
@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.FragmentCommentsBinding
+import com.github.zly2006.zhihu.v2.ui.CommentItem
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -20,11 +21,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
-
-data class CommentItem(
-    val item: DataHolder.Comment,
-    val clickTarget: CommentHolder?
-)
 
 class CommentsDialog(
     private val httpClient: HttpClient,

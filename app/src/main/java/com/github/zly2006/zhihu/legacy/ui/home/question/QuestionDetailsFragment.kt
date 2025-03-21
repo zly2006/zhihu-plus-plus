@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home.question
+package com.github.zly2006.zhihu.legacy.ui.home.question
 
 import android.app.AlertDialog
 import android.os.Bundle
@@ -16,9 +16,9 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
+import com.github.zly2006.zhihu.legacy.ui.home.HtmlFragment
+import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.signFetchRequest
-import com.github.zly2006.zhihu.ui.home.HtmlFragment
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope

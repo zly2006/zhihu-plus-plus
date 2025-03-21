@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home
+package com.github.zly2006.zhihu.legacy.ui.home
 
 import android.annotation.SuppressLint
 import android.content.ClipData
@@ -11,32 +11,30 @@ import android.os.Bundle
 import android.os.Environment
 import android.util.Log
 import android.view.*
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.ComponentDialog
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import androidx.webkit.WebViewAssetLoader
-import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
-import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LegacyMainActivity.MainActivityViewModel
+import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.catching
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.postHistory
 import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
-import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
-import com.github.zly2006.zhihu.ui.home.comment.CommentsDialog
+import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
+import com.github.zly2006.zhihu.legacy.ui.home.comment.CommentsDialog
+import com.github.zly2006.zhihu.loadImage
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -427,55 +425,3 @@ private fun Fragment.viewImage(imageUrl: String?) {
     }
 }
 
-fun setupUpWebview(web: WebView, context: Context) {
-    web.setBackgroundColor(Color.TRANSPARENT)
-    val assetLoader = WebViewAssetLoader.Builder()
-        .setDomain("zhihu-plus.internal")
-        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
-        .build()
-    // todo
-    web.setOnClickListener {
-        val result = web.hitTestResult
-        if (result.type == WebView.HitTestResult.IMAGE_TYPE || result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
-            if (context is FragmentActivity) {
-                val fragment = context.supportFragmentManager.primaryNavigationFragment
-                if (fragment is HtmlFragment) {
-                    val imgElement = fragment.document.select("img[src='${result.extra}']").first()
-                    val dataOriginalUrl = imgElement?.attr("data-original")
-                    if (dataOriginalUrl != null) {
-                        fragment.viewImage(dataOriginalUrl)
-                        return@setOnClickListener
-                    }
-                }
-                fragment?.viewImage(result.extra)
-            }
-        }
-    }
-    web.webViewClient = object : WebViewClientCompat() {
-        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-            return assetLoader.shouldInterceptRequest(request.url)
-        }
-
-        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-            if (request.url.host == "link.zhihu.com") {
-                Url(request.url.toString()).parameters["target"]?.let {
-                    val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt()).build()
-                    intent.launchUrl(context, Uri.parse(it))
-                    return true
-                }
-            } else if (request.url.host == "www.zhihu.com") {
-                val destination = resolveContent(request.url)
-                if (destination != null) {
-                    if (context is LegacyMainActivity) {
-                        context.navigate(destination)
-                    }
-                    if (context is com.github.zly2006.zhihu.v2.MainActivity) {
-                        context.navigate(destination)
-                    }
-                }
-                return true
-            }
-            return super.shouldOverrideUrlLoading(view, request)
-        }
-    }
-}

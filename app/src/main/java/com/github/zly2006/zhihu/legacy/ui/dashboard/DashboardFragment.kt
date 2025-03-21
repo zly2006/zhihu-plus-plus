@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.dashboard
+package com.github.zly2006.zhihu.legacy.ui.dashboard
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentDashboardBinding
 
@@ -65,7 +66,7 @@ class DashboardFragment : Fragment() {
             AccountData.delete(requireContext())
         }
         binding.v2.setOnClickListener {
-            val myIntent = Intent(context, com.github.zly2006.zhihu.v2.MainActivity::class.java)
+            val myIntent = Intent(context, MainActivity::class.java)
             startActivity(myIntent)
         }
         binding.openUrl.setOnClickListener {

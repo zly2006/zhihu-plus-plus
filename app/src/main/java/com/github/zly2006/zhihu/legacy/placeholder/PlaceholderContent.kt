@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.placeholder
+package com.github.zly2006.zhihu.legacy.placeholder
 
 import com.github.zly2006.zhihu.data.Feed
 

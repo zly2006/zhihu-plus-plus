@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home
+package com.github.zly2006.zhihu.legacy.ui.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -12,7 +12,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ItemHomeArticleFeedBinding
-import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.legacy.placeholder.PlaceholderItem
 
 class HomeArticleItemAdapter(
     private val values: List<PlaceholderItem>,

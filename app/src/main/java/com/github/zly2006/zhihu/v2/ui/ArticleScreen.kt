@@ -43,13 +43,13 @@ import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.ui.home.Reaction
-import com.github.zly2006.zhihu.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
-import com.github.zly2006.zhihu.v2.MainActivity
+import com.github.zly2006.zhihu.legacy.ui.home.Reaction
+import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
+import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -74,6 +74,8 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     var title by remember { mutableStateOf(article.title) }
     var authorName by remember { mutableStateOf(article.authorName) }
+    var authorBio by remember { mutableStateOf(article.authorBio) }
+    var authorAvatarSrc by remember { mutableStateOf(article.avatarSrc) }
     var content by remember { mutableStateOf("") }
     var voteUpCount by remember { mutableStateOf(0) }
     var commentCount by remember { mutableStateOf(0) }
@@ -89,18 +91,20 @@ fun ArticleScreen(
                         title = answer.question.title
                         authorName = answer.author.name
                         content = answer.content
+                        authorBio = answer.author.headline
+                        authorAvatarSrc = answer.author.avatarUrl
                         voteUpCount = answer.voteupCount
                         commentCount = answer.commentCount
                         questionId = answer.question.id
 
                         // 更新文章信息并记录历史
                         val updatedArticle = Article(
-                            answer.question.title,
+                            title,
                             "answer",
                             article.id,
-                            answer.author.name,
-                            answer.author.headline,
-                            answer.author.avatarUrl,
+                            authorName,
+                            authorBio,
+                            authorAvatarSrc,
                             answer.excerpt
                         )
                         (context as? MainActivity)?.postHistory(updatedArticle)
@@ -112,18 +116,22 @@ fun ArticleScreen(
             } else if (article.type == "article") {
                 DataHolder.getArticleCallback(context, httpClient, article.id) { articleData ->
                     if (articleData != null) {
+                        title = articleData.title
                         content = articleData.content
                         voteUpCount = articleData.voteupCount
                         commentCount = articleData.commentCount
+                        authorName = articleData.author.name
+                        authorBio = articleData.author.headline
+                        authorAvatarSrc = articleData.author.avatarUrl
 
                         // 更新文章信息并记录历史
                         val updatedArticle = Article(
-                            articleData.title,
+                            title,
                             "article",
                             article.id,
-                            articleData.author.name,
-                            articleData.author.headline,
-                            articleData.author.avatarUrl,
+                            authorName,
+                            authorBio,
+                            authorAvatarSrc,
                             articleData.excerpt
                         )
                         (context as? MainActivity)?.postHistory(updatedArticle)
@@ -256,9 +264,9 @@ fun ArticleScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 作者头像
-                if (article.avatarSrc != null) {
+                if (authorAvatarSrc != null) {
                     AsyncImage(
-                        model = article.avatarSrc,
+                        model = authorAvatarSrc,
                         contentDescription = "作者头像",
                         modifier = Modifier
                             .size(40.dp)
@@ -283,7 +291,7 @@ fun ArticleScreen(
                         fontSize = 14.sp
                     )
                     Text(
-                        text = article.authorBio,
+                        text = authorBio,
                         fontSize = 12.sp,
                         color = Color.Gray
                     )
@@ -316,7 +324,6 @@ fun ArticleScreen(
                                 if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
                                     result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                                 ) {
-
                                     menu.add("查看图片").setOnMenuItemClickListener {
                                         val dialog = object : ComponentDialog(context) {
                                             init {

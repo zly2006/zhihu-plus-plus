@@ -19,7 +19,7 @@
             android:theme="@style/Theme.Zhihu"
             tools:targetApi="31">
         <activity
-                android:name=".v2.MainActivity"
+                android:name=".MainActivity"
                 android:exported="true"
                 android:label="@string/title_activity_read"
                 android:theme="@style/Theme.Zhihu">

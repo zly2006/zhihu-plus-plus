@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest
-import com.github.zly2006.zhihu.ui.home.comment.CommentItem
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

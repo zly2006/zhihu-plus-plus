@@ -30,14 +30,14 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.databinding.ActivityMainBinding
-import com.github.zly2006.zhihu.placeholder.PlaceholderItem
-import com.github.zly2006.zhihu.ui.SettingsFragment
-import com.github.zly2006.zhihu.ui.dashboard.DashboardFragment
-import com.github.zly2006.zhihu.ui.home.HomeFragment
-import com.github.zly2006.zhihu.ui.home.ReadArticleFragment
-import com.github.zly2006.zhihu.ui.home.question.QuestionDetailsFragment
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
-import com.github.zly2006.zhihu.ui.notifications.NotificationsFragment
+import com.github.zly2006.zhihu.legacy.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.legacy.ui.SettingsFragment
+import com.github.zly2006.zhihu.legacy.ui.dashboard.DashboardFragment
+import com.github.zly2006.zhihu.legacy.ui.home.HomeFragment
+import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment
+import com.github.zly2006.zhihu.legacy.ui.home.question.QuestionDetailsFragment
+import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
+import com.github.zly2006.zhihu.legacy.ui.notifications.NotificationsFragment
 import io.ktor.client.request.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -390,7 +390,7 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
         header("x-zse-93", "101_3_3.0")
         header("x-zse-96",
             (context as? LegacyMainActivity)?.signRequest96(url) ?:
-            (context as? com.github.zly2006.zhihu.v2.MainActivity)?.signRequest96(url)
+            (context as? MainActivity)?.signRequest96(url)
         )
         header("x-requested-with", "fetch")
     }

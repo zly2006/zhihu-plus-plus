@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.v2
+package com.github.zly2006.zhihu
 
 import android.os.Bundle
 import android.util.Log
@@ -8,10 +8,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
+import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.v2.theme.ZhihuTheme
 import com.github.zly2006.zhihu.v2.ui.ZhihuMain
 import kotlinx.coroutines.CompletableDeferred
@@ -65,7 +64,6 @@ class MainActivity : ComponentActivity() {
     }
 
     fun postHistory(dest: NavDestination) {
-        history.post(dest)
+        history.add(dest)
     }
 }
-

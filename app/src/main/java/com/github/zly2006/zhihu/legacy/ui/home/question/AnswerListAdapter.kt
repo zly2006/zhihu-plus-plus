@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home.question
+package com.github.zly2006.zhihu.legacy.ui.home.question
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

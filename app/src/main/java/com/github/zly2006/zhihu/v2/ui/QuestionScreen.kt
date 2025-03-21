@@ -22,7 +22,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.ui.home.setupUpWebview
+import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.v2.viewmodel.FeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

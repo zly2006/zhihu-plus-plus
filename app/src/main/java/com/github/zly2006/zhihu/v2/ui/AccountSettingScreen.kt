@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -108,6 +109,7 @@ fun AccountSettingScreen(
                     modifier = Modifier
                         .size(120.dp)
                         .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .clip(CircleShape),
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)

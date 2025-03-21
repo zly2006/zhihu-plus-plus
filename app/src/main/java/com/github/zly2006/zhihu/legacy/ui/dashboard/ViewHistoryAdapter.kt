@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.dashboard
+package com.github.zly2006.zhihu.legacy.ui.dashboard
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

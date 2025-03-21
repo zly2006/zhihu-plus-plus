@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.notifications
+package com.github.zly2006.zhihu.legacy.ui.notifications
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

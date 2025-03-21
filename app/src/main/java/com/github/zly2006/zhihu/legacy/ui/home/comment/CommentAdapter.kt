@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home.comment
+package com.github.zly2006.zhihu.legacy.ui.home.comment
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -12,6 +12,7 @@ import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.databinding.ItemCommentBinding
 import com.github.zly2006.zhihu.loadImage
+import com.github.zly2006.zhihu.v2.ui.CommentItem
 import io.ktor.client.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone

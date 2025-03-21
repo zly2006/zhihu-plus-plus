@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.home
+package com.github.zly2006.zhihu.legacy.ui.home
 
 import android.content.Intent
 import android.os.Bundle
@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
-import com.github.zly2006.zhihu.placeholder.PlaceholderItem
+import com.github.zly2006.zhihu.legacy.placeholder.PlaceholderItem
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*

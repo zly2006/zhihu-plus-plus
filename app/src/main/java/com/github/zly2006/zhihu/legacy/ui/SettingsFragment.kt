@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.legacy.ui
 
 import android.os.Bundle
 import android.widget.Toast
