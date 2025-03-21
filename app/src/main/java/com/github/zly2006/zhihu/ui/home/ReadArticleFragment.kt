@@ -29,7 +29,7 @@ import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.*
-import com.github.zly2006.zhihu.MainActivity.MainActivityViewModel
+import com.github.zly2006.zhihu.LegacyMainActivity.MainActivityViewModel
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
@@ -466,7 +466,7 @@ fun setupUpWebview(web: WebView, context: Context) {
             } else if (request.url.host == "www.zhihu.com") {
                 val destination = resolveContent(request.url)
                 if (destination != null) {
-                    if (context is MainActivity) {
+                    if (context is LegacyMainActivity) {
                         context.navigate(destination)
                     }
                     if (context is com.github.zly2006.zhihu.v2.MainActivity) {

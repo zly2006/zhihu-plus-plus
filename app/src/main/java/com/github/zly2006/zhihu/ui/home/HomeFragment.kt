@@ -11,8 +11,8 @@ import androidx.appcompat.app.AppCompatActivity.MODE_PRIVATE
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.RecyclerView
+import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentHomeBinding
@@ -39,7 +39,7 @@ class HomeFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    private val viewModel: MainActivity.MainActivityViewModel by activityViewModels()
+    private val viewModel: LegacyMainActivity.MainActivityViewModel by activityViewModels()
 
     private var fetchingNewItems = false
     suspend fun fetch() {

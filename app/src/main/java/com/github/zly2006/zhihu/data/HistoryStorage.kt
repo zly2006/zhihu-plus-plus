@@ -3,7 +3,7 @@ package com.github.zly2006.zhihu.data
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.findNavController
-import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.catching
@@ -47,7 +47,7 @@ class HistoryStorage(
 
     companion object {
         inline fun <reified T: NavDestination> FragmentActivity.recordHistory(data: T) {
-            if (this is MainActivity) {
+            if (this is LegacyMainActivity) {
                 catching {
                     Json.encodeToString(data)
                     this.history.add(data)
@@ -56,7 +56,7 @@ class HistoryStorage(
         }
 
         inline fun <reified T: NavDestination> FragmentActivity.navigate(data: T) {
-            if (this is MainActivity) {
+            if (this is LegacyMainActivity) {
                 catching {
                     val navController = findNavController(R.id.nav_host_fragment_activity_main)
                     navController.navigate(data)
@@ -66,7 +66,7 @@ class HistoryStorage(
         }
 
         inline fun <reified T: NavDestination> FragmentActivity.postHistory(data: T) {
-            if (this is MainActivity) {
+            if (this is LegacyMainActivity) {
                 catching {
                     this.history.post(data)
                 }

@@ -120,7 +120,7 @@ class LoginActivity : AppCompatActivity() {
                                                         }
                                                 }
                                             }
-                                            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                            startActivity(Intent(this@LoginActivity, LegacyMainActivity::class.java))
                                         }
                                     }
                                 }

@@ -123,7 +123,7 @@ data class Question(
     }
 }
 
-class MainActivity : AppCompatActivity() {
+class LegacyMainActivity : AppCompatActivity() {
     lateinit var history: HistoryStorage
     private lateinit var binding: ActivityMainBinding
 
@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                     val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("Crash report", e.stackTraceToString())
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(this@MainActivity, "Copied bug details to clipboard", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@LegacyMainActivity, "Copied bug details to clipboard", Toast.LENGTH_LONG).show()
                     val intent = Intent(Intent.ACTION_VIEW)
                     intent.data = Uri.parse("https://github.com/zly2006/zhihu-plus-plus/issues/new")
                     startActivity(intent)
@@ -362,7 +362,7 @@ fun resolveContent(uri: Uri): NavDestination? {
     return null
 }
 
-fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is MainActivity) {
+fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is LegacyMainActivity) {
     try {
         action()
     } catch (e: Exception) {
@@ -373,7 +373,7 @@ fun <T> FragmentActivity.catching(action: () -> T): T? = if (this is MainActivit
     action()
 }
 
-suspend fun <T> FragmentActivity.catchingS(action: suspend () -> T): T? = if (this is MainActivity) {
+suspend fun <T> FragmentActivity.catchingS(action: suspend () -> T): T? = if (this is LegacyMainActivity) {
     try {
         action()
     } catch (e: Exception) {
@@ -389,7 +389,7 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
         header("x-zse-93", "101_3_3.0")
         header("x-zse-96",
-            (context as? MainActivity)?.signRequest96(url) ?:
+            (context as? LegacyMainActivity)?.signRequest96(url) ?:
             (context as? com.github.zly2006.zhihu.v2.MainActivity)?.signRequest96(url)
         )
         header("x-requested-with", "fetch")

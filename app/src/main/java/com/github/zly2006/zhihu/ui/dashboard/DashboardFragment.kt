@@ -11,8 +11,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.FragmentDashboardBinding
 
@@ -72,7 +72,7 @@ class DashboardFragment : Fragment() {
             val url = binding.url.text.toString()
             Uri.parse(url)?.let { uri ->
                 if (uri.host == "www.zhihu.com" || uri.host == "zhuanlan.zhihu.com") {
-                    val intent = Intent(Intent.ACTION_VIEW, uri, requireContext(), MainActivity::class.java)
+                    val intent = Intent(Intent.ACTION_VIEW, uri, requireContext(), LegacyMainActivity::class.java)
                     startActivity(intent)
                     return@let
                 }
@@ -80,9 +80,9 @@ class DashboardFragment : Fragment() {
             }
         }
 
-        if (requireActivity() is MainActivity) {
+        if (requireActivity() is LegacyMainActivity) {
             val httpClient = AccountData.httpClient(requireContext())
-            val history = (requireActivity() as MainActivity).history.history
+            val history = (requireActivity() as LegacyMainActivity).history.history
             if (binding.viewHistory.adapter != null) {
                 @SuppressLint("NotifyDataSetChanged")
                 binding.viewHistory.adapter!!.notifyDataSetChanged()
