@@ -108,7 +108,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                 ArticleScreen(article, activity::navigate)
             }
             composable<Follow> {
-                Text("Follow")
+                FollowScreen(activity::navigate)
             }
             composable<History> {
                 HistoryScreen(activity::navigate)
