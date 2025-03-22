@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.v2.viewmodel
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed
 import kotlinx.serialization.Serializable
 
@@ -29,6 +30,7 @@ abstract class BaseFeedViewModel : ViewModel() {
         val summary: String,
         val details: String,
         val feed: Feed?,
+        val navDestination: NavDestination? = null,
         val avatarSrc: String? = null,
         val isFiltered: Boolean = false
     )

@@ -24,13 +24,13 @@ import com.github.zly2006.zhihu.v2.viewmodel.BaseFeedViewModel
 @Composable
 fun FeedCard(
     item: BaseFeedViewModel.FeedDisplayItem,
-    onClick: (Feed?) -> Unit
+    onClick: BaseFeedViewModel.FeedDisplayItem.(Feed?) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick(item.feed) },
+            .clickable { onClick(item, item.feed) },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
