@@ -6,6 +6,7 @@ import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.github.zly2006.zhihu.data.AccountData
@@ -37,6 +38,22 @@ class MainActivity : ComponentActivity() {
             navController = rememberNavController()
             ZhihuTheme {
                 ZhihuMain(navController = navController)
+            }
+        }
+
+        val uri = intent.data
+        if (uri != null) {
+            Log.i("MainActivity", "Intent data: $uri")
+            val destination = resolveContent(uri)
+            if (destination != null) {
+                navigate(destination)
+            } else {
+                AlertDialog.Builder(this).apply {
+                    setTitle("Unsupported URL")
+                    setMessage("Unknown URL: $uri")
+                    setPositiveButton("OK") { _, _ ->
+                    }
+                }.create().show()
             }
         }
     }

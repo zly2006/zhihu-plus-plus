@@ -24,12 +24,6 @@ abstract class BaseFeedViewModel : ViewModel() {
         val next: String,
     )
 
-    enum class DisplayMode {
-        FEED,       // 首页推荐流模式
-        QUESTION,   // 问题页面模式
-        PROFILE     // 预留个人主页模式
-    }
-
     data class FeedDisplayItem(
         val title: String,
         val summary: String,
