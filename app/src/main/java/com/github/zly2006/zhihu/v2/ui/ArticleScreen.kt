@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.github.zly2006.zhihu.v2.ui
 
 import android.content.ClipData
@@ -37,13 +39,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import coil3.compose.AsyncImage
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -64,11 +65,11 @@ import org.jsoup.Jsoup
 @Composable
 fun ArticleScreen(
     article: Article,
-    navController: NavController
+    onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current
+    val context = LocalContext.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
-    val backStackEntry by navController.currentBackStackEntryAsState()
+    val backStackEntry by context.navController.currentBackStackEntryAsState()
     val httpClient = remember { AccountData.httpClient(context) }
 
     val scrollState = rememberScrollState()
@@ -107,7 +108,7 @@ fun ArticleScreen(
                             authorAvatarSrc,
                             answer.excerpt
                         )
-                        (context as? MainActivity)?.postHistory(updatedArticle)
+                        context.postHistory(updatedArticle)
                     } else {
                         content = "<h1>回答不存在</h1>"
                         Log.e("ArticleScreen", "Answer not found")
@@ -157,10 +158,7 @@ fun ArticleScreen(
                 lineHeight = 32.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
                     .clickable {
-                        navController.navigate(Question(questionId, title)) {
-                            popUpTo(Question(questionId, title))
-                            launchSingleTop = true
-                        }
+                        onNavigate(Question(questionId, title))
                     }
             )
         },
@@ -419,7 +417,6 @@ fun ArticleScreen(
 @Preview
 @Composable
 fun ArticleScreenPreview() {
-    val navController = rememberNavController()
     ArticleScreen(
         Article(
             "如何看待《狂暴之翼》中的人物设定？",
@@ -428,7 +425,6 @@ fun ArticleScreenPreview() {
             "知乎用户",
             "知乎用户",
             "",
-        ),
-        navController
-    )
+        )
+    ) {}
 }

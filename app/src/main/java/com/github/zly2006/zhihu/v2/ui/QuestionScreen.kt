@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.github.zly2006.zhihu.v2.ui
 
 import android.webkit.WebView
@@ -16,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -31,7 +33,7 @@ import org.jsoup.Jsoup
 @Composable
 fun QuestionScreen(
     question: Question,
-    navController: NavController
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     val viewModel: FeedViewModel = viewModel()
@@ -119,7 +121,7 @@ fun QuestionScreen(
                 FeedCard(item) { feed ->
                     feed?.let {
                         DataHolder.putFeed(it)
-                        navController.navigate(
+                        onNavigate(
                             Article(
                                 item.title,
                                 "answer",

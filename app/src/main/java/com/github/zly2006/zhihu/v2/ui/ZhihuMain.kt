@@ -39,6 +39,7 @@ import kotlin.reflect.KClass
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
+    val activity = LocalContext.current as MainActivity
     Scaffold(
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
@@ -96,15 +97,15 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             startDestination = Home
         ) {
             composable<Home> {
-                HomeScreen(navController)
+                HomeScreen(activity::navigate)
             }
             composable<Question> { navEntry ->
                 val question: Question = navEntry.toRoute()
-                QuestionScreen(question, navController)
+                QuestionScreen(question, activity::navigate)
             }
             composable<Article> { navEntry ->
                 val article: Article = navEntry.toRoute()
-                ArticleScreen(article, navController)
+                ArticleScreen(article, activity::navigate)
             }
             composable<Follow> {
                 Text("Follow")

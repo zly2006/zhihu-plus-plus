@@ -1,3 +1,5 @@
+@file:Suppress("FunctionName")
+
 package com.github.zly2006.zhihu.v2.ui
 
 import android.content.Context.MODE_PRIVATE
@@ -19,9 +21,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -30,7 +32,7 @@ import com.github.zly2006.zhihu.v2.viewmodel.FeedViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navController: NavController,
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val viewModel: FeedViewModel = viewModel()
     val context = LocalContext.current
@@ -50,7 +52,7 @@ fun HomeScreen(
         }.create().show()
         return
     }
-    
+
     // 检查是否需要加载更多内容
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -64,7 +66,7 @@ fun HomeScreen(
             }
         }
     }
-    
+
     // 初始加载
     LaunchedEffect(Unit) {
         val data = AccountData.getData(context)
@@ -76,14 +78,14 @@ fun HomeScreen(
             viewModel.refresh(context)
         }
     }
-    
+
     // 加载更多
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore && viewModel.displayItems.isNotEmpty()) {
             viewModel.loadMore(context)
         }
     }
-    
+
     // 显示错误信息
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
@@ -102,7 +104,7 @@ fun HomeScreen(
                         DataHolder.putFeed(it)
                         when (val target = it.target) {
                             is Feed.AnswerTarget -> {
-                                navController.navigate(
+                                onNavigate(
                                     Article(
                                         target.question.title,
                                         "answer",
@@ -114,8 +116,9 @@ fun HomeScreen(
                                     )
                                 )
                             }
+
                             is Feed.ArticleTarget -> {
-                                navController.navigate(
+                                onNavigate(
                                     Article(
                                         target.title,
                                         "article",
@@ -135,7 +138,7 @@ fun HomeScreen(
                     }
                 }
             }
-            
+
             item {
                 if (viewModel.displayItems.isNotEmpty()) {
                     Box(
@@ -176,7 +179,7 @@ fun FeedCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             Text(
                 text = item.summary,
                 fontSize = 14.sp,
@@ -184,7 +187,7 @@ fun FeedCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 3.dp)
             )
-            
+
             Text(
                 text = item.details,
                 fontSize = 12.sp,
