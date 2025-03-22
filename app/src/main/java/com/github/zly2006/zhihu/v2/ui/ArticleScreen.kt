@@ -135,7 +135,7 @@ fun ArticleScreen(
                             authorAvatarSrc,
                             articleData.excerpt
                         )
-                        (context as? MainActivity)?.postHistory(updatedArticle)
+                        context.postHistory(updatedArticle)
                     } else {
                         content = "<h1>文章不存在</h1>"
                         Log.e("ArticleScreen", "Article not found")

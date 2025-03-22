@@ -111,7 +111,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                 Text("Follow")
             }
             composable<History> {
-                Text("History")
+                HistoryScreen(activity::navigate)
             }
             composable<Account> {
                 AccountSettingScreen(context, innerPadding)

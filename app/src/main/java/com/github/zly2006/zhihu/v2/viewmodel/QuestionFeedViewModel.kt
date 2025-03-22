@@ -14,6 +14,10 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 
 class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() {
+    var lastPaging: Paging? = null
+
+    val isEnd: Boolean get() = lastPaging != null && lastPaging!!.is_end
+
     override fun refresh(context: Context) {
         viewModelScope.launch {
             displayItems.clear()
@@ -21,24 +25,27 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
             fetchAnswers(context)
         }
     }
-    
+
     override fun loadMore(context: Context) {
         if (isLoading) return
         viewModelScope.launch {
             fetchAnswers(context)
         }
     }
-    
+
     private suspend fun fetchAnswers(context: Context) {
         if (isLoading) return
         isLoading = true
-        
+
         try {
             val httpClient = AccountData.httpClient(context)
-            val response = httpClient.get("https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}") {
+            val response = httpClient.get(
+                lastPaging?.next
+                    ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}"
+            ) {
                 signFetchRequest(context)
             }
-            
+
             if (response.status == HttpStatusCode.OK) {
                 val text = response.body<JsonObject>()
                 processResponse(text)
@@ -50,14 +57,15 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
             isLoading = false
         }
     }
-    
+
     private fun processResponse(text: JsonObject) {
         try {
             val data = AccountData.decodeJson<FeedResponse>(text)
+            lastPaging = data.paging
             val newFeeds = data.data.filter { it.target !is Feed.AdvertTarget }
-            
+
             feeds.addAll(newFeeds)
-            
+
             val newItems = newFeeds.map { feed ->
                 when (feed.target) {
                     is Feed.AnswerTarget -> {
@@ -66,21 +74,21 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
                             summary = feed.target.excerpt,
                             details = feed.target.detailsText(),
                             feed = feed,
-                            displayMode = DisplayMode.QUESTION
+                            avatarSrc = feed.target.author.avatar_url
                         )
                     }
+
                     else -> {
                         FeedDisplayItem(
                             title = feed.target.javaClass.simpleName,
                             summary = "Not Implemented",
                             details = feed.target.detailsText(),
-                            feed = feed,
-                            displayMode = DisplayMode.QUESTION
+                            feed = feed
                         )
                     }
                 }
             }
-            
+
             displayItems.addAll(newItems)
         } catch (e: SerializationException) {
             Log.e("QuestionFeedViewModel", "Failed to parse JSON: $text", e)

@@ -12,7 +12,7 @@ import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.databinding.ItemCommentBinding
 import com.github.zly2006.zhihu.loadImage
-import com.github.zly2006.zhihu.v2.ui.CommentItem
+import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.*
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone

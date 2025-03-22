@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.data.Feed
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 
 abstract class BaseFeedViewModel : ViewModel() {
     val feeds = mutableStateListOf<Feed>()
@@ -13,11 +12,18 @@ abstract class BaseFeedViewModel : ViewModel() {
     protected var isLoading = false
     var errorMessage: String? = null
         protected set
-    
+
+    @Serializable
+    class FeedResponse(val data: List<Feed>, val paging: Paging)
+
     @Suppress("PropertyName")
     @Serializable
-    class FeedResponse(val data: List<Feed>, val paging: JsonObject)
-    
+    class Paging(
+        val page: Int = -1,
+        val is_end: Boolean,
+        val next: String,
+    )
+
     enum class DisplayMode {
         FEED,       // 首页推荐流模式
         QUESTION,   // 问题页面模式
@@ -29,8 +35,8 @@ abstract class BaseFeedViewModel : ViewModel() {
         val summary: String,
         val details: String,
         val feed: Feed?,
-        val isFiltered: Boolean = false,
-        val displayMode: DisplayMode = DisplayMode.FEED
+        val avatarSrc: String? = null,
+        val isFiltered: Boolean = false
     )
     
     abstract fun refresh(context: Context)

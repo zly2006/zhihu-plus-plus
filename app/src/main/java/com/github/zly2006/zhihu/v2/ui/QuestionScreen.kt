@@ -67,6 +67,7 @@ fun QuestionScreen(
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
+            isEnd = { viewModel.isEnd },
             modifier = Modifier.padding(innerPadding),
             footer = ProgressIndicatorFooter
         ) { item ->

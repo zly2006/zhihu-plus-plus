@@ -74,8 +74,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                         summary = filterReason,
                         details = feed.target.detailsText(),
                         feed = feed,
-                        isFiltered = true,
-                        displayMode = DisplayMode.FEED
+                        isFiltered = true
                     )
                 } else {
                     when (feed.target) {
@@ -84,8 +83,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 title = feed.target.question.title,
                                 summary = feed.target.excerpt,
                                 details = feed.target.detailsText(),
-                                feed = feed,
-                                displayMode = DisplayMode.FEED
+                                feed = feed
                             )
                         }
                         is Feed.ArticleTarget -> {
@@ -93,8 +91,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 title = feed.target.title,
                                 summary = feed.target.excerpt,
                                 details = feed.target.detailsText(),
-                                feed = feed,
-                                displayMode = DisplayMode.FEED
+                                feed = feed
                             )
                         }
                         else -> {
@@ -102,8 +99,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 title = feed.target.javaClass.simpleName,
                                 summary = "Not Implemented",
                                 details = feed.target.detailsText(),
-                                feed = feed,
-                                displayMode = DisplayMode.FEED
+                                feed = feed
                             )
                         }
                     }

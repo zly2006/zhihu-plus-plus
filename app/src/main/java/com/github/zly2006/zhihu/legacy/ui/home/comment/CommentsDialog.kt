@@ -11,7 +11,7 @@ import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.databinding.FragmentCommentsBinding
-import com.github.zly2006.zhihu.v2.ui.CommentItem
+import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

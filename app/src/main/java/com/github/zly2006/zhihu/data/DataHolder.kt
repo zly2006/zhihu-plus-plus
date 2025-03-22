@@ -694,9 +694,7 @@ object DataHolder {
                         )
                     )
                 }
-                if (id !in answers) {
-                    get(httpClient, "https://www.zhihu.com/answer/$id", activity)
-                }
+                get(httpClient, "https://www.zhihu.com/answer/$id", activity)
                 callback(answers[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {
                 Log.e("DataHolder", "Failed to get answer $id", e)
