@@ -88,6 +88,11 @@ android {
     }
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    compilerOptions.freeCompilerArgs.add("-Xdebug")
+//    compilerOptions.freeCompilerArgs.add("-Xsuppress-warning=FunctionName")
+}
+
 val ktor = "2.3.13"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")

@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.v2.ui
 
 import android.content.Context.MODE_PRIVATE
@@ -8,7 +6,6 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +31,6 @@ fun HomeScreen(
 ) {
     val viewModel: HomeFeedViewModel = viewModel()
     val context = LocalContext.current
-    val listState = rememberLazyListState()
     val preferences = remember {
         context.getSharedPreferences(
             "com.github.zly2006.zhihu_preferences",

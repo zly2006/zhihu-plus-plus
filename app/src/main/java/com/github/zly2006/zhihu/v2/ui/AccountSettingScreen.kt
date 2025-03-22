@@ -7,9 +7,7 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.widget.Toast
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
@@ -59,9 +57,10 @@ fun AccountSettingScreen(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
     ) {
         @Composable
-        fun displayPadding(padding: PaddingValues) = buildString {
+        fun DisplayPadding(padding: PaddingValues) = buildString {
             append("(")
             append(padding.calculateLeftPadding(LocalLayoutDirection.current))
             append(", ")
@@ -162,9 +161,9 @@ fun AccountSettingScreen(
         }
         Text(networkStatus)
         if (isDeveloper) {
-            Text("当前padding: ${displayPadding(innerPadding)}")
-            Text("statusBars: ${displayPadding(WindowInsets.statusBars.asPaddingValues())}")
-            Text("contentWindowInsets: ${displayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
+            Text("当前padding: ${DisplayPadding(innerPadding)}")
+            Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
+            Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
         }
         Column {
             Text(

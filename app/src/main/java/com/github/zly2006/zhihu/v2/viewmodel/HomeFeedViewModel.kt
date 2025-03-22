@@ -61,11 +61,9 @@ class HomeFeedViewModel : BaseFeedViewModel() {
     private fun processResponse(text: JsonObject) {
         try {
             val data = AccountData.decodeJson<FeedResponse>(text)
-            val newFeeds = data.data.filter { it.target !is Feed.AdvertTarget }
+            feeds.addAll(data.data)
             
-            feeds.addAll(newFeeds)
-            
-            val newItems = newFeeds.map { feed ->
+            val newItems = data.data.map { feed ->
                 val filterReason = feed.target.filterReason()
                 
                 if (filterReason != null) {
