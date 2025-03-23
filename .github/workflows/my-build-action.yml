@@ -89,6 +89,7 @@ jobs:
       # Delete existing nightly release
       - name: Delete existing nightly release
         uses: dev-drprasad/delete-tag-and-release@v1.0
+        continue-on-error: true
         with:
           tag_name: nightly
           github_token: ${{ github.token }}
