@@ -16,6 +16,8 @@
 
 [点我下载](https://github.com/zly2006/zhihu-plus-plus/releases)
 
+[下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
+
 ## 路线图
 
 ### 已经实现的功能
