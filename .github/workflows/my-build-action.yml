@@ -85,3 +85,27 @@ jobs:
         with:
           name: ${{ env.date_today }} - ${{ env.repository_name }} - ${{ inputs.name }}
           path: app/build/upload/
+
+      # Delete existing nightly release
+      - name: Delete existing nightly release
+        uses: dev-drprasad/delete-tag-and-release@v1.0
+        with:
+          tag_name: nightly
+          github_token: ${{ github.token }}
+          delete_release: true
+
+      # Create new nightly release
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: Nightly Build (${{ env.date_today }})
+          body: |
+            Nightly build generated on ${{ env.date_today }}
+            This is an automated nightly release that gets updated with each new build.
+          files: |
+            app/build/upload/zhihu++.apk
+            app/build/upload/zhihu++.aab
+          prerelease: true
+          token: ${{ github.token }}
