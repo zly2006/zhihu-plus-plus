@@ -20,6 +20,9 @@ on:
       ANDROID_KEY_PASSWORD:
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Android App
@@ -88,6 +91,7 @@ jobs:
 
       # Delete existing nightly release
       - name: Delete existing nightly release
+        if: ${{ inputs.minify }}
         uses: dev-drprasad/delete-tag-and-release@v1.0
         continue-on-error: true
         with:
@@ -97,8 +101,9 @@ jobs:
 
       # Create new nightly release
       - name: Create Release
+        if: ${{ inputs.minify }}
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
           name: Nightly Build (${{ env.date_today }})
@@ -109,4 +114,4 @@ jobs:
             app/build/upload/zhihu++.apk
             app/build/upload/zhihu++.aab
           prerelease: true
-          token: ${{ github.token }}
+          # token: ${{ github.token }}
