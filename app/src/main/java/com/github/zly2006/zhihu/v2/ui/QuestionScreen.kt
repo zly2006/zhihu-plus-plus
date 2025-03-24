@@ -2,9 +2,13 @@
 
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -17,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -49,15 +54,6 @@ fun QuestionScreen(
         }
     }
 
-    if (questionContent.isNotEmpty()) {
-        WebviewComp(httpClient) {
-            it.loadUrl(
-                "https://www.zhihu.com/question/${question.questionId}",
-                Jsoup.parse(questionContent)
-            )
-        }
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -77,7 +73,33 @@ fun QuestionScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             modifier = Modifier.padding(innerPadding),
-            footer = ProgressIndicatorFooter
+            footer = ProgressIndicatorFooter,
+            topContent = {
+                item(1) {
+                    if (questionContent.isNotEmpty()) {
+                        WebviewComp(httpClient) {
+                            it.loadUrl(
+                                "https://www.zhihu.com/question/${question.questionId}",
+                                Jsoup.parse(questionContent)
+                            )
+                        }
+                    }
+                }
+                item(2) {
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
+                                setClass(context, WebviewActivity::class.java)
+                            }
+                            context.startActivity(intent)
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    ) {
+                        Text("查看日志")
+                    }
+                }
+            }
         ) { item ->
             FeedCard(item) { feed ->
                 feed?.let {

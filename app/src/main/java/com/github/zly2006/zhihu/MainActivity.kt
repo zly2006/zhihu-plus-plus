@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity() {
                 }.create().show()
             }
         }
-        else {
+    }
+
+    var readClipboard = false
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        if (intent.data == null && !readClipboard && hasFocus) {
             // read clipboard
             val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
             val clip = clipboard.primaryClip

@@ -5,10 +5,7 @@ package com.github.zly2006.zhihu.v2.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -36,6 +33,7 @@ fun <T> PaginatedList(
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
     footer: @Composable (() -> Unit)? = null,
+    topContent: (LazyListScope.() -> Unit)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
     val shouldLoadMore by remember {
@@ -61,6 +59,8 @@ fun <T> PaginatedList(
         state = listState,
         modifier = modifier
     ) {
+        topContent?.invoke(this)
+
         items(items) { item ->
             itemContent(item)
         }
