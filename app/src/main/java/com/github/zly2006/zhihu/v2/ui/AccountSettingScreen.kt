@@ -7,9 +7,12 @@ import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.widget.Toast
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
@@ -18,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +35,7 @@ import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
 @Composable
@@ -40,6 +43,7 @@ fun AccountSettingScreen(
     context: Context,
     innerPadding: PaddingValues
 ) {
+    val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         val data = AccountData.getData(context)
         if (data.login) {
@@ -96,7 +100,6 @@ fun AccountSettingScreen(
                 }
             }
         )
-//        var dataKey by remember { mutableStateOf(0) }
         val data by produceState(initialValue = AccountData.getData()) {
             while (true) {
                 delay(300)
@@ -122,7 +125,6 @@ fun AccountSettingScreen(
             }
             Button(
                 onClick = {
-//                    dataKey++
                     AccountData.delete(context)
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -132,7 +134,6 @@ fun AccountSettingScreen(
         } else {
             Button(
                 onClick = {
-//                    dataKey++
                     context.startActivity(Intent(context, LoginActivity::class.java))
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -170,10 +171,8 @@ fun AccountSettingScreen(
         }
         Text(networkStatus)
         if (isDeveloper) {
-
             Button(
                 onClick = {
-//                    dataKey++
                     AccountData.saveData(
                         context,
                         data.copy(username = data.username + "-test")
@@ -182,6 +181,24 @@ fun AccountSettingScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("刷新数据测试")
+            }
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        if (AccountData.verifyLogin(
+                                context,
+                                data.cookies
+                            )
+                        ) {
+                            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("重新fetch数据测试")
             }
             Text("当前padding: ${DisplayPadding(innerPadding)}")
             Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
@@ -192,7 +209,6 @@ fun AccountSettingScreen(
                 "账号信息设置",
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(top = 16.dp)
-
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -202,11 +218,6 @@ fun AccountSettingScreen(
                 Text(
                     "用户名",
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.border(
-                        0.5.dp,
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        shape = RectangleShape
-                    )
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)

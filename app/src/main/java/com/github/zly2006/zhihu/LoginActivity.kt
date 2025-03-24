@@ -13,10 +13,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.databinding.ActivityLoginBinding
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -88,40 +85,38 @@ class LoginActivity : AppCompatActivity() {
                                 }
                             }.create().show()
                             // back to the main activity
-                            GlobalScope.launch {
+                            GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
                                 delay(5000)
-                                runOnUiThread {
-                                    binding.web.evaluateJavascript("document.cookie") {
-                                        data.cookies.putAll(it.removeSurrounding("\"")
-                                            .removeSurrounding("\'")
-                                            .split(";").associate {
+                                binding.web.evaluateJavascript("document.cookie") {
+                                    data.cookies.putAll(it.removeSurrounding("\"")
+                                        .removeSurrounding("\'")
+                                        .split(";").associate {
                                             it.substringBefore("=").trim() to it.substringAfter("=")
                                         })
-                                        if ("__zse_ck" !in data.cookies) {
-                                            AlertDialog.Builder(this@LoginActivity).apply {
-                                                setTitle("登录失败")
-                                                setMessage("模拟正常登录环境失败，请检查网络")
-                                                setPositiveButton("OK") { _, _ ->
-                                                }
-                                            }.create().show()
-                                        }
-                                        else {
-                                            AccountData.saveData(this@LoginActivity, data)
-                                            GlobalScope.launch {
-                                                runCatching {
-                                                    AccountData.httpClient(this@LoginActivity)
-                                                        .post("https://redenmc.com/api/zhihu/login") {
-                                                            setBody(Json.encodeToString(data))
-                                                            contentType(ContentType.Application.Json)
-                                                            header(
-                                                                HttpHeaders.UserAgent,
-                                                                "Zhihu++/${BuildConfig.VERSION_NAME}"
-                                                            )
-                                                        }
-                                                }
+                                    if ("__zse_ck" !in data.cookies) {
+                                        AlertDialog.Builder(this@LoginActivity).apply {
+                                            setTitle("登录失败")
+                                            setMessage("模拟正常登录环境失败，请检查网络")
+                                            setPositiveButton("OK") { _, _ ->
                                             }
-                                            startActivity(Intent(this@LoginActivity, LegacyMainActivity::class.java))
+                                        }.create().show()
+                                    }
+                                    else {
+                                        AccountData.saveData(this@LoginActivity, data)
+                                        GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
+                                            runCatching {
+                                                AccountData.httpClient(this@LoginActivity)
+                                                    .post("https://redenmc.com/api/zhihu/login") {
+                                                        setBody(Json.encodeToString(data))
+                                                        contentType(ContentType.Application.Json)
+                                                        header(
+                                                            HttpHeaders.UserAgent,
+                                                            "Zhihu++/${BuildConfig.VERSION_NAME}"
+                                                        )
+                                                    }
+                                            }
                                         }
+                                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                                     }
                                 }
                             }
