@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu
 
+import android.content.ClipboardManager
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.webkit.WebView
@@ -54,6 +56,22 @@ class MainActivity : ComponentActivity() {
                     setPositiveButton("OK") { _, _ ->
                     }
                 }.create().show()
+            }
+        }
+        else {
+            // read clipboard
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = clipboard.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val text = clip.getItemAt(0).text
+                if (text != null) {
+                    val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
+                    regex.findAll(text).firstNotNullOfOrNull {
+                        resolveContent(Uri.parse(it.value))
+                    }?.let {
+                        navigate(it)
+                    }
+                }
             }
         }
     }

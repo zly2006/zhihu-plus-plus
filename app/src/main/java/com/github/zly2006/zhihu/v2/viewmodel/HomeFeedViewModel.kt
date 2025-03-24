@@ -26,26 +26,27 @@ class HomeFeedViewModel : BaseFeedViewModel() {
             fetchFeeds(context)
         }
     }
-    
+
     override fun loadMore(context: Context) {
         if (isLoading) return
         viewModelScope.launch {
             fetchFeeds(context)
         }
     }
-    
+
     private suspend fun fetchFeeds(context: Context) {
         if (isLoading) return
         isLoading = true
-        
+
         try {
             val httpClient = AccountData.httpClient(context)
             markItemsAsTouched(context, httpClient)
-            
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${feeds.size}") {
-                signFetchRequest(context)
-            }
-            
+
+            val response =
+                httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${feeds.size}") {
+                    signFetchRequest(context)
+                }
+
             if (response.status == HttpStatusCode.OK) {
                 val text = response.body<JsonObject>()
                 processResponse(text)
@@ -57,20 +58,22 @@ class HomeFeedViewModel : BaseFeedViewModel() {
             isLoading = false
         }
     }
-    
+
     private fun processResponse(text: JsonObject) {
         try {
             val data = AccountData.decodeJson<FeedResponse>(text)
             feeds.addAll(data.data)
-            
+
             val newItems = data.data.map { feed ->
-                val filterReason = feed.target.filterReason()
-                
+                val filterReason =
+                    if (feed.target == null) "广告"
+                    else feed.target.filterReason()
+
                 if (filterReason != null) {
                     FeedDisplayItem(
                         title = "已屏蔽",
                         summary = filterReason,
-                        details = feed.target.detailsText(),
+                        details = feed.target?.detailsText() ?: "广告",
                         feed = feed,
                         isFiltered = true
                     )
@@ -84,6 +87,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 feed = feed
                             )
                         }
+
                         is Feed.ArticleTarget -> {
                             FeedDisplayItem(
                                 title = feed.target.title,
@@ -92,18 +96,19 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 feed = feed
                             )
                         }
+
                         else -> {
                             FeedDisplayItem(
-                                title = feed.target.javaClass.simpleName,
+                                title = feed.target?.javaClass?.simpleName ?: "广告",
                                 summary = "Not Implemented",
-                                details = feed.target.detailsText(),
+                                details = feed.target?.detailsText() ?: "广告",
                                 feed = feed
                             )
                         }
                     }
                 }
             }
-            
+
             displayItems.addAll(newItems)
         } catch (e: SerializationException) {
             Log.e("HomeFeedViewModel", "Failed to parse JSON: $text", e)

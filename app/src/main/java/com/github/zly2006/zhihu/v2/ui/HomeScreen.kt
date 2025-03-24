@@ -124,6 +124,7 @@ fun HomeScreen(
                         is Feed.AdvertTarget -> {}
                         is Feed.PinTarget -> {}
                         is Feed.VideoTarget -> {}
+                        null -> {}
                     }
                 }
             }

@@ -61,7 +61,7 @@ class HomeArticleItemAdapter(
                                 item.dto.target.author.avatar_url,
                                 item.dto.target.excerpt
                             )
-                        } else error("Unknown target type: ${item.dto.target::class.simpleName}")
+                        } else error("Unknown target type: ${item.dto.target?.javaClass?.simpleName}")
                     )
                 }
             }

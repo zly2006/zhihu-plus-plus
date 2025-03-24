@@ -15,7 +15,10 @@ data class Feed(
     val verb: String = "possibly ads, filter me",
     val created_time: Long = -1,
     val updated_time: Long = -1,
-    val target: Target,
+    /**
+     * 广告没有target
+     */
+    val target: Target? = null,
     val brief: String = "<none>",
     val attached_info: String = "",
     val action_card: Boolean = false,

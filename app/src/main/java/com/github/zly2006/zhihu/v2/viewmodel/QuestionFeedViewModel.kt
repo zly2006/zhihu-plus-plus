@@ -80,9 +80,9 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
 
                     else -> {
                         FeedDisplayItem(
-                            title = feed.target.javaClass.simpleName,
+                            title = feed.target?.javaClass?.simpleName ?: "广告",
                             summary = "Not Implemented",
-                            details = feed.target.detailsText(),
+                            details = feed.target?.detailsText() ?: "广告",
                             feed = feed
                         )
                     }

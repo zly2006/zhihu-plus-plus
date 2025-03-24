@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.State
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -47,6 +48,14 @@ object AccountData {
     }
 
     fun getData() = data
+
+    val asState: State<Data>
+        get() {
+            return object : State<Data> {
+                override val value: Data
+                    get() = data
+            }
+        }
 
     fun saveData(context: Context, data: Data) {
         this.data = data

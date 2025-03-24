@@ -67,54 +67,60 @@ class HomeFragment : Fragment() {
                     Log.e("Browse-Touch", response.bodyAsText())
                 }
             }
-            val response = httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}") {
-                signFetchRequest(context!!)
-            }
+            val response =
+                httpClient.get("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&action=down&end_offset=${viewModel.list.size}") {
+                    signFetchRequest(context!!)
+                }
             if (response.status == HttpStatusCode.OK) {
                 @Suppress("PropertyName")
                 @Serializable
                 class Response(val data: List<Feed>, val fresh_text: String, val paging: JsonObject)
+
                 val text = response.body<JsonObject>()
                 try {
                     "${text["data"]!!.jsonArray.size} " + text["data"]!!.jsonArray.count { it.jsonObject["target"]!!.jsonObject["type"]!!.jsonPrimitive.content == "zvideo" }
                     val data = AccountData.decodeJson<Response>(text)
                     val index = viewModel.list.size
-                    viewModel.list.addAll(data.data
-                        .filter {
-                            it.target !is Feed.AdvertTarget
-                    }.map {
-                        if (it.target.filterReason() != null) {
-                            return@map PlaceholderItem(
-                                "已屏蔽",
-                                it.target.filterReason()!!,
-                                it.target.detailsText(),
-                                it
-                            )
-                        }
-                        if (it.target is Feed.AnswerTarget) {
-                            PlaceholderItem(
-                                it.target.question.title,
-                                it.target.excerpt,
-                                it.target.detailsText(),
-                                it
-                            )
-                        }
-                        else if (it.target is Feed.ArticleTarget) {
-                            PlaceholderItem(
-                                it.target.title,
-                                it.target.excerpt,
-                                it.target.detailsText(),
-                                it
-                            )
-                        }
-                        else {
-                            PlaceholderItem(
-                                it.target.javaClass.simpleName,
-                                "Not Implemented",
-                                it.target.detailsText(),
-                            )
-                        }
-                    })
+                    viewModel.list.addAll(
+                        data.data.map {
+                            if (it.target == null) {
+                                return@map PlaceholderItem(
+                                    "广告",
+                                    "广告",
+                                    "广告",
+                                    it
+                                )
+                            }
+                            if (it.target.filterReason() != null) {
+                                return@map PlaceholderItem(
+                                    "已屏蔽",
+                                    it.target.filterReason()!!,
+                                    it.target.detailsText(),
+                                    it
+                                )
+                            }
+                            if (it.target is Feed.AnswerTarget) {
+                                PlaceholderItem(
+                                    it.target.question.title,
+                                    it.target.excerpt,
+                                    it.target.detailsText(),
+                                    it
+                                )
+                            } else if (it.target is Feed.ArticleTarget) {
+                                PlaceholderItem(
+                                    it.target.title,
+                                    it.target.excerpt,
+                                    it.target.detailsText(),
+                                    it
+                                )
+                            } else {
+                                PlaceholderItem(
+                                    it.target.javaClass.simpleName,
+                                    "Not Implemented",
+                                    it.target.detailsText(),
+                                )
+                            }
+                        })
                     activity?.runOnUiThread {
                         _binding?.list?.adapter?.notifyItemRangeInserted(index, data.data.size)
                     }
@@ -167,8 +173,7 @@ class HomeFragment : Fragment() {
         if (!data.login) {
             val myIntent = Intent(requireContext(), LoginActivity::class.java)
             startActivity(myIntent)
-        }
-        else {
+        } else {
             launch {
                 repeat(3) {
                     fetch()

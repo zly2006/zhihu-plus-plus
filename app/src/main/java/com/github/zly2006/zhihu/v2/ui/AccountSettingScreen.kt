@@ -32,6 +32,7 @@ import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 
 @Composable
@@ -95,7 +96,13 @@ fun AccountSettingScreen(
                 }
             }
         )
-        val data = AccountData.getData()
+//        var dataKey by remember { mutableStateOf(0) }
+        val data by produceState(initialValue = AccountData.getData()) {
+            while (true) {
+                delay(300)
+                value = AccountData.getData()
+            }
+        }
         if (data.login) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -111,10 +118,11 @@ fun AccountSettingScreen(
                         .clip(CircleShape),
                 )
                 Spacer(modifier = Modifier.width(16.dp))
-                Text(data.username)
+                Text(data.username, style = MaterialTheme.typography.headlineLarge)
             }
             Button(
                 onClick = {
+//                    dataKey++
                     AccountData.delete(context)
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -124,6 +132,7 @@ fun AccountSettingScreen(
         } else {
             Button(
                 onClick = {
+//                    dataKey++
                     context.startActivity(Intent(context, LoginActivity::class.java))
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -161,6 +170,19 @@ fun AccountSettingScreen(
         }
         Text(networkStatus)
         if (isDeveloper) {
+
+            Button(
+                onClick = {
+//                    dataKey++
+                    AccountData.saveData(
+                        context,
+                        data.copy(username = data.username + "-test")
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("刷新数据测试")
+            }
             Text("当前padding: ${DisplayPadding(innerPadding)}")
             Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
             Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
