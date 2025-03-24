@@ -131,13 +131,22 @@ fun HomeScreen(
             }
         }
 
-        var offsetX by remember { mutableStateOf(preferences.getFloat("homeRefresh_x", 0f)) }
-        var offsetY by remember { mutableStateOf(preferences.getFloat("homeRefresh_y", 0f)) }
+        var offsetX by remember { mutableStateOf(preferences.getFloat("homeRefresh_x", Float.MAX_VALUE)) }
+        var offsetY by remember { mutableStateOf(preferences.getFloat("homeRefresh_y", Float.MAX_VALUE)) }
         var pressing by remember { mutableStateOf(false) }
 
         val configuration = LocalConfiguration.current
         val density = LocalDensity.current
-        val screenWidth = with(density) { configuration.screenWidthDp.dp.toPx() }
+        /**
+         * 调整 FAB 的位置，使其不会超出屏幕
+         */
+        fun adjustFabPosition() {
+            with(density) {
+                offsetX = offsetX.coerceIn(0f, configuration.screenWidthDp.dp.toPx() - 56.dp.toPx())
+                offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 160.dp.toPx())
+            }
+        }
+        adjustFabPosition()
 
         val animatedOffsetX by animateFloatAsState(
             targetValue = offsetX,
@@ -180,9 +189,14 @@ fun HomeScreen(
                         },
                         onDragEnd = {
                             pressing = false
-                            offsetX =
-                                if (offsetX < screenWidth / 2) 0f
-                                else screenWidth - 150
+                            adjustFabPosition()
+                            with(density) {
+                                val screenWidth = configuration.screenWidthDp.dp.toPx()
+                                offsetX =
+                                    if (offsetX < screenWidth / 2) 0f
+                                    else screenWidth - 56.dp.toPx()
+                                configuration.screenWidthDp.dp.toPx()
+                            }
                             preferences.edit()
                                 .putFloat("homeRefresh_x", offsetX)
                                 .putFloat("homeRefresh_y", offsetY)
@@ -191,11 +205,9 @@ fun HomeScreen(
                         onDrag = { change, dragAmount ->
                             change.consume()
                             if (pressing) {
-                                offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - 150)
-                                offsetY = (offsetY + dragAmount.y).coerceIn(
-                                    0f,
-                                    configuration.screenHeightDp * density.density - 150
-                                )
+                                offsetX += dragAmount.x
+                                offsetY += dragAmount.y
+                                adjustFabPosition()
                             }
                         }
                     )

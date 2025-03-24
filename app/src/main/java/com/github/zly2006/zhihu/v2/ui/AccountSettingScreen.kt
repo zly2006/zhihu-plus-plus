@@ -30,6 +30,8 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.delay
@@ -220,6 +222,39 @@ fun AccountSettingScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
             }
+        }
+        val updateState by UpdateManager.updateState.collectAsState()
+        Button(
+            onClick = {
+                coroutineScope.launch {
+                    when (updateState) {
+                        is UpdateState.NoUpdate, is UpdateState.Error -> {
+                            UpdateManager.checkForUpdate(context)
+                        }
+                        is UpdateState.UpdateAvailable -> {
+                            UpdateManager.downloadUpdate(context)
+                        }
+                        is UpdateState.Downloaded -> {
+                            UpdateManager.installUpdate(
+                                context,
+                                (updateState as UpdateState.Downloaded).file
+                            )
+                        }
+                        UpdateState.Checking -> { /* 等待中 */ }
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                when (updateState) {
+                    is UpdateState.NoUpdate -> "检查更新"
+                    is UpdateState.Checking -> "检查中..."
+                    is UpdateState.UpdateAvailable -> "下载更新"
+                    is UpdateState.Downloaded -> "安装更新"
+                    is UpdateState.Error -> "检查更新失败，点击重试"
+                }
+            )
         }
     }
 }
