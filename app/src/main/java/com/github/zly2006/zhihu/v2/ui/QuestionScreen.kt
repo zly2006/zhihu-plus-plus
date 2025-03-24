@@ -20,12 +20,11 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.v2.ui.components.FeedCard
-import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
-import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.v2.ui.components.*
 import com.github.zly2006.zhihu.v2.viewmodel.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
 
 @Composable
 fun QuestionScreen(
@@ -47,6 +46,15 @@ fun QuestionScreen(
                 questionContent = questionData.detail
                 viewModel.refresh(context)
             }
+        }
+    }
+
+    if (questionContent.isNotEmpty()) {
+        WebviewComp(httpClient) {
+            it.loadUrl(
+                "https://www.zhihu.com/question/${question.questionId}",
+                Jsoup.parse(questionContent)
+            )
         }
     }
 

@@ -5,18 +5,8 @@ package com.github.zly2006.zhihu.v2.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.BitmapFactory
-import android.graphics.drawable.ColorDrawable
-import android.net.Uri
-import android.os.Bundle
-import android.os.Environment
 import android.util.Log
-import android.view.ViewGroup
-import android.view.Window
-import android.webkit.WebView
 import android.widget.Toast
-import androidx.activity.ComponentDialog
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,10 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
-import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
@@ -50,14 +38,12 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.legacy.ui.home.Reaction
 import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
+import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
+import com.github.zly2006.zhihu.v2.ui.components.loadUrl
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -299,112 +285,12 @@ fun ArticleScreen(
 
             // 文章内容 WebView
             if (content.isNotEmpty()) {
-                AndroidView(
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            setupUpWebview(this, ctx)
-                            loadDataWithBaseURL(
-                                "https://www.zhihu.com/${article.type}/${article.id}",
-                                """
-                            <head>
-                            <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
-                            <viewport content="width=device-width, initial-scale=1.0">
-                            </head>
-                            """.trimIndent() + Jsoup.parse(content).toString(),
-                                "text/html",
-                                "utf-8",
-                                null
-                            )
-                            setOnLongClickListener { view ->
-                                view.showContextMenu()
-                            }
-                            setOnCreateContextMenuListener { menu, v, _ ->
-                                val result = (v as WebView).hitTestResult
-                                if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                                    result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                                ) {
-                                    if (!result.extra!!.startsWith("data:")) {
-                                        menu.add("查看图片").setOnMenuItemClickListener {
-
-                                            val dialog = object : ComponentDialog(context) {
-                                                init {
-                                                    val url = result.extra!!
-                                                    requestWindowFeature(Window.FEATURE_NO_TITLE)
-                                                    setContentView(
-                                                        PhotoView(context).apply {
-                                                            GlobalScope.launch {
-                                                                httpClient.get(url).bodyAsChannel().toInputStream()
-                                                                    .buffered().use {
-                                                                        val bitmap = BitmapFactory.decodeStream(it)
-                                                                        context.mainExecutor.execute {
-                                                                            setImageBitmap(bitmap)
-                                                                        }
-                                                                    }
-                                                            }
-                                                            setImageURI(Uri.parse(url))
-                                                            setBackgroundColor(android.graphics.Color.BLACK)
-                                                            setOnClickListener { dismiss() }
-                                                        }
-                                                    )
-                                                    window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
-                                                    setCanceledOnTouchOutside(true)
-                                                }
-
-                                                override fun onCreate(savedInstanceState: Bundle?) {
-                                                    super.onCreate(savedInstanceState)
-                                                    window?.setLayout(
-                                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                                    )
-                                                }
-                                            }
-                                            dialog.show()
-                                            true
-                                        }
-                                    }
-                                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                        result.extra?.let { url ->
-                                            CustomTabsIntent.Builder()
-                                                .setToolbarColor(0xff66CCFF.toInt())
-                                                .build()
-                                                .launchUrl(context, Uri.parse(url))
-                                        }
-                                        true
-                                    }
-                                    menu.add("保存图片").setOnMenuItemClickListener {
-                                        result.extra?.let { url ->
-                                            coroutineScope.launch {
-                                                try {
-                                                    val response = httpClient.get(url)
-                                                    val bytes = response.readBytes()
-                                                    val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image"
-                                                    val file = Environment.getExternalStoragePublicDirectory(
-                                                        Environment.DIRECTORY_PICTURES
-                                                    ).resolve(fileName)
-                                                    file.outputStream().use { it.write(bytes) }
-                                                    Toast.makeText(
-                                                        context,
-                                                        "图片已保存至: ${file.absolutePath}",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                } catch (e: Exception) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "保存失败: ${e.message}",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            }
-                                        }
-                                        true
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    onRelease = WebView::destroy,
-                    modifier = Modifier.fillMaxSize()
-                )
+                WebviewComp(httpClient) {
+                    it.loadUrl(
+                        "https://www.zhihu.com/${article.type}/${article.id}",
+                        Jsoup.parse(content)
+                    )
+                }
             }
         }
     }

@@ -19,6 +19,11 @@ a {
   white-space: pre-wrap;
 }
 
+img.lazy {
+  /*隐藏知乎的透明占位图*/
+  display: none;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     background-color: transparent;
