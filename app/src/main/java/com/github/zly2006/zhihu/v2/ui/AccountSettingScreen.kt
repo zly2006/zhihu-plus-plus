@@ -102,7 +102,7 @@ fun AccountSettingScreen(
         )
         val data by produceState(initialValue = AccountData.getData()) {
             while (true) {
-                delay(300)
+                delay(80)
                 value = AccountData.getData()
             }
         }
