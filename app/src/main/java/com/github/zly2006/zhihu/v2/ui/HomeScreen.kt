@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,8 +131,8 @@ fun HomeScreen(
             }
         }
 
-        var offsetX by remember { mutableStateOf(0f) }
-        var offsetY by remember { mutableStateOf(0f) }
+        var offsetX by remember { mutableStateOf(preferences.getFloat("homeRefresh_x", 0f)) }
+        var offsetY by remember { mutableStateOf(preferences.getFloat("homeRefresh_y", 0f)) }
         var pressing by remember { mutableStateOf(false) }
 
         val configuration = LocalConfiguration.current
@@ -140,39 +141,24 @@ fun HomeScreen(
 
         val animatedOffsetX by animateFloatAsState(
             targetValue = offsetX,
-            animationSpec = tween(300),
+            animationSpec = tween(if (pressing) 1 else 300), // 如果按下，立即完成动画
             label = "offsetX"
         )
         val animatedOffsetY by animateFloatAsState(
             targetValue = offsetY,
-            animationSpec = tween(300),
+            animationSpec = tween(if (pressing) 1 else 300),
             label = "offsetY"
         )
 
         FloatingActionButton(
             onClick = { viewModel.refresh(context) },
+            shape = CircleShape,
             modifier = Modifier
-                .offset {
-                    IntOffset(
-                        if (pressing) offsetX.roundToInt()
-                        else animatedOffsetX.roundToInt(),
-                        if (pressing) offsetY.roundToInt()
-                        else animatedOffsetY.roundToInt()
-                    )
-                }
+                .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = {
                             pressing = true
-                        },
-                        onDragEnd = {
-                            pressing = false
-                            offsetX =
-                                if (offsetX < screenWidth / 2) 0f
-                                else screenWidth - 150
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
                             // 震动反馈
                             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                 (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
@@ -191,6 +177,19 @@ fun HomeScreen(
                                 @Suppress("DEPRECATION")
                                 vibrator.vibrate(50)
                             }
+                        },
+                        onDragEnd = {
+                            pressing = false
+                            offsetX =
+                                if (offsetX < screenWidth / 2) 0f
+                                else screenWidth - 150
+                            preferences.edit()
+                                .putFloat("homeRefresh_x", offsetX)
+                                .putFloat("homeRefresh_y", offsetY)
+                                .apply()
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
                             if (pressing) {
                                 offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - 150)
                                 offsetY = (offsetY + dragAmount.y).coerceIn(
