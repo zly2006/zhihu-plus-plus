@@ -36,8 +36,8 @@ import com.github.zly2006.zhihu.legacy.ui.dashboard.DashboardFragment
 import com.github.zly2006.zhihu.legacy.ui.home.HomeFragment
 import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment
 import com.github.zly2006.zhihu.legacy.ui.home.question.QuestionDetailsFragment
-import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.legacy.ui.notifications.NotificationsFragment
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
 import io.ktor.client.request.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.asCoroutineDispatcher

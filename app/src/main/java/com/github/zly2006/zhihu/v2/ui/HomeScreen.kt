@@ -1,17 +1,28 @@
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LoginActivity
@@ -23,6 +34,7 @@ import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.HomeFeedViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,6 +122,49 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        var offsetX by remember { mutableStateOf(0f) }
+        var offsetY by remember { mutableStateOf(0f) }
+        var pressing by remember { mutableStateOf(false) }
+        var pressStartTime by remember { mutableStateOf(0L) }
+
+        FloatingActionButton(
+            onClick = { viewModel.refresh(context) },
+            modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { 
+                            pressing = true
+                            pressStartTime = System.currentTimeMillis()
+                        },
+                        onDragEnd = {
+                            pressing = false
+                            if (System.currentTimeMillis() - pressStartTime > 500) {
+                                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                                }
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    vibrator.vibrate(50)
+                                }
+                            }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            offsetX += dragAmount.x
+                            offsetY += dragAmount.y
+                        }
+                    )
+                }
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = "刷新")
         }
     }
 }

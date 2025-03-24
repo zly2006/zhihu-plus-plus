@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.legacy.ui.home
+package com.github.zly2006.zhihu.v2.ui.components
 
 import android.content.Context
 import android.graphics.Color
@@ -17,7 +17,6 @@ import io.ktor.http.*
 
 fun setupUpWebview(web: WebView, context: Context) {
     web.setBackgroundColor(Color.TRANSPARENT)
-    web.settings.javaScriptEnabled = true
     val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

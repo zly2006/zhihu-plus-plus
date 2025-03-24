@@ -50,7 +50,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.legacy.ui.home.Reaction
 import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
-import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -323,41 +323,44 @@ fun ArticleScreen(
                                 if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
                                     result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                                 ) {
-                                    menu.add("查看图片").setOnMenuItemClickListener {
-                                        val dialog = object : ComponentDialog(context) {
-                                            init {
-                                                val url = result.extra!!
-                                                requestWindowFeature(Window.FEATURE_NO_TITLE)
-                                                setContentView(
-                                                    PhotoView(context).apply {
-                                                        GlobalScope.launch {
-                                                            httpClient.get(url).bodyAsChannel().toInputStream()
-                                                                .buffered().use {
-                                                                    val bitmap = BitmapFactory.decodeStream(it)
-                                                                    context.mainExecutor.execute {
-                                                                        setImageBitmap(bitmap)
-                                                                    }
-                                                                }
-                                                        }
-                                                        setImageURI(Uri.parse(url))
-                                                        setBackgroundColor(android.graphics.Color.BLACK)
-                                                        setOnClickListener { dismiss() }
-                                                    }
-                                                )
-                                                window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
-                                                setCanceledOnTouchOutside(true)
-                                            }
+                                    if (!result.extra!!.startsWith("data:")) {
+                                        menu.add("查看图片").setOnMenuItemClickListener {
 
-                                            override fun onCreate(savedInstanceState: Bundle?) {
-                                                super.onCreate(savedInstanceState)
-                                                window?.setLayout(
-                                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                                )
+                                            val dialog = object : ComponentDialog(context) {
+                                                init {
+                                                    val url = result.extra!!
+                                                    requestWindowFeature(Window.FEATURE_NO_TITLE)
+                                                    setContentView(
+                                                        PhotoView(context).apply {
+                                                            GlobalScope.launch {
+                                                                httpClient.get(url).bodyAsChannel().toInputStream()
+                                                                    .buffered().use {
+                                                                        val bitmap = BitmapFactory.decodeStream(it)
+                                                                        context.mainExecutor.execute {
+                                                                            setImageBitmap(bitmap)
+                                                                        }
+                                                                    }
+                                                            }
+                                                            setImageURI(Uri.parse(url))
+                                                            setBackgroundColor(android.graphics.Color.BLACK)
+                                                            setOnClickListener { dismiss() }
+                                                        }
+                                                    )
+                                                    window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+                                                    setCanceledOnTouchOutside(true)
+                                                }
+
+                                                override fun onCreate(savedInstanceState: Bundle?) {
+                                                    super.onCreate(savedInstanceState)
+                                                    window?.setLayout(
+                                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                                    )
+                                                }
                                             }
+                                            dialog.show()
+                                            true
                                         }
-                                        dialog.show()
-                                        true
                                     }
                                     menu.add("在浏览器中打开").setOnMenuItemClickListener {
                                         result.extra?.let { url ->

@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.databinding.FragmentReadArticleBinding
 import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState.*
 import com.github.zly2006.zhihu.legacy.ui.home.comment.CommentsDialog
 import com.github.zly2006.zhihu.loadImage
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

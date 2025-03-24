@@ -23,7 +23,8 @@ class HistoryViewModel : BaseFeedViewModel() {
                             summary = dest.excerpt ?: "",
                             details = dest.authorName,
                             feed = null,
-                            avatarSrc = dest.avatarSrc
+                            avatarSrc = dest.avatarSrc,
+                            navDestination = dest,
                         )
 
                         "article" -> FeedDisplayItem(
@@ -31,8 +32,8 @@ class HistoryViewModel : BaseFeedViewModel() {
                             summary = dest.excerpt ?: "",
                             details = dest.authorName,
                             feed = null,
+                            avatarSrc = dest.avatarSrc,
                             navDestination = dest,
-                            avatarSrc = dest.avatarSrc
                         )
 
                         else -> null

@@ -17,8 +17,8 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.databinding.FragmentQuestionDetailsBinding
 import com.github.zly2006.zhihu.legacy.ui.home.HtmlFragment
-import com.github.zly2006.zhihu.legacy.ui.home.setupUpWebview
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.CoroutineScope

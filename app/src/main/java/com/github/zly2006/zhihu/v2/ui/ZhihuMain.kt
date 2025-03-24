@@ -57,10 +57,12 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                             NavigationBarItem(
                                 navEntry.hasRoute(destination::class),
                                 onClick = {
-                                    navController.navigate(destination) {
-                                        popUpTo(Home)
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    if (!navEntry.hasRoute(destination::class)) {
+                                        navController.navigate(destination) {
+                                            popUpTo(Home)
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 },
                                 label = {
