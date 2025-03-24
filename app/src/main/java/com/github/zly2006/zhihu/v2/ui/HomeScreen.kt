@@ -176,32 +176,31 @@ fun HomeScreen(
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            if (System.currentTimeMillis() - pressStartTime > 500) {
-                                // 震动反馈
-                                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                                }
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    vibrator.vibrate(
-                                        VibrationEffect.createOneShot(
-                                            50,
-                                            VibrationEffect.DEFAULT_AMPLITUDE
-                                        )
-                                    )
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    vibrator.vibrate(50)
-                                }
-
+                            // 震动反馈
+                            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                            } else {
+                                @Suppress("DEPRECATION")
+                                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                             }
-                            offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - 150)
-                            offsetY = (offsetY + dragAmount.y).coerceIn(
-                                0f,
-                                configuration.screenHeightDp * density.density - 150
-                            )
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                vibrator.vibrate(
+                                    VibrationEffect.createOneShot(
+                                        50,
+                                        VibrationEffect.DEFAULT_AMPLITUDE
+                                    )
+                                )
+                            } else {
+                                @Suppress("DEPRECATION")
+                                vibrator.vibrate(50)
+                            }
+                            if (pressing) {
+                                offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - 150)
+                                offsetY = (offsetY + dragAmount.y).coerceIn(
+                                    0f,
+                                    configuration.screenHeightDp * density.density - 150
+                                )
+                            }
                         }
                     )
                 }
