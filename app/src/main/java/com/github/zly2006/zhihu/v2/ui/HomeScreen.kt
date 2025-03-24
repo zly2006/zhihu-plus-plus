@@ -9,6 +9,8 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,8 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LoginActivity
@@ -129,19 +134,50 @@ fun HomeScreen(
         var pressing by remember { mutableStateOf(false) }
         var pressStartTime by remember { mutableStateOf(0L) }
 
+        val configuration = LocalConfiguration.current
+        val density = LocalDensity.current
+        val screenWidth = with(density) { configuration.screenWidthDp.dp.toPx() }
+
+        val animatedOffsetX by animateFloatAsState(
+            targetValue = offsetX,
+            animationSpec = tween(300),
+            label = "offsetX"
+        )
+        val animatedOffsetY by animateFloatAsState(
+            targetValue = offsetY,
+            animationSpec = tween(300),
+            label = "offsetY"
+        )
+
         FloatingActionButton(
             onClick = { viewModel.refresh(context) },
             modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .offset {
+                    IntOffset(
+                        if (pressing) offsetX.roundToInt()
+                        else animatedOffsetX.roundToInt(),
+                        if (pressing) offsetY.roundToInt()
+                        else animatedOffsetY.roundToInt()
+                    )
+                }
                 .pointerInput(Unit) {
                     detectDragGestures(
-                        onDragStart = { 
+                        onDragStart = {
                             pressing = true
                             pressStartTime = System.currentTimeMillis()
                         },
                         onDragEnd = {
                             pressing = false
                             if (System.currentTimeMillis() - pressStartTime > 500) {
+                                offsetX =
+                                    if (offsetX < screenWidth / 2) 0f
+                                    else screenWidth - 150
+                            }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            if (System.currentTimeMillis() - pressStartTime > 500) {
+                                // 震动反馈
                                 val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                     (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
                                 } else {
@@ -149,17 +185,23 @@ fun HomeScreen(
                                     context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                                 }
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                    vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
+                                    vibrator.vibrate(
+                                        VibrationEffect.createOneShot(
+                                            50,
+                                            VibrationEffect.DEFAULT_AMPLITUDE
+                                        )
+                                    )
                                 } else {
                                     @Suppress("DEPRECATION")
                                     vibrator.vibrate(50)
                                 }
+
                             }
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
+                            offsetX = (offsetX + dragAmount.x).coerceIn(0f, screenWidth - 150)
+                            offsetY = (offsetY + dragAmount.y).coerceIn(
+                                0f,
+                                configuration.screenHeightDp * density.density - 150
+                            )
                         }
                     )
                 }
