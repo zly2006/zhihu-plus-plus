@@ -46,7 +46,16 @@ fun WebviewComp(
     AndroidView(
         factory = { ctx ->
             WebView(ctx).apply {
-                setupUpWebview(this, ctx)
+                setupUpWebview(this, ctx) {
+//                    evaluateJavascript("document.body.scrollHeight") { value ->
+//                        val height = value.toIntOrNull() ?: 0
+//                        if (height != 0) {
+//                            val layoutParams = layoutParams
+//                            layoutParams.height = height
+//                            this.layoutParams = layoutParams
+//                        }
+//                    }
+                }
                 onLoad(this)
                 setOnLongClickListener { view ->
                     view.showContextMenu()
@@ -157,7 +166,7 @@ fun WebView.loadUrl(
     )
 }
 
-fun setupUpWebview(web: WebView, context: Context) {
+fun setupUpWebview(web: WebView, context: Context, onPageFinished: (() -> Unit)? = null) {
     web.setBackgroundColor(Color.TRANSPARENT)
     val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("zhihu-plus.internal")
@@ -188,6 +197,11 @@ fun setupUpWebview(web: WebView, context: Context) {
                 return true
             }
             return super.shouldOverrideUrlLoading(view, request)
+        }
+
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            onPageFinished?.invoke()
         }
     }
 }

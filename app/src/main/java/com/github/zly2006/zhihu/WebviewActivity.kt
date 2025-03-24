@@ -26,7 +26,7 @@ class WebviewActivity : ComponentActivity() {
                 WebviewComp(
                     httpClient = AccountData.httpClient(this),
                     onLoad = { webView ->
-                        setupUpWebview(webView, this)
+                        setupUpWebview(webView, this) // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
                         setupCookies(webView)
                         webView.settings.javaScriptEnabled = true
                         webView.loadUrl(url)
