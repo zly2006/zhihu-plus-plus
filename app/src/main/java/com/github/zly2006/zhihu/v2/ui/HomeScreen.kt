@@ -132,7 +132,6 @@ fun HomeScreen(
         var offsetX by remember { mutableStateOf(0f) }
         var offsetY by remember { mutableStateOf(0f) }
         var pressing by remember { mutableStateOf(false) }
-        var pressStartTime by remember { mutableStateOf(0L) }
 
         val configuration = LocalConfiguration.current
         val density = LocalDensity.current
@@ -164,15 +163,12 @@ fun HomeScreen(
                     detectDragGestures(
                         onDragStart = {
                             pressing = true
-                            pressStartTime = System.currentTimeMillis()
                         },
                         onDragEnd = {
                             pressing = false
-                            if (System.currentTimeMillis() - pressStartTime > 500) {
-                                offsetX =
-                                    if (offsetX < screenWidth / 2) 0f
-                                    else screenWidth - 150
-                            }
+                            offsetX =
+                                if (offsetX < screenWidth / 2) 0f
+                                else screenWidth - 150
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
