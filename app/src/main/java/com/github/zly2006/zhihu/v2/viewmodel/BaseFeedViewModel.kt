@@ -27,7 +27,7 @@ abstract class BaseFeedViewModel : ViewModel() {
 
     data class FeedDisplayItem(
         val title: String,
-        val summary: String,
+        val summary: String?,
         val details: String,
         val feed: Feed?,
         val navDestination: NavDestination? = null,

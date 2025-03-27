@@ -36,8 +36,6 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.legacy.ui.home.Reaction
-import com.github.zly2006.zhihu.legacy.ui.home.ReadArticleFragment.ReadArticleViewModel.VoteUpState
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadUrl
 import io.ktor.client.call.*
@@ -46,7 +44,36 @@ import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
+
+@Serializable
+data class Reaction(
+    val reaction_count: Int,
+    val reaction_state: Boolean,
+    val reaction_value: String,
+    val success: Boolean,
+    val is_thanked: Boolean,
+    val thanks_count: Int,
+    val red_heart_count: Int,
+    val red_heart_has_set: Boolean,
+    val is_liked: Boolean,
+    val liked_count: Int,
+    val is_up: Boolean,
+    val voteup_count: Int,
+    val is_upped: Boolean,
+    val up_count: Int,
+    val is_down: Boolean,
+    val voting: Int,
+    val heavy_up_result: String,
+    val is_auto_send_moments: Boolean
+)
+
+enum class VoteUpState(val key: String) {
+    Up("up"),
+    Down("down"),
+    Neutral("neutral"),
+}
 
 @Composable
 fun ArticleScreen(

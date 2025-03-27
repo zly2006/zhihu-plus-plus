@@ -25,7 +25,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
@@ -34,6 +33,7 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -141,15 +141,6 @@ fun AccountSettingScreen(
                 Text("登录")
             }
         }
-
-        Button(
-            onClick = {
-                context.startActivity(Intent(context, LegacyMainActivity::class.java))
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("回到旧版UI")
-        }
         val networkStatus = remember {
             buildString {
                 val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
@@ -161,8 +152,18 @@ fun AccountSettingScreen(
                             .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                     ) {
                         append(" (移动数据)")
-                    } else {
+                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                         append(" (Wi-Fi)")
+                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                        append(" (以太网)")
+                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) {
+                        append(" (蓝牙)")
+                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                        append(" (VPN)")
                     }
                 } else {
                     append("未连接")
@@ -224,10 +225,27 @@ fun AccountSettingScreen(
             }
         }
         val updateState by UpdateManager.updateState.collectAsState()
+        LaunchedEffect(updateState) {
+            val updateState = updateState
+            if (updateState is UpdateState.UpdateAvailable) {
+                Toast.makeText(
+                    context,
+                    "发现新版本 ${updateState.version}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            if (updateState is UpdateState.Error) {
+                Toast.makeText(
+                    context,
+                    "检查更新失败: ${updateState.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
         Button(
             onClick = {
-                coroutineScope.launch {
-                    when (updateState) {
+                GlobalScope.launch {
+                    when (val updateState = updateState) {
                         is UpdateState.NoUpdate, is UpdateState.Error -> {
                             UpdateManager.checkForUpdate(context)
                         }
@@ -237,20 +255,21 @@ fun AccountSettingScreen(
                         is UpdateState.Downloaded -> {
                             UpdateManager.installUpdate(
                                 context,
-                                (updateState as UpdateState.Downloaded).file
+                                updateState.file
                             )
                         }
-                        UpdateState.Checking -> { /* 等待中 */ }
+                        UpdateState.Checking, UpdateState.Downloading -> { /* 等待中 */ }
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                when (updateState) {
+                when (val updateState = updateState) {
                     is UpdateState.NoUpdate -> "检查更新"
                     is UpdateState.Checking -> "检查中..."
-                    is UpdateState.UpdateAvailable -> "下载更新"
+                    is UpdateState.UpdateAvailable -> "下载更新 ${updateState.version}"
+                    is UpdateState.Downloading -> "下载中..."
                     is UpdateState.Downloaded -> "安装更新"
                     is UpdateState.Error -> "检查更新失败，点击重试"
                 }

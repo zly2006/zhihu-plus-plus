@@ -61,7 +61,7 @@ fun FeedCard(
             }
 
             Text(
-                text = item.summary,
+                text = item.summary ?: "",
                 fontSize = 14.sp,
                 maxLines = 3,
                 overflow = TextOverflow.Companion.Ellipsis,

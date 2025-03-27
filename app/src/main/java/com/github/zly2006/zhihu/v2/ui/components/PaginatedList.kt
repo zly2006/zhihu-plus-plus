@@ -33,7 +33,7 @@ fun <T> PaginatedList(
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
     footer: @Composable (() -> Unit)? = null,
-    topContent: (LazyListScope.() -> Unit)? = null,
+    topContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable (T) -> Unit,
 ) {
     val shouldLoadMore by remember {
@@ -59,12 +59,12 @@ fun <T> PaginatedList(
         state = listState,
         modifier = modifier
     ) {
-        topContent?.invoke(this)
+        topContent(this)
 
         items(items) { item ->
             itemContent(item)
         }
-        
+
         if (items.isNotEmpty()) {
             item {
                 if (isEnd()) {

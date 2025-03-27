@@ -94,11 +94,13 @@ class MainActivity : ComponentActivity() {
             "%02x".format(it)
         }
         val future = CompletableDeferred<String>()
-        webview.evaluateJavascript("exports.encrypt('$md5')") {
-            Log.i("MainActivity", "Sign request: $url")
-            Log.i("MainActivity", "Sign source: $signSource")
-            Log.i("MainActivity", "Sign result: $it")
-            future.complete(it.trim('"'))
+        runOnUiThread {
+            webview.evaluateJavascript("exports.encrypt('$md5')") {
+                Log.i("MainActivity", "Sign request: $url")
+                Log.i("MainActivity", "Sign source: $signSource")
+                Log.i("MainActivity", "Sign result: $it")
+                future.complete(it.trim('"'))
+            }
         }
         return "2.0_" + future.await()
     }

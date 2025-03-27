@@ -63,12 +63,9 @@ data class Feed(
         val is_copyable: Boolean = false,
         val question: Question,
         val thumbnail: String? = null,
-        val excerpt: String,
+        val excerpt: String? = null,
         val reshipment_settings: String = "",
         val content: String = "",
-        /**
-         * null - 广告
-         */
         val relationship: Relationship,
         val is_labeled: Boolean = false,
         val visited_count: Int = 0,
@@ -193,7 +190,7 @@ data class Feed(
         val bound_topic_ids: List<Long> = emptyList(),
         val is_following: Boolean = false,
         val excerpt: String = "<default value, R U in question details page?>",
-        val relationship: Relationship,
+        val relationship: Relationship? = null,
         val detail: String = "<default value, R U in question details page?>",
         val question_type: String,
     )

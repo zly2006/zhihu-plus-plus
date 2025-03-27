@@ -672,7 +672,7 @@ object DataHolder {
                             commentCount = feed.comment_count,
                             content = feed.content,
                             createdTime = feed.created_time,
-                            excerpt = feed.excerpt,
+                            excerpt = feed.excerpt ?: "",
                             favlistsCount = feed.favorite_count,
                             id = feed.id,
                             question = AnswerModelQuestion(
@@ -694,6 +694,12 @@ object DataHolder {
                         )
                     )
                 }
+//                val response = httpClient.get("https://www.zhihu.com/api/v4/answers/$id") {
+//                    signFetchRequest(activity)
+//                }.body<JsonObject>()
+//                println(response)
+//                val target = AccountData.decodeJson<Feed.AnswerTarget>(response)
+//                println(target)
                 get(httpClient, "https://www.zhihu.com/answer/$id", activity)
                 callback(answers[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {

@@ -17,6 +17,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
+import java.net.UnknownHostException
 
 class HomeFeedViewModel : BaseFeedViewModel() {
     override fun refresh(context: Context) {
@@ -51,6 +52,9 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                 val text = response.body<JsonObject>()
                 processResponse(text)
             }
+        } catch (e: UnknownHostException) {
+            Log.e("HomeFeedViewModel", "Failed to fetch (no network)", e)
+            errorMessage = "无法连接到服务器"
         } catch (e: Exception) {
             Log.e("HomeFeedViewModel", "Failed to fetch", e)
             errorMessage = "获取推荐内容失败: ${e.message}"

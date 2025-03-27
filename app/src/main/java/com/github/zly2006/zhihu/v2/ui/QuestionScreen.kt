@@ -13,6 +13,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,7 @@ fun QuestionScreen(
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(1) {
+                    val handle = LocalPinnableContainer.current?.pin()
                     if (questionContent.isNotEmpty()) {
                         WebviewComp(httpClient) {
                             it.loadUrl(
@@ -86,6 +88,7 @@ fun QuestionScreen(
                     }
                 }
                 item(2) {
+                    val handle = LocalPinnableContainer.current?.pin()
                     Button(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW).apply {

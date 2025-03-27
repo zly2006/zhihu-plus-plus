@@ -23,9 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
-import com.github.zly2006.zhihu.LegacyMainActivity
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.HistoryStorage.Companion.navigate
 import com.github.zly2006.zhihu.resolveContent
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -187,9 +185,6 @@ fun setupUpWebview(web: WebView, context: Context, onPageFinished: (() -> Unit)?
             } else if (request.url.host == "www.zhihu.com") {
                 val destination = resolveContent(request.url)
                 if (destination != null) {
-                    if (context is LegacyMainActivity) {
-                        context.navigate(destination)
-                    }
                     if (context is MainActivity) {
                         context.navigate(destination)
                     }
