@@ -258,7 +258,7 @@ fun AccountSettingScreen(
                                 updateState.file
                             )
                         }
-                        UpdateState.Checking, UpdateState.Downloading -> { /* 等待中 */ }
+                        UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
                     }
                 }
             },
@@ -268,6 +268,7 @@ fun AccountSettingScreen(
                 when (val updateState = updateState) {
                     is UpdateState.NoUpdate -> "检查更新"
                     is UpdateState.Checking -> "检查中..."
+                    is UpdateState.Latest -> "已经是最新版本"
                     is UpdateState.UpdateAvailable -> "下载更新 ${updateState.version}"
                     is UpdateState.Downloading -> "下载中..."
                     is UpdateState.Downloaded -> "安装更新"

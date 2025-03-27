@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.updater
 
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
@@ -25,7 +24,8 @@ object UpdateManager {
     sealed class UpdateState {
         object Checking : UpdateState()
         object NoUpdate : UpdateState()
-        data class UpdateAvailable(val version: String) : UpdateState()
+        object Latest : UpdateState()
+        data class UpdateAvailable(val version: SchematicVersion) : UpdateState()
         data class Downloaded(val file: File) : UpdateState()
         object Downloading : UpdateState()
         data class Error(val message: String) : UpdateState()
@@ -39,19 +39,13 @@ object UpdateManager {
 
             val client = AccountData.httpClient(context)
             val response = client.get(GITHUB_API).body<JsonObject>()
-            val latestVersion = response["tag_name"]?.jsonPrimitive?.content
+            val latestVersion = response["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
+            val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
 
-            if (latestVersion != null && latestVersion != BuildConfig.VERSION_NAME) {
+            if (latestVersion != null && latestVersion > currentVersion) {
                 updateState.value = UpdateState.UpdateAvailable(latestVersion)
             } else {
-                updateState.value = UpdateState.NoUpdate
-                context.mainExecutor.execute {
-                    Toast.makeText(
-                        context,
-                        "已经是最新版本",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                updateState.value = UpdateState.Latest
             }
         } catch (e: Exception) {
             updateState.value = UpdateState.Error(e.message ?: "Unknown error")

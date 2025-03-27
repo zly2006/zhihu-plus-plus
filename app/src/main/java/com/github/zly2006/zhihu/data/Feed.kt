@@ -211,6 +211,7 @@ data class Person(
     val user_type: String,
     val url_token: String,
     val name: String,
+    @Serializable(HTMLDecoder::class)
     val headline: String,
     val avatar_url: String,
     val is_org: Boolean,

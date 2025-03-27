@@ -32,6 +32,7 @@ object DataHolder {
         val avatarUrl: String,
         val avatarUrlTemplate: String,
         val gender: Int,
+        @Serializable(HTMLDecoder::class)
         val headline: String,
         val id: String,
         val isAdvertiser: Boolean,
