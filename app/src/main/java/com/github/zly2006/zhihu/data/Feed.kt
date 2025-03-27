@@ -8,26 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 
 @Serializable
-data class Feed(
-    val id: String = "",
-    val type: String,
-    val offset: Int = -1,
-    val verb: String = "possibly ads, filter me",
-    val created_time: Long = -1,
-    val updated_time: Long = -1,
-    /**
-     * 广告没有target
-     */
-    val target: Target? = null,
-    val brief: String = "<none>",
-    val attached_info: String = "",
-    val action_card: Boolean = false,
-    /**
-     * 屏蔽
-     */
-    val promotion_extra: String? = null,
-    val cursor: String = ""
-) {
+sealed interface Feed {
     @Serializable
     sealed interface Target {
         fun filterReason(): String? {
@@ -40,12 +21,12 @@ data class Feed(
                 is VideoTarget -> "视频"
                 is ArticleTarget -> "文章"
                 is PinTarget -> "想法"
-                is AdvertTarget -> "广告"
             }
         }
 
         fun detailsText(): String
     }
+
     @Serializable
     @SerialName("answer")
     data class AnswerTarget(
@@ -83,6 +64,7 @@ data class Feed(
             return "回答 · $voteup_count 赞同 · $comment_count 评论"
         }
     }
+
     @Serializable
     @SerialName("zvideo")
     data class VideoTarget(
@@ -154,19 +136,6 @@ data class Feed(
             return "想法 · $favorite_count 赞 · $comment_count 评论"
         }
     }
-    @Serializable
-    @SerialName("feed_advert")
-    data class AdvertTarget(
-        val title: String
-    ) : Target {
-        override fun filterReason(): String? {
-            return "广告"
-        }
-
-        override fun detailsText(): String {
-            return "广告"
-        }
-    }
 
     @Serializable
     data class Badge(
@@ -202,6 +171,46 @@ data class Feed(
         val is_nothelp: Boolean = false,
         val voting: Int = 0
     )
+}
+
+@Serializable
+@SerialName("feed_advert")
+class AdvertisementFeed(
+) : Feed
+
+@Serializable
+@SerialName("feed_group")
+class GroupFeed(
+    val id: String = "",
+    val attached_info: String = "",
+    val brief: String,
+    val group_text: String,
+    val list : List<CommonFeed>,
+    val style_type: Int = 0,
+) : Feed
+
+@Serializable
+@SerialName("feed")
+data class CommonFeed(
+    val id: String = "",
+    val type: String,
+    val offset: Int = -1,
+    val verb: String = "possibly ads, filter me",
+    val created_time: Long = -1,
+    val updated_time: Long = -1,
+    /**
+     * 广告没有target
+     */
+    val target: Feed.Target? = null,
+    val brief: String = "<none>",
+    val attached_info: String = "",
+    val action_card: Boolean = false,
+    /**
+     * 屏蔽
+     */
+    val promotion_extra: String? = null,
+    val cursor: String = ""
+) : Feed {
 }
 
 @Serializable

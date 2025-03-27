@@ -10,8 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Comment
-import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -320,7 +320,7 @@ fun CommentScreen(
                                 enabled = !isSending && commentInput.isNotBlank()
                             ) {
                                 Icon(
-                                    Icons.Outlined.Send,
+                                    Icons.AutoMirrored.Outlined.Send,
                                     contentDescription = "发送评论",
                                     tint = if (!isSending && commentInput.isNotBlank())
                                         MaterialTheme.colorScheme.primary
@@ -426,7 +426,7 @@ fun CommentItem(
                     modifier = Modifier.clickable { onChildCommentClick(comment) }
                 ) {
                     Icon(
-                        Icons.Outlined.Comment,
+                        Icons.AutoMirrored.Outlined.Comment,
                         contentDescription = "回复",
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant

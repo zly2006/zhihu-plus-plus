@@ -18,13 +18,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.v2.viewmodel.BaseFeedViewModel
 
 @Composable
 fun FeedCard(
     item: BaseFeedViewModel.FeedDisplayItem,
-    onClick: BaseFeedViewModel.FeedDisplayItem.(Feed?) -> Unit
+    onClick: BaseFeedViewModel.FeedDisplayItem.(CommonFeed?) -> Unit
 ) {
     Card(
         modifier = Modifier

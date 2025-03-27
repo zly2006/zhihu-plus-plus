@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
@@ -62,7 +63,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
         try {
             val data = AccountData.decodeJson<FeedResponse>(text)
             lastPaging = data.paging
-            val newFeeds = data.data.filter { it.target !is Feed.AdvertTarget }
+            val newFeeds = data.data.filterIsInstance<CommonFeed>()
 
             feeds.addAll(newFeeds)
 

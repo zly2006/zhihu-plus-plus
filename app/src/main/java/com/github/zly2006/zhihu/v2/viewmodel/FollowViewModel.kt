@@ -13,17 +13,18 @@ import kotlinx.coroutines.launch
 class FollowViewModel : BaseFeedViewModel() {
     private var offset = 0
     private var isEnd = false
+    private var lastPaging: Paging? = null
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun refresh(context: Context) {
         if (isLoading) return
         isLoading = true
         errorMessage = null
-        
+
         offset = 0
         isEnd = false
         displayItems.clear()
-        
+
         GlobalScope.launch {
             try {
                 val response = loadFollowingFeeds(context as MainActivity, 0)
@@ -42,7 +43,7 @@ class FollowViewModel : BaseFeedViewModel() {
     override fun loadMore(context: Context) {
         if (isLoading || isEnd) return
         isLoading = true
-        
+
         GlobalScope.launch {
             try {
                 val response = loadFollowingFeeds(context as MainActivity, offset + 20)
@@ -60,36 +61,15 @@ class FollowViewModel : BaseFeedViewModel() {
 
     private suspend fun loadFollowingFeeds(activity: MainActivity, offset: Int): FeedResponse {
         val client = AccountData.httpClient(activity)
-        val url = "https://api.zhihu.com/moments/recommend?limit=20&offset=$offset"
+        val url = lastPaging?.next ?: "https://www.zhihu.com/api/v3/moments?limit=10&desktop=true"
         val sign = activity.signRequest96(url)
-        
+
         return client.get(url) {
             header("x-zse-96", sign)
         }.body()
     }
 
     private fun createDisplayItem(feed: Feed): FeedDisplayItem {
-        return when (val target = feed.target) {
-            is Feed.AnswerTarget -> FeedDisplayItem(
-                title = target.question.title,
-                summary = target.excerpt,
-                details = "${target.author.name} 回答了问题",
-                feed = feed,
-                avatarSrc = target.author.avatar_url
-            )
-            is Feed.ArticleTarget -> FeedDisplayItem(
-                title = target.title,
-                summary = target.excerpt,
-                details = "${target.author.name} 发表了文章",
-                feed = feed,
-                avatarSrc = target.author.avatar_url
-            )
-            else -> FeedDisplayItem(
-                title = "未知内容",
-                summary = "",
-                details = "",
-                feed = feed
-            )
-        }
+        TODO()
     }
 }

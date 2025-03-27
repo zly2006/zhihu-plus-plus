@@ -3,8 +3,7 @@ package com.github.zly2006.zhihu.v2.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.*
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -68,16 +67,26 @@ class HomeFeedViewModel : BaseFeedViewModel() {
             val data = AccountData.decodeJson<FeedResponse>(text)
             feeds.addAll(data.data)
 
-            val newItems = data.data.map { feed ->
-                val filterReason =
-                    if (feed.target == null) "广告"
-                    else feed.target.filterReason()
+            val newItems = data.data.flatMap {
+                (it as? GroupFeed)?.list ?: listOf(it)
+            }.map { feed ->
+                if (feed is AdvertisementFeed) {
+                    return@map FeedDisplayItem(
+                        title = "已屏蔽",
+                        summary = "广告",
+                        details = "广告",
+                        feed = null,
+                        isFiltered = true
+                    )
+                }
+                feed as CommonFeed
+                val filterReason = feed.target?.filterReason()
 
                 if (filterReason != null) {
                     FeedDisplayItem(
                         title = "已屏蔽",
                         summary = filterReason,
-                        details = feed.target?.detailsText() ?: "广告",
+                        details = feed.target.detailsText(),
                         feed = feed,
                         isFiltered = true
                     )

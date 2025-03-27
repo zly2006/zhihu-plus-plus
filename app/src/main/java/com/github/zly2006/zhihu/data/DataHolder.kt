@@ -527,7 +527,7 @@ object DataHolder {
     private val questions = mutableMapOf<Long, ReferenceCount<Question>>()
     private val answers = mutableMapOf<Long, ReferenceCount<Answer>>()
     private val articles = mutableMapOf<Long, ReferenceCount<Article>>()
-    private val feeds = mutableMapOf<String, Feed>()
+    private val feeds = mutableMapOf<String, CommonFeed>()
 
     @SuppressLint("SetJavaScriptEnabled")
     private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
@@ -725,10 +725,12 @@ object DataHolder {
     }
 
     fun putFeed(feed: Feed) {
-        if (feed.target is Feed.AnswerTarget) {
-            feeds["answer/${feed.target.id}"] = feed
-        } else if (feed.target is Feed.ArticleTarget) {
-            feeds["article/${feed.target.id}"] = feed
+        if (feed is CommonFeed) {
+            if (feed.target is Feed.AnswerTarget) {
+                feeds["answer/${feed.target.id}"] = feed
+            } else if (feed.target is Feed.ArticleTarget) {
+                feeds["article/${feed.target.id}"] = feed
+            }
         }
     }
 

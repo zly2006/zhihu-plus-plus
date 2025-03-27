@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.v2.ui.components
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -24,6 +25,7 @@ import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.resolveContent
 import io.ktor.client.*
 import io.ktor.client.request.*
@@ -182,12 +184,18 @@ fun setupUpWebview(web: WebView, context: Context, onPageFinished: (() -> Unit)?
                     intent.launchUrl(context, Uri.parse(it))
                     return true
                 }
-            } else if (request.url.host == "www.zhihu.com") {
+            } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {
                 val destination = resolveContent(request.url)
                 if (destination != null) {
                     if (context is MainActivity) {
                         context.navigate(destination)
+                    } else {
+                        val intent = Intent(Intent.ACTION_VIEW, request.url, context, MainActivity::class.java)
+                        context.startActivity(intent)
                     }
+                } else {
+                    val intent = Intent(Intent.ACTION_VIEW, request.url, context, WebviewActivity::class.java)
+                    context.startActivity(intent)
                 }
                 return true
             }
