@@ -143,12 +143,16 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                 append("items", buildJsonArray {
                                     untouchedAnswers.forEach { item ->
                                         item.feed?.let { feed ->
-                                            if (feed.target is Feed.AnswerTarget) {
-                                                add(buildJsonArray {
-                                                    add("answer")
-                                                    add(feed.target.id)
-                                                    add("touch")
-                                                })
+                                            when (val target = feed.target) {
+                                                is Feed.AnswerTarget -> {
+                                                    add(buildJsonArray {
+                                                        add("answer")
+                                                        add(target.id)
+                                                        add("touch")
+                                                    })
+                                                }
+
+                                                else -> {}
                                             }
                                         }
                                     }

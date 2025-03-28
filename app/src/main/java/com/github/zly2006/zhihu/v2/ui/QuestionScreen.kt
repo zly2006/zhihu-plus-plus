@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.*
 import com.github.zly2006.zhihu.v2.viewmodel.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
@@ -107,14 +108,15 @@ fun QuestionScreen(
             FeedCard(item) { feed ->
                 feed?.let {
                     DataHolder.putFeed(it)
+                    val target = it.target as Feed.AnswerTarget
                     onNavigate(
                         Article(
                             item.title,
                             "answer",
-                            (it.target as Feed.AnswerTarget).id,
-                            it.target.author.name,
-                            it.target.author.headline,
-                            it.target.author.avatar_url,
+                            target.id,
+                            target.author.name,
+                            target.author.headline,
+                            target.author.avatar_url,
                             null
                         )
                     )

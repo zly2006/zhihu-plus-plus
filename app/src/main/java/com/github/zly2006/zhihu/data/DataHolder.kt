@@ -94,7 +94,7 @@ object DataHolder {
         val created: Long,
         val id: Long,
         val questionType: String,
-        val relationship: Relationship,
+        val relationship: Relationship? = null,
         val title: String,
         val type: String,
         val updatedTime: Long,

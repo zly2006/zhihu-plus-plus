@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import kotlinx.serialization.Serializable
 
@@ -30,7 +29,7 @@ abstract class BaseFeedViewModel : ViewModel() {
         val title: String,
         val summary: String?,
         val details: String,
-        val feed: CommonFeed?,
+        val feed: Feed?,
         val navDestination: NavDestination? = null,
         val avatarSrc: String? = null,
         val isFiltered: Boolean = false

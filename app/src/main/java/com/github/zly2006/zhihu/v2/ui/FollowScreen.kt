@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter

@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.QuestionFeedCard
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -23,6 +23,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
         viewModelScope.launch {
             displayItems.clear()
             feeds.clear()
+            lastPaging = null
             fetchAnswers(context)
         }
     }
@@ -63,7 +64,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
         try {
             val data = AccountData.decodeJson<FeedResponse>(text)
             lastPaging = data.paging
-            val newFeeds = data.data.filterIsInstance<CommonFeed>()
+            val newFeeds = data.data.filterIsInstance<QuestionFeedCard>()
 
             feeds.addAll(newFeeds)
 
@@ -81,9 +82,9 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
 
                     else -> {
                         FeedDisplayItem(
-                            title = feed.target?.javaClass?.simpleName ?: "广告",
+                            title = feed.target.javaClass.simpleName,
                             summary = "Not Implemented",
-                            details = feed.target?.detailsText() ?: "广告",
+                            details = feed.target.detailsText(),
                             feed = feed
                         )
                     }

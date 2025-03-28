@@ -173,6 +173,13 @@ sealed interface Feed {
     )
 }
 
+val Feed.target: Feed.Target?
+    get() = when (this) {
+        is CommonFeed -> target
+        is QuestionFeedCard -> target
+        else -> null
+    }
+
 @Serializable
 @SerialName("feed_advert")
 class AdvertisementFeed(
@@ -185,8 +192,19 @@ class GroupFeed(
     val attached_info: String = "",
     val brief: String,
     val group_text: String,
-    val list : List<CommonFeed>,
+    val list: List<CommonFeed>,
     val style_type: Int = 0,
+) : Feed
+
+@Serializable
+@SerialName("question_feed_card")
+class QuestionFeedCard(
+    val position: Int = 0,
+    val target: Feed.Target,
+    val cursor: String,
+    val target_type: String,
+    val is_jump_native: Boolean = false,
+    val skip_count: Boolean = false,
 ) : Feed
 
 @Serializable
