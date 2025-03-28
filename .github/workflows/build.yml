@@ -17,13 +17,13 @@ permissions:
 jobs:
   build:
     uses: ./.github/workflows/my-build-action.yml
-    if: startsWith(github.ref, 'refs/head/')
+    if: startsWith(github.ref, 'refs/heads')
     with:
       name: 'Nightly Builds'
     secrets: inherit
   build_minified_release:
     uses: ./.github/workflows/my-build-action.yml
-    if: startsWith(github.ref, 'refs/head/')
+    if: startsWith(github.ref, 'refs/heads/')
     with:
       name: 'Minified Builds'
       minify: true
