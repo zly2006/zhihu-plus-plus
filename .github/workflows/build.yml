@@ -5,6 +5,8 @@ on:
     branches:
       - 'release/**'
       - master
+    tags:
+      - '*'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -23,4 +25,11 @@ jobs:
     with:
       name: 'Minified Builds'
       minify: true
+    secrets: inherit
+  release:
+    uses: ./.github/workflows/my-build-action.yml
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    with:
+      name: 'Release'
+      release: true
     secrets: inherit

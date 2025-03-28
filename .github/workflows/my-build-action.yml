@@ -10,6 +10,9 @@ on:
       minify:
         required: false
         type: boolean
+      release:
+        required: false
+        type: boolean
     secrets:
       ANDROID_SIGNING_KEY:
         required: true
