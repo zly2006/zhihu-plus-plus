@@ -6,6 +6,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 
 class FollowViewModel : BaseFeedViewModel() {
     private var offset = 0
@@ -21,6 +22,6 @@ class FollowViewModel : BaseFeedViewModel() {
 
         val data = AccountData.decodeJson<FeedResponse>(json)
         offset += 20
-        processResponse(data, json["data"]!!)
+        processResponse(data, json["data"]!!.jsonArray)
     }
 }

@@ -1,15 +1,13 @@
 package com.github.zly2006.zhihu.v2.viewmodel
 
 import android.content.Context
-import android.util.Log
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.QuestionFeedCard
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 
@@ -26,44 +24,21 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
         if (response.status == HttpStatusCode.OK) {
             val json = response.body<JsonObject>()
             val data = AccountData.decodeJson<FeedResponse>(json)
-            processResponse(data, json["data"]!!)
+            processResponse(data, json["data"]!!.jsonArray)
         }
     }
 
-    private fun processResponse(data: FeedResponse, rawData: JsonObject) {
-        try {
-            debugData.addAll(rawData.jsonArray)
-            val newFeeds = data.data.filterIsInstance<QuestionFeedCard>()
-
-            feeds.addAll(newFeeds)
-
-            val newItems = newFeeds.map { feed ->
-                when (feed.target) {
-                    is Feed.AnswerTarget -> {
-                        FeedDisplayItem(
-                            title = feed.target.author.name,
-                            summary = feed.target.excerpt,
-                            details = feed.target.detailsText(),
-                            feed = feed,
-                            avatarSrc = feed.target.author.avatar_url
-                        )
-                    }
-
-                    else -> {
-                        FeedDisplayItem(
-                            title = feed.target.javaClass.simpleName,
-                            summary = "Not Implemented",
-                            details = feed.target.detailsText(),
-                            feed = feed
-                        )
-                    }
-                }
-            }
-
-            displayItems.addAll(newItems)
-        } catch (e: SerializationException) {
-            Log.e("QuestionFeedViewModel", "Failed to parse JSON: ${rawData}", e)
-            errorMessage = "解析数据失败: ${e.message}"
+    override fun createDisplayItem(feed: Feed): FeedDisplayItem {
+        val target = feed.target
+        if (target is Feed.AnswerTarget) {
+            return FeedDisplayItem(
+                title = target.author.name,
+                summary = target.excerpt,
+                details = target.detailsText(),
+                feed = feed,
+                avatarSrc = target.author.avatar_url
+            )
         }
+        return super.createDisplayItem(feed)
     }
 }

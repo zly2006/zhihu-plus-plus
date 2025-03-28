@@ -15,6 +15,7 @@ import io.ktor.http.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.jsonArray
 
 class HomeFeedViewModel : BaseFeedViewModel() {
     override suspend fun fetchFeeds(context: Context) {
@@ -29,7 +30,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
         if (response.status == HttpStatusCode.OK) {
             val json = response.body<JsonObject>()
             val data = AccountData.decodeJson<FeedResponse>(json)
-            processResponse(data, json["data"]!!)
+            processResponse(data, json["data"]!!.jsonArray)
         }
     }
 

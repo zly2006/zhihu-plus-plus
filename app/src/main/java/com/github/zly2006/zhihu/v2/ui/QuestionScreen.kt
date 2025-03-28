@@ -2,16 +2,18 @@
 
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import android.widget.Toast
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
@@ -90,17 +92,45 @@ fun QuestionScreen(
                 }
                 item(2) {
                     val handle = LocalPinnableContainer.current?.pin()
-                    Button(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
-                                setClass(context, WebviewActivity::class.java)
-                            }
-                            context.startActivity(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("查看日志")
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
+                                    setClass(context, WebviewActivity::class.java)
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.padding(16.dp).weight(1f)
+                        ) {
+                            Text("查看日志")
+                        }
+
+                        Button(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText(
+                                    "Link",
+                                    "https://www.zhihu.com/question/${question.questionId}" +
+                                            "\n【${question.title}】"
+                                )
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.padding(end = 16.dp).weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Filled.Share, contentDescription = "复制链接")
+                            Spacer(Modifier.width(8.dp))
+                            Text("复制链接")
+                        }
                     }
                 }
             }

@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.GroupFeed
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 
 abstract class BaseFeedViewModel : ViewModel() {
@@ -49,8 +50,8 @@ abstract class BaseFeedViewModel : ViewModel() {
         isLoading = false
     }
 
-    protected fun processResponse(response: FeedResponse, rawData: JsonElement) {
-        debugData.add(rawData) // 保存原始JSON
+    protected fun processResponse(response: FeedResponse, rawData: JsonArray) {
+        debugData.addAll(rawData) // 保存原始JSON
         feeds.addAll(response.data) // 保存未flatten的数据
         displayItems.addAll(response.data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
         lastPaging = response.paging
@@ -87,7 +88,7 @@ abstract class BaseFeedViewModel : ViewModel() {
         }
     }
 
-    fun createDisplayItem(feed: Feed): FeedDisplayItem {
+    open fun createDisplayItem(feed: Feed): FeedDisplayItem {
         if (feed is AdvertisementFeed) {
             return FeedDisplayItem(
                 title = "已屏蔽",

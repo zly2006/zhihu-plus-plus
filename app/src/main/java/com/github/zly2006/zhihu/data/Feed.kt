@@ -247,5 +247,5 @@ data class Person(
     val followers_count: Int = 0,
     val is_following: Boolean = false,
     val is_followed: Boolean = false,
-    val badge: List<Badge> = emptyList(),
+    val badge: List<Badge>? = null,
 )
