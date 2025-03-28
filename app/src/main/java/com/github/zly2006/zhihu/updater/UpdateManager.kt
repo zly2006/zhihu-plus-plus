@@ -22,12 +22,12 @@ object UpdateManager {
     private const val GITHUB_API = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
 
     sealed class UpdateState {
-        object Checking : UpdateState()
         object NoUpdate : UpdateState()
+        object Checking : UpdateState()
         object Latest : UpdateState()
         data class UpdateAvailable(val version: SchematicVersion) : UpdateState()
-        data class Downloaded(val file: File) : UpdateState()
         object Downloading : UpdateState()
+        data class Downloaded(val file: File) : UpdateState()
         data class Error(val message: String) : UpdateState()
     }
 
@@ -61,7 +61,9 @@ object UpdateManager {
             val client = AccountData.httpClient(context)
             val response = client.get(GITHUB_API).body<JsonObject>()
             val assets = response["assets"]?.jsonArray
-            val downloadUrl = assets?.firstOrNull()
+            val downloadUrl = assets?.firstOrNull {
+                it.jsonObject["content_type"]?.jsonPrimitive?.content == "application/vnd.android.package-archive"
+            }
                 ?.jsonObject?.get("browser_download_url")
                 ?.jsonPrimitive?.content
 

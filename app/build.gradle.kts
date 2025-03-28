@@ -75,12 +75,6 @@ android {
         compose = true
     }
 
-    if (buildFeatures.compose == true) {
-        composeOptions {
-            kotlinCompilerExtensionVersion = "1.5.14"
-        }
-    }
-
     packaging {
         resources {
             excludes += "META-INF/DEPENDENCIES"
