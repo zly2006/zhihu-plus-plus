@@ -543,18 +543,17 @@ object DataHolder {
                     val cm = CookieManager.getInstance()
                     cm.removeAllCookies { }
                     webView.settings.javaScriptEnabled = true
-                    AccountData.getData().cookies.forEach { (key, value) ->
+                    AccountData.data.cookies.forEach { (key, value) ->
                         cm.setCookie("https://www.zhihu.com", "$key=$value")
                     }
                     webView.webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url1: String?) {
                             if (url == url1) {
-                                val data = AccountData.getData()
                                 val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
                                     it.substringBefore("=").trim() to it.substringAfter("=")
                                 }
-                                data.cookies.putAll(cookies)
-                                AccountData.saveData(activity, data)
+                                AccountData.data.cookies.putAll(cookies)
+                                AccountData.saveData(activity, AccountData.data)
                                 job.complete()
                             }
                         }

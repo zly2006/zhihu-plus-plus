@@ -78,7 +78,7 @@ fun FollowScreen(
             }
         }
 
-        DraggableRefreshButton(context) {
+        DraggableRefreshButton {
             viewModel.refresh(context)
         }
     }

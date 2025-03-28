@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -25,9 +26,14 @@ import kotlin.math.roundToInt
 
 @Composable
 fun DraggableRefreshButton(
-    context: Context,
+    modifier: Modifier = Modifier,
+    preferenceName: String = "fabRefresh",
+    content: @Composable () -> Unit = {
+        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+    },
     onRefresh: () -> Unit
 ) {
+    val context = LocalContext.current
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val preferences = remember {
@@ -37,8 +43,8 @@ fun DraggableRefreshButton(
         )
     }
 
-    var offsetX by remember { mutableStateOf(preferences.getFloat("fabRefresh_x", Float.MAX_VALUE)) }
-    var offsetY by remember { mutableStateOf(preferences.getFloat("fabRefresh_y", Float.MAX_VALUE)) }
+    var offsetX by remember { mutableStateOf(preferences.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
+    var offsetY by remember { mutableStateOf(preferences.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
 
     fun adjustFabPosition() {
@@ -64,7 +70,7 @@ fun DraggableRefreshButton(
     FloatingActionButton(
         onClick = onRefresh,
         shape = CircleShape,
-        modifier = Modifier
+        modifier = modifier
             .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
             .pointerInput(Unit) {
                 detectDragGestures(
@@ -99,8 +105,8 @@ fun DraggableRefreshButton(
                                 else screenWidth - 56.dp.toPx()
                         }
                         preferences.edit()
-                            .putFloat("fabRefresh_x", offsetX)
-                            .putFloat("fabRefresh_y", offsetY)
+                            .putFloat("$preferenceName-x", offsetX)
+                            .putFloat("$preferenceName-y", offsetY)
                             .apply()
                     },
                     onDrag = { change, dragAmount ->
@@ -112,8 +118,7 @@ fun DraggableRefreshButton(
                         }
                     }
                 )
-            }
-    ) {
-        Icon(Icons.Default.Refresh, contentDescription = "刷新")
-    }
+            },
+        content = content
+    )
 }

@@ -1,12 +1,16 @@
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -25,6 +29,8 @@ import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.HomeFeedViewModel
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,8 +57,7 @@ fun HomeScreen(
 
     // 初始加载
     LaunchedEffect(Unit) {
-        val data = AccountData.getData(context)
-        if (!data.login) {
+        if (!AccountData.data.login) {
             val myIntent = Intent(context, LoginActivity::class.java)
             context.startActivity(myIntent)
         } else if (viewModel.displayItems.isEmpty()) {
@@ -114,8 +119,24 @@ fun HomeScreen(
             }
         }
 
-        DraggableRefreshButton(context) { 
+        DraggableRefreshButton {
             viewModel.refresh(context) 
+        }
+
+        DraggableRefreshButton(
+            content = {
+                Icon(Icons.Default.CopyAll, contentDescription = "复制")
+            },
+            preferenceName = "copyAll"
+        ) {
+            val data = Json.encodeToString(viewModel.debugData)
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = android.content.ClipData.newPlainText(
+                "data",
+                data
+            )
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
         }
     }
 }

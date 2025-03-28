@@ -2,7 +2,8 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.runtime.State
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.*
@@ -12,6 +13,7 @@ import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -36,29 +38,25 @@ object AccountData {
         val self: Person? = null
     )
 
-    private var data = Data()
-    fun getData(context: Context): Data {
+    fun loadData(context: Context): Data {
         val file = File(context.filesDir, "account.json")
         runCatching {
             if (file.exists()) {
-                data = json.decodeFromString<Data>(file.readText())
+                dataState.value = json.decodeFromString<Data>(file.readText())
             }
         }
         return data
     }
 
-    fun getData() = data
+    val data: Data
+        get() = dataState.value
+    private val dataState = MutableStateFlow<Data>(Data())
 
-    val asState: State<Data>
-        get() {
-            return object : State<Data> {
-                override val value: Data
-                    get() = data
-            }
-        }
+    @Composable
+    fun asState() = dataState.collectAsState()
 
     fun saveData(context: Context, data: Data) {
-        this.data = data
+        dataState.value = data
         val file = File(context.filesDir, "account.json")
         file.writeText(json.encodeToString(data))
     }

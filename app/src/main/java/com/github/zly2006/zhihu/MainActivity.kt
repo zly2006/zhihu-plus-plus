@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         history = HistoryStorage(this)
-        val data = AccountData.getData(this)
+        AccountData.loadData(this)
         webview = WebView(this)
         Log.i("MainActivity", "Webview created")
         setupUpWebview(webview, this)
@@ -86,7 +86,7 @@ class MainActivity : ComponentActivity() {
     }
 
     suspend fun signRequest96(url: String): String {
-        val dc0 = AccountData.getData().cookies["d_c0"] ?: ""
+        val dc0 = AccountData.data.cookies["d_c0"] ?: ""
         val zse93 = "101_3_3.0"
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
         val signSource = "$zse93+$pathname+$dc0"

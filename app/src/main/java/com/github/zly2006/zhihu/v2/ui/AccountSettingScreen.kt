@@ -34,7 +34,6 @@ import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
@@ -45,7 +44,7 @@ fun AccountSettingScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
-        val data = AccountData.getData(context)
+        val data = AccountData.data
         if (data.login) {
             val httpClient = AccountData.httpClient(context)
             val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
@@ -100,12 +99,7 @@ fun AccountSettingScreen(
                 }
             }
         )
-        val data by produceState(initialValue = AccountData.getData()) {
-            while (true) {
-                delay(80)
-                value = AccountData.getData()
-            }
-        }
+        val data by AccountData.asState()
         if (data.login) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

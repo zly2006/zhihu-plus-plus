@@ -81,7 +81,7 @@ class LoginActivity : ComponentActivity() {
                                             }
                                         }
                                         if (AccountData.verifyLogin(this@LoginActivity, cookies)) {
-                                            val data = AccountData.getData(this@LoginActivity)
+                                            val data = AccountData.loadData(this@LoginActivity)
 
                                             val preferences = this@LoginActivity.getSharedPreferences(
                                                 "com.github.zly2006.zhihu_preferences.xml",

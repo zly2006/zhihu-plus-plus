@@ -105,7 +105,7 @@ fun ArticleScreen(
                         title = answer.question.title
                         authorName = answer.author.name
                         content = answer.content
-                        authorBio = answer.author.headline
+                        authorBio = answer.author.badgeV2?.title ?: answer.author.headline
                         authorAvatarSrc = answer.author.avatarUrl
                         voteUpCount = answer.voteupCount
                         commentCount = answer.commentCount
@@ -135,7 +135,7 @@ fun ArticleScreen(
                         voteUpCount = articleData.voteupCount
                         commentCount = articleData.commentCount
                         authorName = articleData.author.name
-                        authorBio = articleData.author.headline
+                        authorBio = articleData.author.badgeV2?.title ?: articleData.author.headline
                         authorAvatarSrc = articleData.author.avatarUrl
 
                         // 更新文章信息并记录历史
