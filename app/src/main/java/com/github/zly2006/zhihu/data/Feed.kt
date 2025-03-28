@@ -100,9 +100,9 @@ sealed interface Feed {
         val content: String,
         val created: Long,
         val updated: Long,
-        val is_labeled: Boolean,
-        val visited_count: Int,
-        val favorite_count: Int,
+        val is_labeled: Boolean = false,
+        val visited_count: Int = 0,
+        val favorite_count: Int = 0,
     ) : Target {
         override fun filterReason(): String? {
             return if ((author.followers_count < 50 || voteup_count < 20) && !author.is_following) {
@@ -183,6 +183,7 @@ val Feed.target: Feed.Target?
 @Serializable
 @SerialName("feed_advert")
 class AdvertisementFeed(
+    val action_text: String = "",
 ) : Feed
 
 @Serializable
@@ -212,7 +213,7 @@ class QuestionFeedCard(
 data class CommonFeed(
     val id: String = "",
     val type: String,
-    val offset: Int = -1,
+//    val offset: Int = -1,
     val verb: String = "possibly ads, filter me",
     val created_time: Long = -1,
     val updated_time: Long = -1,

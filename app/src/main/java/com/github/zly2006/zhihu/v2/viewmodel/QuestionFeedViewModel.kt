@@ -13,6 +13,7 @@ import io.ktor.http.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 
 class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() {
     var lastPaging: Paging? = null
@@ -62,6 +63,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
 
     private fun processResponse(text: JsonObject) {
         try {
+            debugData.addAll(text["data"]!!.jsonArray)
             val data = AccountData.decodeJson<FeedResponse>(text)
             lastPaging = data.paging
             val newFeeds = data.data.filterIsInstance<QuestionFeedCard>()

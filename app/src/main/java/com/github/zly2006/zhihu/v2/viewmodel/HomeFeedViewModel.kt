@@ -3,7 +3,9 @@ package com.github.zly2006.zhihu.v2.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.*
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -16,6 +18,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.jsonArray
 import java.net.UnknownHostException
 
 class HomeFeedViewModel : BaseFeedViewModel() {
@@ -64,63 +67,11 @@ class HomeFeedViewModel : BaseFeedViewModel() {
 
     private fun processResponse(text: JsonObject) {
         try {
+            debugData.addAll(text["data"]!!.jsonArray)
             val data = AccountData.decodeJson<FeedResponse>(text)
             feeds.addAll(data.data)
 
-            val newItems = data.data.flatMap {
-                (it as? GroupFeed)?.list ?: listOf(it)
-            }.map { feed ->
-                if (feed is AdvertisementFeed) {
-                    return@map FeedDisplayItem(
-                        title = "已屏蔽",
-                        summary = "广告",
-                        details = "广告",
-                        feed = null,
-                        isFiltered = true
-                    )
-                }
-                feed as CommonFeed
-                val filterReason = feed.target?.filterReason()
-
-                if (filterReason != null) {
-                    FeedDisplayItem(
-                        title = "已屏蔽",
-                        summary = filterReason,
-                        details = feed.target.detailsText(),
-                        feed = feed,
-                        isFiltered = true
-                    )
-                } else {
-                    when (feed.target) {
-                        is Feed.AnswerTarget -> {
-                            FeedDisplayItem(
-                                title = feed.target.question.title,
-                                summary = feed.target.excerpt,
-                                details = feed.target.detailsText(),
-                                feed = feed
-                            )
-                        }
-
-                        is Feed.ArticleTarget -> {
-                            FeedDisplayItem(
-                                title = feed.target.title,
-                                summary = feed.target.excerpt,
-                                details = feed.target.detailsText(),
-                                feed = feed
-                            )
-                        }
-
-                        else -> {
-                            FeedDisplayItem(
-                                title = feed.target?.javaClass?.simpleName ?: "广告",
-                                summary = "Not Implemented",
-                                details = feed.target?.detailsText() ?: "广告",
-                                feed = feed
-                            )
-                        }
-                    }
-                }
-            }
+            val newItems = data.data.flatten().map { createDisplayItem(it) }
 
             displayItems.addAll(newItems)
         } catch (e: SerializationException) {
