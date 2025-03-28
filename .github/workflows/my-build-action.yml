@@ -118,14 +118,14 @@ jobs:
             app/build/upload/zhihu++.aab
           prerelease: true
       - name: Create Release
-        if: ${{ inputs.release }}
+        if: ${{ inputs.release && startsWith(github.ref, 'refs/tags/') }}
         id: release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           body: |
-            Release ${{ github.ref }}
+            Release ${{ github.ref_name }}
           files: |
             app/build/upload/zhihu++.apk
             app/build/upload/zhihu++.aab
