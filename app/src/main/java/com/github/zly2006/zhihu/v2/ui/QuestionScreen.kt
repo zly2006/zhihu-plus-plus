@@ -21,10 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Question
-import com.github.zly2006.zhihu.WebviewActivity
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -40,11 +37,12 @@ fun QuestionScreen(
     question: Question,
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current
+    val context = LocalContext.current as MainActivity
     val viewModel: QuestionFeedViewModel = viewModel {
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(question.title) }
     val httpClient = remember { AccountData.httpClient(context) }
 
     // 加载问题详情和答案
@@ -53,7 +51,14 @@ fun QuestionScreen(
             val questionData = DataHolder.getQuestion(context, httpClient, question.questionId)?.value
             if (questionData != null) {
                 questionContent = questionData.detail
+                title = questionData.title
                 viewModel.refresh(context)
+                context.postHistory(
+                    Question(
+                        question.questionId,
+                        title
+                    )
+                )
             }
         }
     }
@@ -63,7 +68,7 @@ fun QuestionScreen(
         topBar = {
             Row {
                 Text(
-                    text = question.title,
+                    text = title,
                     fontSize = 24.sp,
                     lineHeight = 32.sp,
                     fontWeight = FontWeight.Bold,
