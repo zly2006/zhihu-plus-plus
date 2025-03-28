@@ -1,34 +1,17 @@
 package com.github.zly2006.zhihu.v2.ui
 
-import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.LoginActivity
@@ -37,11 +20,11 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.v2.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.HomeFeedViewModel
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,89 +114,8 @@ fun HomeScreen(
             }
         }
 
-        var offsetX by remember { mutableStateOf(preferences.getFloat("homeRefresh_x", Float.MAX_VALUE)) }
-        var offsetY by remember { mutableStateOf(preferences.getFloat("homeRefresh_y", Float.MAX_VALUE)) }
-        var pressing by remember { mutableStateOf(false) }
-
-        val configuration = LocalConfiguration.current
-        val density = LocalDensity.current
-        /**
-         * 调整 FAB 的位置，使其不会超出屏幕
-         */
-        fun adjustFabPosition() {
-            with(density) {
-                offsetX = offsetX.coerceIn(0f, configuration.screenWidthDp.dp.toPx() - 56.dp.toPx())
-                offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 160.dp.toPx())
-            }
-        }
-        adjustFabPosition()
-
-        val animatedOffsetX by animateFloatAsState(
-            targetValue = offsetX,
-            animationSpec = tween(if (pressing) 1 else 300), // 如果按下，立即完成动画
-            label = "offsetX"
-        )
-        val animatedOffsetY by animateFloatAsState(
-            targetValue = offsetY,
-            animationSpec = tween(if (pressing) 1 else 300),
-            label = "offsetY"
-        )
-
-        FloatingActionButton(
-            onClick = { viewModel.refresh(context) },
-            shape = CircleShape,
-            modifier = Modifier
-                .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = {
-                            pressing = true
-                            // 震动反馈
-                            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-                            } else {
-                                @Suppress("DEPRECATION")
-                                context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                            }
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                vibrator.vibrate(
-                                    VibrationEffect.createOneShot(
-                                        50,
-                                        VibrationEffect.DEFAULT_AMPLITUDE
-                                    )
-                                )
-                            } else {
-                                @Suppress("DEPRECATION")
-                                vibrator.vibrate(50)
-                            }
-                        },
-                        onDragEnd = {
-                            pressing = false
-                            adjustFabPosition()
-                            with(density) {
-                                val screenWidth = configuration.screenWidthDp.dp.toPx()
-                                offsetX =
-                                    if (offsetX < screenWidth / 2) 0f
-                                    else screenWidth - 56.dp.toPx()
-                                configuration.screenWidthDp.dp.toPx()
-                            }
-                            preferences.edit()
-                                .putFloat("homeRefresh_x", offsetX)
-                                .putFloat("homeRefresh_y", offsetY)
-                                .apply()
-                        },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            if (pressing) {
-                                offsetX += dragAmount.x
-                                offsetY += dragAmount.y
-                                adjustFabPosition()
-                            }
-                        }
-                    )
-                }
-        ) {
-            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+        DraggableRefreshButton(context) { 
+            viewModel.refresh(context) 
         }
     }
 }
