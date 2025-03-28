@@ -8,6 +8,7 @@ import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.Window
 import android.webkit.WebResourceRequest
@@ -36,6 +37,13 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.nodes.Document
 
+private class CustomWebView : WebView {
+    constructor(context: Context) : super(context)
+    constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
+    constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+    var document: Document? = null
+}
+
 @Composable
 fun WebviewComp(
     httpClient: HttpClient,
@@ -45,7 +53,7 @@ fun WebviewComp(
     val coroutineScope = rememberCoroutineScope()
     AndroidView(
         factory = { ctx ->
-            WebView(ctx).apply {
+            CustomWebView(ctx).apply {
                 setupUpWebview(this, ctx) {
 //                    evaluateJavascript("document.body.scrollHeight") { value ->
 //                        val height = value.toIntOrNull() ?: 0
@@ -61,15 +69,17 @@ fun WebviewComp(
                     view.showContextMenu()
                 }
                 setOnCreateContextMenuListener { menu, v, _ ->
-                    val result = (v as WebView).hitTestResult
+                    val result = hitTestResult
                     if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
                         result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                     ) {
-                        if (!result.extra!!.startsWith("data:")) {
+                        val imgElement = document?.select("img[src='${result.extra}']")?.first()
+                        val dataOriginalUrl = imgElement?.attr("data-original")
+                        val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
+                        if (url != null) {
                             menu.add("查看图片").setOnMenuItemClickListener {
                                 val dialog = object : ComponentDialog(context) {
                                     init {
-                                        val url = result.extra!!
                                         requestWindowFeature(Window.FEATURE_NO_TITLE)
                                         setContentView(
                                             PhotoView(context).apply {
@@ -83,11 +93,11 @@ fun WebviewComp(
                                                         }
                                                 }
                                                 setImageURI(Uri.parse(url))
-                                                setBackgroundColor(android.graphics.Color.BLACK)
+                                                setBackgroundColor(Color.BLACK)
                                                 setOnClickListener { dismiss() }
                                             }
                                         )
-                                        window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.BLACK))
+                                        window?.setBackgroundDrawable(ColorDrawable(Color.BLACK))
                                         setCanceledOnTouchOutside(true)
                                     }
 
@@ -102,18 +112,14 @@ fun WebviewComp(
                                 dialog.show()
                                 true
                             }
-                        }
-                        menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                            result.extra?.let { url ->
+                            menu.add("在浏览器中打开").setOnMenuItemClickListener {
                                 CustomTabsIntent.Builder()
                                     .setToolbarColor(0xff66CCFF.toInt())
                                     .build()
                                     .launchUrl(context, Uri.parse(url))
+                                true
                             }
-                            true
-                        }
-                        menu.add("保存图片").setOnMenuItemClickListener {
-                            result.extra?.let { url ->
+                            menu.add("保存图片").setOnMenuItemClickListener {
                                 coroutineScope.launch {
                                     try {
                                         val response = httpClient.get(url)
@@ -136,8 +142,8 @@ fun WebviewComp(
                                         ).show()
                                     }
                                 }
+                                true
                             }
-                            true
                         }
                     }
                 }
@@ -164,6 +170,9 @@ fun WebView.loadUrl(
         "utf-8",
         null
     )
+    if (this is CustomWebView) {
+        this.document = document
+    }
 }
 
 fun setupUpWebview(web: WebView, context: Context, onPageFinished: (() -> Unit)? = null) {

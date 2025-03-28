@@ -67,13 +67,13 @@ fun AccountSettingScreen(
         @Composable
         fun DisplayPadding(padding: PaddingValues) = buildString {
             append("(")
-            append(padding.calculateLeftPadding(LocalLayoutDirection.current))
-            append(", ")
             append(padding.calculateTopPadding())
             append(", ")
             append(padding.calculateRightPadding(LocalLayoutDirection.current))
             append(", ")
             append(padding.calculateBottomPadding())
+            append(", ")
+            append(padding.calculateLeftPadding(LocalLayoutDirection.current))
             append(", start=")
             append(padding.calculateStartPadding(LocalLayoutDirection.current))
             append(")")

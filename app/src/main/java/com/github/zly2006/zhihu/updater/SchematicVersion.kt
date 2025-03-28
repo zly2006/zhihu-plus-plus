@@ -6,7 +6,7 @@ class SchematicVersion(
     val build: String,
 ) {
     companion object {
-        private val REGEX = Regex("""(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
+        private val REGEX = Regex("""[vV]?(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
         fun fromString(version: String): SchematicVersion {
             val match = REGEX.matchEntire(version) ?: throw IllegalArgumentException("Invalid version string")
             val components = match.groups["components"]!!.value.split(".").map { it.toInt() }
