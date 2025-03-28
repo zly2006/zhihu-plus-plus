@@ -32,4 +32,5 @@ jobs:
     with:
       name: 'Release'
       release: true
+      minify: true
     secrets: inherit

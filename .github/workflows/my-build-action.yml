@@ -103,9 +103,9 @@ jobs:
           delete_release: true
 
       # Create new nightly release
-      - name: Create Release
+      - name: Create Nightly Release
         if: ${{ inputs.minify }}
-        id: create_release
+        id: nightly_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly
@@ -117,4 +117,17 @@ jobs:
             app/build/upload/zhihu++.apk
             app/build/upload/zhihu++.aab
           prerelease: true
-          # token: ${{ github.token }}
+      - name: Create Release
+        if: ${{ inputs.release }}
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref }}
+          body: |
+            Release ${{ github.ref }}
+          files: |
+            app/build/upload/zhihu++.apk
+            app/build/upload/zhihu++.aab
+          prerelease: false
+

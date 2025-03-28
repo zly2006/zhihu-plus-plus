@@ -21,8 +21,10 @@ class SchematicVersion(
     val minor: Int get() = allComponents.getOrNull(1) ?: 0
     val patch: Int get() = allComponents.getOrNull(2) ?: 0
 
-    override fun toString(): String {
-        return "${allComponents.joinToString(".")}-$preRelease+$build"
+    override fun toString() = buildString {
+        append(allComponents.joinToString("."))
+        if (preRelease.isNotEmpty()) append("-$preRelease")
+        if (build.isNotEmpty()) append("+$build")
     }
 
     operator fun compareTo(other: SchematicVersion): Int {
