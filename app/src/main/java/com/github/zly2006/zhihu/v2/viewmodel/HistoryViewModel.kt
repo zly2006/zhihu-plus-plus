@@ -60,6 +60,9 @@ class HistoryViewModel : BaseFeedViewModel() {
         isLoading = false
     }
 
+    override suspend fun fetchFeeds(context: Context) {
+    }
+
     override fun loadMore(context: Context) {
         // 不需要loadMore，所有数据一次性加载
     }

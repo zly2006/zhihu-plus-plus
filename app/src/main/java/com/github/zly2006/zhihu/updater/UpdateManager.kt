@@ -81,35 +81,15 @@ object UpdateManager {
     }
 
     fun installUpdate(context: Context, file: File) {
-        try {
-            if (!file.exists()) {
-                updateState.value = UpdateState.Error("Update file not found")
-                return
-            }
-
-            val uri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                file
-            )
-
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-
-            // 确保有可以处理此Intent的应用
-            val activities = context.packageManager.queryIntentActivities(intent, 0)
-            if (activities.isEmpty()) {
-                updateState.value = UpdateState.Error("No app can handle APK installation")
-                return
-            }
-
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            updateState.value = UpdateState.Error("Install failed: ${e.message}")
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
+        context.startActivity(intent)
     }
 }

@@ -3,11 +3,13 @@ package com.github.zly2006.zhihu.v2.viewmodel
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.GroupFeed
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -18,6 +20,8 @@ abstract class BaseFeedViewModel : ViewModel() {
     protected var isLoading = false
     var errorMessage: String? = null
         protected set
+    protected var lastPaging: Paging? = null
+    val isEnd get() = lastPaging?.is_end == true  // 新增getter,保持向后兼容
 
     @Serializable
     class FeedResponse(val data: List<Feed>, val paging: Paging)
@@ -40,8 +44,48 @@ abstract class BaseFeedViewModel : ViewModel() {
         val isFiltered: Boolean = false
     )
 
-    abstract fun refresh(context: Context)
-    abstract fun loadMore(context: Context)
+    protected fun errorHandle(e: Exception) {
+        errorMessage = e.message
+        isLoading = false
+    }
+
+    protected fun processResponse(response: FeedResponse, rawData: JsonElement) {
+        debugData.add(rawData) // 保存原始JSON
+        feeds.addAll(response.data) // 保存未flatten的数据
+        displayItems.addAll(response.data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
+        lastPaging = response.paging
+        isLoading = false
+    }
+
+    protected abstract suspend fun fetchFeeds(context: Context)
+
+    open fun refresh(context: Context) {
+        if (isLoading) return
+        isLoading = true
+        errorMessage = null
+        displayItems.clear()
+        feeds.clear()
+        lastPaging = null  // 重置 lastPaging
+        viewModelScope.launch {
+            try {
+                fetchFeeds(context)
+            } catch (e: Exception) {
+                errorHandle(e)
+            }
+        }
+    }
+
+    open fun loadMore(context: Context) {
+        if (isLoading || isEnd) return  // 使用新的isEnd getter
+        isLoading = true
+        viewModelScope.launch {
+            try {
+                fetchFeeds(context)
+            } catch (e: Exception) {
+                errorHandle(e)
+            }
+        }
+    }
 
     fun createDisplayItem(feed: Feed): FeedDisplayItem {
         if (feed is AdvertisementFeed) {
@@ -70,7 +114,7 @@ abstract class BaseFeedViewModel : ViewModel() {
                     FeedDisplayItem(
                         title = feed.target.question.title,
                         summary = feed.target.excerpt,
-                        details = feed.target.detailsText(),
+                        details = feed.target.detailsText() + " · " + feed.action_text,
                         feed = feed
                     )
                 }
@@ -79,7 +123,7 @@ abstract class BaseFeedViewModel : ViewModel() {
                     FeedDisplayItem(
                         title = feed.target.title,
                         summary = feed.target.excerpt,
-                        details = feed.target.detailsText(),
+                        details = feed.target.detailsText() + " · " + feed.action_text,
                         feed = feed
                     )
                 }

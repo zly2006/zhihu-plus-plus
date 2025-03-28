@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.v2.viewmodel
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.QuestionFeedCard
@@ -10,62 +9,30 @@ import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 
 class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() {
-    var lastPaging: Paging? = null
+    override suspend fun fetchFeeds(context: Context) {
+        val httpClient = AccountData.httpClient(context)
+        val response = httpClient.get(
+            lastPaging?.next
+                ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}"
+        ) {
+            signFetchRequest(context)
+        }
 
-    val isEnd: Boolean get() = lastPaging != null && lastPaging!!.is_end
-
-    override fun refresh(context: Context) {
-        viewModelScope.launch {
-            displayItems.clear()
-            feeds.clear()
-            lastPaging = null
-            fetchAnswers(context)
+        if (response.status == HttpStatusCode.OK) {
+            val json = response.body<JsonObject>()
+            val data = AccountData.decodeJson<FeedResponse>(json)
+            processResponse(data, json["data"]!!)
         }
     }
 
-    override fun loadMore(context: Context) {
-        if (isLoading) return
-        viewModelScope.launch {
-            fetchAnswers(context)
-        }
-    }
-
-    private suspend fun fetchAnswers(context: Context) {
-        if (isLoading) return
-        isLoading = true
-
+    private fun processResponse(data: FeedResponse, rawData: JsonObject) {
         try {
-            val httpClient = AccountData.httpClient(context)
-            val response = httpClient.get(
-                lastPaging?.next
-                    ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}"
-            ) {
-                signFetchRequest(context)
-            }
-
-            if (response.status == HttpStatusCode.OK) {
-                val text = response.body<JsonObject>()
-                processResponse(text)
-            }
-        } catch (e: Exception) {
-            Log.e("QuestionFeedViewModel", "Failed to fetch", e)
-            errorMessage = "获取问题内容失败: ${e.message}"
-        } finally {
-            isLoading = false
-        }
-    }
-
-    private fun processResponse(text: JsonObject) {
-        try {
-            debugData.addAll(text["data"]!!.jsonArray)
-            val data = AccountData.decodeJson<FeedResponse>(text)
-            lastPaging = data.paging
+            debugData.addAll(rawData.jsonArray)
             val newFeeds = data.data.filterIsInstance<QuestionFeedCard>()
 
             feeds.addAll(newFeeds)
@@ -95,7 +62,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
 
             displayItems.addAll(newItems)
         } catch (e: SerializationException) {
-            Log.e("QuestionFeedViewModel", "Failed to parse JSON: $text", e)
+            Log.e("QuestionFeedViewModel", "Failed to parse JSON: ${rawData}", e)
             errorMessage = "解析数据失败: ${e.message}"
         }
     }

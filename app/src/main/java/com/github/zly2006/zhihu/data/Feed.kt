@@ -213,7 +213,6 @@ class QuestionFeedCard(
 data class CommonFeed(
     val id: String = "",
     val type: String,
-//    val offset: Int = -1,
     val verb: String = "possibly ads, filter me",
     val created_time: Long = -1,
     val updated_time: Long = -1,
@@ -228,7 +227,8 @@ data class CommonFeed(
      * 屏蔽
      */
     val promotion_extra: String? = null,
-    val cursor: String = ""
+    val cursor: String = "",
+    val action_text: String = "",
 ) : Feed {
 }
 
