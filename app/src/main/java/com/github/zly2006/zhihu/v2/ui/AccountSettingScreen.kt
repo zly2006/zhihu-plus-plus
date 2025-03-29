@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -216,6 +213,24 @@ fun AccountSettingScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
+            }
+            var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "允许发送遥测数据",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Switch(
+                    checked = allowTelemetry,
+                    onCheckedChange = { 
+                        allowTelemetry = it
+                        preferences.edit().putBoolean("allowTelemetry", it).apply()
+                    }
+                )
             }
         }
         val updateState by UpdateManager.updateState.collectAsState()

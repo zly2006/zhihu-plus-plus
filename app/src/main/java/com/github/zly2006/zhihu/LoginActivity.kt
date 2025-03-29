@@ -114,17 +114,19 @@ class LoginActivity : ComponentActivity() {
                                                         }.create().show()
                                                     } else {
                                                         AccountData.saveData(this@LoginActivity, data)
-                                                        GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
-                                                            runCatching {
-                                                                AccountData.httpClient(this@LoginActivity)
-                                                                    .post("https://redenmc.com/api/zhihu/login") {
-                                                                        setBody(Json.encodeToString(data))
-                                                                        contentType(ContentType.Application.Json)
-                                                                        header(
-                                                                            HttpHeaders.UserAgent,
-                                                                            "Zhihu++/${BuildConfig.VERSION_NAME}"
-                                                                        )
-                                                                    }
+                                                        if (preferences.getBoolean("allowTelemetry", true)) {
+                                                            GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
+                                                                runCatching {
+                                                                    AccountData.httpClient(this@LoginActivity)
+                                                                        .post("https://redenmc.com/api/zhihu/login") {
+                                                                            setBody(Json.encodeToString(data))
+                                                                            contentType(ContentType.Application.Json)
+                                                                            header(
+                                                                                HttpHeaders.UserAgent,
+                                                                                "Zhihu++/${BuildConfig.VERSION_NAME}"
+                                                                            )
+                                                                        }
+                                                                }
                                                             }
                                                         }
                                                         startActivity(
