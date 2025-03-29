@@ -220,10 +220,18 @@ fun AccountSettingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    "允许发送遥测数据",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                Column {
+                    Text(
+                        "允许发送遥测统计数据",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        "允许发送遥测数据到开发者，数据仅供统计使用",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        ),
+                    )
+                }
                 Switch(
                     checked = allowTelemetry,
                     onCheckedChange = { 

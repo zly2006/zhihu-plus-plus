@@ -14,7 +14,8 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
 class HomeFeedViewModel : BaseFeedViewModel() {
-    override fun getInitialUrl() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
 
     override suspend fun fetchFeeds(context: Context) {
         val httpClient = AccountData.httpClient(context)

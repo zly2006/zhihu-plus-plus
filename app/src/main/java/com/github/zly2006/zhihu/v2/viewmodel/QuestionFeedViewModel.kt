@@ -4,7 +4,8 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 
 class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() {
-    override fun getInitialUrl() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&offset=${feeds.size}"
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20"
 
     override fun createDisplayItem(feed: Feed): FeedDisplayItem {
         val target = feed.target

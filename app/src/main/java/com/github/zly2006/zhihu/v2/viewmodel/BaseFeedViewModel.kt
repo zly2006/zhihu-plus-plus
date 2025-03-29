@@ -64,14 +64,14 @@ abstract class BaseFeedViewModel : ViewModel() {
         isLoading = false
     }
 
-    protected abstract fun getInitialUrl(): String
+    protected abstract val initialUrl: String
     protected open fun processData(json: JsonObject): FeedResponse {
         return AccountData.decodeJson(json)
     }
 
     protected open suspend fun fetchFeeds(context: Context) {
         try {
-            val url = lastPaging?.next ?: getInitialUrl()
+            val url = lastPaging?.next ?: initialUrl
             val httpClient = AccountData.httpClient(context)
             val sign = (context as? MainActivity)?.signRequest96(url)
 

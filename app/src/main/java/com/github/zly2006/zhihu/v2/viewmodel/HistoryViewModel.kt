@@ -6,9 +6,8 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 
 class HistoryViewModel : BaseFeedViewModel() {
-    override fun getInitialUrl(): String {
-        error("不需要URL")
-    }
+    override val initialUrl: String
+        get() = error("不需要URL")
 
     override val isEnd: Boolean
         get() = displayItems.isNotEmpty()
