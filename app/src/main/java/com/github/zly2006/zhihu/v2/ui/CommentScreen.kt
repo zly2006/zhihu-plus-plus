@@ -36,6 +36,7 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.v2.viewmodel.BaseFeedViewModel
 import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -43,6 +44,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import org.jsoup.Jsoup
@@ -70,6 +72,12 @@ fun CommentScreen(
     var isSending by remember { mutableStateOf(false) }
     var activeChildComment by remember { mutableStateOf<CommentHolder?>(activeChildComment) }
 
+    @Serializable
+    class CommentResponse(
+        val data: List<DataHolder.Comment>,
+        val paging: BaseFeedViewModel.Paging,
+    )
+
     // 加载评论
     LaunchedEffect(content) {
         isLoading = true
@@ -84,8 +92,7 @@ fun CommentScreen(
 
                 if (response.status.isSuccess()) {
                     val comments = response.body<JsonObject>()
-                    val ja = comments["data"]!!.jsonArray
-                    val parsedComments = AccountData.decodeJson<List<DataHolder.Comment>>(ja).map {
+                    val parsedComments = AccountData.decodeJson<CommentResponse>(comments).data.map {
                         CommentItem(
                             it,
                             if (it.childCommentCount == 0) null
@@ -102,11 +109,11 @@ fun CommentScreen(
                 ) {
                     signFetchRequest(context)
                 }
+                val comment = httpClient.get("https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}") { signFetchRequest(context) }.body<JsonObject>()
 
                 if (response.status.isSuccess()) {
                     val comments = response.body<JsonObject>()
-                    val ja = comments["data"]!!.jsonArray
-                    val parsedComments = AccountData.decodeJson<List<DataHolder.Comment>>(ja).map {
+                    val parsedComments = AccountData.decodeJson<CommentResponse>(comments).data.map {
                         CommentItem(it, null)
                     }
                     commentsList = parsedComments

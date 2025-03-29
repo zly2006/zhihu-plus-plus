@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            readClipboard = true
         }
     }
 
