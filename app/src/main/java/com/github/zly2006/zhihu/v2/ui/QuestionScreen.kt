@@ -48,17 +48,27 @@ fun QuestionScreen(
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
         withContext(Dispatchers.IO) {
-            val questionData = DataHolder.getQuestion(context, httpClient, question.questionId)?.value
-            if (questionData != null) {
-                questionContent = questionData.detail
-                title = questionData.title
-                viewModel.refresh(context)
-                context.postHistory(
-                    Question(
-                        question.questionId,
-                        title
+            try {
+                val questionData = DataHolder.getQuestion(context, httpClient, question.questionId)?.value
+                if (questionData != null) {
+                    questionContent = questionData.detail
+                    title = questionData.title
+                    viewModel.refresh(context)
+                    context.postHistory(
+                        Question(
+                            question.questionId,
+                            title
+                        )
                     )
-                )
+                } else {
+                    context.mainExecutor.execute {
+                        Toast.makeText(context, "获取问题详情失败", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -104,11 +114,15 @@ fun QuestionScreen(
                     ) {
                         Button(
                             onClick = {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
-                                    setClass(context, WebviewActivity::class.java)
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
+                                        setClass(context, WebviewActivity::class.java)
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
-                                context.startActivity(intent)
                             },
                             modifier = Modifier.padding(16.dp).weight(1f)
                         ) {

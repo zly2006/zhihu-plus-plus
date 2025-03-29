@@ -99,60 +99,73 @@ fun ArticleScreen(
 
     LaunchedEffect(article.id) {
         withContext(Dispatchers.IO) {
-            if (article.type == "answer") {
-                DataHolder.getAnswerCallback(context, httpClient, article.id) { answer ->
-                    if (answer != null) {
-                        title = answer.question.title
-                        authorName = answer.author.name
-                        content = answer.content
-                        authorBio = answer.author.badgeV2?.title ?: answer.author.headline
-                        authorAvatarSrc = answer.author.avatarUrl
-                        voteUpCount = answer.voteupCount
-                        commentCount = answer.commentCount
-                        questionId = answer.question.id
+            try {
+                if (article.type == "answer") {
+                    DataHolder.getAnswerCallback(context, httpClient, article.id) { answer ->
+                        if (answer != null) {
+                            title = answer.question.title
+                            authorName = answer.author.name
+                            content = answer.content
+                            authorBio = answer.author.badgeV2?.title ?: answer.author.headline
+                            authorAvatarSrc = answer.author.avatarUrl
+                            voteUpCount = answer.voteupCount
+                            commentCount = answer.commentCount
+                            questionId = answer.question.id
 
-                        // 更新文章信息并记录历史
-                        val updatedArticle = Article(
-                            title,
-                            "answer",
-                            article.id,
-                            authorName,
-                            authorBio,
-                            authorAvatarSrc,
-                            answer.excerpt
-                        )
-                        context.postHistory(updatedArticle)
-                    } else {
-                        content = "<h1>回答不存在</h1>"
-                        Log.e("ArticleScreen", "Answer not found")
+                            // 更新文章信息并记录历史
+                            val updatedArticle = Article(
+                                title,
+                                "answer",
+                                article.id,
+                                authorName,
+                                authorBio,
+                                authorAvatarSrc,
+                                answer.excerpt
+                            )
+                            context.postHistory(updatedArticle)
+                        } else {
+                            content = "<h1>回答不存在</h1>"
+                            Log.e("ArticleScreen", "Answer not found")
+                            context.mainExecutor.execute {
+                                Toast.makeText(context, "回答不存在或已被删除", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else if (article.type == "article") {
+                    DataHolder.getArticleCallback(context, httpClient, article.id) { articleData ->
+                        if (articleData != null) {
+                            title = articleData.title
+                            content = articleData.content
+                            voteUpCount = articleData.voteupCount
+                            commentCount = articleData.commentCount
+                            authorName = articleData.author.name
+                            authorBio = articleData.author.badgeV2?.title ?: articleData.author.headline
+                            authorAvatarSrc = articleData.author.avatarUrl
+
+                            // 更新文章信息并记录历史
+                            val updatedArticle = Article(
+                                title,
+                                "article",
+                                article.id,
+                                authorName,
+                                authorBio,
+                                authorAvatarSrc,
+                                articleData.excerpt
+                            )
+                            context.postHistory(updatedArticle)
+                        } else {
+                            content = "<h1>文章不存在</h1>"
+                            Log.e("ArticleScreen", "Article not found")
+                            context.mainExecutor.execute {
+                                Toast.makeText(context, "文章不存在或已被删除", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                 }
-            } else if (article.type == "article") {
-                DataHolder.getArticleCallback(context, httpClient, article.id) { articleData ->
-                    if (articleData != null) {
-                        title = articleData.title
-                        content = articleData.content
-                        voteUpCount = articleData.voteupCount
-                        commentCount = articleData.commentCount
-                        authorName = articleData.author.name
-                        authorBio = articleData.author.badgeV2?.title ?: articleData.author.headline
-                        authorAvatarSrc = articleData.author.avatarUrl
-
-                        // 更新文章信息并记录历史
-                        val updatedArticle = Article(
-                            title,
-                            "article",
-                            article.id,
-                            authorName,
-                            authorBio,
-                            authorAvatarSrc,
-                            articleData.excerpt
-                        )
-                        context.postHistory(updatedArticle)
-                    } else {
-                        content = "<h1>文章不存在</h1>"
-                        Log.e("ArticleScreen", "Article not found")
-                    }
+            } catch (e: Exception) {
+                Log.e("ArticleScreen", "Failed to load content", e)
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

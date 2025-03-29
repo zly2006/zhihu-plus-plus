@@ -1,18 +1,24 @@
 package com.github.zly2006.zhihu.v2.viewmodel
 
 import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.data.AdvertisementFeed
-import com.github.zly2006.zhihu.data.CommonFeed
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.GroupFeed
+import com.github.zly2006.zhihu.data.*
+import com.github.zly2006.zhihu.signFetchRequest
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 
 abstract class BaseFeedViewModel : ViewModel() {
     val feeds = mutableStateListOf<Feed>()
@@ -22,7 +28,7 @@ abstract class BaseFeedViewModel : ViewModel() {
     var errorMessage: String? = null
         protected set
     protected var lastPaging: Paging? = null
-    val isEnd get() = lastPaging?.is_end == true  // 新增getter,保持向后兼容
+    open val isEnd get() = lastPaging?.is_end == true  // 新增getter,保持向后兼容
 
     @Serializable
     class FeedResponse(val data: List<Feed>, val paging: Paging)
@@ -58,22 +64,49 @@ abstract class BaseFeedViewModel : ViewModel() {
         isLoading = false
     }
 
-    protected abstract suspend fun fetchFeeds(context: Context)
+    protected abstract fun getInitialUrl(): String
+    protected open fun processData(json: JsonObject): FeedResponse {
+        return AccountData.decodeJson(json)
+    }
+
+    protected open suspend fun fetchFeeds(context: Context) {
+        try {
+            val url = lastPaging?.next ?: getInitialUrl()
+            val httpClient = AccountData.httpClient(context)
+            val sign = (context as? MainActivity)?.signRequest96(url)
+
+            val response = httpClient.get(url) {
+                if (sign != null) {
+                    header("x-zse-96", sign)
+                }
+                signFetchRequest(context)
+            }
+
+            if (response.status == HttpStatusCode.OK) {
+                val json = response.body<JsonObject>()
+                val data = processData(json)
+                processResponse(data, json["data"]!!.jsonArray)
+            } else {
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "获取数据失败: ${response.status}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(this::class.simpleName, "Failed to fetch feeds", e)
+            context.mainExecutor.execute {
+                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     open fun refresh(context: Context) {
         if (isLoading) return
-        isLoading = true
         errorMessage = null
+        debugData.clear()
         displayItems.clear()
         feeds.clear()
         lastPaging = null  // 重置 lastPaging
-        viewModelScope.launch {
-            try {
-                fetchFeeds(context)
-            } catch (e: Exception) {
-                errorHandle(e)
-            }
-        }
+        loadMore(context)
     }
 
     open fun loadMore(context: Context) {

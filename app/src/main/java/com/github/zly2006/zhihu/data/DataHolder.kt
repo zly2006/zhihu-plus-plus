@@ -704,7 +704,9 @@ object DataHolder {
                 callback(answers[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {
                 Log.e("DataHolder", "Failed to get answer $id", e)
-                Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
+                activity.mainExecutor.execute {
+                    Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
+                }
                 callback(null)
             }
         }
@@ -718,7 +720,9 @@ object DataHolder {
             return questions[id]?.also { it.count++ }
         } catch (e: Exception) {
             Log.e("DataHolder", "Failed to get question $id", e)
-            Toast.makeText(activity, "Failed to get question $id", Toast.LENGTH_LONG).show()
+            activity.mainExecutor.execute {
+                Toast.makeText(activity, "Failed to get question $id", Toast.LENGTH_LONG).show()
+            }
             return null
         }
     }
@@ -764,7 +768,9 @@ object DataHolder {
                 callback(articles[id]?.also { it.count++ }?.value)
             } catch (e: Exception) {
                 Log.e("DataHolder", "Failed to get article $id", e)
-                Toast.makeText(activity, "Failed to get article $id", Toast.LENGTH_LONG).show()
+                activity.mainExecutor.execute {
+                    Toast.makeText(activity, "Failed to get article $id", Toast.LENGTH_LONG).show()
+                }
                 callback(null)
             }
         }

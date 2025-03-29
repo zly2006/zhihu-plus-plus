@@ -5,33 +5,21 @@ import android.util.Log
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.*
-import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.jsonArray
 
 class HomeFeedViewModel : BaseFeedViewModel() {
+    override fun getInitialUrl() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
+
     override suspend fun fetchFeeds(context: Context) {
         val httpClient = AccountData.httpClient(context)
         markItemsAsTouched(context, httpClient)
-
-        val url = lastPaging?.next ?: "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
-        val response = httpClient.get(url) {
-            signFetchRequest(context)
-        }
-
-        if (response.status == HttpStatusCode.OK) {
-            val json = response.body<JsonObject>()
-            val data = AccountData.decodeJson<FeedResponse>(json)
-            processResponse(data, json["data"]!!.jsonArray)
-        }
+        super.fetchFeeds(context)
     }
 
     private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {
