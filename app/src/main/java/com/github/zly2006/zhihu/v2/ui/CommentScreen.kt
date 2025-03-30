@@ -353,13 +353,12 @@ private fun CommentItem(
 
                 LocalPinnableContainer.current?.pin()
                 WebviewComp(httpClient) {
+                    it.isVerticalScrollBarEnabled = false
+                    it.isHorizontalScrollBarEnabled = false
                     it.loadZhihu(
                         "",
-                        Jsoup.parse(commentData.content).processCommentImages().body().html(),
+                        Jsoup.parse(commentData.content).processCommentImages(),
                         additionalStyle = """
-                            body {
-                              margin: 0;
-                            }
                             p {
                               margin: 0;
                               margin-block: 0;

@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.v2.ui.components.*
 import com.github.zly2006.zhihu.v2.viewmodel.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
 
 @Composable
 fun QuestionScreen(
@@ -106,7 +107,7 @@ fun QuestionScreen(
                         WebviewComp(httpClient) {
                             it.loadZhihu(
                                 "https://www.zhihu.com/question/${question.questionId}",
-                                questionContent
+                                Jsoup.parse(questionContent)
                             )
                         }
                     }

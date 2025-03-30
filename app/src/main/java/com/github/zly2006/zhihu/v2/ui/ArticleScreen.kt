@@ -46,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import org.jsoup.Jsoup
 
 @Serializable
 data class Reaction(
@@ -328,7 +329,7 @@ fun ArticleScreen(
                 WebviewComp(httpClient) {
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
-                        content
+                        Jsoup.parse(content)
                     )
                 }
             }

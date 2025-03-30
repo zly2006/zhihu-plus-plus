@@ -35,7 +35,6 @@ import io.ktor.http.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 private class CustomWebView : WebView {
@@ -158,7 +157,7 @@ fun WebviewComp(
 
 fun WebView.loadZhihu(
     url: String,
-    document: String,
+    document: Document,
     additionalStyle: String = "",
 ) {
     loadDataWithBaseURL(
@@ -173,7 +172,7 @@ fun WebView.loadZhihu(
         </style>
         </head>
         <body>
-        $document
+        ${document.body().html()}
         </body>
         """.trimIndent(),
         "text/html",
@@ -181,7 +180,7 @@ fun WebView.loadZhihu(
         null
     )
     if (this is CustomWebView) {
-        this.document = Jsoup.parse(document)
+        this.document = document
     }
 }
 
