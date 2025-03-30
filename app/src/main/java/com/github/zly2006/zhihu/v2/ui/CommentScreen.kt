@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.v2.ui
 
+import android.content.Context.MODE_PRIVATE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -65,6 +66,11 @@ fun CommentScreen(
     val context = LocalContext.current
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    }
+    val useWebview = remember { preferences.getBoolean("commentsUseWebview", true) }
+    val pinWebview = remember { preferences.getBoolean("commentsPinWebview", false) }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (content) {
@@ -164,8 +170,9 @@ fun CommentScreen(
                                                 CommentItem(
                                                     comment = activeCommentItem,
                                                     httpClient = httpClient,
-                                                    onChildCommentClick = { }
-                                                )
+                                                    useWebview = useWebview,
+                                                    pinWebview = pinWebview,
+                                                ) { }
                                                 HorizontalDivider()
                                             }
                                         }
@@ -175,12 +182,13 @@ fun CommentScreen(
                                         CommentItem(
                                             comment = commentItem,
                                             httpClient = httpClient,
-                                            onChildCommentClick = { comment ->
-                                                if (comment.clickTarget != null) {
-                                                    onChildCommentClick(comment)
-                                                }
+                                            useWebview = useWebview,
+                                            pinWebview = pinWebview,
+                                        ) { comment ->
+                                            if (comment.clickTarget != null) {
+                                                onChildCommentClick(comment)
                                             }
-                                        )
+                                        }
                                     }
                                     
                                     if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
@@ -259,6 +267,8 @@ fun CommentTopText(content: NavDestination? = null) {
 private fun CommentItem(
     comment: CommentItem,
     httpClient: HttpClient,
+    useWebview: Boolean,
+    pinWebview: Boolean,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val commentData = comment.item
@@ -289,17 +299,30 @@ private fun CommentItem(
                     fontSize = 16.sp
                 )
 
-                LocalPinnableContainer.current?.pin()
-                WebviewComp(httpClient) {
-                    it.isVerticalScrollBarEnabled = false
-                    it.isHorizontalScrollBarEnabled = false
-                    it.loadZhihu(
-                        "",
-                        Jsoup.parse(commentData.content).processCommentImages(),
-                        additionalStyle = """
+                if (pinWebview) {
+                    LocalPinnableContainer.current?.pin()
+                }
+                if (useWebview) {
+                    WebviewComp(httpClient) {
+                        it.isVerticalScrollBarEnabled = false
+                        it.isHorizontalScrollBarEnabled = false
+                        it.loadZhihu(
+                            "",
+                            Jsoup.parse(commentData.content).processCommentImages(),
+                            additionalStyle = """
                           body { margin: 0; }
                           p { margin: 0; margin-block: 0; }
                         """.trimIndent()
+                        )
+                    }
+                } else {
+                    // 评论内容
+                    val content = remember(commentData.content) {
+                        Jsoup.parse(commentData.content).body().text()
+                    }
+                    Text(
+                        text = content,
+                        fontSize = 14.sp,
                     )
                 }
             }
@@ -434,6 +457,6 @@ private fun CommentItemPreview() {
         clickTarget = null
     )
     val context = LocalContext.current
-    CommentItem(comment, AccountData.httpClient(context)) {
+    CommentItem(comment, AccountData.httpClient(context), true, true) {
     }
 }

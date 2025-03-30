@@ -32,6 +32,8 @@ import com.github.zly2006.zhihu.v2.viewmodel.feed.HomeFeedViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -40,10 +42,7 @@ fun HomeScreen(
     val viewModel: HomeFeedViewModel = viewModel()
     val context = LocalContext.current
     val preferences = remember {
-        context.getSharedPreferences(
-            "com.github.zly2006.zhihu_preferences",
-            MODE_PRIVATE
-        )
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
     if (!preferences.getBoolean("developer", false)) {
         AlertDialog.Builder(context).apply {

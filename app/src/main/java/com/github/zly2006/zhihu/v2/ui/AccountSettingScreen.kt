@@ -11,7 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +32,7 @@ import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.v2.ui.components.SwitchSettingItem
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.GlobalScope
@@ -45,14 +49,19 @@ fun AccountSettingScreen(
         val data = AccountData.data
         if (data.login) {
             val httpClient = context.httpClient
-            val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
-                signFetchRequest(context)
-            }.body<JsonObject>()
-            val self = AccountData.decodeJson<Person>(response)
-            AccountData.saveData(
-                context,
-                data.copy(self = self)
-            )
+            try {
+                val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
+                    signFetchRequest(context)
+                }.body<JsonObject>()
+                val self = AccountData.decodeJson<Person>(response)
+                AccountData.saveData(
+                    context,
+                    data.copy(self = self)
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "获取用户信息失败", Toast.LENGTH_SHORT).show()
+            }
         }
     }
     Column(
@@ -79,7 +88,7 @@ fun AccountSettingScreen(
         var clickTimes by remember { mutableIntStateOf(0) }
         val preferences = remember {
             context.getSharedPreferences(
-                "com.github.zly2006.zhihu_preferences",
+                PREFERENCE_NAME,
                 Context.MODE_PRIVATE
             )
         }
@@ -216,31 +225,37 @@ fun AccountSettingScreen(
                 Text(data.username)
             }
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    Text(
-                        "允许发送遥测统计数据",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        "允许发送遥测数据到开发者，数据仅供统计使用",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        ),
-                    )
+            SwitchSettingItem(
+                title = "允许发送遥测统计数据",
+                description = "允许发送遥测数据到开发者，数据仅供统计使用",
+                checked = allowTelemetry,
+                onCheckedChange = { 
+                    allowTelemetry = it
+                    preferences.edit().putBoolean("allowTelemetry", it).apply()
                 }
-                Switch(
-                    checked = allowTelemetry,
-                    onCheckedChange = { 
-                        allowTelemetry = it
-                        preferences.edit().putBoolean("allowTelemetry", it).apply()
-                    }
-                )
-            }
+            )
+            
+            val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview", true)) }
+            SwitchSettingItem(
+                title = "使用 WebView 显示评论",
+                description = "使用 WebView 显示评论，可以显示图片和富文本链接",
+                checked = useWebview.value,
+                onCheckedChange = {
+                    useWebview.value = it
+                    preferences.edit().putBoolean("commentsUseWebview", it).apply()
+                }
+            )
+            
+            val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview", false)) }
+            SwitchSettingItem(
+                title = "WebView 对象常驻",
+                description = "直到关闭评论界面，否则 WebView 对象不会被销毁，这可以使滚动动画更流畅，但会占用更多内存",
+                checked = pinWebview.value,
+                onCheckedChange = {
+                    pinWebview.value = it
+                    preferences.edit().putBoolean("commentsPinWebview", it).apply()
+                }
+            )
         }
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {

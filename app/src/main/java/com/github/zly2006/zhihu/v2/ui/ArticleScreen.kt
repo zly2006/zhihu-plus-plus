@@ -7,11 +7,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -40,9 +35,9 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.v2.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
-import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -262,14 +257,14 @@ fun ArticleScreen(
                     Button(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val linkType =
-                                if (article.type == "answer") "question/${questionId}/answer" else article.type
-                            val clip = ClipData.newPlainText(
-                                "Link",
-                                "https://www.zhihu.com/$linkType/${article.id}"
-                                        + "\n【$title - $authorName 的回答】"
-                            )
-                            clipboard.setPrimaryClip(clip)
+                            val text = if (article.type == "answer") {
+                                "https://www.zhihu.com/question/${questionId}/answer/${article.id}\n【$title - $authorName 的回答】"
+                            } else if (article.type == "article") {
+                                "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
+                            } else {
+                                "暂不支持的链接类型"
+                            }
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Link", text))
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -343,61 +338,13 @@ fun ArticleScreen(
         }
     }
 
-    // 0 - 不显示半透明背景 1 - 显示在两个评论最下方 2 - 显示在两个评论中间
-    var backFilterState by remember { mutableStateOf(0) }
-
-    // 评论弹窗
-    var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
-    AnimatedVisibility(
-        visible = showComments && activeChildComment == null,
-        enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300)),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                .clickable { showComments = false }
-        )
-    }
-    CommentScreen(
-        visible = showComments,
+    // 使用新的评论组件
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
         httpClient = httpClient,
-        content = article,
-        onChildCommentClick = {
-            activeChildComment = it
-        }
+        content = article
     )
-    AnimatedVisibility(
-        visible = showComments && activeChildComment != null,
-        enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300)),
-    ) {
-        // 半透明背景,点击上方区域关闭
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                .clickable { activeChildComment = null }
-        )
-    }
-    CommentScreen(
-        visible = activeChildComment != null,
-        httpClient = httpClient,
-        content = activeChildComment?.clickTarget,
-        activeCommentItem = activeChildComment,
-        onChildCommentClick = { }
-    )
-
-    BackHandler(
-        enabled = activeChildComment != null,
-    ) {
-        activeChildComment = null
-    }
-
-    BackHandler(
-        enabled = showComments && activeChildComment == null,
-    ) {
-        showComments = false
-    }
 }
 
 @Preview

@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu
 
 import android.content.ClipboardManager
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -29,6 +30,13 @@ class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Thread.setDefaultUncaughtExceptionHandler { _, e ->
+            Log.e("MainActivity", "Uncaught exception", e)
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            finish()
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         history = HistoryStorage(this)

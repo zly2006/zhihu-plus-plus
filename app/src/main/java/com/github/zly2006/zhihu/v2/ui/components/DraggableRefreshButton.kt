@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.v2.ui.PREFERENCE_NAME
 import kotlin.math.roundToInt
 
 @Composable
@@ -37,10 +38,7 @@ fun DraggableRefreshButton(
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
     val preferences = remember {
-        context.getSharedPreferences(
-            "com.github.zly2006.zhihu_preferences",
-            Context.MODE_PRIVATE
-        )
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
 
     var offsetX by remember { mutableStateOf(preferences.getFloat("$preferenceName-x", Float.MAX_VALUE)) }

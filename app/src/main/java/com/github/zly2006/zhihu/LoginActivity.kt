@@ -11,13 +11,18 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.v2.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -26,6 +31,7 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val scope = rememberCoroutineScope()
             Surface(modifier = Modifier.fillMaxSize()) {
                 WebviewComp(
                     httpClient = AccountData.httpClient(this),
@@ -84,7 +90,7 @@ class LoginActivity : ComponentActivity() {
                                             val data = AccountData.loadData(this@LoginActivity)
 
                                             val preferences = this@LoginActivity.getSharedPreferences(
-                                                "com.github.zly2006.zhihu_preferences.xml",
+                                                PREFERENCE_NAME,
                                                 MODE_PRIVATE
                                             )
                                             print(preferences.toString())
@@ -96,7 +102,7 @@ class LoginActivity : ComponentActivity() {
                                                 }
                                             }.create().show()
                                             // back to the main activity
-                                            GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
+                                            scope.launch(mainExecutor.asCoroutineDispatcher()) {
                                                 delay(5000)
                                                 webView.evaluateJavascript("document.cookie") {
                                                     data.cookies.putAll(
@@ -115,7 +121,7 @@ class LoginActivity : ComponentActivity() {
                                                     } else {
                                                         AccountData.saveData(this@LoginActivity, data)
                                                         if (preferences.getBoolean("allowTelemetry", true)) {
-                                                            GlobalScope.launch(mainExecutor.asCoroutineDispatcher()) {
+                                                            scope.launch(mainExecutor.asCoroutineDispatcher()) {
                                                                 runCatching {
                                                                     AccountData.httpClient(this@LoginActivity)
                                                                         .post("https://redenmc.com/api/zhihu/login") {
