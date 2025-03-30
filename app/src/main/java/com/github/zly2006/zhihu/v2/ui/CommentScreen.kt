@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,26 +30,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.v2.theme.Typography
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
-import com.github.zly2006.zhihu.v2.viewmodel.BaseFeedViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.BaseCommentViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.ChildCommentViewModel
 import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
+import com.github.zly2006.zhihu.v2.viewmodel.RootCommentViewModel
 import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
@@ -57,22 +52,6 @@ import java.util.*
 private val HMS = SimpleDateFormat("HH:mm:ss")
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
 private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-
-private fun rootCommentUrl(content: NavDestination?) = when (content) {
-    is Article -> {
-        if (content.type == "answer") {
-            "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
-        } else if (content.type == "article") {
-            "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
-        } else null
-    }
-
-    is CommentHolder -> {
-        "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
-    }
-
-    else -> null
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,101 +63,50 @@ fun CommentScreen(
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var commentsList = remember { mutableStateListOf<CommentItem>() }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
 
-    @Serializable
-    class CommentResponse(
-        val data: List<DataHolder.Comment>,
-        val paging: BaseFeedViewModel.Paging,
-    )
+    // 根据内容类型选择合适的ViewModel
+    val viewModel: BaseCommentViewModel = when (content) {
+        is CommentHolder -> viewModel<ChildCommentViewModel>()
+        else -> viewModel<RootCommentViewModel>()
+    }
 
-    // 加载评论
-    LaunchedEffect(content) {
-        isLoading = true
-        errorMessage = null
-        try {
-            commentsList.clear()
-            val url = rootCommentUrl(content)
-            if (url == null) {
-                errorMessage = "不支持在此内容下评论"
-                return@LaunchedEffect
-            }
-            val response = httpClient.get(url) {
-                signFetchRequest(context)
-            }
-            if (response.status.isSuccess()) {
-                val comments = response.body<JsonObject>()
-                val parsedComments = AccountData.decodeJson<CommentResponse>(comments)
-                commentsList.addAll(
-                    parsedComments.data.map {
-                        CommentItem(
-                            it,
-                            if (it.childCommentCount == 0) null
-                            else CommentHolder(it.id, content!!)
-                        )
-                    }
-                )
-            } else {
-                errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
-            }
-        } catch (e: Exception) {
-            errorMessage = "加载评论异常: ${e.message}"
-        } finally {
-            isLoading = false
+    val listState = rememberLazyListState()
+
+    // 监控滚动位置以实现加载更多
+    val loadMore = remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItemsCount = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            
+            lastVisibleItemIndex >= totalItemsCount - 3 && !viewModel.isLoading && !viewModel.isEnd
         }
     }
 
-    // 提交评论
+    // 监控滚动加载更多
+    LaunchedEffect(loadMore.value) {
+        if (loadMore.value) {
+            viewModel.loadComments(content, httpClient, context, false)
+        }
+    }
+
+    // 初始加载评论
+    LaunchedEffect(content, visible) {
+        if (visible && content != null) {
+            viewModel.loadComments(content, httpClient, context, true)
+        }
+    }
+
+    // 提交评论函数
     fun submitComment() {
-        if (commentInput.isBlank()) return
-
-        scope.launch {
-            isSending = true
-            try {
-                val url = when (content) {
-                    is Article -> {
-                        if (content.type == "answer") {
-                            "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
-                        } else if (content.type == "article") {
-                            "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
-                        } else null
-                    }
-
-                    is CommentHolder -> {
-                        "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
-                    }
-
-                    else -> null
-                }
-
-                if (url == null) {
-                    errorMessage = "不支持在此内容下评论"
-                    return@launch
-                }
-
-                val response = httpClient.post(url) {
-                    signFetchRequest(context)
-                    contentType(ContentType.Application.Json)
-                    setBody("""{"content":"$commentInput"}""")
-                }
-
-                if (response.status.isSuccess()) {
-                    commentInput = ""
-                    // 刷新评论列表
-                    // todo
-                } else {
-                    errorMessage = "评论发送失败: ${response.status}"
-                }
-            } catch (e: Exception) {
-                errorMessage = "评论发送异常: ${e.message}"
-            } finally {
-                isSending = false
-            }
+        if (commentInput.isBlank() || isSending) return
+        
+        isSending = true
+        viewModel.submitComment(content, commentInput, httpClient, context) {
+            commentInput = ""
+            isSending = false
         }
     }
 
@@ -199,8 +127,8 @@ fun CommentScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 100.dp)
-                    .fillMaxHeight() // 保留上方空间
-                    .align(Alignment.BottomCenter), // 底部对齐
+                    .fillMaxHeight()
+                    .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
@@ -208,26 +136,24 @@ fun CommentScreen(
                     CommentTopText(content)
                     Box(modifier = Modifier.weight(1f)) {
                         when {
-                            isLoading -> {
+                            viewModel.isLoading && viewModel.comments.isEmpty() -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator()
                                 }
                             }
-
-                            errorMessage != null -> {
+                            viewModel.errorMessage != null && viewModel.comments.isEmpty() -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
+                                    Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
                                 }
                             }
-
-                            commentsList.isEmpty() -> {
+                            viewModel.comments.isEmpty() -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text("暂无评论")
                                 }
                             }
-
                             else -> {
                                 LazyColumn(
+                                    state = listState,
                                     modifier = Modifier.fillMaxSize(),
                                     contentPadding = PaddingValues(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -244,7 +170,8 @@ fun CommentScreen(
                                             }
                                         }
                                     }
-                                    items(commentsList) { commentItem ->
+                                    
+                                    items(viewModel.comments) { commentItem ->
                                         CommentItem(
                                             comment = commentItem,
                                             httpClient = httpClient,
@@ -254,6 +181,17 @@ fun CommentScreen(
                                                 }
                                             }
                                         )
+                                    }
+                                    
+                                    if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
+                                        item {
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -359,10 +297,8 @@ private fun CommentItem(
                         "",
                         Jsoup.parse(commentData.content).processCommentImages(),
                         additionalStyle = """
-                            p {
-                              margin: 0;
-                              margin-block: 0;
-                            }
+                          body { margin: 0; }
+                          p { margin: 0; margin-block: 0; }
                         """.trimIndent()
                     )
                 }

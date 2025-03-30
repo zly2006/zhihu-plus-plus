@@ -8,6 +8,10 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -336,10 +340,16 @@ fun ArticleScreen(
         }
     }
 
+    // 0 - 不显示半透明背景 1 - 显示在两个评论最下方 2 - 显示在两个评论中间
+    var backFilterState by remember { mutableStateOf(0) }
+
     // 评论弹窗
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
-    if (showComments && activeChildComment == null) {
-        // 半透明背景,点击上方区域关闭
+    AnimatedVisibility(
+        visible = showComments && activeChildComment == null,
+        enter = fadeIn(animationSpec = tween(300)),
+        exit = fadeOut(animationSpec = tween(300)),
+    ) {
         Box(
             modifier = Modifier.fillMaxSize()
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
@@ -354,7 +364,11 @@ fun ArticleScreen(
             activeChildComment = it
         }
     )
-    if (showComments && activeChildComment != null) {
+    AnimatedVisibility(
+        visible = showComments && activeChildComment != null,
+        enter = fadeIn(animationSpec = tween(300)),
+        exit = fadeOut(animationSpec = tween(300)),
+    ) {
         // 半透明背景,点击上方区域关闭
         Box(
             modifier = Modifier.fillMaxSize()
