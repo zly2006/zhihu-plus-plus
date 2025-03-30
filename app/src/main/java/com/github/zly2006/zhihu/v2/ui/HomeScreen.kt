@@ -28,7 +28,7 @@ import com.github.zly2006.zhihu.v2.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.v2.viewmodel.HomeFeedViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.feed.HomeFeedViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 

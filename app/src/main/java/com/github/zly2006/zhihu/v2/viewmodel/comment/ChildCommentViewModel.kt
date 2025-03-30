@@ -1,8 +1,9 @@
-package com.github.zly2006.zhihu.v2.viewmodel
+package com.github.zly2006.zhihu.v2.viewmodel.comment
 
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 
 class ChildCommentViewModel : BaseCommentViewModel() {
     

@@ -26,7 +26,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.*
-import com.github.zly2006.zhihu.v2.viewmodel.QuestionFeedViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup

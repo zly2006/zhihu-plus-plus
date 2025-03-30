@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.v2.viewmodel
+package com.github.zly2006.zhihu.v2.viewmodel.comment
 
 import android.content.Context
 import android.util.Log
@@ -12,6 +12,8 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
+import com.github.zly2006.zhihu.v2.viewmodel.feed.BaseFeedViewModel
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*

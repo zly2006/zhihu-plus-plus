@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.v2.viewmodel
+package com.github.zly2006.zhihu.v2.viewmodel.feed
 
 class FollowViewModel : BaseFeedViewModel() {
     override val initialUrl: String

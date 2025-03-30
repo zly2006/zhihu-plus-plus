@@ -39,10 +39,10 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.v2.theme.Typography
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
-import com.github.zly2006.zhihu.v2.viewmodel.BaseCommentViewModel
-import com.github.zly2006.zhihu.v2.viewmodel.ChildCommentViewModel
 import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
-import com.github.zly2006.zhihu.v2.viewmodel.RootCommentViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.comment.BaseCommentViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.comment.ChildCommentViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document

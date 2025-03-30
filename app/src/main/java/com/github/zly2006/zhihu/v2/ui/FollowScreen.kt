@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.v2.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.v2.viewmodel.FollowViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.feed.FollowViewModel
 
 @Composable
 fun FollowScreen(
