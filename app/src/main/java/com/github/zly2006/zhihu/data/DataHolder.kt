@@ -61,7 +61,7 @@ object DataHolder {
         val description: String,
         val medalId: String,
         val medalName: String,
-        val medalAvatarFrame: String = "",
+        val medalAvatarFrame: String? = null,
         val miniAvatarUrl: String? = null,
     )
 

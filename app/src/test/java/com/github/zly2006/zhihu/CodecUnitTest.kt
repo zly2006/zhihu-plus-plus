@@ -2,7 +2,9 @@ package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.v2.ui.processCommentImages
 import kotlinx.serialization.json.*
+import org.jsoup.Jsoup
 import org.junit.Test
 
 class CodecUnitTest {
@@ -71,5 +73,16 @@ class CodecUnitTest {
                 }.decodeFromJsonElement<Feed>(it)
             }
         }
+    }
+
+    @Test
+    fun commentHtml() {
+        val html = """
+            刷不出来<a href="https://pic4.zhimg.com/v2-0a409b020bb1355ad3b57584882e362b_qhd.jpeg" class="comment_img" data-width="1440" data-height="3168">查看图片</a>
+        """.trimIndent()
+        val document = Jsoup.parse(html)
+        document.processCommentImages()
+        val result = document.body().html()
+        println(result)
     }
 }

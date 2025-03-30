@@ -29,7 +29,6 @@ import com.github.zly2006.zhihu.v2.ui.components.*
 import com.github.zly2006.zhihu.v2.viewmodel.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
 
 @Composable
 fun QuestionScreen(
@@ -105,9 +104,9 @@ fun QuestionScreen(
                     val handle = LocalPinnableContainer.current?.pin()
                     if (questionContent.isNotEmpty()) {
                         WebviewComp(httpClient) {
-                            it.loadUrl(
+                            it.loadZhihu(
                                 "https://www.zhihu.com/question/${question.questionId}",
-                                Jsoup.parse(questionContent)
+                                questionContent
                             )
                         }
                     }

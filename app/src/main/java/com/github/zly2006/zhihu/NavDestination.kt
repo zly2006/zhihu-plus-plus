@@ -65,7 +65,7 @@ data class Article(
 @Serializable
 data class CommentHolder(
     val commentId: String,
-    val article: Article,
+    val article: NavDestination,
 ) : NavDestination
 
 @Serializable

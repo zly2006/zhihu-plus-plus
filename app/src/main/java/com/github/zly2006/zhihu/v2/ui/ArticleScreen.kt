@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,7 +37,8 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
-import com.github.zly2006.zhihu.v2.ui.components.loadUrl
+import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
+import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -44,7 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import org.jsoup.Jsoup
 
 @Serializable
 data class Reaction(
@@ -325,20 +326,59 @@ fun ArticleScreen(
             // 文章内容 WebView
             if (content.isNotEmpty()) {
                 WebviewComp(httpClient) {
-                    it.loadUrl(
+                    it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
-                        Jsoup.parse(content)
+                        content
                     )
                 }
             }
         }
     }
 
-    if (showComments) {
-        CommentScreen(
-            httpClient = httpClient,
-            content = article,
-        ) { showComments = false }
+    // 评论弹窗
+    var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
+    if (showComments && activeChildComment == null) {
+        // 半透明背景,点击上方区域关闭
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                .clickable { showComments = false }
+        )
+    }
+    CommentScreen(
+        visible = showComments,
+        httpClient = httpClient,
+        content = article,
+        onChildCommentClick = {
+            activeChildComment = it
+        }
+    )
+    if (showComments && activeChildComment != null) {
+        // 半透明背景,点击上方区域关闭
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                .clickable { activeChildComment = null }
+        )
+    }
+    CommentScreen(
+        visible = activeChildComment != null,
+        httpClient = httpClient,
+        content = activeChildComment?.clickTarget,
+        activeCommentItem = activeChildComment,
+        onChildCommentClick = { }
+    )
+
+    BackHandler(
+        enabled = activeChildComment != null,
+    ) {
+        activeChildComment = null
+    }
+
+    BackHandler(
+        enabled = showComments && activeChildComment == null,
+    ) {
+        showComments = false
     }
 }
 

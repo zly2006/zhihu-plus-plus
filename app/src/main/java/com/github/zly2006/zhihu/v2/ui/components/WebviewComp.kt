@@ -35,12 +35,14 @@ import io.ktor.http.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 private class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+
     var document: Document? = null
 }
 
@@ -74,7 +76,7 @@ fun WebviewComp(
                         result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                     ) {
                         val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val dataOriginalUrl = imgElement?.attr("data-original")
+                        val dataOriginalUrl = imgElement?.attr("data-original")?.takeIf { it.isNotBlank() }
                         val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
                         if (url != null) {
                             menu.add("查看图片").setOnMenuItemClickListener {
@@ -154,24 +156,32 @@ fun WebviewComp(
     )
 }
 
-fun WebView.loadUrl(
+fun WebView.loadZhihu(
     url: String,
-    document: Document,
+    document: String,
+    additionalStyle: String = "",
 ) {
     loadDataWithBaseURL(
         url,
         """
         <head>
-        <link rel="stylesheet" href="//zhihu-plus.internal/assets/stylesheet.css">
+        <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
         <viewport content="width=device-width, initial-scale=1.0">
+        </viewport>
+        <style>
+        ${additionalStyle.replace("\n", "")}
+        </style>
         </head>
-        """.trimIndent() + document.toString(),
+        <body>
+        $document
+        </body>
+        """.trimIndent(),
         "text/html",
         "utf-8",
         null
     )
     if (this is CustomWebView) {
-        this.document = document
+        this.document = Jsoup.parse(document)
     }
 }
 

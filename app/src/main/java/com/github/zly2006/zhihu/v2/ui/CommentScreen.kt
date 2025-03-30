@@ -2,7 +2,10 @@
 
 package com.github.zly2006.zhihu.v2.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,17 +21,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.CommentHolder
@@ -36,6 +36,9 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.v2.theme.Typography
+import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
+import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
 import com.github.zly2006.zhihu.v2.viewmodel.BaseFeedViewModel
 import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.*
@@ -46,8 +49,8 @@ import io.ktor.http.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -55,22 +58,38 @@ private val HMS = SimpleDateFormat("HH:mm:ss")
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
 private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
+private fun rootCommentUrl(content: NavDestination?) = when (content) {
+    is Article -> {
+        if (content.type == "answer") {
+            "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
+        } else if (content.type == "article") {
+            "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
+        } else null
+    }
+
+    is CommentHolder -> {
+        "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
+    }
+
+    else -> null
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreen(
+    visible: Boolean,
     httpClient: HttpClient,
-    content: NavDestination,
-    activeChildComment: CommentHolder? = null,
-    onDismiss: () -> Unit
+    content: NavDestination?,
+    activeCommentItem: CommentItem? = null,
+    onChildCommentClick: (CommentItem) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var commentsList by remember { mutableStateOf<List<CommentItem>>(emptyList()) }
+    var commentsList = remember { mutableStateListOf<CommentItem>() }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
-    var activeChildComment by remember { mutableStateOf<CommentHolder?>(activeChildComment) }
 
     @Serializable
     class CommentResponse(
@@ -83,45 +102,29 @@ fun CommentScreen(
         isLoading = true
         errorMessage = null
         try {
-            if (content is Article && content.type == "answer") {
-                val response = httpClient.get(
-                    "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment?order_by=score&limit=20"
-                ) {
-                    signFetchRequest(context)
-                }
-
-                if (response.status.isSuccess()) {
-                    val comments = response.body<JsonObject>()
-                    val parsedComments = AccountData.decodeJson<CommentResponse>(comments).data.map {
+            commentsList.clear()
+            val url = rootCommentUrl(content)
+            if (url == null) {
+                errorMessage = "不支持在此内容下评论"
+                return@LaunchedEffect
+            }
+            val response = httpClient.get(url) {
+                signFetchRequest(context)
+            }
+            if (response.status.isSuccess()) {
+                val comments = response.body<JsonObject>()
+                val parsedComments = AccountData.decodeJson<CommentResponse>(comments)
+                commentsList.addAll(
+                    parsedComments.data.map {
                         CommentItem(
                             it,
                             if (it.childCommentCount == 0) null
-                            else CommentHolder(it.id, content)
+                            else CommentHolder(it.id, content!!)
                         )
                     }
-                    commentsList = parsedComments
-                } else {
-                    errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
-                }
-            } else if (content is CommentHolder) {
-                val response = httpClient.get(
-                    "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment?order_by=ts&limit=20&offset="
-                ) {
-                    signFetchRequest(context)
-                }
-                val comment = httpClient.get("https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}") { signFetchRequest(context) }.body<JsonObject>()
-
-                if (response.status.isSuccess()) {
-                    val comments = response.body<JsonObject>()
-                    val parsedComments = AccountData.decodeJson<CommentResponse>(comments).data.map {
-                        CommentItem(it, null)
-                    }
-                    commentsList = parsedComments
-                } else {
-                    errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
-                }
+                )
             } else {
-                errorMessage = "此内容不支持评论"
+                errorMessage = "加载评论失败: ${response.status} ${response.bodyAsText()}"
             }
         } catch (e: Exception) {
             errorMessage = "加载评论异常: ${e.message}"
@@ -141,6 +144,8 @@ fun CommentScreen(
                     is Article -> {
                         if (content.type == "answer") {
                             "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
+                        } else if (content.type == "article") {
+                            "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
                         } else null
                     }
 
@@ -165,41 +170,7 @@ fun CommentScreen(
                 if (response.status.isSuccess()) {
                     commentInput = ""
                     // 刷新评论列表
-                    if (content is Article && content.type == "answer") {
-                        val refreshResponse = httpClient.get(
-                            "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment?order_by=score&limit=20"
-                        ) {
-                            signFetchRequest(context)
-                        }
-
-                        if (refreshResponse.status.isSuccess()) {
-                            val comments = refreshResponse.body<JsonObject>()
-                            val ja = comments["data"]!!.jsonArray
-                            val parsedComments = AccountData.decodeJson<List<DataHolder.Comment>>(ja).map {
-                                CommentItem(
-                                    it,
-                                    if (it.childCommentCount == 0) null
-                                    else CommentHolder(it.id, content)
-                                )
-                            }
-                            commentsList = parsedComments
-                        }
-                    } else if (content is CommentHolder) {
-                        val refreshResponse = httpClient.get(
-                            "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment?order_by=ts&limit=20&offset="
-                        ) {
-                            signFetchRequest(context)
-                        }
-
-                        if (refreshResponse.status.isSuccess()) {
-                            val comments = refreshResponse.body<JsonObject>()
-                            val ja = comments["data"]!!.jsonArray
-                            val parsedComments = AccountData.decodeJson<List<DataHolder.Comment>>(ja).map {
-                                CommentItem(it, null)
-                            }
-                            commentsList = parsedComments
-                        }
-                    }
+                    // todo
                 } else {
                     errorMessage = "评论发送失败: ${response.status}"
                 }
@@ -211,53 +182,30 @@ fun CommentScreen(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(
+            animationSpec = tween(300)
+        ) { it },
+        exit = slideOutVertically(
+            animationSpec = tween(300)
+        ) { it },
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 半透明背景,点击上方区域关闭
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f))
-                    .clickable(onClick = onDismiss)
-            )
-
             // 评论内容区域
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 130.dp)
+                    .padding(top = 100.dp)
                     .fillMaxHeight() // 保留上方空间
                     .align(Alignment.BottomCenter), // 底部对齐
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // 标题栏
-                    TopAppBar(
-                        modifier = Modifier.height(26.dp),
-                        title = {
-                            Text(
-                                if (content is CommentHolder) "回复"
-                                else "评论",
-                                style = TextStyle(
-                                    fontWeight = FontWeight.Bold,
-                                ),
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Center,
-                                fontSize = 18.sp
-                            )
-                        }
-                    )
-
+                    CommentTopText(content)
                     Box(modifier = Modifier.weight(1f)) {
                         when {
                             isLoading -> {
@@ -284,15 +232,25 @@ fun CommentScreen(
                                     contentPadding = PaddingValues(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
+                                    if (activeCommentItem != null) {
+                                        item(0) {
+                                            Column {
+                                                CommentItem(
+                                                    comment = activeCommentItem,
+                                                    httpClient = httpClient,
+                                                    onChildCommentClick = { }
+                                                )
+                                                HorizontalDivider()
+                                            }
+                                        }
+                                    }
                                     items(commentsList) { commentItem ->
                                         CommentItem(
                                             comment = commentItem,
                                             httpClient = httpClient,
                                             onChildCommentClick = { comment ->
-                                                // 如果有子评论，点击打开新的评论对话框
                                                 if (comment.clickTarget != null) {
-                                                    // 创建新的评论对话框，同时保留当前对话框
-                                                    activeChildComment = comment.clickTarget
+                                                    onChildCommentClick(comment)
                                                 }
                                             }
                                         )
@@ -342,24 +300,30 @@ fun CommentScreen(
             }
         }
     }
-
-    // 当activeChildComment不为null时,显示子评论对话框
-    activeChildComment?.let { childComment ->
-        CommentScreen(
-            httpClient = httpClient,
-            content = childComment,
-        ) { activeChildComment = null }
-    }
 }
 
 @Composable
-fun CommentItem(
+@Preview(showBackground = true)
+fun CommentTopText(content: NavDestination? = null) {
+    Text(
+        if (content is CommentHolder) "回复"
+        else "评论",
+        style = Typography.bodyMedium.copy(
+            fontWeight = FontWeight.Bold,
+        ),
+        modifier = Modifier.fillMaxWidth().height(26.dp),
+        textAlign = TextAlign.Center,
+        fontSize = 18.sp
+    )
+}
+
+@Composable
+private fun CommentItem(
     comment: CommentItem,
-    httpClient: HttpClient? = null,
+    httpClient: HttpClient,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val commentData = comment.item
-    val html = Jsoup.parse(commentData.content).text()
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 作者信息
@@ -387,14 +351,22 @@ fun CommentItem(
                     fontSize = 16.sp
                 )
 
-                // 评论内容
-                Text(
-                    text = html,
-                    fontSize = 14.sp,
-                    modifier = Modifier.clickable {
-                        onChildCommentClick(comment)
-                    }.fillMaxWidth()
-                )
+                LocalPinnableContainer.current?.pin()
+                WebviewComp(httpClient) {
+                    it.loadZhihu(
+                        "",
+                        Jsoup.parse(commentData.content).processCommentImages().body().html(),
+                        additionalStyle = """
+                            body {
+                              margin: 0;
+                            }
+                            p {
+                              margin: 0;
+                              margin-block: 0;
+                            }
+                        """.trimIndent()
+                    )
+                }
             }
         }
 
@@ -469,6 +441,13 @@ fun CommentItem(
     }
 }
 
+fun Document.processCommentImages(): Document = apply {
+    select("a.comment_img").forEach {
+        it.tagName("img")
+        it.attr("src", it.attr("href"))
+    }
+}
+
 private fun isSameDay(date1: Date, date2: Date): Boolean {
     val cal1 = Calendar.getInstance().apply { time = date1 }
     val cal2 = Calendar.getInstance().apply { time = date2 }
@@ -519,6 +498,7 @@ private fun CommentItemPreview() {
         ),
         clickTarget = null
     )
-    CommentItem(comment = comment) {
+    val context = LocalContext.current
+    CommentItem(comment, AccountData.httpClient(context)) {
     }
 }

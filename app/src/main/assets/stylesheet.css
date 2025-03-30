@@ -8,6 +8,10 @@ html {
   background-color: transparent;
 }
 
+body {
+  background-color: transparent;
+}
+
 pre {
   width: 100%;
   overflow-x: auto;
@@ -25,8 +29,12 @@ img.lazy {
 }
 
 @media (prefers-color-scheme: dark) {
+  color: #fff;
   html {
-    background-color: transparent;
+    color: #fff;
+  }
+
+  body {
     color: #fff;
   }
 
