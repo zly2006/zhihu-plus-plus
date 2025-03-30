@@ -234,7 +234,8 @@ fun CommentScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.93f) // 保留上方空间
+                    .padding(top = 130.dp)
+                    .fillMaxHeight() // 保留上方空间
                     .align(Alignment.BottomCenter), // 底部对齐
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = MaterialTheme.colorScheme.surface

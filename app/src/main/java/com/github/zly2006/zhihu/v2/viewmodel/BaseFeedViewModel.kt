@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.*
 import com.github.zly2006.zhihu.signFetchRequest
+import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -69,16 +70,19 @@ abstract class BaseFeedViewModel : ViewModel() {
         return AccountData.decodeJson(json)
     }
 
+    fun httpClient(context: Context): HttpClient {
+        if (context is MainActivity) {
+            return context.httpClient
+        }
+        return AccountData.httpClient(context)
+    }
+
     protected open suspend fun fetchFeeds(context: Context) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val httpClient = AccountData.httpClient(context)
-            val sign = (context as? MainActivity)?.signRequest96(url)
+            val httpClient = httpClient(context)
 
             val response = httpClient.get(url) {
-                if (sign != null) {
-                    header("x-zse-96", sign)
-                }
                 signFetchRequest(context)
             }
 

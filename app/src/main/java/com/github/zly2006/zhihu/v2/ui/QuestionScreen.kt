@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.*
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
@@ -42,8 +41,12 @@ fun QuestionScreen(
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
+    var answerCount by remember { mutableStateOf(0) }
+    var visitCount by remember { mutableStateOf(0) }
+    var commentCount by remember { mutableStateOf(0) }
+    var followerCount by remember { mutableStateOf(0) }
     var title by remember { mutableStateOf(question.title) }
-    val httpClient = remember { AccountData.httpClient(context) }
+    val httpClient = context.httpClient
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
@@ -53,6 +56,10 @@ fun QuestionScreen(
                 if (questionData != null) {
                     questionContent = questionData.detail
                     title = questionData.title
+                    answerCount = questionData.answerCount
+                    visitCount = questionData.visitCount
+                    commentCount = questionData.commentCount
+                    followerCount = questionData.followerCount
                     viewModel.refresh(context)
                     context.postHistory(
                         Question(
@@ -151,6 +158,10 @@ fun QuestionScreen(
                             Text("复制链接")
                         }
                     }
+                    Text(
+                        "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
+                        modifier = Modifier.padding(16.dp),
+                    )
                 }
             }
         ) { item ->

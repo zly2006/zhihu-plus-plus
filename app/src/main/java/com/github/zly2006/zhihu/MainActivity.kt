@@ -22,6 +22,9 @@ import java.security.MessageDigest
 class MainActivity : ComponentActivity() {
     lateinit var webview: WebView
     lateinit var history: HistoryStorage
+    val httpClient by lazy {
+        AccountData.httpClient(this)
+    }
 
     lateinit var navController: NavHostController
 

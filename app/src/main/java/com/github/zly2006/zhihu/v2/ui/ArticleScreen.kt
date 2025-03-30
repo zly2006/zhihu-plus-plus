@@ -34,7 +34,6 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadUrl
@@ -83,7 +82,7 @@ fun ArticleScreen(
     val context = LocalContext.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val backStackEntry by context.navController.currentBackStackEntryAsState()
-    val httpClient = remember { AccountData.httpClient(context) }
+    val httpClient = context.httpClient
 
     val scrollState = rememberScrollState()
     var title by remember { mutableStateOf(article.title) }

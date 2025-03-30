@@ -114,7 +114,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                 HistoryScreen(activity::navigate)
             }
             composable<Account> {
-                AccountSettingScreen(context, innerPadding)
+                AccountSettingScreen(innerPadding)
             }
         }
     }

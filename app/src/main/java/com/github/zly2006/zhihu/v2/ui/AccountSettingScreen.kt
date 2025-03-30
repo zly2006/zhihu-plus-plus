@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.signFetchRequest
@@ -36,14 +37,14 @@ import kotlinx.serialization.json.JsonObject
 
 @Composable
 fun AccountSettingScreen(
-    context: Context,
     innerPadding: PaddingValues
 ) {
+    val context = LocalContext.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         val data = AccountData.data
         if (data.login) {
-            val httpClient = AccountData.httpClient(context)
+            val httpClient = context.httpClient
             val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
             }.body<JsonObject>()
@@ -300,7 +301,6 @@ fun AccountSettingScreen(
 @Composable
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
-        context = LocalContext.current,
         innerPadding = PaddingValues(16.dp)
     )
 }
