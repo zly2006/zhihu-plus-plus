@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.v2.ui.CommentScreen
 import com.github.zly2006.zhihu.v2.viewmodel.CommentItem
 import io.ktor.client.*
@@ -22,7 +22,7 @@ fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
     httpClient: HttpClient,
-    content: Article
+    content: NavDestination
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -135,7 +136,6 @@ fun QuestionScreen(
                                     Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            modifier = Modifier.weight(1f)
                         ) {
                             Text("查看日志")
                         }
@@ -152,7 +152,6 @@ fun QuestionScreen(
                                 clipboard.setPrimaryClip(clip)
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -166,12 +165,10 @@ fun QuestionScreen(
                         Spacer(Modifier.width(8.dp))
                         Button(
                             onClick = { showComments = true },
-                            contentPadding = PaddingValues(horizontal = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             ),
-                            modifier = Modifier.weight(1f),
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                             Spacer(modifier = Modifier.width(4.dp))
@@ -203,5 +200,22 @@ fun QuestionScreen(
                 }
             }
         }
+
+        CommentScreenComponent(
+            showComments = showComments,
+            onDismiss = { showComments = false },
+            httpClient = httpClient,
+            content = question
+        )
     }
+}
+
+@Composable
+@Preview(showBackground = true)
+fun QuestionScreenPreview() {
+    val question = Question(123456789, "这是一个问题的标题")
+    QuestionScreen(
+        question = question,
+        onNavigate = { }
+    )
 }
