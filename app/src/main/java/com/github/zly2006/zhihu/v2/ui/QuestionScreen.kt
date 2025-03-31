@@ -60,7 +60,9 @@ fun QuestionScreen(
                     visitCount = questionData.visitCount
                     commentCount = questionData.commentCount
                     followerCount = questionData.followerCount
-                    viewModel.refresh(context)
+                    if (viewModel.displayItems.isEmpty()) {
+                        viewModel.refresh(context)
+                    }
                     context.postHistory(
                         Question(
                             question.questionId,
