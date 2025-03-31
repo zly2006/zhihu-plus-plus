@@ -441,6 +441,7 @@ private fun CommentItem(
 fun Document.processCommentImages(): Document = apply {
     select("a.comment_img").forEach {
         it.tagName("img")
+        it.text("")
         it.attr("src", it.attr("href"))
     }
 }
