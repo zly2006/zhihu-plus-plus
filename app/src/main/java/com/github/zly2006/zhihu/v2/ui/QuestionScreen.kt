@@ -204,14 +204,13 @@ fun QuestionScreen(
                 }
             }
         }
-
-        CommentScreenComponent(
-            showComments = showComments,
-            onDismiss = { showComments = false },
-            httpClient = httpClient,
-            content = question
-        )
     }
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
+        httpClient = httpClient,
+        content = question
+    )
 }
 
 @Composable
