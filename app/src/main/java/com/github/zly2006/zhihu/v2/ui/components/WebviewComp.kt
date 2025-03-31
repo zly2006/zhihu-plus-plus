@@ -56,14 +56,6 @@ fun WebviewComp(
         factory = { ctx ->
             CustomWebView(ctx).apply {
                 setupUpWebview(this, ctx) {
-//                    evaluateJavascript("document.body.scrollHeight") { value ->
-//                        val height = value.toIntOrNull() ?: 0
-//                        if (height != 0) {
-//                            val layoutParams = layoutParams
-//                            layoutParams.height = height
-//                            this.layoutParams = layoutParams
-//                        }
-//                    }
                 }
                 onLoad(this)
                 setOnLongClickListener { view ->

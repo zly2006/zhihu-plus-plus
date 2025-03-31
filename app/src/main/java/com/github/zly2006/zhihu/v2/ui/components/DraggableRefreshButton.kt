@@ -29,10 +29,10 @@ import kotlin.math.roundToInt
 fun DraggableRefreshButton(
     modifier: Modifier = Modifier,
     preferenceName: String = "fabRefresh",
+    onClick: () -> Unit,
     content: @Composable () -> Unit = {
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
     },
-    onRefresh: () -> Unit
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -66,7 +66,7 @@ fun DraggableRefreshButton(
     )
 
     FloatingActionButton(
-        onClick = onRefresh,
+        onClick = onClick,
         shape = CircleShape,
         modifier = modifier
             .offset { IntOffset(animatedOffsetX.roundToInt(), animatedOffsetY.roundToInt()) }

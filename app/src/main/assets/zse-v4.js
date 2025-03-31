@@ -524,6 +524,3 @@ function zse(exports) {
 
 var exports = {};
 zse(exports);
-console.log(exports);
-console.log(exports.encrypt('dff19cbe55505276ec537764f7d23f38'));
-console.log(exports.encrypt('dff19cbe55505276ec537764f7d23f38'));

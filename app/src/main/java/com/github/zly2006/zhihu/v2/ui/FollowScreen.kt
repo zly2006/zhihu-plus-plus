@@ -4,10 +4,16 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
@@ -88,8 +94,16 @@ fun FollowScreen(
             }
         }
 
-        DraggableRefreshButton {
-            viewModel.refresh(context)
+        DraggableRefreshButton(
+            onClick = {
+                viewModel.refresh(context)
+            },
+        ) {
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(36.dp))
+            } else {
+                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            }
         }
     }
 }

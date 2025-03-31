@@ -3,7 +3,10 @@ package com.github.zly2006.zhihu.v2.viewmodel.feed
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.MainActivity
@@ -25,7 +28,7 @@ abstract class BaseFeedViewModel : ViewModel() {
     val feeds = mutableStateListOf<Feed>()
     val debugData = mutableListOf<JsonElement>() // feed data for debugging
     val displayItems = mutableStateListOf<FeedDisplayItem>()
-    protected var isLoading = false
+    var isLoading by mutableStateOf(false)
     var errorMessage: String? = null
         protected set
     protected var lastPaging: Paging? = null

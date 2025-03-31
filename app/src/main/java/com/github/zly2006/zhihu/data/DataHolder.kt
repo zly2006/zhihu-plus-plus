@@ -21,6 +21,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
+import java.net.UnknownHostException
 
 object DataHolder {
     val definitelyAd = listOf(
@@ -702,6 +703,12 @@ object DataHolder {
 //                println(target)
                 get(httpClient, "https://www.zhihu.com/answer/$id", activity)
                 callback(answers[id]?.also { it.count++ }?.value)
+            } catch (e: UnknownHostException) {
+                Log.e("DataHolder", "Failed to get answer $id", e)
+                activity.mainExecutor.execute {
+                    Toast.makeText(activity, "请检查网络连接", Toast.LENGTH_LONG).show()
+                }
+                callback(null)
             } catch (e: Exception) {
                 Log.e("DataHolder", "Failed to get answer $id", e)
                 activity.mainExecutor.execute {

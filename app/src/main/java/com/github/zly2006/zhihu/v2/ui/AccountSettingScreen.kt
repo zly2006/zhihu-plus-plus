@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -92,16 +94,19 @@ fun AccountSettingScreen(
                 Context.MODE_PRIVATE
             )
         }
-        val isDeveloper = preferences.getBoolean("developer", false)
+        var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
+        LaunchedEffect(isDeveloper) {
+            preferences.edit()
+                .putBoolean("developer", isDeveloper)
+                .apply()
+        }
         Text(
             "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
             modifier = Modifier.Companion.clickable {
                 clickTimes++
                 if (clickTimes == 5) {
                     clickTimes = 0
-                    preferences.edit()
-                        .putBoolean("developer", true)
-                        .apply()
+                    isDeveloper = true
                     Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -172,39 +177,43 @@ fun AccountSettingScreen(
             }
         }
         Text(networkStatus)
-        if (isDeveloper) {
-            Button(
-                onClick = {
-                    AccountData.saveData(
-                        context,
-                        data.copy(username = data.username + "-test")
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("刷新数据测试")
-            }
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (AccountData.verifyLogin(
-                                context,
-                                data.cookies
-                            )
-                        ) {
-                            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+        AnimatedVisibility(
+            visible = isDeveloper
+        ) {
+            Column {
+                Button(
+                    onClick = {
+                        AccountData.saveData(
+                            context,
+                            data.copy(username = data.username + "-test")
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("刷新数据测试")
+                }
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            if (AccountData.verifyLogin(
+                                    context,
+                                    data.cookies
+                                )
+                            ) {
+                                Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+                            }
                         }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("重新fetch数据测试")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("重新fetch数据测试")
+                }
+                Text("当前padding: ${DisplayPadding(innerPadding)}")
+                Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
+                Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
             }
-            Text("当前padding: ${DisplayPadding(innerPadding)}")
-            Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
-            Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
         }
         Column {
             Text(
@@ -274,6 +283,50 @@ fun AccountSettingScreen(
                     Toast.LENGTH_LONG
                 ).show()
             }
+        }
+        Row {
+            Text(
+                "关于",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+        Row {
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zly2006/zhihu-plus-plus"))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("GitHub 项目地址")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md"))
+                    context.startActivity(intent)
+                }
+            ) {
+                Text("开源协议")
+            }
+        }
+        Text(
+            "本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。",
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            ),
+        )
+        AnimatedVisibility(
+            visible = isDeveloper
+        ) {
+            SwitchSettingItem(
+                title = "开发者模式",
+                checked = isDeveloper,
+                onCheckedChange = {
+                    isDeveloper = it
+                }
+            )
         }
         Button(
             onClick = {

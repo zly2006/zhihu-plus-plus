@@ -8,8 +8,11 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -17,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -116,6 +120,7 @@ fun HomeScreen(
                                 )
                             )
                         }
+
                         is Feed.PinTarget -> {}
                         is Feed.VideoTarget -> {}
                         null -> {}
@@ -124,24 +129,32 @@ fun HomeScreen(
             }
         }
 
-        DraggableRefreshButton {
-            viewModel.refresh(context) 
+        DraggableRefreshButton(
+            onClick = {
+                viewModel.refresh(context)
+            },
+        ) {
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+            } else {
+                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            }
         }
 
         DraggableRefreshButton(
-            content = {
-                Icon(Icons.Default.CopyAll, contentDescription = "复制")
+            onClick = {
+                val data = Json.encodeToString(viewModel.debugData)
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText(
+                    "data",
+                    data
+                )
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
             },
             preferenceName = "copyAll"
         ) {
-            val data = Json.encodeToString(viewModel.debugData)
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            val clip = android.content.ClipData.newPlainText(
-                "data",
-                data
-            )
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+            Icon(Icons.Default.CopyAll, contentDescription = "复制")
         }
     }
 }
