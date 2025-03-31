@@ -10,6 +10,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,6 +47,7 @@ fun QuestionScreen(
     var commentCount by remember { mutableStateOf(0) }
     var followerCount by remember { mutableStateOf(0) }
     var title by remember { mutableStateOf(question.title) }
+    var showComments by remember { mutableStateOf(false) }
     val httpClient = context.httpClient
 
     // 加载问题详情和答案
@@ -117,7 +119,7 @@ fun QuestionScreen(
                 item(2) {
                     val handle = LocalPinnableContainer.current?.pin()
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -133,10 +135,11 @@ fun QuestionScreen(
                                     Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            modifier = Modifier.padding(16.dp).weight(1f)
+                            modifier = Modifier.weight(1f)
                         ) {
                             Text("查看日志")
                         }
+                        Spacer(Modifier.width(8.dp))
 
                         Button(
                             onClick = {
@@ -149,7 +152,7 @@ fun QuestionScreen(
                                 clipboard.setPrimaryClip(clip)
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.padding(end = 16.dp).weight(1f),
+                            modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -158,6 +161,21 @@ fun QuestionScreen(
                             Icon(Icons.Filled.Share, contentDescription = "复制链接")
                             Spacer(Modifier.width(8.dp))
                             Text("复制链接")
+                        }
+
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = { showComments = true },
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = "$commentCount")
                         }
                     }
                     Text(

@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.*
@@ -30,10 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.v2.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
@@ -69,6 +68,18 @@ data class Reaction(
     val is_auto_send_moments: Boolean
 )
 
+@Serializable
+data class CollectionItem(
+    val id: String,
+    val is_favorited: Boolean,
+    val title: String = ""
+)
+
+@Serializable
+data class CollectionResponse(
+    val data: List<CollectionItem>
+)
+
 enum class VoteUpState(val key: String) {
     Up("up"),
     Down("down"),
@@ -96,6 +107,57 @@ fun ArticleScreen(
     var voteUpState by remember { mutableStateOf(VoteUpState.Neutral) }
     var questionId by remember { mutableStateOf(0L) }
     var showComments by remember { mutableStateOf(false) }
+    var isFavorited by remember { mutableStateOf(false) }
+    var favoriteCollectionId by remember { mutableStateOf("") }
+
+    // todo: 谁有空再支持一下多收藏夹选择
+    fun toggleFavorite() {
+        coroutineScope.launch {
+            try {
+                val contentType = if (article.type == "answer") "answer" else "article"
+
+                val collectionsUrl = "https://www.zhihu.com/api/v4/collections/contents/$contentType/${article.id}"
+                val collectionsResponse = httpClient.get(collectionsUrl)
+
+                if (collectionsResponse.status.isSuccess()) {
+                    val collections = collectionsResponse.body<CollectionResponse>()
+                    val defaultCollection = collections.data.firstOrNull()
+
+                    if (defaultCollection != null) {
+                        val collectionId = defaultCollection.id
+                        val isCurrentlyFavorited = defaultCollection.is_favorited
+                        favoriteCollectionId = collectionId
+
+                        val action = if (isCurrentlyFavorited) "remove" else "add"
+                        val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                        val body = "${action}_collections=$collectionId"
+
+                        val response = httpClient.put(url) {
+                            contentType(ContentType.Application.FormUrlEncoded)
+                            setBody(body)
+                        }
+
+                        if (response.status.isSuccess()) {
+                            isFavorited = !isCurrentlyFavorited
+                            val message = if (isFavorited) "收藏成功" else "取消收藏成功"
+                            context.mainExecutor.execute {
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            context.mainExecutor.execute {
+                                Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ArticleScreen", "Favorite toggle failed", e)
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "收藏操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(article.id) {
         withContext(Dispatchers.IO) {
@@ -112,7 +174,6 @@ fun ArticleScreen(
                             commentCount = answer.commentCount
                             questionId = answer.question.id
 
-                            // 更新文章信息并记录历史
                             val updatedArticle = Article(
                                 title,
                                 "answer",
@@ -142,7 +203,6 @@ fun ArticleScreen(
                             authorBio = articleData.author.headline
                             authorAvatarSrc = articleData.author.avatarUrl
 
-                            // 更新文章信息并记录历史
                             val updatedArticle = Article(
                                 title,
                                 "article",
@@ -162,6 +222,28 @@ fun ArticleScreen(
                         }
                     }
                 }
+
+                val contentType = if (article.type == "answer") "answer" else "article"
+                try {
+                    val collectionsUrl = "https://www.zhihu.com/api/v4/collections/contents/$contentType/${article.id}"
+                    val collectionsResponse = httpClient.get(collectionsUrl) {
+                        signFetchRequest(context)
+                    }
+
+                    if (collectionsResponse.status.isSuccess()) {
+                        val collections = collectionsResponse.body<CollectionResponse>()
+                        val defaultCollection = collections.data.firstOrNull {
+                            it.is_favorited
+                        }
+
+                        if (defaultCollection != null) {
+                            isFavorited = defaultCollection.is_favorited
+                            favoriteCollectionId = defaultCollection.id
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ArticleScreen", "Failed to get favorite status", e)
+                }
             } catch (e: Exception) {
                 Log.e("ArticleScreen", "Failed to load content", e)
                 context.mainExecutor.execute {
@@ -176,7 +258,6 @@ fun ArticleScreen(
             .fillMaxSize()
             .padding(16.dp),
         topBar = {
-            // 标题
             Text(
                 text = title,
                 fontSize = 24.sp,
@@ -189,20 +270,17 @@ fun ArticleScreen(
             )
         },
         bottomBar = {
-            // 底部操作栏
             if (backStackEntry.hasRoute(Article::class)) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // 点赞按钮
                     Button(
                         onClick = {
                             val newState = if (voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up
 
                             coroutineScope.launch {
                                 try {
-                                    // 统一处理答案和文章的点赞逻辑
                                     val endpoint = when (article.type) {
                                         "answer" -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
                                         "article" -> "https://www.zhihu.com/api/v4/articles/${article.id}/vote"
@@ -239,7 +317,19 @@ fun ArticleScreen(
                         Text(text = if (voteUpState == VoteUpState.Up) "已赞 $voteUpCount" else "赞同 $voteUpCount")
                     }
 
-                    // 评论按钮
+                    IconButton(
+                        onClick = { toggleFavorite() },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(
+                            if (isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, 
+                            contentDescription = "收藏"
+                        )
+                    }
+
                     Button(
                         onClick = { showComments = true },
                         contentPadding = PaddingValues(horizontal = 8.dp),
@@ -253,7 +343,6 @@ fun ArticleScreen(
                         Text(text = "$commentCount")
                     }
 
-                    // 复制链接按钮
                     Button(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -283,12 +372,10 @@ fun ArticleScreen(
         Column(
             modifier = Modifier.padding(innerPadding).verticalScroll(scrollState),
         ) {
-            // 作者信息
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 作者头像
                 if (authorAvatarSrc != null) {
                     AsyncImage(
                         model = authorAvatarSrc,
@@ -308,7 +395,6 @@ fun ArticleScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 作者名称和简介
                 Column(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.Start
@@ -326,7 +412,6 @@ fun ArticleScreen(
                 }
             }
 
-            // 文章内容 WebView
             if (content.isNotEmpty()) {
                 WebviewComp(httpClient) {
                     it.loadZhihu(
@@ -338,7 +423,6 @@ fun ArticleScreen(
         }
     }
 
-    // 使用新的评论组件
     CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
