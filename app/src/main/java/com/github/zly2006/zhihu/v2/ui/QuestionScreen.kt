@@ -33,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun QuestionScreen(
     question: Question,
@@ -136,6 +137,7 @@ fun QuestionScreen(
                                     Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Text("查看日志")
                         }
@@ -152,6 +154,7 @@ fun QuestionScreen(
                                 clipboard.setPrimaryClip(clip)
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer
@@ -165,6 +168,7 @@ fun QuestionScreen(
                         Spacer(Modifier.width(8.dp))
                         Button(
                             onClick = { showComments = true },
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
