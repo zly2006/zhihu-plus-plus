@@ -1,15 +1,17 @@
 package com.github.zly2006.zhihu.v2.ui
 
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.DraggableRefreshButton
@@ -22,8 +24,8 @@ import com.github.zly2006.zhihu.v2.viewmodel.feed.FollowViewModel
 fun FollowScreen(
     onNavigate: (NavDestination) -> Unit
 ) {
-    val viewModel: FollowViewModel = viewModel()
-    val context = LocalContext.current
+    val context = LocalContext.current as MainActivity
+    val viewModel: FollowViewModel by context.viewModels()
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -69,6 +71,14 @@ fun FollowScreen(
                                     target.author.headline,
                                     target.author.avatar_url,
                                     target.excerpt
+                                )
+                            )
+                        }
+                        is Feed.QuestionTarget -> {
+                            onNavigate(
+                                Question(
+                                    target.id.toLong(),
+                                    target.title,
                                 )
                             )
                         }

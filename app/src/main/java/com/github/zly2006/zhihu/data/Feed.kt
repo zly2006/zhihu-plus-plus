@@ -21,6 +21,7 @@ sealed interface Feed {
                 is VideoTarget -> "视频"
                 is ArticleTarget -> "文章"
                 is PinTarget -> "想法"
+                is QuestionTarget -> "问题"
             }
         }
 
@@ -134,6 +135,36 @@ sealed interface Feed {
 
         override fun detailsText(): String {
             return "想法 · $favorite_count 赞 · $comment_count 评论"
+        }
+    }
+
+    @Serializable
+    @SerialName("question")
+    data class QuestionTarget(
+        val id: String,
+        val title: String,
+        val url: String,
+        val type: String,
+        val question_type: String,
+        val created: Long,
+        val answer_count: Int = 0,
+        val comment_count: Int = 0,
+        val follower_count: Int = 0,
+        val detail: String,
+        val excerpt: String = "",
+        val bound_topic_ids: List<Long> = emptyList(),
+        val relationship: Relationship? = null,
+        val is_following: Boolean = false,
+        val author: Person? = null
+    ) : Target {
+        override fun filterReason(): String? {
+            return if (answer_count < 5 && follower_count < 50) {
+                "规则：问题；回答数 < 5，关注数 < 50"
+            } else null
+        }
+
+        override fun detailsText(): String {
+            return "问题 · $follower_count 关注 · $answer_count 回答"
         }
     }
 

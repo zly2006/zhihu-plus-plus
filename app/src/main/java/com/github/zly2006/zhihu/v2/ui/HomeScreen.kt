@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,10 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -39,8 +37,8 @@ const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val viewModel: HomeFeedViewModel = viewModel()
-    val context = LocalContext.current
+    val context = LocalContext.current as MainActivity
+    val viewModel: HomeFeedViewModel by context.viewModels()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -110,6 +108,14 @@ fun HomeScreen(
                             )
                         }
 
+                        is Feed.QuestionTarget -> {
+                            onNavigate(
+                                Question(
+                                    target.id.toLong(),
+                                    target.title,
+                                )
+                            )
+                        }
                         is Feed.PinTarget -> {}
                         is Feed.VideoTarget -> {}
                         null -> {}

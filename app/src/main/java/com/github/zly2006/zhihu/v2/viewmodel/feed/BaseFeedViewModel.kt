@@ -166,6 +166,15 @@ abstract class BaseFeedViewModel : ViewModel() {
                     )
                 }
 
+                is Feed.QuestionTarget -> {
+                    FeedDisplayItem(
+                        title = feed.target.title,
+                        summary = feed.target.excerpt,
+                        details = feed.target.detailsText() + " · " + feed.action_text,
+                        feed = feed
+                    )
+                }
+
                 else -> {
                     FeedDisplayItem(
                         title = feed.target?.javaClass?.simpleName ?: "广告",

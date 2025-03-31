@@ -93,14 +93,14 @@ fun CommentScreen(
 
     // 监控滚动加载更多
     LaunchedEffect(loadMore.value) {
-        if (loadMore.value) {
+        if (loadMore.value && viewModel.errorMessage == null) {
             viewModel.loadComments(content, httpClient, context, false)
         }
     }
 
     // 初始加载评论
     LaunchedEffect(content, visible) {
-        if (visible && content != null) {
+        if (visible && content != null && viewModel.errorMessage == null) {
             viewModel.loadComments(content, httpClient, context, true)
         }
     }
