@@ -158,6 +158,38 @@ fun CommentScreen(
                                 }
                             }
                             else -> {
+                                @Composable
+                                fun Comment(
+                                    commentItem: CommentItem,
+                                    onChildCommentClick: (CommentItem) -> Unit
+                                ) {
+                                    var isLiked by remember { mutableStateOf(commentItem.item.liked) }
+                                    var likeCount by remember { mutableStateOf(commentItem.item.likeCount) }
+                                    var isLikeLoading by remember { mutableStateOf(false) }
+                                    CommentItem(
+                                        comment = commentItem,
+                                        httpClient = httpClient,
+                                        useWebview = useWebview,
+                                        pinWebview = pinWebview,
+                                        isLiked = isLiked,
+                                        likeCount = likeCount,
+                                        isLikeLoading = isLikeLoading,
+                                        toggleLike = {
+                                            viewModel.toggleLikeComment(
+                                                httpClient = httpClient,
+                                                commentData = commentItem.item,
+                                                context = context,
+                                            ) {
+                                                val newLikeState = !isLiked
+                                                isLiked = newLikeState
+                                                likeCount += if (newLikeState) 1 else -1
+                                                commentItem.item.liked = newLikeState
+                                                commentItem.item.likeCount = likeCount
+                                            }
+                                        },
+                                        onChildCommentClick = onChildCommentClick,
+                                    )
+                                }
                                 LazyColumn(
                                     state = listState,
                                     modifier = Modifier.fillMaxSize(),
@@ -167,24 +199,14 @@ fun CommentScreen(
                                     if (activeCommentItem != null) {
                                         item(0) {
                                             Column {
-                                                CommentItem(
-                                                    comment = activeCommentItem,
-                                                    httpClient = httpClient,
-                                                    useWebview = useWebview,
-                                                    pinWebview = pinWebview,
-                                                ) { }
+                                                Comment(activeCommentItem,) { }
                                                 HorizontalDivider()
                                             }
                                         }
                                     }
                                     
                                     items(viewModel.comments) { commentItem ->
-                                        CommentItem(
-                                            comment = commentItem,
-                                            httpClient = httpClient,
-                                            useWebview = useWebview,
-                                            pinWebview = pinWebview,
-                                        ) { comment ->
+                                        Comment(commentItem) { comment ->
                                             if (comment.clickTarget != null) {
                                                 onChildCommentClick(comment)
                                             }
@@ -269,6 +291,10 @@ private fun CommentItem(
     httpClient: HttpClient,
     useWebview: Boolean,
     pinWebview: Boolean,
+    isLiked: Boolean = false,
+    likeCount: Int = 0,
+    isLikeLoading: Boolean = false,
+    toggleLike: () -> Unit = {},
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val commentData = comment.item
@@ -363,6 +389,7 @@ private fun CommentItem(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { onChildCommentClick(comment) }
                 ) {
+                    Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         Icons.AutoMirrored.Outlined.Comment,
                         contentDescription = "回复",
@@ -375,25 +402,37 @@ private fun CommentItem(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             // 点赞
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable(enabled = !isLikeLoading) { toggleLike() }
+            ) {
+                Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     Icons.Outlined.ThumbUp,
                     contentDescription = "点赞",
                     modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isLiked) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = commentData.likeCount.toString(),
+                    text = likeCount.toString(),
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isLiked) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.width(4.dp))
             }
         }
     }
