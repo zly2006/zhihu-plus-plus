@@ -106,8 +106,8 @@ sealed interface Feed {
         val favorite_count: Int = 0,
     ) : Target {
         override fun filterReason(): String? {
-            return if ((author.followers_count < 50 || voteup_count < 20) && !author.is_following) {
-                "规则：文章；作者粉丝数 < 50 || 文章赞数 < 20，未关注作者"
+            return if (author.followers_count < 50 && voteup_count < 20 && !author.is_following) {
+                "规则：文章；作者粉丝数 < 50，文章赞数 < 20，未关注作者"
             } else null
         }
 
