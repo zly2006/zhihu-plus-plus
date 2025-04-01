@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.v2.theme.ZhihuTheme
 import com.github.zly2006.zhihu.v2.ui.ZhihuMain
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebviewClient
 import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
 
@@ -30,12 +30,28 @@ class MainActivity : ComponentActivity() {
     lateinit var navController: NavHostController
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        Thread.setDefaultUncaughtExceptionHandler { _, e ->
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
             Log.e("MainActivity", "Uncaught exception", e)
-            val intent = Intent(this, MainActivity::class.java)
+            val intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.Builder().apply {
+                    scheme("https")
+                    authority("zhihu-plus.internal")
+                    appendPath("error")
+                    appendQueryParameter("title", "Uncaught exception: ${e.message}")
+                    appendQueryParameter(
+                        "message",
+                        e.message
+                    )
+                    appendQueryParameter("stack", e.stackTraceToString())
+                }.build(),
+                this,
+                MainActivity::class.java
+            )
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
-            finish()
+            if (t == mainLooper.thread) {
+            }
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -43,9 +59,28 @@ class MainActivity : ComponentActivity() {
         AccountData.loadData(this)
         webview = WebView(this)
         Log.i("MainActivity", "Webview created")
-        setupUpWebview(webview, this)
+        webview.setupUpWebviewClient()
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
+
+        if (intent.data != null && intent.data!!.authority == "zhihu-plus.internal") {
+            if (intent.data!!.path == "/error") {
+                val title = intent.data!!.getQueryParameter("title")
+                val message = intent.data!!.getQueryParameter("message")
+                val stack = intent.data!!.getQueryParameter("stack")
+                AlertDialog.Builder(this).apply {
+                    setTitle(title)
+                    setMessage(stack)
+                    setPositiveButton("OK") { _, _ ->
+                    }
+                    setNeutralButton("Copy") { _, _ ->
+                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("error", "$stack")
+                        clipboard.setPrimaryClip(clip)
+                    }
+                }.create().show()
+            }
+        }
 
         setContent {
             navController = rememberNavController()

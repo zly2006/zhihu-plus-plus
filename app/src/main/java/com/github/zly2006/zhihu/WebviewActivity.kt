@@ -5,12 +5,13 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebviewClient
 
 class WebviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,13 +21,13 @@ class WebviewActivity : ComponentActivity() {
             finish()
             return
         }
-
+        enableEdgeToEdge()
         setContent {
             Surface(modifier = Modifier.fillMaxSize()) {
                 WebviewComp(
                     httpClient = AccountData.httpClient(this),
                     onLoad = { webView ->
-                        setupUpWebview(webView, this) // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
+                        webView.setupUpWebviewClient() // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
                         setupCookies(webView)
                         webView.settings.javaScriptEnabled = true
                         webView.loadUrl(url)

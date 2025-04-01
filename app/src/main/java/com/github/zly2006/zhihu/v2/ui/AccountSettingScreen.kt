@@ -13,10 +13,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +38,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AccountSettingScreen(
     innerPadding: PaddingValues
@@ -180,7 +178,7 @@ fun AccountSettingScreen(
         AnimatedVisibility(
             visible = isDeveloper
         ) {
-            Column {
+            FlowRow {
                 Button(
                     onClick = {
                         AccountData.saveData(
@@ -188,7 +186,7 @@ fun AccountSettingScreen(
                             data.copy(username = data.username + "-test")
                         )
                     },
-                    modifier = Modifier.fillMaxWidth()
+//                    modifier = Modifier.weight(1f)
                 ) {
                     Text("刷新数据测试")
                 }
@@ -206,9 +204,19 @@ fun AccountSettingScreen(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+//                    modifier = Modifier.weight(1f)
                 ) {
                     Text("重新fetch数据测试")
+                }
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            throw Exception("测试异常")
+                        }
+                    },
+//                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("抛出异常测试")
                 }
                 Text("当前padding: ${DisplayPadding(innerPadding)}")
                 Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
@@ -263,6 +271,17 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     pinWebview.value = it
                     preferences.edit().putBoolean("commentsPinWebview", it).apply()
+                }
+            )
+            
+            val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+            SwitchSettingItem(
+                title = "WebView 硬件加速",
+                description = "启用 WebView 的硬件加速功能，可以提高渲染性能，但可能在某些设备上导致渲染问题",
+                checked = useHardwareAcceleration.value,
+                onCheckedChange = {
+                    useHardwareAcceleration.value = it
+                    preferences.edit().putBoolean("webviewHardwareAcceleration", it).apply()
                 }
             )
         }

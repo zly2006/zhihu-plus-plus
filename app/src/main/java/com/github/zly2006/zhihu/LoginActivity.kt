@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.v2.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebview
+import com.github.zly2006.zhihu.v2.ui.components.setupUpWebviewClient
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -36,7 +36,7 @@ class LoginActivity : ComponentActivity() {
                 WebviewComp(
                     httpClient = AccountData.httpClient(this),
                     onLoad = { webView ->
-                        setupUpWebview(webView, this)
+                        webView.setupUpWebviewClient()
                         webView.settings.javaScriptEnabled = true
                         CookieManager.getInstance().removeAllCookies { }
                         webView.webViewClient = object : WebViewClient() {

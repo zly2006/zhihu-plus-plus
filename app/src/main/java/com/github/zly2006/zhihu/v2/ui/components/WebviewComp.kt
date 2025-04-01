@@ -1,13 +1,16 @@
 package com.github.zly2006.zhihu.v2.ui.components
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.Window
@@ -37,6 +40,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.nodes.Document
 
+
 private class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
@@ -52,10 +56,21 @@ fun WebviewComp(
     onLoad: (WebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
+    val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+
     AndroidView(
         factory = { ctx ->
             CustomWebView(ctx).apply {
-                setupUpWebview(this, ctx) {
+                // 根据用户设置决定是否启用硬件加速
+                if (useHardwareAcceleration) {
+                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                } else {
+                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                }
+
+                this.setupUpWebviewClient {
                 }
                 onLoad(this)
                 setOnLongClickListener { view ->
@@ -117,16 +132,42 @@ fun WebviewComp(
                                     try {
                                         val response = httpClient.get(url)
                                         val bytes = response.readBytes()
-                                        val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image"
-                                        val file = Environment.getExternalStoragePublicDirectory(
-                                            Environment.DIRECTORY_PICTURES
-                                        ).resolve(fileName)
-                                        file.outputStream().use { it.write(bytes) }
-                                        Toast.makeText(
-                                            context,
-                                            "图片已保存至: ${file.absolutePath}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image.jpg"
+                                        
+                                        val contentValues = ContentValues().apply {
+                                            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                                            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                                                put(MediaStore.MediaColumns.IS_PENDING, 1)
+                                            }
+                                        }
+
+                                        val resolver = context.contentResolver
+                                        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                                        } else {
+                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                                        }
+
+                                        val imageUri = resolver.insert(collection, contentValues)
+                                        if (imageUri != null) {
+                                            resolver.openOutputStream(imageUri).use { os ->
+                                                os?.write(bytes)
+                                            }
+
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                                contentValues.clear()
+                                                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                                                resolver.update(imageUri, contentValues, null, null)
+                                            }
+
+                                            Toast.makeText(
+                                                context,
+                                                "图片已保存到相册",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
                                     } catch (e: Exception) {
                                         Toast.makeText(
                                             context,
@@ -176,13 +217,14 @@ fun WebView.loadZhihu(
     }
 }
 
-fun setupUpWebview(web: WebView, context: Context, onPageFinished: (() -> Unit)? = null) {
-    web.setBackgroundColor(Color.TRANSPARENT)
+fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
+    setBackgroundColor(Color.TRANSPARENT)
+    val context = this.context
     val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
         .build()
-    web.webViewClient = object : WebViewClientCompat() {
+    this.webViewClient = object : WebViewClientCompat() {
         override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
             return assetLoader.shouldInterceptRequest(request.url)
         }

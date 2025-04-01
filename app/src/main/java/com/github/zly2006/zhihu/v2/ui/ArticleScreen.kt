@@ -414,9 +414,17 @@ fun ArticleScreen(
 
             if (content.isNotEmpty()) {
                 WebviewComp(httpClient) {
+                    it.settings.javaScriptEnabled = true
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
-                        Jsoup.parse(content)
+                        Jsoup.parse(content).apply {
+                            select("noscript").forEach {
+                                if (it.childrenSize() > 0) {
+                                    // 把 img 标签移出 noscript
+                                    it.after(it.child(0))
+                                }
+                            }
+                        }
                     )
                 }
             }
