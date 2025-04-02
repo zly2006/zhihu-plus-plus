@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu
 
+import android.annotation.SuppressLint
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     lateinit var navController: NavHostController
 
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
             Log.e("MainActivity", "Uncaught exception", e)
@@ -50,8 +52,7 @@ class MainActivity : ComponentActivity() {
             )
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
-            if (t == mainLooper.thread) {
-            }
+            finish()
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

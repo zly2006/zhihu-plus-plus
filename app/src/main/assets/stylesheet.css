@@ -6,6 +6,7 @@ img {
 
 html {
   background-color: transparent;
+  word-break: break-word;
 }
 
 body {
