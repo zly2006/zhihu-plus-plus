@@ -5,8 +5,16 @@ package com.github.zly2006.zhihu.v2.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -97,6 +106,17 @@ fun ArticleScreen(
     val httpClient = context.httpClient
 
     val scrollState = rememberScrollState()
+    // 获取自动隐藏配置
+    val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
+    val showTopBar by remember {
+        derivedStateOf {
+            // 当关闭自动隐藏时始终显示标题
+            if (!isTitleAutoHide) true
+            else scrollState.value < 100
+        }
+    }
+    var topBarHeight by remember { mutableStateOf(0) }
     var title by remember { mutableStateOf(article.title) }
     var authorName by remember { mutableStateOf(article.authorName) }
     var authorBio by remember { mutableStateOf(article.authorBio) }
@@ -258,16 +278,36 @@ fun ArticleScreen(
             .fillMaxSize()
             .padding(16.dp),
         topBar = {
-            Text(
-                text = title,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 32.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-                    .clickable {
-                        onNavigate(Question(questionId, title))
+            Box(
+                modifier = Modifier
+                    .wrapContentHeight(unbounded = true)
+                    .onGloballyPositioned { coordinates ->
+                        topBarHeight = coordinates.size.height
                     }
-            )
+            ) {
+                AnimatedVisibility(
+                    visible = showTopBar,
+                    enter = fadeIn() + expandVertically(
+                        expandFrom = Alignment.Top,
+                        initialHeight = { 0 }  // 更自然的展开动画
+                    ) + slideInVertically { it / 2 },  // 添加滑动效果
+                    exit = fadeOut() + shrinkVertically(
+                        shrinkTowards = Alignment.Top,
+                        targetHeight = { 0 }
+                    ) + slideOutVertically { it / 2 },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 32.sp,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .clickable { onNavigate(Question(questionId, title)) }
+                    )
+                }
+            }
         },
         bottomBar = {
             if (backStackEntry.hasRoute(Article::class)) {
