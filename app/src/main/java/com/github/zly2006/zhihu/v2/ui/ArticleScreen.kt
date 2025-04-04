@@ -119,6 +119,7 @@ fun ArticleScreen(
     var isScrollingUp by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
+    var topBarHeight by remember { mutableStateOf(0) }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -132,11 +133,13 @@ fun ArticleScreen(
 
     val showTopBar by remember {
         derivedStateOf {
+            val canScroll = scrollState.maxValue > topBarHeight
             val remainingScrollSpace = scrollState.maxValue - scrollState.value
             val isNearBottom = remainingScrollSpace < scrollDeltaThreshold
             val isNearTop = scrollState.value < scrollDeltaThreshold
             when {
                 !isTitleAutoHide -> true       // 强制显示模式
+                !canScroll -> true             // 内容不足时强制显示
                 isNearBottom -> false          // 底部区域强制隐藏
                 isScrollingUp -> true          // 向上滚动时显示
                 isNearTop -> true              // 顶部区域强制显示
@@ -144,7 +147,7 @@ fun ArticleScreen(
             }
         }
     }
-    var topBarHeight by remember { mutableStateOf(0) }
+//    var topBarHeight by remember { mutableStateOf(0) }
     var title by remember { mutableStateOf(article.title) }
     var authorName by remember { mutableStateOf(article.authorName) }
     var authorBio by remember { mutableStateOf(article.authorBio) }
