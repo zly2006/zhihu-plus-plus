@@ -284,6 +284,17 @@ fun AccountSettingScreen(
                     preferences.edit().putBoolean("webviewHardwareAcceleration", it).apply()
                 }
             )
+
+            val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
+            SwitchSettingItem(
+                title = "标题栏自动隐藏",
+                description = "自动隐藏标题栏，随着滚动自动隐藏，当再滚动到顶部时自动显示",
+                checked = isTitleAutoHide.value,
+                onCheckedChange = {
+                    isTitleAutoHide.value = it
+                    preferences.edit().putBoolean("titleAutoHide", it).apply()
+                }
+            )
         }
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {
