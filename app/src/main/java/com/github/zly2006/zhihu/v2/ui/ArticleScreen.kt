@@ -8,13 +8,7 @@ import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -33,9 +27,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -134,20 +130,25 @@ fun ArticleScreen(
     val showTopBar by remember {
         derivedStateOf {
             val canScroll = scrollState.maxValue > topBarHeight
-            val remainingScrollSpace = scrollState.maxValue - scrollState.value
-            val isNearBottom = remainingScrollSpace < scrollDeltaThreshold
-            val isNearTop = scrollState.value < scrollDeltaThreshold
+            val isNearTop = scrollState.value < topBarHeight
             when {
                 !isTitleAutoHide -> true       // 强制显示模式
                 !canScroll -> true             // 内容不足时强制显示
-                isNearBottom -> false          // 底部区域强制隐藏
                 isScrollingUp -> true          // 向上滚动时显示
                 isNearTop -> true              // 顶部区域强制显示
                 else -> false                  // 向下滚动且不在顶部时隐藏
             }
         }
     }
-//    var topBarHeight by remember { mutableStateOf(0) }
+    var previousShowTopBar by remember { mutableStateOf(true) }
+    LaunchedEffect(showTopBar) {
+        if (previousShowTopBar != showTopBar) {
+            val scrollAdjustment = if (showTopBar) topBarHeight else -topBarHeight
+            scrollState.scrollTo((scrollState.value + scrollAdjustment).coerceAtLeast(0))
+            previousShowTopBar = showTopBar
+        }
+    }
+
     var title by remember { mutableStateOf(article.title) }
     var authorName by remember { mutableStateOf(article.authorName) }
     var authorBio by remember { mutableStateOf(article.authorBio) }
@@ -307,14 +308,24 @@ fun ArticleScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 16.dp,
+                top = 0.dp,
+            ),
         topBar = {
             Box(
                 modifier = Modifier
                     .wrapContentHeight(unbounded = true)
                     .onGloballyPositioned { coordinates ->
-                        topBarHeight = coordinates.size.height
+                        if (coordinates.size.height >= topBarHeight)
+                            topBarHeight = coordinates.size.height
                     }
+                    .background(
+                        color = MaterialTheme.colorScheme.background,
+                        shape = RectangleShape
+                    )
             ) {
                 AnimatedVisibility(
                     visible = showTopBar,
@@ -396,7 +407,7 @@ fun ArticleScreen(
                         )
                     ) {
                         Icon(
-                            if (isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, 
+                            if (isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                             contentDescription = "收藏"
                         )
                     }
@@ -441,8 +452,19 @@ fun ArticleScreen(
         }
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).verticalScroll(scrollState),
+            modifier = Modifier.padding(
+                start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                bottom = innerPadding.calculateBottomPadding(),
+            ).verticalScroll(scrollState),
         ) {
+            Spacer(
+                modifier = Modifier.height(
+                    height = LocalDensity.current.run {
+                        topBarHeight.toDp()
+                    }
+                )
+            )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -499,6 +521,10 @@ fun ArticleScreen(
                     )
                 }
             }
+            Text(
+                topBarHeight.toString(),
+                modifier = Modifier.clickable { }
+            )
         }
     }
 
