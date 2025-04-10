@@ -140,14 +140,6 @@ fun ArticleScreen(
             }
         }
     }
-    var previousShowTopBar by remember { mutableStateOf(true) }
-    LaunchedEffect(showTopBar) {
-        if (previousShowTopBar != showTopBar) {
-            val scrollAdjustment = if (showTopBar) topBarHeight else -topBarHeight
-            scrollState.scrollTo((scrollState.value + scrollAdjustment).coerceAtLeast(0))
-            previousShowTopBar = showTopBar
-        }
-    }
 
     var title by remember { mutableStateOf(article.title) }
     var authorName by remember { mutableStateOf(article.authorName) }
@@ -521,10 +513,6 @@ fun ArticleScreen(
                     )
                 }
             }
-            Text(
-                topBarHeight.toString(),
-                modifier = Modifier.clickable { }
-            )
         }
     }
 
