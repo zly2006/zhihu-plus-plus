@@ -110,7 +110,7 @@ sealed interface Feed {
         val voteup_count: Int,
         val comment_count: Int,
         override val title: String,
-        val excerpt: String,
+        val excerpt: String = "",
         val content: String,
         val created: Long,
         val updated: Long,

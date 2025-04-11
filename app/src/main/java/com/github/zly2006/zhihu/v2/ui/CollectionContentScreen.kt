@@ -12,20 +12,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.v2.viewmodel.CollectionsViewModel
+import com.github.zly2006.zhihu.v2.viewmodel.CollectionContentViewModel
 
 @Composable
-fun CollectionScreen(
-    urlToken: String,
+fun CollectionContentScreen(
+    collectionId: String,
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel = viewModel {
-        CollectionsViewModel(urlToken)
-    }
-    val collections = viewModel.allData
+    val viewModel = viewModel { CollectionContentViewModel(collectionId) }
+    val displayItems = viewModel.displayItems
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -35,34 +32,31 @@ fun CollectionScreen(
     LaunchedEffect(listState) {
         snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisibleItemIndex ->
-                if (lastVisibleItemIndex == collections.size - 1 && !viewModel.isEnd && !viewModel.isLoading) {
+                if (lastVisibleItemIndex == displayItems.size - 1 && !viewModel.isEnd && !viewModel.isLoading) {
                     viewModel.loadMore(context)
                 }
             }
     }
+
 
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().padding(16.dp),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
-        item(0) {
-            Text(
-                text = "我的收藏",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
-            )
-        }
-        items(collections) { collection ->
+        items(displayItems) { item ->
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 elevation = CardDefaults.cardElevation(4.dp),
                 onClick = {
-                    onNavigate(CollectionContent(collection.id))
+                    item.navDestination?.let {
+                        onNavigate(it)
+                    }
                 }
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = collection.title, style = MaterialTheme.typography.titleMedium)
+                    Text(text = item.title ?: "无标题", style = MaterialTheme.typography.titleMedium)
+                    Text(text = item.details ?: "无详情", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }

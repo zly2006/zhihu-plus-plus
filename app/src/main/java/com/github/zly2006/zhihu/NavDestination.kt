@@ -20,7 +20,14 @@ data object History : NavDestination
 data object Account : NavDestination
 
 @Serializable
-data object CollectionScreen : NavDestination
+data class Collections(
+    val userToken: String
+) : NavDestination
+
+@Serializable
+data class CollectionContent(
+    val collectionId: String,
+) : NavDestination
 
 @Serializable
 data object Notifications : NavDestination

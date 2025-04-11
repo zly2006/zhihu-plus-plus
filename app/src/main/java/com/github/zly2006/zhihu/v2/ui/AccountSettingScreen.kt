@@ -240,7 +240,7 @@ fun AccountSettingScreen(
                 Text(data.username)
             }
             Button(
-                onClick = { onNavigate(CollectionScreen) },
+                onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,

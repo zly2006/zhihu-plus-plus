@@ -116,8 +116,13 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             composable<Account> {
                 AccountSettingScreen(innerPadding, activity::navigate)
             }
-            composable<CollectionScreen> {
-                CollectionScreen()
+            composable<Collections> {
+                val data: Collections = it.toRoute()
+                CollectionScreen(data.userToken, activity::navigate)
+            }
+            composable<CollectionContent> {
+                val content: CollectionContent = it.toRoute()
+                CollectionContentScreen(content.collectionId, activity::navigate)
             }
         }
     }
