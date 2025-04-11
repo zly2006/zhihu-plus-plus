@@ -29,6 +29,7 @@ sealed interface Feed {
 
         val detailsText: String
         val title: String
+        val excerpt: String?
         val navDestination: NavDestination?
     }
 
@@ -49,7 +50,7 @@ sealed interface Feed {
         val is_copyable: Boolean = false,
         val question: Question,
         val thumbnail: String? = null,
-        val excerpt: String? = null,
+        override val excerpt: String? = null,
         val reshipment_settings: String = "",
         val content: String = "",
         val relationship: Relationship,
@@ -88,7 +89,7 @@ sealed interface Feed {
         val comment_count: Int,
         override val title: String,
         val description: String,
-        val excerpt: String,
+        override val excerpt: String,
     ) : Target {
         override fun filterReason(): String? {
             return if (author.followers_count < 50 && vote_count < 20 && !author.is_following) {
@@ -110,7 +111,7 @@ sealed interface Feed {
         val voteup_count: Int,
         val comment_count: Int,
         override val title: String,
-        val excerpt: String = "",
+        override val excerpt: String = "",
         val content: String,
         val created: Long,
         val updated: Long,
@@ -157,6 +158,7 @@ sealed interface Feed {
         override val detailsText = "想法 · $favorite_count 赞 · $comment_count 评论"
         override val title: String
             get() = "想法"
+        override val excerpt = null
         override val navDestination = null
     }
 
@@ -173,7 +175,7 @@ sealed interface Feed {
         val comment_count: Int = 0,
         val follower_count: Int = 0,
         val detail: String,
-        val excerpt: String = "",
+        override val excerpt: String = "",
         val bound_topic_ids: List<Long> = emptyList(),
         val relationship: Relationship? = null,
         val is_following: Boolean = false,

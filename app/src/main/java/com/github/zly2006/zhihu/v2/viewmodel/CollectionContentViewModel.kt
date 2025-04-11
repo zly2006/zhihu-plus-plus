@@ -30,7 +30,7 @@ class CollectionContentViewModel(
     private fun createDisplayItem(item: CollectionItem): FeedDisplayItem {
         return FeedDisplayItem(
             title = item.content.title,
-            summary = null,
+            summary = item.content.excerpt,
             details = item.content.detailsText,
             navDestination = item.content.navDestination,
             feed = null,

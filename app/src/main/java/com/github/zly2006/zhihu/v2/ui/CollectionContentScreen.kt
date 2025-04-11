@@ -39,7 +39,7 @@ fun CollectionContentScreen(
         onLoadMore = { viewModel.loadMore(context) },
         isEnd = { viewModel.isEnd },
         listState = listState,
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
         footer = ProgressIndicatorFooter,
         topContent = {
             item(0) {
@@ -53,7 +53,7 @@ fun CollectionContentScreen(
         itemContent = { item ->
             FeedCard(
                 item,
-                Modifier.fillMaxWidth()
+                Modifier.fillMaxWidth().padding(vertical = 8.dp)
             ) {
                 navDestination?.let { onNavigate(it) }
             }

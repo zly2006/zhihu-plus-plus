@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName")
+@file:Suppress("FunctionName", "PropertyName")
 
 package com.github.zly2006.zhihu.v2.ui
 
@@ -170,47 +170,36 @@ fun ArticleScreen(
     var voteUpState by remember { mutableStateOf(VoteUpState.Neutral) }
     var questionId by remember { mutableStateOf(0L) }
     var showComments by remember { mutableStateOf(false) }
-    var isFavorited by remember { mutableStateOf(false) }
-    var favoriteCollectionId by remember { mutableStateOf("") }
+    var showCollectionDialog by remember { mutableStateOf(false) }
+    var reloadCollections by remember { mutableStateOf(0) }
+    var collections = remember { mutableStateListOf<Collection>() }
+    val isFavorited by derivedStateOf {
+        collections.any { it.is_favorited }
+    }
 
-    // todo: 谁有空再支持一下多收藏夹选择
-    fun toggleFavorite() {
+    fun toggleFavorite(collectionId: String, remove: Boolean) {
         coroutineScope.launch {
             try {
                 val contentType = if (article.type == "answer") "answer" else "article"
+                val action = if (remove) "remove" else "add"
+                val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                val body = "${action}_collections=$collectionId"
 
-                val collectionsUrl = "https://www.zhihu.com/api/v4/collections/contents/$contentType/${article.id}"
-                val collectionsResponse = httpClient.get(collectionsUrl)
+                val response = httpClient.put(url) {
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody(body)
+                    signFetchRequest(context)
+                }
 
-                if (collectionsResponse.status.isSuccess()) {
-                    val collections = collectionsResponse.body<CollectionResponse>()
-                    val defaultCollection = collections.data.firstOrNull()
-
-                    if (defaultCollection != null) {
-                        val collectionId = defaultCollection.id
-                        val isCurrentlyFavorited = defaultCollection.is_favorited
-                        favoriteCollectionId = collectionId
-
-                        val action = if (isCurrentlyFavorited) "remove" else "add"
-                        val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
-                        val body = "${action}_collections=$collectionId"
-
-                        val response = httpClient.put(url) {
-                            contentType(ContentType.Application.FormUrlEncoded)
-                            setBody(body)
-                        }
-
-                        if (response.status.isSuccess()) {
-                            isFavorited = !isCurrentlyFavorited
-                            val message = if (isFavorited) "收藏成功" else "取消收藏成功"
-                            context.mainExecutor.execute {
-                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                            }
-                        } else {
-                            context.mainExecutor.execute {
-                                Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                if (response.status.isSuccess()) {
+                    val message = if (remove) "取消收藏成功" else "收藏成功"
+                    reloadCollections++
+                    context.mainExecutor.execute {
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    context.mainExecutor.execute {
+                        Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
@@ -222,6 +211,25 @@ fun ArticleScreen(
         }
     }
 
+    LaunchedEffect(article.id, reloadCollections) {
+        withContext(Dispatchers.IO) {
+            try {
+                val contentType = if (article.type == "answer") "answer" else "article"
+                val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                val collectionsResponse = httpClient.get(collectionsUrl) {
+                    signFetchRequest(context)
+                }
+
+                if (collectionsResponse.status.isSuccess()) {
+                    val collectionsData = collectionsResponse.body<CollectionResponse>()
+                    collections.clear()
+                    collections.addAll(collectionsData.data)
+                }
+            } catch (e: Exception) {
+                Log.e("ArticleScreen", "Failed to load collections", e)
+            }
+        }
+    }
     LaunchedEffect(article.id) {
         withContext(Dispatchers.IO) {
             try {
@@ -294,28 +302,6 @@ fun ArticleScreen(
                             }
                         }
                     }
-                }
-
-                val contentType = if (article.type == "answer") "answer" else "article"
-                try {
-                    val collectionsUrl = "https://www.zhihu.com/api/v4/collections/contents/$contentType/${article.id}"
-                    val collectionsResponse = httpClient.get(collectionsUrl) {
-                        signFetchRequest(context)
-                    }
-
-                    if (collectionsResponse.status.isSuccess()) {
-                        val collections = collectionsResponse.body<CollectionResponse>()
-                        val defaultCollection = collections.data.firstOrNull {
-                            it.is_favorited
-                        }
-
-                        if (defaultCollection != null) {
-                            isFavorited = defaultCollection.is_favorited
-                            favoriteCollectionId = defaultCollection.id
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("ArticleScreen", "Failed to get favorite status", e)
                 }
             } catch (e: Exception) {
                 Log.e("ArticleScreen", "Failed to load content", e)
@@ -421,7 +407,7 @@ fun ArticleScreen(
                     }
 
                     IconButton(
-                        onClick = { toggleFavorite() },
+                        onClick = { showCollectionDialog = true },
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = if (isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = if (isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
@@ -543,6 +529,48 @@ fun ArticleScreen(
                 }
             }
         }
+    }
+
+    AnimatedVisibility(
+        visible = showCollectionDialog
+    ) {
+        AlertDialog(
+            onDismissRequest = { showCollectionDialog = false },
+            title = { Text("选择收藏夹") },
+            text = {
+                Column {
+                    collections.forEach { collection ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    toggleFavorite(collection.id, collection.is_favorited)
+                                }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = collection.title,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 16.sp
+                            )
+                            if (collection.is_favorited) {
+                                Icon(
+                                    imageVector = Icons.Filled.Bookmark,
+                                    contentDescription = "已收藏",
+                                    tint = Color(0xFFF57C00)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCollectionDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
     }
 
     CommentScreenComponent(

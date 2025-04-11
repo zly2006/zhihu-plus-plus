@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     val url = url.buildString()
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
-        header("x-zse-93", "101_3_3.0")
+        header("x-zse-93", MainActivity.ZSE93)
         header("x-zse-96",
             (context as? MainActivity)?.signRequest96(url)
         )

@@ -179,17 +179,6 @@ fun AccountSettingScreen(
             FlowRow {
                 Button(
                     onClick = {
-                        AccountData.saveData(
-                            context,
-                            data.copy(username = data.username + "-test")
-                        )
-                    },
-//                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("刷新数据测试")
-                }
-                Button(
-                    onClick = {
                         coroutineScope.launch {
                             if (AccountData.verifyLogin(
                                     context,

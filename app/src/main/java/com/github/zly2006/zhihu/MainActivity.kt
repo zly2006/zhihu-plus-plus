@@ -135,9 +135,8 @@ class MainActivity : ComponentActivity() {
 
     suspend fun signRequest96(url: String): String {
         val dc0 = AccountData.data.cookies["d_c0"] ?: ""
-        val zse93 = "101_3_3.0"
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
-        val signSource = "$zse93+$pathname+$dc0"
+        val signSource = "$ZSE93+$pathname+$dc0"
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).joinToString("") {
             "%02x".format(it)
         }
@@ -155,5 +154,9 @@ class MainActivity : ComponentActivity() {
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
+    }
+
+    companion object {
+        const val ZSE93 = "101_3_3.0"
     }
 }
