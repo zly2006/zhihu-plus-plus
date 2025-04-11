@@ -33,7 +33,13 @@ class CollectionContentViewModel(
             summary = null,
             details = item.content.detailsText,
             navDestination = item.content.navDestination,
-            feed = null
+            feed = null,
+            avatarSrc = when (item.content) {
+                is Feed.AnswerTarget -> item.content.author.avatar_url
+                is Feed.ArticleTarget -> item.content.author.avatar_url
+                is Feed.QuestionTarget -> item.content.author?.avatar_url
+                else -> null
+            }
         )
     }
 

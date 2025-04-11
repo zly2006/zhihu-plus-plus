@@ -1,18 +1,21 @@
 package com.github.zly2006.zhihu.v2.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.v2.ui.components.FeedCard
+import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
+import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.CollectionContentViewModel
 
 @Composable
@@ -26,44 +29,34 @@ fun CollectionContentScreen(
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
-        viewModel.refresh(context)
+        if (viewModel.allData.isEmpty()) {
+            viewModel.refresh(context)
+        }
     }
 
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleItemIndex ->
-                if (lastVisibleItemIndex == displayItems.size - 1 && !viewModel.isEnd && !viewModel.isLoading) {
-                    viewModel.loadMore(context)
-                }
-            }
-    }
-
-
-    LazyColumn(
-        state = listState,
+    PaginatedList(
+        items = displayItems,
+        onLoadMore = { viewModel.loadMore(context) },
+        isEnd = { viewModel.isEnd },
+        listState = listState,
         modifier = Modifier.fillMaxSize().padding(16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        items(displayItems) { item ->
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                elevation = CardDefaults.cardElevation(4.dp),
-                onClick = {
-                    item.navDestination?.let {
-                        onNavigate(it)
-                    }
-                }
+        footer = ProgressIndicatorFooter,
+        topContent = {
+            item(0) {
+                Text(
+                    text = "我的收藏",
+                    style = MaterialTheme.typography.headlineLarge,
+                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                )
+            }
+        },
+        itemContent = { item ->
+            FeedCard(
+                item,
+                Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = item.title ?: "无标题", style = MaterialTheme.typography.titleMedium)
-                    Text(text = item.details ?: "无详情", style = MaterialTheme.typography.bodyMedium)
-                }
+                navDestination?.let { onNavigate(it) }
             }
         }
-
-        item {
-            if (!viewModel.isEnd)
-                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-        }
-    }
+    )
 }

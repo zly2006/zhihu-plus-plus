@@ -1,19 +1,24 @@
 package com.github.zly2006.zhihu.v2.ui
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
+import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.CollectionsViewModel
 
 @Composable
@@ -25,35 +30,31 @@ fun CollectionScreen(
     val viewModel = viewModel {
         CollectionsViewModel(urlToken)
     }
-    val collections = viewModel.allData
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
-        viewModel.refresh(context)
-    }
-
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleItemIndex ->
-                if (lastVisibleItemIndex == collections.size - 1 && !viewModel.isEnd && !viewModel.isLoading) {
-                    viewModel.loadMore(context)
-                }
-            }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        item(0) {
-            Text(
-                text = "我的收藏",
-                style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
-            )
+        if (viewModel.allData.isEmpty()) {
+            viewModel.refresh(context)
         }
-        items(collections) { collection ->
+    }
+
+    PaginatedList(
+        items = viewModel.allData,
+        onLoadMore = { viewModel.loadMore(context) },
+        isEnd = { viewModel.isEnd },
+        listState = listState,
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        footer = ProgressIndicatorFooter,
+        topContent = {
+            item(0) {
+                Text(
+                    text = "我的收藏",
+                    style = MaterialTheme.typography.headlineLarge,
+                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                )
+            }
+        },
+        itemContent = { collection ->
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 elevation = CardDefaults.cardElevation(4.dp),
@@ -66,10 +67,5 @@ fun CollectionScreen(
                 }
             }
         }
-
-        item {
-            if (!viewModel.isEnd)
-                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
-        }
-    }
+    )
 }
