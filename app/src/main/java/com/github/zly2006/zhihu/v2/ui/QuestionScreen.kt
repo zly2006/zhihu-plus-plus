@@ -23,10 +23,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.*
 import com.github.zly2006.zhihu.v2.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
@@ -186,22 +187,9 @@ fun QuestionScreen(
                 }
             }
         ) { item ->
-            FeedCard(item) { feed ->
-                feed?.let {
-                    DataHolder.putFeed(it)
-                    val target = it.target as Feed.AnswerTarget
-                    onNavigate(
-                        Article(
-                            item.title,
-                            "answer",
-                            target.id,
-                            target.author.name,
-                            target.author.headline,
-                            target.author.avatar_url,
-                            null
-                        )
-                    )
-                }
+            FeedCard(item) {
+                feed?.let { DataHolder.putFeed(it) }
+                navDestination?.let { onNavigate(it) }
             }
         }
     }

@@ -21,11 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.v2.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
@@ -80,51 +80,12 @@ fun HomeScreen(
             onLoadMore = { viewModel.loadMore(context) },
             footer = ProgressIndicatorFooter
         ) { item ->
-            FeedCard(item) { feed ->
+            FeedCard(item) {
                 feed?.let {
-                    DataHolder.putFeed(it)
-                    when (val target = it.target) {
-                        is Feed.AnswerTarget -> {
-                            onNavigate(
-                                Article(
-                                    target.question.title,
-                                    "answer",
-                                    target.id,
-                                    target.author.name,
-                                    target.author.headline,
-                                    target.author.avatar_url,
-                                    target.excerpt
-                                )
-                            )
-                        }
-
-                        is Feed.ArticleTarget -> {
-                            onNavigate(
-                                Article(
-                                    target.title,
-                                    "article",
-                                    target.id,
-                                    target.author.name,
-                                    target.author.headline,
-                                    target.author.avatar_url,
-                                    target.excerpt
-                                )
-                            )
-                        }
-
-                        is Feed.QuestionTarget -> {
-                            onNavigate(
-                                Question(
-                                    target.id.toLong(),
-                                    target.title,
-                                )
-                            )
-                        }
-
-                        is Feed.PinTarget -> {}
-                        is Feed.VideoTarget -> {}
-                        null -> {}
-                    }
+                    DataHolder.putFeed(feed)
+                }
+                if (navDestination != null) {
+                    onNavigate(navDestination)
                 }
             }
         }

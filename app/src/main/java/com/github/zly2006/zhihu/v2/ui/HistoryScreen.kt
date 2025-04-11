@@ -31,7 +31,7 @@ fun HistoryScreen(
             onLoadMore = { /* 不需要loadMore */ },
             isEnd = { true }  // 始终为true，因为没有更多数据需要加载
         ) { item ->
-            FeedCard(item) { feed ->
+            FeedCard(item) {
                 navDestination?.let {
                     onNavigate(it)
                 }

@@ -13,7 +13,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
             return FeedDisplayItem(
                 title = target.author.name,
                 summary = target.excerpt,
-                details = target.detailsText(),
+                details = target.detailsText,
                 feed = feed,
                 avatarSrc = target.author.avatar_url
             )

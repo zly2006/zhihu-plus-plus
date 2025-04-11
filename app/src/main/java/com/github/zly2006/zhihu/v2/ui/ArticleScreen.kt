@@ -81,7 +81,7 @@ data class Reaction(
 )
 
 @Serializable
-data class CollectionItem(
+data class Collection(
     val id: String,
     val is_favorited: Boolean = false,
     val type: String = "collection",
@@ -105,7 +105,7 @@ data class CollectionItem(
 
 @Serializable
 data class CollectionResponse(
-    val data: List<CollectionItem>,
+    val data: List<Collection>,
     val paging: Paging
 )
 
@@ -236,6 +236,11 @@ fun ArticleScreen(
                             voteUpCount = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
+                            voteUpState = when (answer.relationship?.voting) {
+                                1 -> VoteUpState.Up
+                                -1 -> VoteUpState.Down
+                                else -> VoteUpState.Neutral
+                            }
 
                             val updatedArticle = Article(
                                 title,
@@ -256,15 +261,20 @@ fun ArticleScreen(
                         }
                     }
                 } else if (article.type == "article") {
-                    DataHolder.getArticleCallback(context, httpClient, article.id) { articleData ->
-                        if (articleData != null) {
-                            title = articleData.title
-                            content = articleData.content
-                            voteUpCount = articleData.voteupCount
-                            commentCount = articleData.commentCount
-                            authorName = articleData.author.name
-                            authorBio = articleData.author.headline
-                            authorAvatarSrc = articleData.author.avatarUrl
+                    DataHolder.getArticleCallback(context, httpClient, article.id) { article ->
+                        if (article != null) {
+                            title = article.title
+                            content = article.content
+                            voteUpCount = article.voteupCount
+                            commentCount = article.commentCount
+                            authorName = article.author.name
+                            authorBio = article.author.headline
+                            authorAvatarSrc = article.author.avatarUrl
+                            voteUpState = when (article.relationship?.voting) {
+                                1 -> VoteUpState.Up
+                                -1 -> VoteUpState.Down
+                                else -> VoteUpState.Neutral
+                            }
 
                             val updatedArticle = Article(
                                 title,
@@ -273,7 +283,7 @@ fun ArticleScreen(
                                 authorName,
                                 authorBio,
                                 authorAvatarSrc,
-                                articleData.excerpt
+                                article.excerpt
                             )
                             context.postHistory(updatedArticle)
                         } else {

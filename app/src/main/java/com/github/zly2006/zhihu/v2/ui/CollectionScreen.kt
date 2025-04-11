@@ -12,12 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.v2.viewmodel.CollectionsViewModel
 
 @Composable
 fun CollectionScreen() {
     val context = LocalContext.current
-    val viewModel = viewModel<CollectionsViewModel>()
+    val viewModel = viewModel {
+        CollectionsViewModel(AccountData.data.self!!.url_token!!)
+    }
     val collections = viewModel.allData
     val listState = rememberLazyListState()
 

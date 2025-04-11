@@ -3,10 +3,7 @@ package com.github.zly2006.zhihu.v2.viewmodel.feed
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.data.AdvertisementFeed
-import com.github.zly2006.zhihu.data.CommonFeed
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.GroupFeed
+import com.github.zly2006.zhihu.data.*
 import com.github.zly2006.zhihu.v2.viewmodel.PaginationViewModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -23,7 +20,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val summary: String?,
         val details: String,
         val feed: Feed?,
-        val navDestination: NavDestination? = null,
+        val navDestination: NavDestination? = feed?.target?.navDestination,
         val avatarSrc: String? = null,
         val isFiltered: Boolean = false
     )
@@ -56,7 +53,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             FeedDisplayItem(
                 title = "已屏蔽",
                 summary = filterReason,
-                details = feed.target.detailsText(),
+                details = feed.target.detailsText,
                 feed = feed,
                 isFiltered = true
             )
@@ -66,7 +63,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     FeedDisplayItem(
                         title = feed.target.question.title,
                         summary = feed.target.excerpt,
-                        details = feed.target.detailsText() + " · " + feed.action_text,
+                        details = "${feed.target.detailsText} · ${feed.action_text}",
                         feed = feed
                     )
                 }
@@ -75,7 +72,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     FeedDisplayItem(
                         title = feed.target.title,
                         summary = feed.target.excerpt,
-                        details = feed.target.detailsText() + " · " + feed.action_text,
+                        details = "${feed.target.detailsText} · ${feed.action_text}",
                         feed = feed
                     )
                 }
@@ -84,7 +81,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     FeedDisplayItem(
                         title = feed.target.title,
                         summary = feed.target.excerpt,
-                        details = feed.target.detailsText() + " · " + feed.action_text,
+                        details = "${feed.target.detailsText} · ${feed.action_text}",
                         feed = feed
                     )
                 }
@@ -93,7 +90,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     FeedDisplayItem(
                         title = feed.target?.javaClass?.simpleName ?: "广告",
                         summary = "Not Implemented",
-                        details = feed.target?.detailsText() ?: "广告",
+                        details = feed.target?.detailsText ?: "广告",
                         feed = feed
                     )
                 }

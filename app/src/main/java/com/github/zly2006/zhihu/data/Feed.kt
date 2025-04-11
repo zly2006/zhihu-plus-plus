@@ -2,6 +2,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed.Badge
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -25,7 +27,9 @@ sealed interface Feed {
             }
         }
 
-        fun detailsText(): String
+        val detailsText: String
+        val title: String
+        val navDestination: NavDestination?
     }
 
     @Serializable
@@ -61,9 +65,18 @@ sealed interface Feed {
             } else null
         }
 
-        override fun detailsText(): String {
-            return "回答 · $voteup_count 赞同 · $comment_count 评论"
-        }
+        override val detailsText = "回答 · $voteup_count 赞同 · $comment_count 评论"
+        override val title: String
+            get() = question.title
+        override val navDestination = Article(
+            title = question.title,
+            type = "answer",
+            id = id,
+            authorName = author.name,
+            authorBio = author.headline,
+            avatarSrc = author.avatar_url,
+            excerpt = excerpt
+        )
     }
 
     @Serializable
@@ -73,7 +86,7 @@ sealed interface Feed {
         val author: Person,
         val vote_count: Int = -1,
         val comment_count: Int,
-        val title: String,
+        override val title: String,
         val description: String,
         val excerpt: String,
     ) : Target {
@@ -83,9 +96,9 @@ sealed interface Feed {
             } else null
         }
 
-        override fun detailsText(): String {
-            return "视频 · $vote_count 赞 · $comment_count 评论"
-        }
+        override val detailsText = "视频 · $vote_count 赞 · $comment_count 评论"
+
+        override val navDestination = null
     }
 
     @Serializable
@@ -96,7 +109,7 @@ sealed interface Feed {
         val author: Person,
         val voteup_count: Int,
         val comment_count: Int,
-        val title: String,
+        override val title: String,
         val excerpt: String,
         val content: String,
         val created: Long,
@@ -111,9 +124,17 @@ sealed interface Feed {
             } else null
         }
 
-        override fun detailsText(): String {
-            return "文章 · $voteup_count 赞 · $comment_count 评论"
-        }
+        override val detailsText = "文章 · $voteup_count 赞 · $comment_count 评论"
+
+        override val navDestination = Article(
+            title = title,
+            type = "article",
+            id = id,
+            authorName = author.name,
+            authorBio = author.headline,
+            avatarSrc = author.avatar_url,
+            excerpt = excerpt
+        )
     }
 
     @Serializable
@@ -133,16 +154,17 @@ sealed interface Feed {
             return null
         }
 
-        override fun detailsText(): String {
-            return "想法 · $favorite_count 赞 · $comment_count 评论"
-        }
+        override val detailsText = "想法 · $favorite_count 赞 · $comment_count 评论"
+        override val title: String
+            get() = "想法"
+        override val navDestination = null
     }
 
     @Serializable
     @SerialName("question")
     data class QuestionTarget(
         val id: String,
-        val title: String,
+        override val title: String,
         val url: String,
         val type: String,
         val question_type: String,
@@ -163,9 +185,12 @@ sealed interface Feed {
             } else null
         }
 
-        override fun detailsText(): String {
-            return "问题 · $follower_count 关注 · $answer_count 回答"
-        }
+        override val detailsText = "问题 · $follower_count 关注 · $answer_count 回答"
+
+        override val navDestination = com.github.zly2006.zhihu.Question(
+            questionId = id.toLong(),
+            title = title
+        )
     }
 
     @Serializable
@@ -176,6 +201,8 @@ sealed interface Feed {
         val topic_ids: List<Int>? = null
     )
 
+    // todo
+    @Deprecated("TODO: QuestionTarget instead")
     @Serializable
     data class Question(
         val id: Long,

@@ -110,6 +110,7 @@ object DataHolder {
         val isFavorited: Boolean = false,
         val isThanked: Boolean = false,
         val upvotedFollowees: List<String> = emptyList(),
+        // 1 - 点赞， -1 - 点踩
         val voting: Int = 0
     )
 
