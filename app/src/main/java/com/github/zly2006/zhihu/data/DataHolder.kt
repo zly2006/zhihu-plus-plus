@@ -651,7 +651,7 @@ object DataHolder {
         name = name,
         type = "mock",
         url = url,
-        urlToken = url_token,
+        urlToken = url_token ?: "",
         userType = user_type
     )
 

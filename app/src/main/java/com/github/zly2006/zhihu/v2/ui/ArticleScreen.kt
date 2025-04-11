@@ -40,9 +40,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.v2.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
 import com.github.zly2006.zhihu.v2.ui.components.loadZhihu
+import com.github.zly2006.zhihu.v2.viewmodel.PaginationViewModel.Paging
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -81,13 +83,30 @@ data class Reaction(
 @Serializable
 data class CollectionItem(
     val id: String,
-    val is_favorited: Boolean,
-    val title: String = ""
+    val is_favorited: Boolean = false,
+    val type: String = "collection",
+    val title: String = "",
+    val is_public: Boolean = false,
+    val url: String = "",
+    val description: String = "",
+    val follower_count: Int = 0,
+    val answer_count: Int = 0,
+    val item_count: Int = 0,
+    val like_count: Int = 0,
+    val view_count: Int = 0,
+    val comment_count: Int = 0,
+    val is_following: Boolean = false,
+    val is_liking: Boolean = false,
+    val created_time: Long = 0L,
+    val updated_time: Long = 0L,
+    val creator: Person? = null,
+    val is_default: Boolean = false
 )
 
 @Serializable
 data class CollectionResponse(
-    val data: List<CollectionItem>
+    val data: List<CollectionItem>,
+    val paging: Paging
 )
 
 enum class VoteUpState(val key: String) {

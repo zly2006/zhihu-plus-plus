@@ -3,10 +3,6 @@
 package com.github.zly2006.zhihu.v2.ui
 
 import android.content.Context.MODE_PRIVATE
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,9 +53,8 @@ private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreen(
-    visible: Boolean,
     httpClient: HttpClient,
-    content: NavDestination?,
+    content: () -> NavDestination,
     activeCommentItem: CommentItem? = null,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
@@ -73,9 +68,15 @@ fun CommentScreen(
     val pinWebview = remember { preferences.getBoolean("commentsPinWebview", false) }
 
     // 根据内容类型选择合适的ViewModel
-    val viewModel: BaseCommentViewModel = when (content) {
-        is CommentHolder -> viewModel<ChildCommentViewModel>()
-        else -> viewModel<RootCommentViewModel>()
+    val viewModel: BaseCommentViewModel = when (val content = content()) {
+        is CommentHolder -> remember {
+            // 子评论不进行状态保存
+            ChildCommentViewModel(content)
+        }
+
+        else -> viewModel {
+            RootCommentViewModel(content)
+        }
     }
 
     val listState = rememberLazyListState()
@@ -86,182 +87,182 @@ fun CommentScreen(
             val layoutInfo = listState.layoutInfo
             val totalItemsCount = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            
-            lastVisibleItemIndex >= totalItemsCount - 3 && !viewModel.isLoading && !viewModel.isEnd
+
+            lastVisibleItemIndex >= totalItemsCount - 3 && !viewModel.isLoading && viewModel?.isEnd == false
         }
     }
 
     // 监控滚动加载更多
     LaunchedEffect(loadMore.value) {
         if (loadMore.value && viewModel.errorMessage == null) {
-            viewModel.loadComments(content, httpClient, context, false)
+            viewModel.loadMore(context)
         }
     }
 
     // 初始加载评论
-    LaunchedEffect(content, visible) {
-        if (visible && content != null && viewModel.errorMessage == null) {
-            viewModel.loadComments(content, httpClient, context, true)
+    LaunchedEffect(content) {
+        if (viewModel.article != content()) {
+            error("Internal Error: Detected content mismatch")
+        }
+        if (viewModel.errorMessage == null) {
+            viewModel.refresh(context)
         }
     }
 
     // 提交评论函数
     fun submitComment() {
         if (commentInput.isBlank() || isSending) return
-        
+
         isSending = true
-        viewModel.submitComment(content, commentInput, httpClient, context) {
+        viewModel.submitComment(content(), commentInput, httpClient, context) {
             commentInput = ""
             isSending = false
         }
     }
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(
-            animationSpec = tween(300)
-        ) { it },
-        exit = slideOutVertically(
-            animationSpec = tween(300)
-        ) { it },
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
+        // 评论内容区域
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 100.dp)
+                .fillMaxHeight()
+                .align(Alignment.BottomCenter),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            color = MaterialTheme.colorScheme.surface
         ) {
-            // 评论内容区域
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 100.dp)
-                    .fillMaxHeight()
-                    .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    CommentTopText(content)
-                    Box(modifier = Modifier.weight(1f)) {
-                        when {
-                            viewModel.isLoading && viewModel.comments.isEmpty() -> {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
-                                }
+            Column(modifier = Modifier.fillMaxSize()) {
+                CommentTopText(content())
+                Box(modifier = Modifier.weight(1f)) {
+                    when {
+                        viewModel.isLoading && viewModel.comments.isEmpty() -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
                             }
-                            viewModel.errorMessage != null && viewModel.comments.isEmpty() -> {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
-                                }
+                        }
+
+                        viewModel.errorMessage != null && viewModel.comments.isEmpty() -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             }
-                            viewModel.comments.isEmpty() -> {
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text("暂无评论")
-                                }
+                        }
+
+                        viewModel.comments.isEmpty() -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("暂无评论")
                             }
-                            else -> {
-                                @Composable
-                                fun Comment(
-                                    commentItem: CommentItem,
-                                    onChildCommentClick: (CommentItem) -> Unit
-                                ) {
-                                    var isLiked by remember { mutableStateOf(commentItem.item.liked) }
-                                    var likeCount by remember { mutableStateOf(commentItem.item.likeCount) }
-                                    var isLikeLoading by remember { mutableStateOf(false) }
-                                    CommentItem(
-                                        comment = commentItem,
-                                        httpClient = httpClient,
-                                        useWebview = useWebview,
-                                        pinWebview = pinWebview,
-                                        isLiked = isLiked,
-                                        likeCount = likeCount,
-                                        isLikeLoading = isLikeLoading,
-                                        toggleLike = {
-                                            viewModel.toggleLikeComment(
-                                                httpClient = httpClient,
-                                                commentData = commentItem.item,
-                                                context = context,
-                                            ) {
-                                                val newLikeState = !isLiked
-                                                isLiked = newLikeState
-                                                likeCount += if (newLikeState) 1 else -1
-                                                commentItem.item.liked = newLikeState
-                                                commentItem.item.likeCount = likeCount
-                                            }
-                                        },
-                                        onChildCommentClick = onChildCommentClick,
-                                    )
-                                }
-                                LazyColumn(
-                                    state = listState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    if (activeCommentItem != null) {
-                                        item(0) {
-                                            Column {
-                                                Comment(activeCommentItem,) { }
-                                                HorizontalDivider()
-                                            }
+                        }
+
+                        else -> {
+                            @Composable
+                            fun Comment(
+                                commentItem: CommentItem,
+                                onChildCommentClick: (CommentItem) -> Unit
+                            ) {
+                                var isLiked by remember { mutableStateOf(commentItem.item.liked) }
+                                var likeCount by remember { mutableStateOf(commentItem.item.likeCount) }
+                                var isLikeLoading by remember { mutableStateOf(false) }
+                                val replyingTo = if (!commentItem.item.replyCommentId.isNullOrEmpty()) {
+                                    viewModel.getCommentById(commentItem.item.replyCommentId)
+                                } else null
+                                CommentItem(
+                                    comment = commentItem,
+                                    replyingTo = replyingTo,
+                                    httpClient = httpClient,
+                                    useWebview = useWebview,
+                                    pinWebview = pinWebview,
+                                    isLiked = isLiked,
+                                    likeCount = likeCount,
+                                    isLikeLoading = isLikeLoading,
+                                    toggleLike = {
+                                        viewModel.toggleLikeComment(
+                                            httpClient = httpClient,
+                                            commentData = commentItem.item,
+                                            context = context,
+                                        ) {
+                                            val newLikeState = !isLiked
+                                            isLiked = newLikeState
+                                            likeCount += if (newLikeState) 1 else -1
+                                            commentItem.item.liked = newLikeState
+                                            commentItem.item.likeCount = likeCount
+                                        }
+                                    },
+                                    onChildCommentClick = onChildCommentClick,
+                                )
+                            }
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                if (activeCommentItem != null) {
+                                    item(0) {
+                                        Column {
+                                            Comment(activeCommentItem) { }
+                                            HorizontalDivider()
                                         }
                                     }
-                                    
-                                    items(viewModel.comments) { commentItem ->
-                                        Comment(commentItem) { comment ->
-                                            if (comment.clickTarget != null) {
-                                                onChildCommentClick(comment)
-                                            }
+                                }
+
+                                items(viewModel.comments) { commentItem ->
+                                    Comment(commentItem) { comment ->
+                                        if (comment.clickTarget != null) {
+                                            onChildCommentClick(comment)
                                         }
                                     }
-                                    
-                                    if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
-                                        item {
-                                            Box(
-                                                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                            }
+                                }
+
+                                if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
 
-                    // 评论输入框
-                    Surface(
-                        tonalElevation = 2.dp,
-                        modifier = Modifier.fillMaxWidth()
+                // 评论输入框
+                Surface(
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextField(
-                                value = commentInput,
-                                onValueChange = { commentInput = it },
-                                modifier = Modifier.weight(1f),
-                                placeholder = { Text("写下你的评论...") },
-                                singleLine = false,
-                                maxLines = 3,
-                                colors = TextFieldDefaults.colors()
-                            )
+                        TextField(
+                            value = commentInput,
+                            onValueChange = { commentInput = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("写下你的评论...") },
+                            singleLine = false,
+                            maxLines = 3,
+                            colors = TextFieldDefaults.colors()
+                        )
 
-                            IconButton(
-                                onClick = { submitComment() },
-                                enabled = !isSending && commentInput.isNotBlank()
-                            ) {
-                                Icon(
-                                    Icons.AutoMirrored.Outlined.Send,
-                                    contentDescription = "发送评论",
-                                    tint = if (!isSending && commentInput.isNotBlank())
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                )
-                            }
+                        IconButton(
+                            onClick = { submitComment() },
+                            enabled = !isSending && commentInput.isNotBlank()
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Send,
+                                contentDescription = "发送评论",
+                                tint = if (!isSending && commentInput.isNotBlank())
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            )
                         }
                     }
                 }
@@ -288,6 +289,7 @@ fun CommentTopText(content: NavDestination? = null) {
 @Composable
 private fun CommentItem(
     comment: CommentItem,
+    replyingTo: CommentItem? = null,
     httpClient: HttpClient,
     useWebview: Boolean,
     pinWebview: Boolean,
@@ -318,12 +320,32 @@ private fun CommentItem(
                 verticalArrangement = Arrangement.Top,
                 modifier = Modifier.fillMaxHeight()
             ) {
-                // 作者名
-                Text(
-                    text = commentData.author.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 作者名
+                    Text(
+                        text = commentData.author.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        modifier = Modifier.clickable {  }
+                    )
+                    if (replyingTo != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "回复",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = replyingTo.item.author.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            modifier = Modifier.clickable {  }
+                        )
+                    }
+                }
 
                 if (pinWebview) {
                     LocalPinnableContainer.current?.pin()
@@ -418,18 +440,18 @@ private fun CommentItem(
                     Icons.Outlined.ThumbUp,
                     contentDescription = "点赞",
                     modifier = Modifier.size(16.dp),
-                    tint = if (isLiked) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
+                    tint = if (isLiked)
+                        MaterialTheme.colorScheme.primary
+                    else
                         MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = likeCount.toString(),
                     fontSize = 12.sp,
-                    color = if (isLiked) 
-                        MaterialTheme.colorScheme.primary 
-                    else 
+                    color = if (isLiked)
+                        MaterialTheme.colorScheme.primary
+                    else
                         MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -497,6 +519,12 @@ private fun CommentItemPreview() {
         clickTarget = null
     )
     val context = LocalContext.current
-    CommentItem(comment, AccountData.httpClient(context), true, true) {
+    CommentItem(
+        comment,
+        replyingTo = null,
+        httpClient = AccountData.httpClient(context),
+        useWebview = true,
+        pinWebview = true
+    ) {
     }
 }

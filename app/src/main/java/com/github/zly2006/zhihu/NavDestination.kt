@@ -20,7 +20,7 @@ data object History : NavDestination
 data object Account : NavDestination
 
 @Serializable
-data object Dashboard : NavDestination
+data object CollectionScreen : NavDestination
 
 @Serializable
 data object Notifications : NavDestination

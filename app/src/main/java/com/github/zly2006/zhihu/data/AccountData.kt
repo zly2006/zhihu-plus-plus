@@ -23,7 +23,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 
 object AccountData {
-    private val json = Json {
+    val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true

@@ -1,10 +1,8 @@
 package com.github.zly2006.zhihu.v2.ui.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -38,14 +36,24 @@ fun CommentScreenComponent(
                 .clickable { onDismiss() }
         )
     }
-    CommentScreen(
+
+    AnimatedVisibility(
         visible = showComments,
-        httpClient = httpClient,
-        content = content,
-        onChildCommentClick = {
-            activeChildComment = it
-        }
-    )
+        enter = slideInVertically(
+            animationSpec = tween(300)
+        ) { it },
+        exit = slideOutVertically(
+            animationSpec = tween(300)
+        ) { it },
+    ) {
+        CommentScreen(
+            httpClient = httpClient,
+            content = { content },
+            onChildCommentClick = {
+                activeChildComment = it
+            }
+        )
+    }
     
     // 子评论区
     AnimatedVisibility(
@@ -60,13 +68,29 @@ fun CommentScreenComponent(
                 .clickable { activeChildComment = null }
         )
     }
-    CommentScreen(
+
+    AnimatedVisibility(
         visible = activeChildComment != null,
-        httpClient = httpClient,
-        content = activeChildComment?.clickTarget,
-        activeCommentItem = activeChildComment,
-        onChildCommentClick = { }
-    )
+        enter = slideInVertically(
+            animationSpec = tween(300)
+        ) { it },
+        exit = slideOutVertically(
+            animationSpec = tween(300)
+        ) { it },
+    ) {
+        var notNullActiveChildComment by remember { mutableStateOf(activeChildComment) }
+        LaunchedEffect(activeChildComment) {
+            if (activeChildComment != null) {
+                notNullActiveChildComment = activeChildComment
+            }
+        }
+        CommentScreen(
+            httpClient = httpClient,
+            content = { notNullActiveChildComment!!.clickTarget!! },
+            activeCommentItem = notNullActiveChildComment,
+            onChildCommentClick = { }
+        )
+    }
 
     // 返回键处理
     BackHandler(

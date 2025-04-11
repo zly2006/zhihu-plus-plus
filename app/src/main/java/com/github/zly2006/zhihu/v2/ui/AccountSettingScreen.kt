@@ -23,12 +23,9 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
-import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.v2.ui.components.SwitchSettingItem
@@ -41,7 +38,8 @@ import kotlinx.serialization.json.JsonObject
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AccountSettingScreen(
-    innerPadding: PaddingValues
+    innerPadding: PaddingValues,
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
@@ -241,6 +239,16 @@ fun AccountSettingScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
             }
+            Button(
+                onClick = { onNavigate(CollectionScreen) },
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text("查看收藏夹")
+            }
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",
@@ -399,6 +407,7 @@ fun AccountSettingScreen(
 @Composable
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
-        innerPadding = PaddingValues(16.dp)
+        innerPadding = PaddingValues(16.dp),
+        onNavigate = { }
     )
 }
