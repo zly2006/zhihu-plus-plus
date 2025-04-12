@@ -372,7 +372,7 @@ fun ArticleScreen(
                                 try {
                                     val endpoint = when (article.type) {
                                         "answer" -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-                                        "article" -> "https://www.zhihu.com/api/v4/articles/${article.id}/vote"
+                                        "article" -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                                         else -> return@launch
                                     }
 
