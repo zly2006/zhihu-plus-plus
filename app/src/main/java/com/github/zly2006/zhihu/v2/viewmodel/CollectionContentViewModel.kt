@@ -1,18 +1,31 @@
 package com.github.zly2006.zhihu.v2.viewmodel
 
 import android.content.Context
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.*
+import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.v2.ui.Collection
 import com.github.zly2006.zhihu.v2.viewmodel.CollectionContentViewModel.CollectionItem
 import com.github.zly2006.zhihu.v2.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
 
 class CollectionContentViewModel(
     val collectionId: String,
 ) : PaginationViewModel<CollectionItem>(typeOf<CollectionItem>()) {
     val displayItems = mutableStateListOf<FeedDisplayItem>()
+    var collection by mutableStateOf<Collection?>(null)
+    val title by derivedStateOf {
+        collection?.title ?: "收藏夹"
+    }
+
     @Serializable
     class CollectionItem(
         val created: String,
@@ -46,6 +59,13 @@ class CollectionContentViewModel(
     override fun refresh(context: Context) {
         if (isLoading) return
         displayItems.clear()
+        viewModelScope.launch {
+            val httpClient = httpClient(context)
+            val jsonObject = httpClient.get("https://www.zhihu.com/api/v4/collections/$collectionId") {
+                signFetchRequest(context)
+            }.body<JsonObject>()
+            collection = AccountData.decodeJson<Collection>(jsonObject["collection"]!!)
+        }
         super.refresh(context)
     }
 }

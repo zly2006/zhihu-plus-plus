@@ -44,7 +44,7 @@ fun CollectionContentScreen(
         topContent = {
             item(0) {
                 Text(
-                    text = "我的收藏",
+                    text = viewModel.title,
                     style = MaterialTheme.typography.headlineLarge,
                     modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
                 )
