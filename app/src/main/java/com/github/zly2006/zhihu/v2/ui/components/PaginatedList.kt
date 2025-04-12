@@ -65,23 +65,21 @@ fun <T> PaginatedList(
             itemContent(item)
         }
 
-        if (items.isNotEmpty()) {
-            item {
-                if (isEnd()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "已经到底啦",
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                } else {
-                    footer?.invoke()
+        item {
+            if (isEnd()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "已经到底啦",
+                        textAlign = TextAlign.Center,
+                    )
                 }
+            } else {
+                footer?.invoke()
             }
         }
     }

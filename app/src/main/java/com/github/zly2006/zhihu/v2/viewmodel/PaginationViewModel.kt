@@ -36,7 +36,7 @@ abstract class PaginationViewModel<T : Any>(
         protected set
     var errorMessage: String? = null
         protected set
-    protected var lastPaging: Paging? = null
+    protected var lastPaging: Paging? by mutableStateOf(null)
     open val isEnd: Boolean get() = lastPaging?.is_end == true
     protected abstract val initialUrl: String
 

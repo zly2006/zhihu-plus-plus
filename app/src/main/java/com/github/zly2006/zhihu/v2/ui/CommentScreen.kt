@@ -48,7 +48,7 @@ import java.util.*
 
 private val HMS = SimpleDateFormat("HH:mm:ss")
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
-private val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

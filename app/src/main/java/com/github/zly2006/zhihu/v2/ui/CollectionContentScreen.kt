@@ -11,12 +11,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.v2.ui.components.FeedCard
 import com.github.zly2006.zhihu.v2.ui.components.PaginatedList
 import com.github.zly2006.zhihu.v2.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.v2.viewmodel.CollectionContentViewModel
+import java.util.*
 
 @Composable
 fun CollectionContentScreen(
@@ -25,7 +27,6 @@ fun CollectionContentScreen(
 ) {
     val context = LocalContext.current
     val viewModel = viewModel { CollectionContentViewModel(collectionId) }
-    val displayItems = viewModel.displayItems
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -35,7 +36,7 @@ fun CollectionContentScreen(
     }
 
     PaginatedList(
-        items = displayItems,
+        items = viewModel.displayItems,
         onLoadMore = { viewModel.loadMore(context) },
         isEnd = { viewModel.isEnd },
         listState = listState,
@@ -47,6 +48,14 @@ fun CollectionContentScreen(
                     text = viewModel.title,
                     style = MaterialTheme.typography.headlineLarge,
                     modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                )
+                Text(
+                    listOfNotNull(
+                        "${viewModel.collection?.item_count} 条收藏",
+                        "${viewModel.collection?.like_count} 个赞同",
+                        "${viewModel.collection?.comment_count} 条评论",
+                        viewModel.collection?.updated_time?.let { "${YMDHMS.format(Date(it * 1000))} 更新" }
+                    ).fastJoinToString(" · "),
                 )
             }
         },

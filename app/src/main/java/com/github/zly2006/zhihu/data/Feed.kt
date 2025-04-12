@@ -30,6 +30,7 @@ sealed interface Feed {
         val detailsText: String
         val title: String
         val excerpt: String?
+        val author: Person?
         val navDestination: NavDestination?
     }
 
@@ -38,7 +39,7 @@ sealed interface Feed {
     data class AnswerTarget(
         val id: Long,
         val url: String,
-        val author: Person,
+        override val author: Person,
         /**
          * -1 广告
          */
@@ -84,7 +85,7 @@ sealed interface Feed {
     @SerialName("zvideo")
     data class VideoTarget(
         val id: Long,
-        val author: Person,
+        override val author: Person,
         val vote_count: Int = -1,
         val comment_count: Int,
         override val title: String,
@@ -107,7 +108,7 @@ sealed interface Feed {
     data class ArticleTarget(
         val id: Long,
         val url: String,
-        val author: Person,
+        override val author: Person,
         val voteup_count: Int,
         val comment_count: Int,
         override val title: String,
@@ -146,7 +147,7 @@ sealed interface Feed {
     data class PinTarget(
         val id: Long,
         val url: String,
-        val author: Person,
+        override val author: Person,
         val comment_count: Int,
         val content: JsonArray,
         val favorite_count: Int,
@@ -179,7 +180,7 @@ sealed interface Feed {
         val bound_topic_ids: List<Long> = emptyList(),
         val relationship: Relationship? = null,
         val is_following: Boolean = false,
-        val author: Person? = null
+        override val author: Person? = null
     ) : Target {
         override fun filterReason(): String? {
             return if (answer_count < 5 && follower_count < 50) {
