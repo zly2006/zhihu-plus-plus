@@ -2,9 +2,11 @@ package com.github.zly2006.zhihu.v2.ui
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -215,6 +217,9 @@ fun AccountSettingScreen(
 //                    modifier = Modifier.weight(1f)
                 ) {
                     Text("抛出异常测试")
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    Text("字体名称：" + Typeface.DEFAULT.systemFontFamilyName)
                 }
                 Text("当前padding: ${DisplayPadding(innerPadding)}")
                 Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")

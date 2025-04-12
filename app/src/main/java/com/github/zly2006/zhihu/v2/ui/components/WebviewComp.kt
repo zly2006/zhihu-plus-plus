@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
@@ -133,7 +134,7 @@ fun WebviewComp(
                                         val response = httpClient.get(url)
                                         val bytes = response.readBytes()
                                         val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image.jpg"
-                                        
+
                                         val contentValues = ContentValues().apply {
                                             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                                             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -196,18 +197,24 @@ fun WebView.loadZhihu(
     loadDataWithBaseURL(
         url,
         """
-        <head>
-        <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
-        <viewport content="width=device-width, initial-scale=1.0">
-        </viewport>
-        <style>
-        ${additionalStyle.replace("\n", "")}
-        </style>
-        </head>
-        <body>
-        ${document.body().html()}
-        </body>
-        """.trimIndent(),
+            <head>
+            <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
+            <viewport content="width=device-width, initial-scale=1.0">
+            </viewport>
+            <style>
+            ${
+            // This is a workaround for the issue where the system font family name is not available in the WebView.
+            // https://github.com/zly2006/zhihu-plus-plus/issues/9
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}" else ""
+            }
+            ${additionalStyle.replace("\n", "")}
+            </style>
+            </head>
+            <body>
+            ${document.body().html()}
+            </body>
+            """.trimIndent(),
         "text/html",
         "utf-8",
         null
