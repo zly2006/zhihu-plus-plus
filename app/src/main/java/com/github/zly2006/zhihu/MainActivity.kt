@@ -119,7 +119,7 @@ class MainActivity : ComponentActivity() {
                     val destination = regex.findAll(text).firstNotNullOfOrNull {
                         resolveContent(Uri.parse(it.value))
                     }
-                    if (destination != null) {
+                    if (destination != null && destination != clipboardDestination) {
                         clipboardDestination = destination
                         navigate(destination)
                     }
