@@ -64,22 +64,37 @@ class MainActivity : ComponentActivity() {
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
-        if (intent.data != null && intent.data!!.authority == "zhihu-plus.internal") {
-            if (intent.data!!.path == "/error") {
-                val title = intent.data!!.getQueryParameter("title")
-                val message = intent.data!!.getQueryParameter("message")
-                val stack = intent.data!!.getQueryParameter("stack")
-                AlertDialog.Builder(this).apply {
-                    setTitle(title)
-                    setMessage(stack)
-                    setPositiveButton("OK") { _, _ ->
-                    }
-                    setNeutralButton("Copy") { _, _ ->
-                        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = android.content.ClipData.newPlainText("error", "$stack")
-                        clipboard.setPrimaryClip(clip)
-                    }
-                }.create().show()
+        if (intent.data != null) {
+            if (intent.data!!.authority == "zhihu-plus.internal") {
+                if (intent.data!!.path == "/error") {
+                    val title = intent.data!!.getQueryParameter("title")
+                    val message = intent.data!!.getQueryParameter("message")
+                    val stack = intent.data!!.getQueryParameter("stack")
+                    AlertDialog.Builder(this).apply {
+                        setTitle(title)
+                        setMessage(stack)
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                        setNeutralButton("Copy") { _, _ ->
+                            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = android.content.ClipData.newPlainText("error", "$stack")
+                            clipboard.setPrimaryClip(clip)
+                        }
+                    }.create().show()
+                }
+            } else {
+                Log.i("MainActivity", "Intent data: ${intent.data}")
+                val destination = resolveContent(intent.data!!)
+                if (destination != null) {
+                    navigate(destination)
+                } else {
+                    AlertDialog.Builder(this).apply {
+                        setTitle("Unsupported URL")
+                        setMessage("Unknown URL: ${intent.data}")
+                        setPositiveButton("OK") { _, _ ->
+                        }
+                    }.create().show()
+                }
             }
         }
 
@@ -91,40 +106,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    var readClipboard = false
+    var clipboardDestination: NavDestination? = null
     override fun onWindowFocusChanged(hasFocus: Boolean) {
-        val uri = intent.data
-        if (!readClipboard && hasFocus) {
-            if (uri != null) {
-                Log.i("MainActivity", "Intent data: $uri")
-                val destination = resolveContent(uri)
-                if (destination != null) {
-                    navigate(destination)
-                } else {
-                    AlertDialog.Builder(this).apply {
-                        setTitle("Unsupported URL")
-                        setMessage("Unknown URL: $uri")
-                        setPositiveButton("OK") { _, _ ->
-                        }
-                    }.create().show()
-                }
-            } else {
-                // read clipboard
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = clipboard.primaryClip
-                if (clip != null && clip.itemCount > 0) {
-                    val text = clip.getItemAt(0).text
-                    if (text != null) {
-                        val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
-                        regex.findAll(text).firstNotNullOfOrNull {
-                            resolveContent(Uri.parse(it.value))
-                        }?.let {
-                            navigate(it)
-                        }
+        if (hasFocus) {
+            // read clipboard
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = clipboard.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val text = clip.getItemAt(0).text
+                if (text != null) {
+                    val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
+                    val destination = regex.findAll(text).firstNotNullOfOrNull {
+                        resolveContent(Uri.parse(it.value))
+                    }
+                    if (destination != null) {
+                        clipboardDestination = destination
+                        navigate(destination)
                     }
                 }
             }
-            readClipboard = true
         }
     }
 
