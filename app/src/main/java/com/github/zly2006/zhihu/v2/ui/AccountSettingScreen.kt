@@ -41,13 +41,13 @@ fun AccountSettingScreen(
     innerPadding: PaddingValues,
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current as MainActivity
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         val data = AccountData.data
         if (data.login) {
-            val httpClient = context.httpClient
             try {
+                val httpClient = (context as MainActivity).httpClient
                 val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
                     signFetchRequest(context)
                 }.body<JsonObject>()
@@ -143,6 +143,17 @@ fun AccountSettingScreen(
                 Text("登录")
             }
         }
+        Button(
+            onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        ) {
+            Text("查看收藏夹")
+        }
         val networkStatus = remember {
             buildString {
                 val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
@@ -227,16 +238,6 @@ fun AccountSettingScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
-            }
-            Button(
-                onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            ) {
-                Text("查看收藏夹")
             }
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(

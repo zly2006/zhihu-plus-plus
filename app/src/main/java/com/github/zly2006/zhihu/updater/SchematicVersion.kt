@@ -33,6 +33,25 @@ class SchematicVersion(
             val b = other.allComponents.getOrNull(i) ?: 0
             if (a != b) return a - b
         }
+        if (preRelease.isNotEmpty() && other.preRelease.isNotEmpty()) {
+            val a = preRelease.split(".")
+            val b = other.preRelease.split(".")
+            for (i in 0 until maxOf(a.size, b.size)) {
+                val aPart = a.getOrNull(i) ?: ""
+                val bPart = b.getOrNull(i) ?: ""
+                if (aPart != bPart) {
+                    return when {
+                        aPart.all { it.isDigit() } && bPart.all { it.isDigit() } -> aPart.toInt() - bPart.toInt()
+                        else -> aPart.compareTo(bPart)
+                    }
+                }
+            }
+            return 0
+        } else if (preRelease.isNotEmpty()) {
+            return -1
+        } else if (other.preRelease.isNotEmpty()) {
+            return 1
+        }
         return 0
     }
 
