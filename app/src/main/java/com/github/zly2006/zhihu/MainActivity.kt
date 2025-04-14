@@ -15,9 +15,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.v2.theme.ZhihuTheme
-import com.github.zly2006.zhihu.v2.ui.ZhihuMain
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
 

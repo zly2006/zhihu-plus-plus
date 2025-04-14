@@ -2,7 +2,7 @@ package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.v2.ui.processCommentImages
+import com.github.zly2006.zhihu.ui.processCommentImages
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.junit.Test

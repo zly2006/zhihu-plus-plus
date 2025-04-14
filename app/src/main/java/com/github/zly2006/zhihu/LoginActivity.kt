@@ -14,9 +14,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.v2.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.v2.ui.components.WebviewComp
-import com.github.zly2006.zhihu.v2.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.asCoroutineDispatcher
