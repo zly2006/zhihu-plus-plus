@@ -398,6 +398,7 @@ fun ArticleScreen(
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (voteUpState == VoteUpState.Up) Color(0xFF0D47A1) else Color(0xFF29B6F6)
+                            contentColor = if (voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                     ) {
