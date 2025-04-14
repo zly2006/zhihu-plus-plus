@@ -1,13 +1,26 @@
 package com.github.zly2006.zhihu.updater
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+@Serializable(with = SchematicVersion.Companion::class)
 class SchematicVersion(
     val allComponents: List<Int>,
     val preRelease: String,
     val build: String,
 ) {
-    companion object {
+    companion object : KSerializer<SchematicVersion> {
+        override val descriptor =
+            PrimitiveSerialDescriptor(SchematicVersion::class.simpleName!!, PrimitiveKind.STRING)
+        override fun serialize(encoder: Encoder, value: SchematicVersion) = encoder.encodeString(value.toString())
+        override fun deserialize(decoder: Decoder) = fromString(decoder.decodeString())
         private val REGEX = Regex("""[vV]?(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
         fun fromString(version: String): SchematicVersion {
+            version.toShortOrNull()
             val match = REGEX.matchEntire(version) ?: throw IllegalArgumentException("Invalid version string")
             val components = match.groups["components"]!!.value.split(".").map { it.toInt() }
             require(components.isNotEmpty()) { "Version must have at least one component" }
