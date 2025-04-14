@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -397,12 +398,16 @@ fun ArticleScreen(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (voteUpState == VoteUpState.Up) Color(0xFF0D47A1) else Color(0xFF29B6F6)
+                            containerColor = if (voteUpState == VoteUpState.Up) Color(0xFF0D47A1) else Color(0xFF40B6F6),
                             contentColor = if (voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                     ) {
-                        Icon(Icons.Filled.ThumbUp, contentDescription = "赞同")
+                        Icon(
+                            if (voteUpState == VoteUpState.Up) Icons.Filled.ThumbUp
+                            else Icons.Outlined.ThumbUp,
+                            contentDescription = "赞同"
+                        )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(text = if (voteUpState == VoteUpState.Up) "已赞 $voteUpCount" else "赞同 $voteUpCount")
                     }
