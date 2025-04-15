@@ -64,6 +64,13 @@ class MainActivity : ComponentActivity() {
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
+        setContent {
+            navController = rememberNavController()
+            ZhihuTheme {
+                ZhihuMain(navController = navController)
+            }
+        }
+
         if (intent.data != null) {
             if (intent.data!!.authority == "zhihu-plus.internal") {
                 if (intent.data!!.path == "/error") {
@@ -97,13 +104,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-        setContent {
-            navController = rememberNavController()
-            ZhihuTheme {
-                ZhihuMain(navController = navController)
-            }
-        }
     }
 
     var clipboardDestination: NavDestination? = null
@@ -129,8 +129,10 @@ class MainActivity : ComponentActivity() {
     }
 
     fun navigate(route: NavDestination) {
-        navController.navigate(route)
         history.add(route)
+        navController.navigate(route) {
+            launchSingleTop = true
+        }
     }
 
     suspend fun signRequest96(url: String): String {
