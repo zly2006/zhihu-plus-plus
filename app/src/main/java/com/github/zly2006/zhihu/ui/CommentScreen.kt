@@ -351,7 +351,7 @@ private fun CommentItem(
                     LocalPinnableContainer.current?.pin()
                 }
                 if (useWebview) {
-                    WebviewComp(httpClient) {
+                    WebviewComp() {
                         it.isVerticalScrollBarEnabled = false
                         it.isHorizontalScrollBarEnabled = false
                         it.loadZhihu(

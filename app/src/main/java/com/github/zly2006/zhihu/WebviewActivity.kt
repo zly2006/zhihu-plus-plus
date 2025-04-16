@@ -25,7 +25,6 @@ class WebviewActivity : ComponentActivity() {
         setContent {
             Surface(modifier = Modifier.fillMaxSize()) {
                 WebviewComp(
-                    httpClient = AccountData.httpClient(this),
                     onLoad = { webView ->
                         webView.setupUpWebviewClient() // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
                         setupCookies(webView)

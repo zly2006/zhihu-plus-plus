@@ -25,14 +25,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
-import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -52,12 +53,12 @@ private class CustomWebView : WebView {
 
 @Composable
 fun WebviewComp(
-    httpClient: HttpClient,
     modifier: Modifier = Modifier.fillMaxSize(),
     onLoad: (WebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val httpClient = AccountData.httpClient(context)
     val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
     val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
 

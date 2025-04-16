@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.viewmodel.CommentItem

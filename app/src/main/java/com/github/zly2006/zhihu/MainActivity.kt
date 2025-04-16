@@ -133,7 +133,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun navigate(route: NavDestinatio, popup: Boolean = false) {
+    fun navigate(route: NavDestination, popup: Boolean = false) {
         history.add(route)
         navController.navigate(route) {
             launchSingleTop = true

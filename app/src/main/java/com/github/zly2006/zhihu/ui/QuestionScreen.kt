@@ -111,7 +111,7 @@ fun QuestionScreen(
                 item(1) {
                     val handle = LocalPinnableContainer.current?.pin()
                     if (questionContent.isNotEmpty()) {
-                        WebviewComp(httpClient) {
+                        WebviewComp() {
                             it.loadZhihu(
                                 "https://www.zhihu.com/question/${question.questionId}",
                                 Jsoup.parse(questionContent)

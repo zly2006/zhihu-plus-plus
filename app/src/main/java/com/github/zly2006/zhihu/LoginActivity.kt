@@ -34,7 +34,6 @@ class LoginActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
             Surface(modifier = Modifier.fillMaxSize()) {
                 WebviewComp(
-                    httpClient = AccountData.httpClient(this),
                     onLoad = { webView ->
                         webView.setupUpWebviewClient()
                         webView.settings.javaScriptEnabled = true

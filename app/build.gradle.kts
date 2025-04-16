@@ -14,13 +14,12 @@ plugins {
 
 android {
     namespace = "com.github.zly2006.zhihu"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhihu"
         minSdk = 28
-        //noinspection OldTargetApi, my phone is Android 14
-        targetSdk = 34
+        targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
         versionName = property("app.versionName").toString()
 
