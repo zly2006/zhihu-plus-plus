@@ -5,11 +5,11 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android") version "2.1.0"
+    kotlin("android")
+    kotlin("plugin.serialization")
+    kotlin("plugin.compose")
     id("kotlin-parcelize")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.10"
     id("org.ajoberstar.grgit") version "5.2.2"
-    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
