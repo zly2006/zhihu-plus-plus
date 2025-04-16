@@ -38,6 +38,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
@@ -125,6 +126,7 @@ fun ArticleScreen(
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableStateOf(0) }
+    var showComments by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -240,7 +242,7 @@ fun ArticleScreen(
                     }
 
                     Button(
-                        onClick = { /* Show comments */ },
+                        onClick = { showComments = true },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -259,13 +261,16 @@ fun ArticleScreen(
                                 "answer" -> {
                                     "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
                                 }
+
                                 "article" -> {
                                     "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                                 }
+
                                 else -> {
                                     "暂不支持的链接类型"
                                 }
                             }
+                            (context as? MainActivity)?.sharedData?.clipboardDestination = article
                             clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp),
@@ -308,8 +313,7 @@ fun ArticleScreen(
                             .size(40.dp)
                             .clip(CircleShape)
                     )
-                }
-                else {
+                } else {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
@@ -359,6 +363,15 @@ fun ArticleScreen(
                 }
             }
         }
+    }
+
+    viewModel.httpClient?.let {
+        CommentScreenComponent(
+            showComments = showComments,
+            onDismiss = { showComments = false },
+            httpClient = it,
+            content = article
+        )
     }
 }
 

@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.math.abs
 
-class ArticleViewModel(private val article: Article, private val httpClient: HttpClient?) : ViewModel() {
+class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
     var title by mutableStateOf("")
     var authorName by mutableStateOf("")
     var authorBio by mutableStateOf("")

@@ -4,13 +4,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.viewmodel.CommentItem
@@ -24,6 +26,10 @@ fun CommentScreenComponent(
     content: NavDestination
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
+    val commentTopPadding = 100.dp
+    val commentPaddingPixels = LocalDensity.current.run {
+        commentTopPadding.toPx()
+    }
     
     // 主评论区
     AnimatedVisibility(
@@ -34,7 +40,13 @@ fun CommentScreenComponent(
         Box(
             modifier = Modifier.fillMaxSize()
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                .clickable { onDismiss() }
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        if (offset.y < commentPaddingPixels) {
+                            onDismiss()
+                        }
+                    }
+                }
         )
     }
 
@@ -50,6 +62,7 @@ fun CommentScreenComponent(
         CommentScreen(
             httpClient = httpClient,
             content = { content },
+            topPadding = commentTopPadding,
             onChildCommentClick = {
                 activeChildComment = it
             }
@@ -66,7 +79,13 @@ fun CommentScreenComponent(
         Box(
             modifier = Modifier.fillMaxSize()
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                .clickable { activeChildComment = null }
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        if (offset.y < commentPaddingPixels) {
+                            activeChildComment = null
+                        }
+                    }
+                }
         )
     }
 
@@ -87,6 +106,7 @@ fun CommentScreenComponent(
         }
         CommentScreen(
             httpClient = httpClient,
+            topPadding = commentTopPadding,
             content = { notNullActiveChildComment!!.clickTarget!! },
             activeCommentItem = notNullActiveChildComment,
             onChildCommentClick = { }

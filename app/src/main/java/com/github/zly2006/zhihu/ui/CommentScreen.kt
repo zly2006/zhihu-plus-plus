@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,6 +57,7 @@ fun CommentScreen(
     httpClient: HttpClient,
     content: () -> NavDestination,
     activeCommentItem: CommentItem? = null,
+    topPadding: Dp = 100.dp,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val context = LocalContext.current
@@ -88,7 +90,7 @@ fun CommentScreen(
             val totalItemsCount = layoutInfo.totalItemsCount
             val lastVisibleItemIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
 
-            lastVisibleItemIndex >= totalItemsCount - 3 && !viewModel.isLoading && viewModel?.isEnd == false
+            lastVisibleItemIndex >= totalItemsCount - 3 && !viewModel.isLoading && !viewModel.isEnd
         }
     }
 
@@ -127,7 +129,7 @@ fun CommentScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 100.dp)
+                .padding(top = topPadding)
                 .fillMaxHeight()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),

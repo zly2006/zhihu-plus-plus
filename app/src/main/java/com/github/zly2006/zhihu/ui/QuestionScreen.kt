@@ -40,7 +40,7 @@ fun QuestionScreen(
     question: Question,
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current as MainActivity
+    val context = LocalContext.current
     val viewModel: QuestionFeedViewModel = viewModel {
         QuestionFeedViewModel(question.questionId)
     }
@@ -51,13 +51,13 @@ fun QuestionScreen(
     var followerCount by remember { mutableStateOf(0) }
     var title by remember { mutableStateOf(question.title) }
     var showComments by remember { mutableStateOf(false) }
-    val httpClient = context.httpClient
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
+        context as MainActivity
         withContext(Dispatchers.IO) {
             try {
-                val questionData = DataHolder.getQuestion(context, httpClient, question.questionId)?.value
+                val questionData = DataHolder.getQuestion(context, context.httpClient, question.questionId)?.value
                 if (questionData != null) {
                     questionContent = questionData.detail
                     title = questionData.title
@@ -153,6 +153,7 @@ fun QuestionScreen(
                                             "\n【${question.title}】"
                                 )
                                 clipboard.setPrimaryClip(clip)
+                                (context as? MainActivity)?.sharedData?.clipboardDestination = question
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -193,12 +194,14 @@ fun QuestionScreen(
             }
         }
     }
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = { showComments = false },
-        httpClient = httpClient,
-        content = question
-    )
+    if (context is MainActivity) {
+        CommentScreenComponent(
+            showComments = showComments,
+            onDismiss = { showComments = false },
+            httpClient = context.httpClient,
+            content = question
+        )
+    }
 }
 
 @Composable
