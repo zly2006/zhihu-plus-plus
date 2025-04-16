@@ -289,7 +289,7 @@ data class CommonFeed(
      */
     val promotion_extra: String? = null,
     val cursor: String = "",
-    val action_text: String = "",
+    val action_text: String? = null,
 ) : Feed {
 }
 

@@ -5,15 +5,11 @@ import androidx.compose.runtime.mutableStateListOf
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.*
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     val displayItems = mutableStateListOf<FeedDisplayItem>()
-
-    @Serializable
-    class FeedResponse(val data: List<Feed>, val paging: Paging)
 
     data class FeedDisplayItem(
         val title: String,
@@ -59,29 +55,14 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             )
         } else {
             when (feed.target) {
-                is Feed.AnswerTarget -> {
-                    FeedDisplayItem(
-                        title = feed.target.question.title,
-                        summary = feed.target.excerpt,
-                        details = "${feed.target.detailsText} · ${feed.action_text}",
-                        feed = feed
-                    )
-                }
-
-                is Feed.ArticleTarget -> {
-                    FeedDisplayItem(
-                        title = feed.target.title,
-                        summary = feed.target.excerpt,
-                        details = "${feed.target.detailsText} · ${feed.action_text}",
-                        feed = feed
-                    )
-                }
-
+                is Feed.AnswerTarget,
+                is Feed.ArticleTarget,
                 is Feed.QuestionTarget -> {
                     FeedDisplayItem(
                         title = feed.target.title,
                         summary = feed.target.excerpt,
-                        details = "${feed.target.detailsText} · ${feed.action_text}",
+                        details = listOfNotNull(feed.target.detailsText, feed.action_text)
+                            .joinToString(" · "),
                         feed = feed
                     )
                 }
