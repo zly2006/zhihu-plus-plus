@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                     Log.i("MainActivity", "Intent data: ${intent.data}")
                     val destination = resolveContent(intent.data!!)
                     if (destination != null) {
-                        navigate(destination)
+                        navigate(destination, popup = true)
                     } else {
                         AlertDialog.Builder(this).apply {
                             setTitle("Unsupported URL")
@@ -126,20 +126,22 @@ class MainActivity : ComponentActivity() {
                     }
                     if (destination != null && destination != sharedData.clipboardDestination) {
                         sharedData.clipboardDestination = destination
-                        navigate(destination)
+                        navigate(destination, popup = true)
                     }
                 }
             }
         }
     }
 
-    fun navigate(route: NavDestination) {
+    fun navigate(route: NavDestinatio, popup: Boolean = false) {
         history.add(route)
         navController.navigate(route) {
             launchSingleTop = true
-            popUpTo(Home) {
-                // clear the back stack and viewModels
-                saveState = true
+            if (popup) {
+                popUpTo(Home) {
+                    // clear the back stack and viewModels
+                    saveState = true
+                }
             }
         }
     }
