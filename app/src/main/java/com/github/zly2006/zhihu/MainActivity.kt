@@ -10,7 +10,9 @@ import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.github.zly2006.zhihu.data.AccountData
@@ -22,6 +24,11 @@ import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
 
 class MainActivity : ComponentActivity() {
+    class SharedData : ViewModel() {
+        var clipboardDestination: NavDestination? = null
+    }
+
+    val sharedData by viewModels<SharedData>()
     lateinit var webview: WebView
     lateinit var history: HistoryStorage
     val httpClient by lazy {
@@ -69,44 +76,42 @@ class MainActivity : ComponentActivity() {
             ZhihuTheme {
                 ZhihuMain(navController = navController)
             }
-        }
-
-        if (intent.data != null) {
-            if (intent.data!!.authority == "zhihu-plus.internal") {
-                if (intent.data!!.path == "/error") {
-                    val title = intent.data!!.getQueryParameter("title")
-                    val message = intent.data!!.getQueryParameter("message")
-                    val stack = intent.data!!.getQueryParameter("stack")
-                    AlertDialog.Builder(this).apply {
-                        setTitle(title)
-                        setMessage(stack)
-                        setPositiveButton("OK") { _, _ ->
-                        }
-                        setNeutralButton("Copy") { _, _ ->
-                            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = android.content.ClipData.newPlainText("error", "$stack")
-                            clipboard.setPrimaryClip(clip)
-                        }
-                    }.create().show()
-                }
-            } else {
-                Log.i("MainActivity", "Intent data: ${intent.data}")
-                val destination = resolveContent(intent.data!!)
-                if (destination != null) {
-                    navigate(destination)
+            if (intent.data != null) {
+                if (intent.data!!.authority == "zhihu-plus.internal") {
+                    if (intent.data!!.path == "/error") {
+                        val title = intent.data!!.getQueryParameter("title")
+                        val message = intent.data!!.getQueryParameter("message")
+                        val stack = intent.data!!.getQueryParameter("stack")
+                        AlertDialog.Builder(this).apply {
+                            setTitle(title)
+                            setMessage(stack)
+                            setPositiveButton("OK") { _, _ ->
+                            }
+                            setNeutralButton("Copy") { _, _ ->
+                                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("error", "$stack")
+                                clipboard.setPrimaryClip(clip)
+                            }
+                        }.create().show()
+                    }
                 } else {
-                    AlertDialog.Builder(this).apply {
-                        setTitle("Unsupported URL")
-                        setMessage("Unknown URL: ${intent.data}")
-                        setPositiveButton("OK") { _, _ ->
-                        }
-                    }.create().show()
+                    Log.i("MainActivity", "Intent data: ${intent.data}")
+                    val destination = resolveContent(intent.data!!)
+                    if (destination != null) {
+                        navigate(destination)
+                    } else {
+                        AlertDialog.Builder(this).apply {
+                            setTitle("Unsupported URL")
+                            setMessage("Unknown URL: ${intent.data}")
+                            setPositiveButton("OK") { _, _ ->
+                            }
+                        }.create().show()
+                    }
                 }
             }
         }
     }
 
-    var clipboardDestination: NavDestination? = null
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         if (hasFocus) {
             // read clipboard
@@ -119,8 +124,8 @@ class MainActivity : ComponentActivity() {
                     val destination = regex.findAll(text).firstNotNullOfOrNull {
                         resolveContent(Uri.parse(it.value))
                     }
-                    if (destination != null && destination != clipboardDestination) {
-                        clipboardDestination = destination
+                    if (destination != null && destination != sharedData.clipboardDestination) {
+                        sharedData.clipboardDestination = destination
                         navigate(destination)
                     }
                 }
@@ -132,6 +137,10 @@ class MainActivity : ComponentActivity() {
         history.add(route)
         navController.navigate(route) {
             launchSingleTop = true
+            popUpTo(Home) {
+                // clear the back stack and viewModels
+                saveState = true
+            }
         }
     }
 

@@ -30,12 +30,6 @@ data class CollectionContent(
 ) : NavDestination
 
 @Serializable
-data object Notifications : NavDestination
-
-@Serializable
-data object Settings : NavDestination
-
-@Serializable
 enum class ArticleType {
     @SerialName("article")
     Article,
@@ -51,12 +45,12 @@ enum class ArticleType {
 
 @Serializable
 data class Article(
-    var title: String,
+    var title: String = "loading...",
     @SerialName("article_type_1")
     val type: String,
     val id: Long,
-    var authorName: String,
-    var authorBio: String,
+    var authorName: String = "loading...",
+    var authorBio: String = "loading...",
     var avatarSrc: String? = null,
     var excerpt: String? = null,
 ) : NavDestination {
@@ -78,7 +72,7 @@ data class CommentHolder(
 @Serializable
 data class Question(
     val questionId: Long,
-    val title: String
+    val title: String = "loading..."
 ) : NavDestination {
     override fun hashCode(): Int {
         return questionId.hashCode()
@@ -97,84 +91,45 @@ fun resolveContent(uri: Uri): NavDestination? {
                 && uri.pathSegments[2] == "answer"
             ) {
                 val answerId = uri.pathSegments[3].toLong()
-                return Article(
-                    "loading...",
-                    "answer",
-                    answerId,
-                    "loading...",
-                    "loading...",
-                    null,
-                )
+                return Article(type = "answer", id = answerId)
             } else if (uri.pathSegments.size == 2
                 && uri.pathSegments[0] == "answer"
             ) {
                 val answerId = uri.pathSegments[1].toLong()
-                return Article(
-                    "loading...",
-                    "answer",
-                    answerId,
-                    "loading...",
-                    "loading...",
-                    null,
-                    null
-                )
+                return Article(type = "answer", id = answerId)
             } else if (uri.pathSegments.size == 2
                 && uri.pathSegments[0] == "question"
             ) {
                 val questionId = uri.pathSegments[1].toLong()
-                return Question(
-                    questionId,
-                    "loading...",
-                )
+                return Question(questionId)
+            } else if (uri.pathSegments.size == 3
+                && uri.pathSegments[0] == "oia"
+                && uri.pathSegments[1] == "articles"
+            ) {
+                val articleId = uri.pathSegments[2].toLong()
+                return Article(type = "article", id = articleId)
             }
         } else if (uri.host == "zhuanlan.zhihu.com") {
             if (uri.pathSegments.size == 2
                 && uri.pathSegments[0] == "p"
             ) {
                 val articleId = uri.pathSegments[1].toLong()
-                return Article(
-                    "loading...",
-                    "article",
-                    articleId,
-                    "loading...",
-                    "loading...",
-                    null,
-                    null
-                )
+                return Article(type = "article", id = articleId)
             }
         }
     }
     if (uri.scheme == "zhihu") {
         if (uri.host == "answers") {
             val answerId = uri.pathSegments[0].toLong()
-            return Article(
-                "loading...",
-                "answer",
-                answerId,
-                "loading...",
-                "loading...",
-                null,
-                null
-            )
+            return Article(type = "answer", id = answerId)
         } else if (uri.host == "questions") {
             val questionId = uri.pathSegments[0].toLong()
-            return Question(
-                questionId,
-                "loading...",
-            )
+            return Question(questionId)
         } else if (uri.host == "feed") {
             return Home
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()
-            return Article(
-                "loading...",
-                "article",
-                articleId,
-                "loading...",
-                "loading...",
-                null,
-                null
-            )
+            return Article(type = "article", id = articleId)
         }
     }
     return null

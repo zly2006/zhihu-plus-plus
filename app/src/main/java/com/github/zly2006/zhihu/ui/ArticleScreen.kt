@@ -449,6 +449,9 @@ fun ArticleScreen(
                                 "暂不支持的链接类型"
                             }
                             clipboard.setPrimaryClip(ClipData.newPlainText("Link", text))
+                            runCatching {
+                                context.sharedData.clipboardDestination = article
+                            }
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -527,7 +530,14 @@ fun ArticleScreen(
                             select("noscript").forEach {
                                 if (it.childrenSize() > 0) {
                                     // 把 img 标签移出 noscript
-                                    it.after(it.child(0))
+                                    val node = it.child(0)
+                                    if (node.tagName() == "img") {
+                                        if (node.attr("class").contains("content_image")) {
+                                            // gif
+                                            node.attr("src", node.attr("data-thumbnail"))
+                                        }
+                                    }
+                                    it.after(node)
                                 }
                             }
                         }
