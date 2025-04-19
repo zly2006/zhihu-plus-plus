@@ -5,6 +5,7 @@ import android.util.Log
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
@@ -31,6 +32,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
             if (untouchedAnswers.isNotEmpty()) {
                 httpClient.post("https://www.zhihu.com/lastread/touch") {
                     header("x-requested-with", "fetch")
+                    signFetchRequest(context)
                     setBody(
                         MultiPartFormDataContent(
                             formData {
@@ -41,7 +43,7 @@ class HomeFeedViewModel : BaseFeedViewModel() {
                                                 is Feed.AnswerTarget -> {
                                                     add(buildJsonArray {
                                                         add("answer")
-                                                        add(target.id)
+                                                        add(target.id.toString())
                                                         add("touch")
                                                     })
                                                 }
