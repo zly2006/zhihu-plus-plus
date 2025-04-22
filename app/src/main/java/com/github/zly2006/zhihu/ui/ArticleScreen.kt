@@ -127,6 +127,7 @@ fun ArticleScreen(
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableStateOf(0) }
     var showComments by remember { mutableStateOf(false) }
+    var showCollectionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -153,7 +154,7 @@ fun ArticleScreen(
 
     LaunchedEffect(article.id) {
         viewModel.loadArticle(context)
-        viewModel.loadCollections(article)
+        viewModel.loadCollections()
     }
 
     Scaffold(
@@ -229,7 +230,7 @@ fun ArticleScreen(
                     }
 
                     IconButton(
-                        onClick = { viewModel.toggleFavorite("", viewModel.isFavorited, context) },
+                        onClick = { showCollectionDialog = true },
                         colors = IconButtonDefaults.iconButtonColors(
                             containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
@@ -363,6 +364,49 @@ fun ArticleScreen(
                 }
             }
         }
+    }
+
+    AnimatedVisibility(
+        visible = showCollectionDialog
+    ) {
+        AlertDialog(
+            onDismissRequest = { showCollectionDialog = false },
+            title = { Text("选择收藏夹") },
+            text = {
+                Column {
+                    viewModel.collections.forEach { collection ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.toggleFavorite(collection.id, collection.is_favorited, context)
+                                    viewModel.loadCollections()
+                                }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = collection.title,
+                                modifier = Modifier.weight(1f),
+                                fontSize = 16.sp
+                            )
+                            if (collection.is_favorited) {
+                                Icon(
+                                    imageVector = Icons.Filled.Bookmark,
+                                    contentDescription = "已收藏",
+                                    tint = Color(0xFFF57C00)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCollectionDialog = false }) {
+                    Text("关闭")
+                }
+            }
+        )
     }
 
     viewModel.httpClient?.let {

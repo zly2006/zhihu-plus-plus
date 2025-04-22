@@ -31,7 +31,6 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
     var questionId by mutableStateOf(0L)
     var collections = mutableStateListOf<Collection>()
-    var reloadCollections by mutableStateOf(0)
 
     val isFavorited: Boolean
         get() = collections.any { it.is_favorited }
@@ -105,7 +104,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                 }
 
                 if (response.status.isSuccess()) {
-                    reloadCollections++
+                    loadCollections()
                     Toast.makeText(context, if (remove) "取消收藏成功" else "收藏成功", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
@@ -117,7 +116,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
         }
     }
 
-    fun loadCollections(article: Article) {
+    fun loadCollections() {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
