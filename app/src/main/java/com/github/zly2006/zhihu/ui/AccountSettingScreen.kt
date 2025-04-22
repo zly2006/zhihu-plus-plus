@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -129,7 +130,15 @@ fun AccountSettingScreen(
             }
             Button(
                 onClick = {
-                    AccountData.delete(context)
+                    AlertDialog.Builder(context).apply {
+                        setTitle("退出登录")
+                        setMessage("确定要退出登录吗？")
+                        setPositiveButton("确定") { _, _ ->
+                            AccountData.delete(context)
+                            Toast.makeText(context, "已退出登录", Toast.LENGTH_SHORT).show()
+                        }
+                        setNegativeButton("取消") { _, _ -> }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

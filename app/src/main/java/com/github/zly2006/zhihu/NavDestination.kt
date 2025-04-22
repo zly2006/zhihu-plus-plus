@@ -5,19 +5,31 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface NavDestination
+sealed interface NavDestination {
+    val destName: String get() = "${this::class.simpleName}"
+}
 
 @Serializable
-data object Home : NavDestination
+data class Home(
+    val type: Type = Type.Home,
+) : NavDestination {
+    enum class Type {
+        Home,
+        Follow,
+        Hot,
+    }
+    override val destName: String get() = "主页"
+}
 
 @Serializable
-data object Follow : NavDestination
+data object History : NavDestination {
+    override val destName: String get() = "历史"
+}
 
 @Serializable
-data object History : NavDestination
-
-@Serializable
-data object Account : NavDestination
+data object Account : NavDestination {
+    override val destName: String get() = "账号"
+}
 
 @Serializable
 data class Collections(
@@ -126,7 +138,7 @@ fun resolveContent(uri: Uri): NavDestination? {
             val questionId = uri.pathSegments[0].toLong()
             return Question(questionId)
         } else if (uri.host == "feed") {
-            return Home
+            return Home()
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()
             return Article(type = "article", id = articleId)

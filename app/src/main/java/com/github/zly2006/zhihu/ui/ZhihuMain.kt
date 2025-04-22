@@ -1,9 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -12,6 +10,9 @@ import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -33,14 +34,25 @@ import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import kotlin.reflect.KClass
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("RestrictedApi")
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val activity = LocalContext.current as MainActivity
+    val navEntry by navController.currentBackStackEntryAsState()
+    fun changeDestination(destination: NavDestination) {
+        if (!navEntry.hasRoute(destination::class)) {
+            navController.navigate(destination) {
+                popUpTo(Home())
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
-            val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
                 if (isTopLevelDest(navEntry)) {
                     NavigationBar(
@@ -54,15 +66,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                         ) {
                             NavigationBarItem(
                                 navEntry.hasRoute(destination::class),
-                                onClick = {
-                                    if (!navEntry.hasRoute(destination::class)) {
-                                        navController.navigate(destination) {
-                                            popUpTo(Home)
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                },
+                                onClick = { changeDestination(destination) },
                                 label = {
                                     Text(
                                         label, style = TextStyle(
@@ -81,8 +85,7 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                                 }
                             )
                         }
-                        Item(Home, "主页", Icons.Filled.Home)
-                        Item(Follow, "关注", Icons.Filled.PersonAddAlt1)
+                        Item(Home(), "主页", Icons.Filled.Home)
                         Item(History, "历史", Icons.Filled.History)
                         Item(Account, "账号", Icons.Filled.ManageAccounts)
                     }
@@ -90,14 +93,61 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             }
         }
     ) { innerPadding ->
-        val context = LocalContext.current
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),
-            startDestination = Home
+            startDestination = Home()
         ) {
             composable<Home> {
-                HomeScreen(activity::navigate)
+                var homeType by remember { mutableStateOf(it.toRoute<Home>().type) }
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        TextButton(
+                            onClick = {
+                                homeType = Home.Type.Home
+                            }, colors = ButtonDefaults.textButtonColors(
+                                containerColor = if (homeType == Home.Type.Home)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.background,
+                            )
+                        ) {
+                            Text("推荐")
+                        }
+                        TextButton(
+                            onClick = {
+                                homeType = Home.Type.Follow
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = if (homeType == Home.Type.Follow)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.background,
+                            )
+                        ) {
+                            Text("关注")
+                        }
+                        TextButton(
+                            onClick = {
+                                homeType = Home.Type.Hot
+                            },
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = if (homeType == Home.Type.Hot)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.background,
+                            )
+                        ) {
+                            Text("热榜")
+                        }
+                    }
+                    when (homeType) {
+                        Home.Type.Home -> HomeScreen(activity::navigate)
+                        Home.Type.Follow -> FollowScreen(activity::navigate)
+                        Home.Type.Hot -> {
+                        }
+                    }
+                }
             }
             composable<Question> { navEntry ->
                 val question: Question = navEntry.toRoute()
@@ -106,9 +156,6 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             composable<Article> { navEntry ->
                 val article: Article = navEntry.toRoute()
                 ArticleScreen(article, activity::navigate)
-            }
-            composable<Follow> {
-                FollowScreen(activity::navigate)
             }
             composable<History> {
                 HistoryScreen(activity::navigate)
@@ -129,7 +176,6 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
 }
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
-        navEntry.hasRoute(Follow::class) ||
         navEntry.hasRoute(History::class) ||
         navEntry.hasRoute(Account::class)
 
