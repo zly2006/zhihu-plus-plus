@@ -90,7 +90,6 @@ abstract class PaginationViewModel<T : Any>(
                 if ("paging" in json) {
                     lastPaging = AccountData.decodeJson(json["paging"]!!)
                 }
-                isLoading = false
             } else {
                 context.mainExecutor.execute {
                     Toast.makeText(context, "获取数据失败: ${response.status}", Toast.LENGTH_SHORT).show()
@@ -101,6 +100,8 @@ abstract class PaginationViewModel<T : Any>(
             context.mainExecutor.execute {
                 Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        } finally {
+            isLoading = false
         }
     }
 
