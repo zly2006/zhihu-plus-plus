@@ -94,7 +94,15 @@ class MainActivity : ComponentActivity() {
                             }
                         }.create().show()
                     }
-                } else {
+                }
+            }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        if (hasFocus) {
+            if (intent.data != null) {
+                if (intent.data!!.authority != "zhihu-plus.internal") {
                     Log.i("MainActivity", "Intent data: ${intent.data}")
                     val destination = resolveContent(intent.data!!)
                     if (destination != null) {
@@ -108,25 +116,21 @@ class MainActivity : ComponentActivity() {
                         }.create().show()
                     }
                 }
-            }
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        if (hasFocus) {
-            // read clipboard
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = clipboard.primaryClip
-            if (clip != null && clip.itemCount > 0) {
-                val text = clip.getItemAt(0).text
-                if (text != null) {
-                    val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
-                    val destination = regex.findAll(text).firstNotNullOfOrNull {
-                        resolveContent(Uri.parse(it.value))
-                    }
-                    if (destination != null && destination != sharedData.clipboardDestination) {
-                        sharedData.clipboardDestination = destination
-                        navigate(destination, popup = true)
+            } else {
+                // read clipboard
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = clipboard.primaryClip
+                if (clip != null && clip.itemCount > 0) {
+                    val text = clip.getItemAt(0).text
+                    if (text != null) {
+                        val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
+                        val destination = regex.findAll(text).firstNotNullOfOrNull {
+                            resolveContent(Uri.parse(it.value))
+                        }
+                        if (destination != null && destination != sharedData.clipboardDestination) {
+                            sharedData.clipboardDestination = destination
+                            navigate(destination, popup = true)
+                        }
                     }
                 }
             }

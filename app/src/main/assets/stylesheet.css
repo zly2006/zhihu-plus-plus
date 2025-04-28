@@ -29,6 +29,10 @@ img.lazy {
   display: none;
 }
 
+figure {
+  margin: 0;
+}
+
 @media (prefers-color-scheme: dark) {
   color: #fff;
   html {
