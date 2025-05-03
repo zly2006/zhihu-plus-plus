@@ -140,8 +140,8 @@ class MainActivity : ComponentActivity() {
     fun navigate(route: NavDestination, popup: Boolean = false) {
         history.add(route)
         navController.navigate(route) {
-            launchSingleTop = true
             if (popup) {
+                launchSingleTop = true
                 popUpTo(Home) {
                     // clear the back stack and viewModels
                     saveState = true
