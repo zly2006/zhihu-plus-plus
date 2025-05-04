@@ -1,24 +1,32 @@
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.viewmodel
 
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import com.github.zly2006.zhihu.ui.Collection
+import com.github.zly2006.zhihu.ui.CollectionResponse
+import com.github.zly2006.zhihu.ui.Reaction
+import com.github.zly2006.zhihu.ui.VoteUpState
 import io.ktor.client.HttpClient
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.http.*
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlin.math.abs
 
 class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
     var title by mutableStateOf("")

@@ -5,6 +5,7 @@ package com.github.zly2006.zhihu.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,6 +42,7 @@ import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
@@ -273,6 +275,7 @@ fun ArticleScreen(
                             }
                             (context as? MainActivity)?.sharedData?.clipboardDestination = article
                             clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
+                            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                         },
                         contentPadding = PaddingValues(horizontal = 8.dp),
                         colors = ButtonDefaults.buttonColors(
