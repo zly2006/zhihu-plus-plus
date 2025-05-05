@@ -214,11 +214,12 @@ fun ArticleScreen(
                     Button(
                         onClick = { viewModel.toggleVoteUp(context) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (viewModel.voteUpState == VoteUpState.Up) Color(0xFF0D47A1)
-                            else Color(
-                                0xFF40B6F6
-                            ),
-                            contentColor = if (viewModel.voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+                            containerColor =
+                                if (viewModel.voteUpState == VoteUpState.Up) Color(0xFF0D47A1)
+                                else Color(0xFF40B6F6),
+                            contentColor =
+                                if (viewModel.voteUpState == VoteUpState.Up) Color.White
+                                else Color.Black
                         ),
                         contentPadding = PaddingValues(horizontal = 8.dp),
                     ) {
