@@ -106,7 +106,10 @@ class MainActivity : ComponentActivity() {
                     Log.i("MainActivity", "Intent data: ${intent.data}")
                     val destination = resolveContent(intent.data!!)
                     if (destination != null) {
-                        navigate(destination, popup = true)
+                        if (destination != sharedData.clipboardDestination) {
+                            sharedData.clipboardDestination = destination
+                            navigate(destination, popup = true)
+                        }
                     } else {
                         AlertDialog.Builder(this).apply {
                             setTitle("Unsupported URL")
