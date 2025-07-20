@@ -9,7 +9,6 @@ import android.util.Log
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModel
@@ -20,6 +19,7 @@ import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
 
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
             finish()
         }
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdgeCompat()
         history = HistoryStorage(this)
         AccountData.loadData(this)
         webview = WebView(this)

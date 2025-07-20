@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -29,10 +31,15 @@ import kotlinx.serialization.json.Json
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdgeCompat()
 
         setContent {
             val scope = rememberCoroutineScope()
-            Surface(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding(),
+            ) {
                 WebviewComp(
                     onLoad = { webView ->
                         webView.setupUpWebviewClient()
