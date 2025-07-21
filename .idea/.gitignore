@@ -9,3 +9,8 @@
 /dataSources.xml
 /deploymentTargetDropDown.xml
 /deploymentTargetSelector.xml
+discord.xml
+vcs.xml
+misc.xml
+gradle.xml
+runConfigurations.xml
