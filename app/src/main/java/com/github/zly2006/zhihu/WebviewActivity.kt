@@ -5,13 +5,14 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 
 class WebviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,9 +22,13 @@ class WebviewActivity : ComponentActivity() {
             finish()
             return
         }
-        enableEdgeToEdge()
+        enableEdgeToEdgeCompat()
         setContent {
-            Surface(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding(),
+            ) {
                 WebviewComp(
                     onLoad = { webView ->
                         webView.setupUpWebviewClient() // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
