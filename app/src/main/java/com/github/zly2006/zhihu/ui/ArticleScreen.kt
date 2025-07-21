@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -123,11 +124,11 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
-    var previousScrollValue by remember { mutableStateOf(0) }
+    var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
-    var topBarHeight by remember { mutableStateOf(0) }
+    var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
 
@@ -309,6 +310,15 @@ fun ArticleScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
+                    .clickable {
+                        onNavigate(
+                            Person(
+                                id = viewModel.authorId,
+                                urlToken = viewModel.authorUrlToken,
+                                name = viewModel.authorName
+                            )
+                        )
+                    }
             ) {
                 if (viewModel.authorAvatarSrc.isNotEmpty()) {
                     AsyncImage(
@@ -348,6 +358,7 @@ fun ArticleScreen(
 
             if (viewModel.content.isNotEmpty()) {
                 WebviewComp {
+                    @SuppressLint("SetJavaScriptEnabled")
                     it.settings.javaScriptEnabled = true
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",

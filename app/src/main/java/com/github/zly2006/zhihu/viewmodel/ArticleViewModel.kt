@@ -30,6 +30,8 @@ import kotlinx.coroutines.withContext
 
 class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
     var title by mutableStateOf("")
+    var authorId by mutableStateOf("")
+    var authorUrlToken by mutableStateOf("")
     var authorName by mutableStateOf("")
     var authorBio by mutableStateOf("")
     var authorAvatarSrc by mutableStateOf("")
@@ -53,6 +55,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                             if (answer != null) {
                                 title = answer.question.title
                                 authorName = answer.author.name
+                                authorId = answer.author.id
+                                authorUrlToken = answer.author.urlToken
                                 content = answer.content
                                 authorBio = answer.author.headline
                                 authorAvatarSrc = answer.author.avatarUrl
@@ -76,6 +80,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 content = article.content
                                 voteUpCount = article.voteupCount
                                 commentCount = article.commentCount
+                                authorId = article.author.id
+                                authorUrlToken = article.author.urlToken
                                 authorName = article.author.name
                                 authorBio = article.author.headline
                                 authorAvatarSrc = article.author.avatarUrl

@@ -124,6 +124,10 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
                 val content: CollectionContent = it.toRoute()
                 CollectionContentScreen(content.collectionId, activity::navigate)
             }
+            composable<Person> {
+                val person: Person = it.toRoute()
+                PeopleScreen(person, activity::navigate)
+            }
         }
     }
 }

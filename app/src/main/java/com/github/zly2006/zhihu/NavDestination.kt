@@ -83,6 +83,41 @@ data class Question(
     }
 }
 
+@Serializable
+data class Person(
+    /**
+     * 32 hex characters
+     */
+    var id: String,
+    /**
+     * human-readable token, used in URL.
+     */
+    val urlToken: String,
+    val name: String = "loading...",
+): NavDestination {
+    override fun hashCode(): Int {
+        if (id != EMPTY_ID) {
+            // 32 hex characters, likely a user ID
+            return id.hashCode()
+        }
+        return urlToken.hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other is Person) {
+            if (id != EMPTY_ID && other.id != EMPTY_ID) {
+                return other.id == id
+            }
+            return other.urlToken == urlToken
+        }
+        return false
+    }
+
+    companion object {
+        const val EMPTY_ID = "00000000000000000000000000000000"
+    }
+}
+
 fun resolveContent(uri: Uri): NavDestination? {
     if (uri.scheme == "http" || uri.scheme == "https") {
         if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
@@ -108,6 +143,15 @@ fun resolveContent(uri: Uri): NavDestination? {
             ) {
                 val articleId = uri.pathSegments[2].toLong()
                 return Article(type = "article", id = articleId)
+            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "people") {
+                val urlToken = uri.pathSegments[1]
+                if (urlToken.length == 32 && urlToken.all { it in '0'..'9' || it in 'a'..'f' }) {
+                    // 32 hex characters, likely a user ID
+                    return Person(id = urlToken, urlToken = urlToken)
+                } else {
+                    // human-readable token
+                    return Person(id = Person.EMPTY_ID, urlToken = urlToken)
+                }
             }
         } else if (uri.host == "zhuanlan.zhihu.com") {
             if (uri.pathSegments.size == 2
