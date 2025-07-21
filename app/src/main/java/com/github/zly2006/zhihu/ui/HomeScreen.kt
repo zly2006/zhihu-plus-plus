@@ -10,17 +10,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -29,6 +24,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -36,7 +32,6 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import kotlinx.coroutines.delay
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -49,15 +44,24 @@ fun HomeScreen(
     val onlineViewModel: HomeFeedViewModel by context.viewModels()
     val localViewModel: LocalHomeFeedViewModel by context.viewModels()
 
-    // 本地模式状态
-    var isLocalMode by remember { mutableStateOf(false) }
-
-    // 当前使用的ViewModel
-    val viewModel: BaseFeedViewModel = if (isLocalMode) localViewModel else onlineViewModel
-
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
+
+    // 获取当前推荐算法设置
+    val currentRecommendationMode = remember {
+        RecommendationMode.entries.find {
+            it.key == preferences.getString("recommendationMode", RecommendationMode.SERVER.key)
+        } ?: RecommendationMode.SERVER
+    }
+
+    // 根据设置选择对应的ViewModel
+    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
+        RecommendationMode.SERVER -> onlineViewModel
+        RecommendationMode.LOCAL -> localViewModel
+        RecommendationMode.SIMILARITY -> onlineViewModel // 暂时使用在线推荐，因为相似度推荐还未实现
+    }
+
     if (!preferences.getBoolean("developer", false)) {
         AlertDialog.Builder(context).apply {
             setTitle("登录失败")
@@ -69,7 +73,7 @@ fun HomeScreen(
     }
 
     // 初始加载
-    LaunchedEffect(isLocalMode) {
+    LaunchedEffect(currentRecommendationMode) {
         if (!AccountData.data.login) {
             val myIntent = Intent(context, LoginActivity::class.java)
             context.startActivity(myIntent)
@@ -112,16 +116,6 @@ fun HomeScreen(
             } else {
                 Icon(Icons.Default.Refresh, contentDescription = "刷新")
             }
-        }
-
-        DraggableRefreshButton(
-            onClick = {
-                isLocalMode = !isLocalMode
-                Toast.makeText(context, if (isLocalMode) "已切换到本地推荐" else "已切换到在线模式", Toast.LENGTH_SHORT).show()
-            },
-            preferenceName = "toggleMode"
-        ) {
-            Icon(if (isLocalMode) Icons.Default.CloudOff else Icons.Default.Cloud, contentDescription = "切换模式")
         }
     }
 }

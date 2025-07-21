@@ -28,6 +28,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
@@ -36,8 +37,11 @@ import io.ktor.client.request.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import androidx.core.content.edit
+import kotlinx.coroutines.DelicateCoroutinesApi
+import androidx.core.net.toUri
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
@@ -94,9 +98,9 @@ fun AccountSettingScreen(
         }
         var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
         LaunchedEffect(isDeveloper) {
-            preferences.edit()
-                .putBoolean("developer", isDeveloper)
-                .apply()
+            preferences.edit {
+                putBoolean("developer", isDeveloper)
+            }
         }
         Text(
             "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
@@ -247,11 +251,11 @@ fun AccountSettingScreen(
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",
-                description = "允许发送遥测数据到开发者，数据仅供统计使用",
+                description = "允许发送遥测数据给开发者，数据仅供统计使用",
                 checked = allowTelemetry,
                 onCheckedChange = { 
                     allowTelemetry = it
-                    preferences.edit().putBoolean("allowTelemetry", it).apply()
+                    preferences.edit { putBoolean("allowTelemetry", it) }
                 }
             )
             
@@ -262,7 +266,7 @@ fun AccountSettingScreen(
                 checked = useWebview.value,
                 onCheckedChange = {
                     useWebview.value = it
-                    preferences.edit().putBoolean("commentsUseWebview", it).apply()
+                    preferences.edit { putBoolean("commentsUseWebview", it) }
                 }
             )
             
@@ -273,7 +277,7 @@ fun AccountSettingScreen(
                 checked = pinWebview.value,
                 onCheckedChange = {
                     pinWebview.value = it
-                    preferences.edit().putBoolean("commentsPinWebview", it).apply()
+                    preferences.edit { putBoolean("commentsPinWebview", it) }
                 }
             )
             
@@ -284,7 +288,7 @@ fun AccountSettingScreen(
                 checked = useHardwareAcceleration.value,
                 onCheckedChange = {
                     useHardwareAcceleration.value = it
-                    preferences.edit().putBoolean("webviewHardwareAcceleration", it).apply()
+                    preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
                 }
             )
 
@@ -295,9 +299,78 @@ fun AccountSettingScreen(
                 checked = isTitleAutoHide.value,
                 onCheckedChange = {
                     isTitleAutoHide.value = it
-                    preferences.edit().putBoolean("titleAutoHide", it).apply()
+                    preferences.edit { putBoolean("titleAutoHide", it) }
                 }
             )
+
+            Text(
+                "推荐算法设置",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+
+            val currentRecommendationMode = remember {
+                mutableStateOf(
+                    RecommendationMode.entries.find {
+                        it.key == preferences.getString("recommendationMode", RecommendationMode.SERVER.key)
+                    } ?: RecommendationMode.SERVER
+                )
+            }
+
+            var expanded by remember { mutableStateOf(false) }
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = currentRecommendationMode.value.displayName,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text("推荐算法") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(
+                            expanded = expanded
+                        )
+                    },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    RecommendationMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(mode.displayName)
+                                    Text(
+                                        mode.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                currentRecommendationMode.value = mode
+                                preferences.edit {
+                                    putString("recommendationMode", mode.key)
+                                }
+                                expanded = false
+                                Toast.makeText(
+                                    context,
+                                    "已切换到${mode.displayName}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            enabled = mode != RecommendationMode.SIMILARITY // 相似度推荐还未实现
+                        )
+                    }
+                }
+            }
         }
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {
@@ -327,7 +400,10 @@ fun AccountSettingScreen(
         Row {
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zly2006/zhihu-plus-plus"))
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        "https://github.com/zly2006/zhihu-plus-plus".toUri()
+                    )
                     context.startActivity(intent)
                 },
                 modifier = Modifier.weight(1f)
@@ -337,7 +413,10 @@ fun AccountSettingScreen(
             Spacer(modifier = Modifier.width(16.dp))
             Button(
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md"))
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md".toUri()
+                    )
                     context.startActivity(intent)
                 }
             ) {
