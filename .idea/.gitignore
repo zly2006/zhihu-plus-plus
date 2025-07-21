@@ -14,3 +14,5 @@ vcs.xml
 misc.xml
 gradle.xml
 runConfigurations.xml
+compiler.xml
+detekt.xml
