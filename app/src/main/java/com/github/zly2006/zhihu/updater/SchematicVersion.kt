@@ -20,7 +20,6 @@ class SchematicVersion(
         override fun deserialize(decoder: Decoder) = fromString(decoder.decodeString())
         private val REGEX = Regex("""[vV]?(?<components>[\d.]+)(-(?<pre>[\w._-]+))?(\+(?<build>.+))?""")
         fun fromString(version: String): SchematicVersion {
-            version.toShortOrNull()
             val match = REGEX.matchEntire(version) ?: throw IllegalArgumentException("Invalid version string")
             val components = match.groups["components"]!!.value.split(".").map { it.toInt() }
             require(components.isNotEmpty()) { "Version must have at least one component" }

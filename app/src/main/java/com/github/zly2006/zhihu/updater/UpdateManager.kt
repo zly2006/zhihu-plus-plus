@@ -77,11 +77,15 @@ object UpdateManager {
                             }
                         }
                     }.body<JsonObject>()
-                    val nightlyVersion = nightlyResponse["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
+                    val nightlyVersion = nightlyResponse["tag_name"]?.jsonPrimitive?.content
 
                     // 如果nightly版本比正式版本新，则使用nightly版本
-                    if (nightlyVersion != null && (latestVersion == null || nightlyVersion > latestVersion)) {
-                        latestVersion = nightlyVersion
+                    if (nightlyVersion == "nightly") {
+                        latestVersion = SchematicVersion(
+                            allComponents = listOf(999, 0, 0),
+                            preRelease = "nightly",
+                            build = ""
+                        )
                         isNightly = true
                     }
                 } catch (e: Exception) {
