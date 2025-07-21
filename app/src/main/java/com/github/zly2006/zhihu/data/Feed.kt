@@ -49,7 +49,7 @@ sealed interface Feed {
         val thanks_count: Int = -1,
         val comment_count: Int = -1,
         val is_copyable: Boolean = false,
-        val question: Question,
+        val question: QuestionTarget,
         val thumbnail: String? = null,
         override val excerpt: String? = null,
         val reshipment_settings: String = "",
@@ -166,7 +166,7 @@ sealed interface Feed {
     @Serializable
     @SerialName("question")
     data class QuestionTarget(
-        val id: String,
+        val id: Long,
         override val title: String,
         val url: String,
         val type: String,
@@ -290,8 +290,7 @@ data class CommonFeed(
     val promotion_extra: String? = null,
     val cursor: String = "",
     val action_text: String? = null,
-) : Feed {
-}
+) : Feed
 
 @Serializable
 data class Person(

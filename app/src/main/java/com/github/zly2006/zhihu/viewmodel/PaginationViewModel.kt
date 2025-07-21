@@ -80,6 +80,7 @@ abstract class PaginationViewModel<T : Any>(
 
             if (response.status == HttpStatusCode.Companion.OK) {
                 val json = response.body<JsonObject>()
+                @Suppress("UNCHECKED_CAST")
                 processResponse(
                     AccountData.json.decodeFromJsonElement(
                         ListSerializer(serializer(dataType) as KSerializer<T>),

@@ -52,10 +52,6 @@ abstract class BaseCommentViewModel(
         viewModelScope.launch {
             try {
                 val url = initialUrl
-                if (url == null) {
-                    errorMessage = "不支持在此内容下评论"
-                    return@launch
-                }
 
                 val response = httpClient.post(url) {
                     signFetchRequest(context)

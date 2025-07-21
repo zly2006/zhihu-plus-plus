@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlin.math.roundToInt
+import androidx.core.content.edit
 
 @Composable
 fun DraggableRefreshButton(
@@ -41,8 +42,8 @@ fun DraggableRefreshButton(
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
 
-    var offsetX by remember { mutableStateOf(preferences.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
-    var offsetY by remember { mutableStateOf(preferences.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
+    var offsetX by remember { mutableFloatStateOf(preferences.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
+    var offsetY by remember { mutableFloatStateOf(preferences.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
 
     fun adjustFabPosition() {
@@ -81,17 +82,12 @@ fun DraggableRefreshButton(
                             @Suppress("DEPRECATION")
                             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
                         }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(
-                                VibrationEffect.createOneShot(
-                                    50,
-                                    VibrationEffect.DEFAULT_AMPLITUDE
-                                )
+                        vibrator.vibrate(
+                            VibrationEffect.createOneShot(
+                                50,
+                                VibrationEffect.DEFAULT_AMPLITUDE
                             )
-                        } else {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(50)
-                        }
+                        )
                     },
                     onDragEnd = {
                         pressing = false
@@ -102,10 +98,10 @@ fun DraggableRefreshButton(
                                 if (offsetX < screenWidth / 2) 0f
                                 else screenWidth - 56.dp.toPx()
                         }
-                        preferences.edit()
-                            .putFloat("$preferenceName-x", offsetX)
-                            .putFloat("$preferenceName-y", offsetY)
-                            .apply()
+                        preferences.edit {
+                            putFloat("$preferenceName-x", offsetX)
+                            putFloat("$preferenceName-y", offsetY)
+                        }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()

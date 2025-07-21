@@ -90,7 +90,6 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
             }
         }
     ) { innerPadding ->
-        val context = LocalContext.current
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),

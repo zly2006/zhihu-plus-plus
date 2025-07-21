@@ -47,9 +47,9 @@ import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val HMS = SimpleDateFormat("HH:mm:ss")
-private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss")
-val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
+private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
+val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,7 +164,7 @@ fun CommentScreen(
                                 onChildCommentClick: (CommentItem) -> Unit
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
-                                var likeCount by remember { mutableStateOf(commentItem.item.likeCount) }
+                                var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
                                 var isLikeLoading by remember { mutableStateOf(false) }
                                 val replyingTo = if (!commentItem.item.replyCommentId.isNullOrEmpty()) {
                                     viewModel.getCommentById(commentItem.item.replyCommentId)
@@ -353,7 +353,7 @@ private fun CommentItem(
                     LocalPinnableContainer.current?.pin()
                 }
                 if (useWebview) {
-                    WebviewComp() {
+                    WebviewComp {
                         it.isVerticalScrollBarEnabled = false
                         it.isHorizontalScrollBarEnabled = false
                         it.loadZhihu(

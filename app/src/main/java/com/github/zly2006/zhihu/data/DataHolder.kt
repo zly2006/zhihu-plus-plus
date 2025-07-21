@@ -13,6 +13,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -656,6 +657,7 @@ object DataHolder {
         userType = user_type
     )
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
             try {
@@ -745,6 +747,7 @@ object DataHolder {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun getArticleCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
         GlobalScope.launch {
             try {

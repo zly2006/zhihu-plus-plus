@@ -54,7 +54,7 @@ object UpdateManager {
             val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
             val checkNightly = shouldCheckNightly(context)
 
-            var latestVersion: SchematicVersion? = null
+            var latestVersion: SchematicVersion?
             var isNightly = false
 
             // 检查正式版本

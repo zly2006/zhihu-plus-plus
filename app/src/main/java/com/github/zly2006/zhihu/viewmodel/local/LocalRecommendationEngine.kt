@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.viewmodel.local
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.random.Random
 
 class LocalRecommendationEngine(private val context: Context) {
     private val database by lazy { LocalContentDatabase.getDatabase(context) }

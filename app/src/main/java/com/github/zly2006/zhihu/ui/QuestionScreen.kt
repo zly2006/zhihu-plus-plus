@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -45,10 +46,10 @@ fun QuestionScreen(
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
-    var answerCount by remember { mutableStateOf(0) }
-    var visitCount by remember { mutableStateOf(0) }
-    var commentCount by remember { mutableStateOf(0) }
-    var followerCount by remember { mutableStateOf(0) }
+    var answerCount by remember { mutableIntStateOf(0) }
+    var visitCount by remember { mutableIntStateOf(0) }
+    var commentCount by remember { mutableIntStateOf(0) }
+    var followerCount by remember { mutableIntStateOf(0) }
     var title by remember { mutableStateOf(question.title) }
     var showComments by remember { mutableStateOf(false) }
 
@@ -111,7 +112,7 @@ fun QuestionScreen(
                 item(1) {
                     val handle = LocalPinnableContainer.current?.pin()
                     if (questionContent.isNotEmpty()) {
-                        WebviewComp() {
+                        WebviewComp {
                             it.loadZhihu(
                                 "https://www.zhihu.com/question/${question.questionId}",
                                 Jsoup.parse(questionContent)
@@ -130,7 +131,7 @@ fun QuestionScreen(
                             onClick = {
                                 try {
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("https://www.zhihu.com/question/${question.questionId}/log")
+                                        data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
                                         setClass(context, WebviewActivity::class.java)
                                     }
                                     context.startActivity(intent)

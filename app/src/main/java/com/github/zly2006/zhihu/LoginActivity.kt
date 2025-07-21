@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.webkit.CookieManager
@@ -43,6 +44,7 @@ class LoginActivity : ComponentActivity() {
                 WebviewComp(
                     onLoad = { webView ->
                         webView.setupUpWebviewClient()
+                        @SuppressLint("SetJavaScriptEnabled")
                         webView.settings.javaScriptEnabled = true
                         CookieManager.getInstance().removeAllCookies { }
                         webView.webViewClient = object : WebViewClient() {

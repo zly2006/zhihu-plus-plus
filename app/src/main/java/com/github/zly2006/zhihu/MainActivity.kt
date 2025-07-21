@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
+import androidx.core.net.toUri
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
                     if (text != null) {
                         val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
                         val destination = regex.findAll(text).firstNotNullOfOrNull {
-                            resolveContent(Uri.parse(it.value))
+                            resolveContent(it.value.toUri())
                         }
                         if (destination != null && destination != sharedData.clipboardDestination) {
                             sharedData.clipboardDestination = destination

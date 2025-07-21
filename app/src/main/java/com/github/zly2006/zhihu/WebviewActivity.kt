@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -33,6 +34,7 @@ class WebviewActivity : ComponentActivity() {
                     onLoad = { webView ->
                         webView.setupUpWebviewClient() // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
                         setupCookies(webView)
+                        @SuppressLint("SetJavaScriptEnabled")
                         webView.settings.javaScriptEnabled = true
                         webView.loadUrl(url)
                     }

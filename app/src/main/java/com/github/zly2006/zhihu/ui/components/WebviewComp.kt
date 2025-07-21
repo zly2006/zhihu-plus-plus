@@ -41,6 +41,10 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.nodes.Document
+import androidx.core.net.toUri
+import androidx.core.graphics.drawable.toDrawable
+import io.ktor.client.statement.readRawBytes
+import kotlinx.coroutines.DelicateCoroutinesApi
 
 
 private class CustomWebView : WebView {
@@ -51,6 +55,7 @@ private class CustomWebView : WebView {
     var document: Document? = null
 }
 
+@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
@@ -102,12 +107,12 @@ fun WebviewComp(
                                                             }
                                                         }
                                                 }
-                                                setImageURI(Uri.parse(url))
+                                                setImageURI(url.toUri())
                                                 setBackgroundColor(Color.BLACK)
                                                 setOnClickListener { dismiss() }
                                             }
                                         )
-                                        window?.setBackgroundDrawable(ColorDrawable(Color.BLACK))
+                                        window?.setBackgroundDrawable(Color.BLACK.toDrawable())
                                         setCanceledOnTouchOutside(true)
                                     }
 
@@ -126,15 +131,15 @@ fun WebviewComp(
                                 CustomTabsIntent.Builder()
                                     .setToolbarColor(0xff66CCFF.toInt())
                                     .build()
-                                    .launchUrl(context, Uri.parse(url))
+                                    .launchUrl(context, url.toUri())
                                 true
                             }
                             menu.add("保存图片").setOnMenuItemClickListener {
                                 coroutineScope.launch {
                                     try {
                                         val response = httpClient.get(url)
-                                        val bytes = response.readBytes()
-                                        val fileName = Uri.parse(url).lastPathSegment ?: "downloaded_image.jpg"
+                                        val bytes = response.readRawBytes()
+                                        val fileName = url.toUri().lastPathSegment ?: "downloaded_image.jpg"
 
                                         val contentValues = ContentValues().apply {
                                             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
@@ -185,7 +190,6 @@ fun WebviewComp(
                 }
             }
         },
-        onRelease = WebView::destroy,
         modifier = modifier
     )
 }
@@ -241,7 +245,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
             if (request.url.host == "link.zhihu.com") {
                 Url(request.url.toString()).parameters["target"]?.let {
                     val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt()).build()
-                    intent.launchUrl(context, Uri.parse(it))
+                    intent.launchUrl(context, it.toUri())
                     return true
                 }
             } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {

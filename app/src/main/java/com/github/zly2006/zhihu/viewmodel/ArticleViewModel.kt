@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -32,10 +34,10 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var authorBio by mutableStateOf("")
     var authorAvatarSrc by mutableStateOf("")
     var content by mutableStateOf("")
-    var voteUpCount by mutableStateOf(0)
-    var commentCount by mutableStateOf(0)
+    var voteUpCount by mutableIntStateOf(0)
+    var commentCount by mutableIntStateOf(0)
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
-    var questionId by mutableStateOf(0L)
+    var questionId by mutableLongStateOf(0L)
     var collections = mutableStateListOf<Collection>()
 
     val isFavorited: Boolean
