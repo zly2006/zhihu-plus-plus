@@ -49,7 +49,7 @@ fun <T> PaginatedList(
         }
     }
 
-    LaunchedEffect(shouldLoadMore) {
+    LaunchedEffect(shouldLoadMore, items.size) {
         if (shouldLoadMore && items.isNotEmpty()) {
             onLoadMore()
         }

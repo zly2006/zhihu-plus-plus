@@ -10,20 +10,16 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.Reaction
 import com.github.zly2006.zhihu.ui.VoteUpState
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.put
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import io.ktor.http.isSuccess
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,6 +64,18 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                     -1 -> VoteUpState.Down
                                     else -> VoteUpState.Neutral
                                 }
+
+                                (context as? MainActivity)?.postHistory(
+                                    Article(
+                                        id = answer.id,
+                                        type = "answer",
+                                        title = answer.question.title,
+                                        authorName = answer.author.name,
+                                        authorBio = answer.author.headline,
+                                        avatarSrc = answer.author.avatarUrl,
+                                        excerpt = answer.excerpt
+                                    )
+                                )
                             } else {
                                 content = "<h1>回答不存在</h1>"
                                 Log.e("ArticleViewModel", "Answer not found")
@@ -90,6 +98,18 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                     -1 -> VoteUpState.Down
                                     else -> VoteUpState.Neutral
                                 }
+
+                                (context as? MainActivity)?.postHistory(
+                                    Article(
+                                        id = article.id,
+                                        type = "answer",
+                                        title = article.title,
+                                        authorName = article.author.name,
+                                        authorBio = article.author.headline,
+                                        avatarSrc = article.author.avatarUrl,
+                                        excerpt = article.excerpt
+                                    )
+                                )
                             } else {
                                 content = "<h1>文章不存在</h1>"
                                 Log.e("ArticleViewModel", "Article not found")
