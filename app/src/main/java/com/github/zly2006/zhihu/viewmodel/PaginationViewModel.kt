@@ -82,7 +82,7 @@ abstract class PaginationViewModel<T : Any>(
                 val json = response.body<JsonObject>()
                 processResponse(
                     AccountData.json.decodeFromJsonElement(
-                        ListSerializer<T>(serializer(dataType) as KSerializer<T>),
+                        ListSerializer(serializer(dataType) as KSerializer<T>),
                         json["data"]!!
                     ),
                     json["data"]!!.jsonArray

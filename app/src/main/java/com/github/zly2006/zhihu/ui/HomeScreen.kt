@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
@@ -10,14 +9,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -31,8 +34,9 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import kotlinx.coroutines.delay
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -42,7 +46,15 @@ fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current as MainActivity
-    val viewModel: HomeFeedViewModel by context.viewModels()
+    val onlineViewModel: HomeFeedViewModel by context.viewModels()
+    val localViewModel: LocalHomeFeedViewModel by context.viewModels()
+
+    // 本地模式状态
+    var isLocalMode by remember { mutableStateOf(false) }
+
+    // 当前使用的ViewModel
+    val viewModel: BaseFeedViewModel = if (isLocalMode) localViewModel else onlineViewModel
+
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -57,7 +69,7 @@ fun HomeScreen(
     }
 
     // 初始加载
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isLocalMode) {
         if (!AccountData.data.login) {
             val myIntent = Intent(context, LoginActivity::class.java)
             context.startActivity(myIntent)
@@ -104,19 +116,12 @@ fun HomeScreen(
 
         DraggableRefreshButton(
             onClick = {
-                val data = Json.encodeToString(viewModel.debugData)
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText(
-                    "data",
-                    data
-                )
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                isLocalMode = !isLocalMode
+                Toast.makeText(context, if (isLocalMode) "已切换到本地推荐" else "已切换到在线模式", Toast.LENGTH_SHORT).show()
             },
-            preferenceName = "copyAll"
+            preferenceName = "toggleMode"
         ) {
-            Icon(Icons.Default.CopyAll, contentDescription = "复制")
+            Icon(if (isLocalMode) Icons.Default.CloudOff else Icons.Default.Cloud, contentDescription = "切换模式")
         }
     }
 }
-
