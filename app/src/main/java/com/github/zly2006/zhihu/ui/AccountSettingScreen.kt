@@ -5,7 +5,6 @@ import android.content.Intent
 import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -15,6 +14,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,8 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
@@ -34,12 +40,10 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import androidx.core.content.edit
-import kotlinx.coroutines.DelicateCoroutinesApi
-import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
@@ -372,13 +376,63 @@ fun AccountSettingScreen(
                 }
             }
         }
+        // GitHub Token 设置
+        Text(
+            "GitHub 设置",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 16.dp)
+        )
+
+        var githubToken by remember {
+            mutableStateOf(preferences.getString("githubToken", "") ?: "")
+        }
+        var showGithubToken by remember { mutableStateOf(false) }
+
+        OutlinedTextField(
+            value = githubToken,
+            onValueChange = {
+                githubToken = it
+                preferences.edit { putString("githubToken", it) }
+            },
+            label = { Text("GitHub Personal Access Token") },
+            placeholder = { Text("输入你的 GitHub Token (可选)") },
+            supportingText = {
+                Text(
+                    "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问。",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { showGithubToken = !showGithubToken }) {
+                    Icon(
+                        imageVector = if (showGithubToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (showGithubToken) "隐藏" else "显示"
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        val checkNightlyUpdates = remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
+        SwitchSettingItem(
+            title = "检查 Nightly 版本更新",
+            description = "检查每日构建版本，包含最新功能但可能不够稳定。关闭则只检查正式发布版本。",
+            checked = checkNightlyUpdates.value,
+            onCheckedChange = {
+                checkNightlyUpdates.value = it
+                preferences.edit { putBoolean("checkNightlyUpdates", it) }
+            }
+        )
+
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {
             val updateState = updateState
             if (updateState is UpdateState.UpdateAvailable) {
+                val versionType = if (updateState.isNightly) "Nightly版本" else "正式版本"
                 Toast.makeText(
                     context,
-                    "发现新版本 ${updateState.version}",
+                    "发现新$versionType ${updateState.version}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
