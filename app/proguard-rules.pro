@@ -70,4 +70,3 @@
 -dontwarn javax.annotation.ParametersAreNonnullByDefault
 -dontwarn org.conscrypt.Conscrypt
 -dontwarn org.slf4j.impl.StaticLoggerBinder
--dontwarn io.ktor.utils.io.jvm.nio.WritingKt

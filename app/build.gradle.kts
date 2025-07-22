@@ -97,7 +97,7 @@ dependencies {
     implementation("androidx.browser:browser:1.8.0")
 
     implementation("io.coil-kt.coil3:coil-compose:3.0.0")
-    implementation("io.coil-kt.coil3:coil-network-ktor2:3.0.0")
+    implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.2.0")
 
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
