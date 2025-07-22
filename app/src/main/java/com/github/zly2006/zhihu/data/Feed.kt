@@ -113,9 +113,18 @@ sealed interface Feed {
         val comment_count: Int,
         override val title: String,
         override val excerpt: String = "",
-        val content: String,
-        val created: Long,
-        val updated: Long,
+        /**
+         * 老API不支持
+         */
+        val content: String = "",
+        /**
+         * 老API不支持
+         */
+        val created: Long = 0,
+        /**
+         * 老API不支持
+         */
+        val updated: Long = 0,
         val is_labeled: Boolean = false,
         val visited_count: Int = 0,
         val favorite_count: Int = 0,
@@ -150,7 +159,7 @@ sealed interface Feed {
         override val author: Person,
         val comment_count: Int,
         val content: JsonArray,
-        val favorite_count: Int,
+        val favorite_count: Int = 0,
     ) : Target {
         override fun filterReason(): String? {
             return null
@@ -170,12 +179,21 @@ sealed interface Feed {
         override val title: String,
         val url: String,
         val type: String,
-        val question_type: String,
-        val created: Long,
+        /**
+         * 不存在于老API
+         */
+        val question_type: String = "",
+        /**
+         * 不存在于老API
+         */
+        val created: Long = 0,
         val answer_count: Int = 0,
         val comment_count: Int = 0,
         val follower_count: Int = 0,
-        val detail: String,
+        /**
+         * 不存在于老API
+         */
+        val detail: String = "",
         override val excerpt: String = "",
         val bound_topic_ids: List<Long> = emptyList(),
         val relationship: Relationship? = null,
@@ -217,6 +235,7 @@ val Feed.target: Feed.Target?
     get() = when (this) {
         is CommonFeed -> target
         is QuestionFeedCard -> target
+        is MomentsFeed -> target
         else -> null
     }
 
@@ -270,6 +289,18 @@ data class CommonFeed(
     val cursor: String = "",
     val action_text: String? = null,
 ) : Feed
+
+@Serializable
+@SerialName("moments_feed")
+data class MomentsFeed(
+    val id: String,
+//    val interaction: Interaction? = null,
+    val moment_desc: String = "",
+    val score: Double = 0.0,
+    val target: Feed.Target,
+    val target_type: String,
+) : Feed {
+}
 
 @Serializable
 data class Person(

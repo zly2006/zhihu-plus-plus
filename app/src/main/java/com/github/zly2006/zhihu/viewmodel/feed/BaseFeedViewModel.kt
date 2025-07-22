@@ -33,49 +33,75 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     open fun createDisplayItem(feed: Feed): FeedDisplayItem {
-        if (feed is AdvertisementFeed) {
-            return FeedDisplayItem(
+        return when (feed) {
+            is CommonFeed -> {
+                val filterReason = feed.target?.filterReason()
+
+                if (filterReason != null) {
+                    FeedDisplayItem(
+                        title = "已屏蔽",
+                        summary = filterReason,
+                        details = feed.target.detailsText,
+                        feed = feed,
+                        isFiltered = true
+                    )
+                } else {
+                    when (feed.target) {
+                        is Feed.AnswerTarget,
+                        is Feed.ArticleTarget,
+                        is Feed.QuestionTarget -> {
+                            FeedDisplayItem(
+                                title = feed.target.title,
+                                summary = feed.target.excerpt,
+                                details = listOfNotNull(feed.target.detailsText, feed.action_text)
+                                    .joinToString(" · "),
+                                feed = feed
+                            )
+                        }
+
+                        else -> {
+                            FeedDisplayItem(
+                                title = feed.target?.javaClass?.simpleName ?: "广告",
+                                summary = "Not Implemented",
+                                details = feed.target?.detailsText ?: "广告",
+                                feed = feed
+                            )
+                        }
+                    }
+                }
+            }
+            is AdvertisementFeed -> FeedDisplayItem(
                 title = "已屏蔽",
                 summary = feed.action_text,
                 details = "广告",
                 feed = null,
                 isFiltered = true
             )
-        }
-        feed as CommonFeed
-        val filterReason = feed.target?.filterReason()
+            is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
+            is MomentsFeed -> {
+                when (feed.target) {
+                    is Feed.AnswerTarget,
+                    is Feed.ArticleTarget,
+                    is Feed.QuestionTarget -> {
+                        FeedDisplayItem(
+                            title = feed.target.title,
+                            summary = feed.target.excerpt,
+                            details = feed.target.detailsText,
+                            feed = feed
+                        )
+                    }
 
-        return if (filterReason != null) {
-            FeedDisplayItem(
-                title = "已屏蔽",
-                summary = filterReason,
-                details = feed.target.detailsText,
-                feed = feed,
-                isFiltered = true
-            )
-        } else {
-            when (feed.target) {
-                is Feed.AnswerTarget,
-                is Feed.ArticleTarget,
-                is Feed.QuestionTarget -> {
-                    FeedDisplayItem(
-                        title = feed.target.title,
-                        summary = feed.target.excerpt,
-                        details = listOfNotNull(feed.target.detailsText, feed.action_text)
-                            .joinToString(" · "),
-                        feed = feed
-                    )
-                }
-
-                else -> {
-                    FeedDisplayItem(
-                        title = feed.target?.javaClass?.simpleName ?: "广告",
-                        summary = "Not Implemented",
-                        details = feed.target?.detailsText ?: "广告",
-                        feed = feed
-                    )
+                    else -> {
+                        FeedDisplayItem(
+                            title = feed.target?.javaClass?.simpleName ?: "广告",
+                            summary = "Not Implemented",
+                            details = feed.target?.detailsText ?: "广告",
+                            feed = feed
+                        )
+                    }
                 }
             }
+            is QuestionFeedCard -> TODO()
         }
     }
 

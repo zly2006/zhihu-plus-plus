@@ -24,6 +24,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.serializer
 import kotlin.reflect.KType
 
@@ -80,13 +82,28 @@ abstract class PaginationViewModel<T : Any>(
 
             if (response.status == HttpStatusCode.Companion.OK) {
                 val json = response.body<JsonObject>()
-                @Suppress("UNCHECKED_CAST")
+                val jsonArray = json["data"]!!.jsonArray
                 processResponse(
-                    AccountData.json.decodeFromJsonElement(
-                        ListSerializer(serializer(dataType) as KSerializer<T>),
-                        json["data"]!!
-                    ),
-                    json["data"]!!.jsonArray
+                    jsonArray.mapNotNull {
+                        if ("type" in it.jsonObject && it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
+                                "invited_answer", // invalid
+                                "tab_list", // invalid
+                                "feed_item_index_group" // todo
+                        )) {
+                            return@mapNotNull null
+                        }
+                        try {
+                            @Suppress("UNCHECKED_CAST")
+                            AccountData.json.decodeFromJsonElement(
+                                serializer(dataType) as KSerializer<T>,
+                                it
+                            )
+                        } catch (e: Exception) {
+                            Log.e(this::class.simpleName, "Failed to decode item: $it", e)
+                            null
+                        }
+                    },
+                    jsonArray
                 )
                 if ("paging" in json) {
                     lastPaging = AccountData.decodeJson(json["paging"]!!)

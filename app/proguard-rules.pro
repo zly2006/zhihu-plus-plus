@@ -61,6 +61,8 @@
     private ** descriptor;
 }
 
+-keepnames class ** implements com.github.zly2006.zhihu.data.Feed$Target
+
 ##
 ## Generated
 ##
