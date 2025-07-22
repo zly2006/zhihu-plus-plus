@@ -143,12 +143,7 @@ class LoginActivity : ComponentActivity() {
                                                                 }
                                                             }
                                                         }
-                                                        startActivity(
-                                                            Intent(
-                                                                this@LoginActivity,
-                                                                MainActivity::class.java
-                                                            )
-                                                        )
+                                                        this@LoginActivity.finish()
                                                     }
                                                 }
                                             }

@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.NavDestination
@@ -26,7 +27,9 @@ fun CommentScreenComponent(
     content: NavDestination
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
-    val commentTopPadding = 100.dp
+    val commentTopPadding =
+        if (LocalConfiguration.current.screenHeightDp > 500) 100.dp
+        else 0.dp
     val commentPaddingPixels = LocalDensity.current.run {
         commentTopPadding.toPx()
     }

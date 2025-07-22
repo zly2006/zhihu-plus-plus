@@ -226,9 +226,6 @@ fun AccountSettingScreen(
                 ) {
                     Text("抛出异常测试")
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    Text("字体名称：" + Typeface.DEFAULT.systemFontFamilyName)
-                }
                 Text("当前padding: ${DisplayPadding(innerPadding)}")
                 Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
                 Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
@@ -304,6 +301,17 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     isTitleAutoHide.value = it
                     preferences.edit { putBoolean("titleAutoHide", it) }
+                }
+            )
+
+            val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
+            SwitchSettingItem(
+                title = "显示跳转下一个回答按钮",
+                description = "在回答页面显示可拖拽的跳转按钮，快速跳转到下一个回答",
+                checked = buttonSkipAnswer.value,
+                onCheckedChange = {
+                    buttonSkipAnswer.value = it
+                    preferences.edit { putBoolean("buttonSkipAnswer", it) }
                 }
             )
 

@@ -16,10 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,15 +33,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import kotlin.math.abs
@@ -124,6 +124,7 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
+    val buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -377,6 +378,25 @@ fun ArticleScreen(
                         }
                     )
                 }
+            }
+        }
+    }
+
+    if (article.type == "answer" && buttonSkipAnswer) {
+        var navigatingToNextAnswer by remember { mutableStateOf(false) }
+        DraggableRefreshButton(
+            onClick = {
+                navigatingToNextAnswer = true
+                viewModel.viewModelScope.launch {
+                    val dest = viewModel.nextAnswerFuture.await()
+                    onNavigate(dest)
+                }
+            },
+        ) {
+            if (navigatingToNextAnswer) {
+                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+            } else {
+                Icon(Icons.Default.SkipNext, contentDescription = "刷新")
             }
         }
     }

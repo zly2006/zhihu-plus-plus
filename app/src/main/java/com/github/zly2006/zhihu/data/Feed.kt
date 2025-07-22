@@ -300,6 +300,18 @@ data class MomentsFeed(
     val target: Feed.Target,
     val target_type: String,
 ) : Feed {
+    @Serializable
+    class FeedSource(
+        val action_text: String,
+        val actor: FeedSourceActor,
+    )
+
+    @Serializable
+    class FeedSourceActor(
+        val name: String,
+        val id: String,
+        val url_token: String,
+    )
 }
 
 @Serializable

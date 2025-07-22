@@ -3,17 +3,23 @@ package com.github.zly2006.zhihu.viewmodel
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.Reaction
@@ -22,9 +28,18 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.random.Random
 
 class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
     var title by mutableStateOf("")
@@ -39,10 +54,19 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
     var questionId by mutableLongStateOf(0L)
     var collections = mutableStateListOf<Collection>()
+    var nextAnswerFuture: Deferred<Article> = CompletableDeferred()
 
     val isFavorited: Boolean
         get() = collections.any { it.is_favorited }
 
+    // todo: replace this with sqlite
+    class ArticlesSharedData : ViewModel() {
+        var viewingQuestionId: Long = 0L
+        var nextUrl: String = ""
+        var destinations = mutableListOf<Article>()
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
     fun loadArticle(context: Context) {
         if (httpClient == null) return
         viewModelScope.launch {
@@ -78,6 +102,32 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                         excerpt = answer.excerpt
                                     )
                                 )
+                                val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
+                                nextAnswerFuture = GlobalScope.async {
+                                    if (sharedData.destinations.isEmpty()) {
+                                        val url =
+                                            if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
+                                                sharedData.nextUrl
+                                            } else {
+                                                "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
+                                            }
+                                        val response =
+                                            httpClient.get(url) {
+                                                signFetchRequest(context)
+                                            }
+                                        val jojo = response.body<JsonObject>()
+                                        val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
+                                        sharedData.nextUrl =
+                                            jojo["paging"]?.jsonObject?.get("next")?.jsonPrimitive?.content ?: ""
+                                        sharedData.viewingQuestionId = questionId
+                                        sharedData.destinations = data.mapNotNull {
+                                            it.target?.navDestination as? Article
+                                        }.filter {
+                                            it != article // filter out the current article
+                                        }.toMutableList()
+                                    }
+                                    sharedData.destinations.removeAt(0)
+                                }
                             } else {
                                 content = "<h1>回答不存在</h1>"
                                 Log.e("ArticleViewModel", "Answer not found")

@@ -698,6 +698,7 @@ object DataHolder {
                         )
                     )
                 }
+                answers[id]?.also { it.count++ }?.value?.let(callback)
 //                val response = httpClient.get("https://www.zhihu.com/api/v4/answers/$id") {
 //                    signFetchRequest(activity)
 //                }.body<JsonObject>()
