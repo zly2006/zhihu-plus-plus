@@ -22,17 +22,18 @@ fun FeedPullToRefresh(
     val context = LocalContext.current
     val state = rememberPullToRefreshState()
     PullToRefreshBox(
-        isRefreshing = viewModel.isLoading && viewModel.displayItems.isEmpty(),
-        onRefresh = { viewModel.refresh(context) },
+        isRefreshing = viewModel.isPullToRefresh,
+        onRefresh = { viewModel.pullToRefresh(context) },
         indicator = {
             PullToRefreshDefaults.Indicator(
                 modifier = Modifier.Companion.align(Alignment.Companion.TopCenter),
-                isRefreshing = viewModel.isLoading && viewModel.displayItems.isEmpty(),
+                isRefreshing = viewModel.isPullToRefresh,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 state = state
             )
         },
+        state = state,
         modifier = Modifier.Companion.fillMaxSize(),
         content = content
     )

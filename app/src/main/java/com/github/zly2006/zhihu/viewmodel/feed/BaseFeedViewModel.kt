@@ -1,7 +1,10 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.*
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
@@ -10,6 +13,8 @@ import kotlin.reflect.typeOf
 
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     val displayItems = mutableStateListOf<FeedDisplayItem>()
+    var isPullToRefresh by mutableStateOf(false)
+        private set
 
     data class FeedDisplayItem(
         val title: String,
@@ -22,6 +27,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     )
 
     override fun processResponse(data: List<Feed>, rawData: JsonArray) {
+        isPullToRefresh = false
         super.processResponse(data, rawData)
         displayItems.addAll(data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
     }
@@ -30,6 +36,13 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         if (isLoading) return
         displayItems.clear()
         super.refresh(context)
+    }
+
+    fun pullToRefresh(context: Context) {
+        isPullToRefresh = true
+        displayItems.clear()
+        if (isLoading) return
+        refresh(context)
     }
 
     open fun createDisplayItem(feed: Feed): FeedDisplayItem {
