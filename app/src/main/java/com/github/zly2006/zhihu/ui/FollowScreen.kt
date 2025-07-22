@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -21,25 +23,29 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 
+class FollowScreenData: ViewModel() {
+    var selectedTabIndex by mutableIntStateOf(0)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FollowScreen(
     onNavigate: (NavDestination) -> Unit
 ) {
-    var state by remember { mutableIntStateOf(0) }
+    val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("动态", "推荐")
     Column {
-        PrimaryTabRow(selectedTabIndex = state) {
+        PrimaryTabRow(selectedTabIndex = viewModel.selectedTabIndex) {
             titles.forEachIndexed { index, title ->
                 Tab(
-                    selected = state == index,
-                    onClick = { state = index },
+                    selected = viewModel.selectedTabIndex == index,
+                    onClick = { viewModel.selectedTabIndex = index },
                     text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 )
             }
         }
 
-        if (state == 0) {
+        if (viewModel.selectedTabIndex == 0) {
             FollowDynamicScreen(onNavigate)
         } else {
             FollowRecommendScreen(onNavigate)
