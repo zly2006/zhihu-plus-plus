@@ -1,14 +1,12 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 
@@ -25,7 +23,7 @@ fun HistoryScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    FeedPullToRefresh(viewModel) {
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { /* 不需要loadMore */ },

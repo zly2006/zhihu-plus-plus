@@ -6,7 +6,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -102,96 +101,99 @@ fun QuestionScreen(
             }
         }
     ) { innerPadding ->
-        PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            isEnd = { viewModel.isEnd },
-            modifier = Modifier.padding(innerPadding),
-            footer = ProgressIndicatorFooter,
-            topContent = {
-                item(1) {
-                    val handle = LocalPinnableContainer.current?.pin()
-                    if (questionContent.isNotEmpty()) {
-                        WebviewComp {
-                            it.loadZhihu(
-                                "https://www.zhihu.com/question/${question.questionId}",
-                                Jsoup.parse(questionContent)
-                            )
-                        }
-                    }
-                }
-                item(2) {
-                    val handle = LocalPinnableContainer.current?.pin()
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
-                                        setClass(context, WebviewActivity::class.java)
-                                    }
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Text("查看日志")
-                        }
-                        Spacer(Modifier.width(8.dp))
-
-                        Button(
-                            onClick = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = ClipData.newPlainText(
-                                    "Link",
-                                    "https://www.zhihu.com/question/${question.questionId}" +
-                                            "\n【${question.title}】"
+        FeedPullToRefresh(viewModel) {
+            PaginatedList(
+                items = viewModel.displayItems,
+                onLoadMore = { viewModel.loadMore(context) },
+                isEnd = { viewModel.isEnd },
+                modifier = Modifier.padding(innerPadding),
+                footer = ProgressIndicatorFooter,
+                topContent = {
+                    item(1) {
+                        val handle = LocalPinnableContainer.current?.pin()
+                        if (questionContent.isNotEmpty()) {
+                            WebviewComp {
+                                it.loadZhihu(
+                                    "https://www.zhihu.com/question/${question.questionId}",
+                                    Jsoup.parse(questionContent)
                                 )
-                                clipboard.setPrimaryClip(clip)
-                                (context as? MainActivity)?.sharedData?.clipboardDestination = question
-                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
-                            },
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        ) {
-                            Icon(Icons.Filled.Share, contentDescription = "复制链接")
-                            Spacer(Modifier.width(8.dp))
-                            Text("复制链接")
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = { showComments = true },
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "$commentCount")
+                            }
                         }
                     }
-                    Text(
-                        "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    item(2) {
+                        val handle = LocalPinnableContainer.current?.pin()
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
+                                            setClass(context, WebviewActivity::class.java)
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
+                                Text("查看日志")
+                            }
+                            Spacer(Modifier.width(8.dp))
+
+                            Button(
+                                onClick = {
+                                    val clipboard =
+                                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText(
+                                        "Link",
+                                        "https://www.zhihu.com/question/${question.questionId}" +
+                                                "\n【${question.title}】"
+                                    )
+                                    clipboard.setPrimaryClip(clip)
+                                    (context as? MainActivity)?.sharedData?.clipboardDestination = question
+                                    Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                                },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            ) {
+                                Icon(Icons.Filled.Share, contentDescription = "复制链接")
+                                Spacer(Modifier.width(8.dp))
+                                Text("复制链接")
+                            }
+
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = { showComments = true },
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                ),
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "$commentCount")
+                            }
+                        }
+                        Text(
+                            "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
-            }
-        ) { item ->
-            FeedCard(item) {
-                feed?.let { DataHolder.putFeed(it) }
-                navDestination?.let { onNavigate(it) }
+            ) { item ->
+                FeedCard(item) {
+                    feed?.let { DataHolder.putFeed(it) }
+                    navDestination?.let { onNavigate(it) }
+                }
             }
         }
     }

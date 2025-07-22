@@ -18,6 +18,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
@@ -72,7 +73,7 @@ fun FollowDynamicScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    FeedPullToRefresh(viewModel) {
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
@@ -120,7 +121,7 @@ fun FollowRecommendScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    FeedPullToRefresh(viewModel) {
         PaginatedList(
             items = viewModel.displayItems,
             topContent = {

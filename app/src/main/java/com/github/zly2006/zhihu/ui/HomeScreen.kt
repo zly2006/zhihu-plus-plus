@@ -3,10 +3,9 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -17,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
@@ -27,11 +25,12 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -40,7 +39,7 @@ const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current as MainActivity
+    val context = LocalActivity.current as MainActivity
     val onlineViewModel: HomeFeedViewModel by context.viewModels()
     val localViewModel: LocalHomeFeedViewModel by context.viewModels()
 
@@ -90,7 +89,7 @@ fun HomeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    FeedPullToRefresh(viewModel) {
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },

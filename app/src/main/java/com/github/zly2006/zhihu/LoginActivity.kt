@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -10,6 +9,7 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
@@ -26,7 +26,6 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class LoginActivity : ComponentActivity() {
@@ -54,6 +53,14 @@ class LoginActivity : ComponentActivity() {
                             ): Boolean {
                                 if (request.url.toString() == "https://www.zhihu.com/") {
                                     webView.loadUrl("https://www.zhihu.com/question/11474985081")
+                                    return true
+                                }
+                                if (request.url.host == "graph.qq.com") {
+                                    // QQ login
+                                    CustomTabsIntent.Builder()
+                                        .setToolbarColor(0xff66CCFF.toInt())
+                                        .build()
+                                        .launchUrl(this@LoginActivity, request.url)
                                     return true
                                 }
                                 if (request.url?.scheme == "zhihu") {
