@@ -191,7 +191,7 @@ sealed interface Feed {
         override val detailsText = "问题 · $follower_count 关注 · $answer_count 回答"
 
         override val navDestination = com.github.zly2006.zhihu.Question(
-            questionId = id.toLong(),
+            questionId = id,
             title = title
         )
     }
@@ -202,27 +202,6 @@ sealed interface Feed {
         val description: String,
         val topic_names: List<String>? = null,
         val topic_ids: List<Int>? = null
-    )
-
-    // todo
-    @Deprecated("TODO: QuestionTarget instead")
-    @Serializable
-    data class Question(
-        val id: Long,
-        val type: String,
-        val url: String,
-        val author: Person? = null,
-        val title: String,
-        val created: Long,
-        val answer_count: Int = 0,
-        val follower_count: Int = 0,
-        val comment_count: Int = 0,
-        val bound_topic_ids: List<Long> = emptyList(),
-        val is_following: Boolean = false,
-        val excerpt: String = "<default value, R U in question details page?>",
-        val relationship: Relationship? = null,
-        val detail: String = "<default value, R U in question details page?>",
-        val question_type: String,
     )
 
     @Serializable
