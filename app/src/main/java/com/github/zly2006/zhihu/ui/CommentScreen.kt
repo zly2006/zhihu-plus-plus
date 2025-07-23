@@ -3,6 +3,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -107,7 +108,7 @@ fun CommentScreen(
             error("Internal Error: Detected content mismatch")
         }
         if (viewModel.errorMessage == null) {
-            viewModel.refresh(context)
+            viewModel.loadMore(context)
         }
     }
 
