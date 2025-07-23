@@ -5,6 +5,7 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context.MODE_PRIVATE
 import android.graphics.Color
 import android.text.Html
+import android.text.util.Linkify
 import android.util.TypedValue
 import android.widget.TextView
 import androidx.compose.foundation.clickable
@@ -42,6 +43,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
+import com.github.zly2006.zhihu.util.LinkMovementMethod
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -440,15 +442,20 @@ private fun CommentItem(
                     val context = LocalContext.current
                     AndroidView({
                         TextView(context).apply {
-                            text = Html.fromHtml(Jsoup.parse(commentData.content).body().html(), Html.FROM_HTML_MODE_COMPACT)
+                            autoLinkMask = Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS
+                            text = Html.fromHtml(Jsoup.parse(commentData.content).processCommentImages().body().html(), Html.FROM_HTML_MODE_COMPACT).let {
+                                it
+                            }
                             if (text.endsWith("\n")) {
                                 text = text.subSequence(0, text.length - 1)
                             }
                             setTextIsSelectable(true)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                             setTextColor(Color.BLACK)
-                            setOnClickListener {
-                            }
+                            movementMethod = LinkMovementMethod.getInstance()
+//                            SpannableString
+//                            setOnClickListener {
+//                            }
                         }
                     })
                 }
@@ -598,7 +605,6 @@ private fun CommentItemPreview() {
         ),
         clickTarget = null
     )
-    val context = LocalContext.current
     CommentItem(
         comment,
         useWebview = true,

@@ -22,6 +22,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
+import org.jsoup.nodes.Document
 import java.net.UnknownHostException
 
 object DataHolder {
@@ -564,59 +565,81 @@ object DataHolder {
 
     @SuppressLint("SetJavaScriptEnabled")
     private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
-        val html = httpClient.get(url).bodyAsText()
+//        httpClient.plugin(HttpCookies)
+        val response = httpClient.get(url)
+        if ("https://www.zhihu.com/404" == response.call.request.url.toString() && response.status.value == 200) {
+            activity.mainExecutor.execute {
+                Toast.makeText(activity, "疑似触发风控", Toast.LENGTH_SHORT).show()
+            }
+        }
+        val html = response.bodyAsText()
         val document = Jsoup.parse(html)
-        val zhSecScript = document.select("[data-assets-tracker-config]").getOrNull(0)?.attribute("src")?.value
-        if (document.getElementById("js-initialData") == null) {
+        val zhSecScript = document.select("[data-web-reporter-config]").getOrNull(0)?.attribute("src")?.value
+        if (document.getElementById("js-initialData") == null ||
+            extractData(document) == 0) { // 触发风控
             // 知乎安全cookie v4检验
-            if (zhSecScript != null) {
-                val job = Job()
-                activity.mainExecutor.execute {
-                    val webView = WebView(activity)
-                    val cm = CookieManager.getInstance()
-                    cm.removeAllCookies { }
-                    webView.settings.javaScriptEnabled = true
-                    AccountData.data.cookies.forEach { (key, value) ->
-                        cm.setCookie("https://www.zhihu.com", "$key=$value")
-                    }
-                    webView.webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url1: String?) {
-                            if (url == url1) {
-                                val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
-                                    it.substringBefore("=").trim() to it.substringAfter("=")
-                                }
-                                AccountData.data.cookies.putAll(cookies)
-                                AccountData.saveData(activity, AccountData.data)
+            val job = Job()
+            activity.mainExecutor.execute {
+                val webView = WebView(activity)
+                val cm = CookieManager.getInstance()
+                cm.removeAllCookies { }
+                webView.settings.javaScriptEnabled = true
+                webView.loadUrl("https://zhuanlan.zhihu.com/p/1889009748944351977")
+                val cookies = AccountData.data.cookies
+                    .filter { (key, _) -> key !in listOf("BEC") }
+                cookies.forEach { (key, value) ->
+                    cm.setCookie("https://www.zhihu.com", "$key=$value")
+                }
+                webView.webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView, url1: String) {
+                        if (url == url1) {
+                            val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
+                                it.substringBefore("=").trim() to it.substringAfter("=")
+                            }
+                            AccountData.data.cookies.putAll(cookies)
+                            AccountData.saveData(activity, AccountData.data)
+                            view.evaluateJavascript("document.getElementsByTagName('html')[0].outerHTML") {
+                                val document = Jsoup.parse(it)
+                                Log.i("DataHolder", "Fetched data from $url")
                                 job.complete()
                             }
                         }
                     }
-                    webView.loadUrl(url)
                 }
-                try {
-                    job.join()
-                    if (retry > 0) {
-                        get(httpClient, url, activity, retry - 1)
-                    } else {
-                        error("")
-                    }
-                    return
-                } catch (e: Exception) {
-                    activity.mainExecutor.execute {
-                        AlertDialog.Builder(activity)
-                            .setTitle("登录过期")
-                            .setMessage("登录过期或无效，需重新登录")
-                            .setPositiveButton("重新登录") { _, _ ->
-                                AccountData.delete(activity)
-                                val myIntent = Intent(activity, LoginActivity::class.java)
-                                activity.startActivity(myIntent)
-                            }
-                            .show()
-                    }
-                    return
+                webView.loadUrl(url)
+            }
+            try {
+                job.join()
+                if (retry > 0) {
+                    get(httpClient, url, activity, retry - 1)
+                } else {
+                    error("")
                 }
+                return
+            } catch (e: Exception) {
+                activity.mainExecutor.execute {
+                    AlertDialog.Builder(activity)
+                        .setTitle("登录过期")
+                        .setMessage("登录过期或无效，需重新登录")
+                        .setPositiveButton("重新登录") { _, _ ->
+                            AccountData.delete(activity)
+                            val myIntent = Intent(activity, LoginActivity::class.java)
+                            activity.startActivity(myIntent)
+                        }
+                        .show()
+                }
+                return
             }
         }
+        extractData(document)
+    }
+
+    /**
+     * 从网页中提取数据
+     * @return 提取的数据数量，如果为0则表示 404，或者触发了风控
+     */
+    private fun extractData(document: Document): Int {
+        var extractedCount = 0
         val jojo = Json.decodeFromString<JsonObject>(
             (document.getElementById("js-initialData")?.childNode(0) as? DataNode)?.wholeData ?: "{}"
         )
@@ -627,6 +650,7 @@ object DataHolder {
                 try {
                     val questionModel = Json.decodeFromJsonElement<Question>(question)
                     this.questions[questionModel.id] = ReferenceCount(questionModel)
+                    extractedCount++
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
@@ -643,6 +667,7 @@ object DataHolder {
                     val answerModel = AccountData.decodeJson<Answer>(answer)
                     this.answers[answerModel.id] = ReferenceCount(answerModel)
                     this.questions[answerModel.question.id]!!.count++
+                    extractedCount++
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
@@ -655,12 +680,14 @@ object DataHolder {
                 try {
                     val articleModel = AccountData.decodeJson<Article>(article)
                     this.articles[articleModel.id] = ReferenceCount(articleModel)
+                    extractedCount++
                 } catch (e: Exception) {
                     println(jojo.toString())
                     e.printStackTrace()
                 }
             }
         }
+        return extractedCount
     }
 
     private fun removeAnswer(answerId: Long) {
