@@ -381,6 +381,10 @@ fun ArticleScreen(
                 navigatingToNextAnswer = true
                 viewModel.viewModelScope.launch {
                     val dest = viewModel.nextAnswerFuture.await()
+                    val activity = context as? MainActivity ?: return@launch
+                    if (activity.navController.currentBackStackEntry.hasRoute(Article::class)) {
+                        activity.navController.popBackStack()
+                    }
                     onNavigate(dest)
                 }
             },
@@ -441,6 +445,7 @@ fun ArticleScreen(
             showComments = showComments,
             onDismiss = { showComments = false },
             httpClient = it,
+            onNavigate = onNavigate,
             content = article
         )
     }

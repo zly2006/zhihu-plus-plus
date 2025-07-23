@@ -516,7 +516,37 @@ object DataHolder {
         @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
         @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
         @SerialName("comment_tag") val commentTag: List<CommentTag> = emptyList()
-    )
+    ) {
+        fun asComment() = Comment(
+            id = id,
+            type = type,
+            resourceType = resourceType,
+            url = url,
+            content = content,
+            createdTime = createdTime,
+            isDelete = isDelete,
+            collapsed = collapsed,
+            reviewing = reviewing,
+            replyCommentId = replyCommentId,
+            replyRootCommentId = replyRootCommentId,
+            liked = liked,
+            likeCount = likeCount,
+            disliked = disliked,
+            dislikeCount = dislikeCount,
+            author = author,
+            authorTag = authorTag,
+            replyAuthorTag = replyAuthorTag,
+            contentTag = contentTag,
+            commentTag = listOf(),
+
+            // mock
+            top = false,
+            isAuthor = false,
+            canCollapse = false,
+            childComments = listOf(),
+            childCommentCount = 0
+        )
+    }
 
     data class ReferenceCount<T>(
         val value: T,

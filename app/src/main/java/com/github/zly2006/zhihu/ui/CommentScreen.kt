@@ -3,6 +3,8 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
+import android.text.Html
+import android.widget.TextView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,10 +30,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -57,6 +61,7 @@ fun CommentScreen(
     content: () -> NavDestination,
     activeCommentItem: CommentItem? = null,
     topPadding: Dp = 100.dp,
+    onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val context = LocalContext.current
@@ -189,8 +194,58 @@ fun CommentScreen(
                                             commentItem.item.likeCount = likeCount
                                         }
                                     },
+                                    onNavigate = onNavigate,
                                     onChildCommentClick = onChildCommentClick,
                                 )
+
+                                // 在根评论区时 子评论
+                                if (activeCommentItem == null) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 40.dp, top = 8.dp)
+                                    ) {
+                                        if (commentItem.item.childComments.isNotEmpty()) {
+                                            commentItem.item.childComments.forEach { childComment ->
+                                                val childCommentItem = CommentItem(
+                                                    item = childComment.asComment(),
+                                                    clickTarget = null // 子评论不需要点击跳转
+                                                )
+                                                CommentItem(
+                                                    comment = childCommentItem,
+                                                    useWebview = useWebview,
+                                                    pinWebview = pinWebview,
+                                                    onNavigate = onNavigate,
+                                                    onChildCommentClick = onChildCommentClick
+                                                )
+                                            }
+                                        }
+                                        if (commentItem.item.childCommentCount > 0) {
+                                            Button(
+                                                onClick = { onChildCommentClick(commentItem) },
+                                                modifier = Modifier
+                                                    .height(32.dp),
+                                                shape = RoundedCornerShape(50),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                ),
+                                                contentPadding = PaddingValues(horizontal = 16.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Outlined.Comment,
+                                                    contentDescription = "查看子评论",
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 14.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             LazyColumn(
                                 state = listState,
@@ -296,6 +351,7 @@ private fun CommentItem(
     likeCount: Int = 0,
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
+    onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentItem) -> Unit
 ) {
     val commentData = comment.item
@@ -304,7 +360,8 @@ private fun CommentItem(
         // 作者信息
         Row(
             modifier = Modifier.fillMaxWidth()
-        ) {
+        )
+        {
             // 头像
             AsyncImage(
                 model = commentData.author.avatarUrl,
@@ -327,7 +384,15 @@ private fun CommentItem(
                         text = commentData.author.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        modifier = Modifier.clickable {  }
+                        modifier = Modifier.clickable {
+                            onNavigate(
+                                Person(
+                                    id = commentData.author.id,
+                                    name = commentData.author.name,
+                                    urlToken = commentData.author.urlToken,
+                                )
+                            )
+                        }
                     )
                     if (replyingTo != null) {
                         Spacer(modifier = Modifier.width(4.dp))
@@ -341,7 +406,15 @@ private fun CommentItem(
                             text = replyingTo.item.author.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            modifier = Modifier.clickable {  }
+                            modifier = Modifier.clickable {
+                                onNavigate(
+                                    Person(
+                                        id = replyingTo.item.author.id,
+                                        name = replyingTo.item.author.name,
+                                        urlToken = replyingTo.item.author.urlToken,
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -364,13 +437,13 @@ private fun CommentItem(
                     }
                 } else {
                     // 评论内容
-                    val content = remember(commentData.content) {
-                        Jsoup.parse(commentData.content).body().text()
-                    }
-                    Text(
-                        text = content,
-                        fontSize = 14.sp,
-                    )
+                    val context = LocalContext.current
+                    AndroidView({
+                        TextView(context).apply {
+                            text = Html.fromHtml(Jsoup.parse(commentData.content).body().html(), Html.FROM_HTML_MODE_COMPACT or Html.FROM_HTML_OPTION_USE_CSS_COLORS)
+                            setTextIsSelectable(true)
+                        }
+                    })
                 }
             }
         }
@@ -381,7 +454,8 @@ private fun CommentItem(
                 .fillMaxWidth()
                 .padding(start = 44.dp),
             horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        )
+        {
             // 时间
             val formattedTime = remember(commentData.createdTime) {
                 val time = commentData.createdTime * 1000
@@ -520,9 +594,81 @@ private fun CommentItemPreview() {
     val context = LocalContext.current
     CommentItem(
         comment,
-        replyingTo = null,
         useWebview = true,
-        pinWebview = true
+        pinWebview = true,
+        onNavigate = { }
+    ) {
+    }
+}
+
+@Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
+@Composable
+private fun NestedCommentPreview() {
+    val comment = CommentItem(
+        item = DataHolder.Comment(
+            id = "123",
+            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
+            createdTime = System.currentTimeMillis() / 1000,
+            author = DataHolder.Comment.Author(
+                name = "作者",
+                avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",
+                isOrg = false,
+                type = "people",
+                url = "",
+                urlToken = "",
+                id = "",
+                headline = "个人介绍",
+                avatarUrlTemplate = "",
+                isAdvertiser = false,
+                gender = 0,
+                userType = ""
+            ),
+            likeCount = 10,
+            childCommentCount = 5,
+            type = "",
+            url = "",
+            resourceType = "",
+            collapsed = false,
+            top = false,
+            isDelete = false,
+            reviewing = false,
+            isAuthor = false,
+            canCollapse = false,
+            childComments = listOf(
+                DataHolder.ChildComment(
+                    id = "千早爱音",
+                    content = "<p>我喜欢你</p>",
+                    createdTime = System.currentTimeMillis() / 1000,
+                    author = DataHolder.Comment.Author(
+                        name = "长期素食",
+                        avatarUrl = "",
+                        isOrg = false,
+                        type = "people",
+                        url = "",
+                        urlToken = "",
+                        id = "",
+                        headline = "个人介绍",
+                        avatarUrlTemplate = "",
+                        isAdvertiser = false,
+                        gender = 0,
+                        userType = "people",
+                    ),
+                    type = "",
+                    isDelete = false,
+                    url = "",
+                    resourceType = "",
+                    collapsed = false,
+                    reviewing = false
+                )
+            ),
+        ),
+        clickTarget = null
+    )
+    CommentItem(
+        comment,
+        useWebview = true,
+        pinWebview = true,
+        onNavigate = { }
     ) {
     }
 }

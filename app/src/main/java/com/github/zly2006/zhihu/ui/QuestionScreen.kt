@@ -202,6 +202,7 @@ fun QuestionScreen(
             showComments = showComments,
             onDismiss = { showComments = false },
             httpClient = context.httpClient,
+            onNavigate = onNavigate,
             content = question
         )
     }
