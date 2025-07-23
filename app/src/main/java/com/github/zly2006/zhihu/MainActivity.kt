@@ -41,25 +41,6 @@ class MainActivity : ComponentActivity() {
     val httpClient by lazy {
         AccountData.httpClient(this)
     }
-    @Suppress("unused")
-    val imageLoader = ImageLoader.Builder(this)
-        .crossfade(true)
-        .memoryCache {
-            MemoryCache.Builder()
-                .maxSizePercent(this, 0.25)
-                .build()
-        }
-        .diskCache {
-            DiskCache.Builder()
-                .directory(this.cacheDir.resolve("image_cache"))
-                .maxSizeBytes(50L * 1024 * 1024) // 50 MB
-                .build()
-        }
-        .build().also { loader ->
-            SingletonImageLoader.setSafe {
-                loader
-            }
-        }
 
     lateinit var navController: NavHostController
 
@@ -123,6 +104,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        ImageLoader.Builder(this)
+            .crossfade(true)
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizePercent(this, 0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(this.cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB
+                    .build()
+            }
+            .build().also { loader ->
+                SingletonImageLoader.setSafe {
+                    loader
+                }
+            }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
