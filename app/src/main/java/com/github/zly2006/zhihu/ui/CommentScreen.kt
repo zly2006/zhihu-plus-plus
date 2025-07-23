@@ -3,7 +3,9 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
+import android.graphics.Color
 import android.text.Html
+import android.util.TypedValue
 import android.widget.TextView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -199,7 +201,7 @@ fun CommentScreen(
                                 )
 
                                 // 在根评论区时 子评论
-                                if (activeCommentItem == null) {
+                                if (activeCommentItem == null && commentItem.item.childCommentCount > 0) {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -220,29 +222,27 @@ fun CommentScreen(
                                                 )
                                             }
                                         }
-                                        if (commentItem.item.childCommentCount > 0) {
-                                            Button(
-                                                onClick = { onChildCommentClick(commentItem) },
-                                                modifier = Modifier
-                                                    .height(32.dp),
-                                                shape = RoundedCornerShape(50),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                                ),
-                                                contentPadding = PaddingValues(horizontal = 16.dp)
-                                            ) {
-                                                Icon(
-                                                    Icons.AutoMirrored.Outlined.Comment,
-                                                    contentDescription = "查看子评论",
-                                                    modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(
-                                                    "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 14.sp
-                                                )
-                                            }
+                                        Button(
+                                            onClick = { onChildCommentClick(commentItem) },
+                                            modifier = Modifier
+                                                .height(32.dp),
+                                            shape = RoundedCornerShape(50),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 16.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Outlined.Comment,
+                                                contentDescription = "查看子评论",
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.surfaceTint
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 14.sp
+                                            )
                                         }
                                     }
                                 }
@@ -440,8 +440,15 @@ private fun CommentItem(
                     val context = LocalContext.current
                     AndroidView({
                         TextView(context).apply {
-                            text = Html.fromHtml(Jsoup.parse(commentData.content).body().html(), Html.FROM_HTML_MODE_COMPACT or Html.FROM_HTML_OPTION_USE_CSS_COLORS)
+                            text = Html.fromHtml(Jsoup.parse(commentData.content).body().html(), Html.FROM_HTML_MODE_COMPACT)
+                            if (text.endsWith("\n")) {
+                                text = text.subSequence(0, text.length - 1)
+                            }
                             setTextIsSelectable(true)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                            setTextColor(Color.BLACK)
+                            setOnClickListener {
+                            }
                         }
                     })
                 }
