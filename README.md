@@ -1,6 +1,6 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
-<img src="misc/zhihu_shit.png" width="100" height="100" />
+[<img src="https://api.redenmc.com/api/zhihu/usage.svg" alt="累计使用人数统计" height="80" />](https://github.com/zly2006/zhihu-plus-plus/releases/latest) （点击图片下载）
 
 Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为您提供和筛选高质量内容。
 本地推荐算法完全独立于知乎算法，依赖爬虫运行，可以自由定制各种推荐权重，保证看到自己想看的内容。
@@ -54,3 +54,7 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 - 屏蔽话题
 
 WIP
+
+### 隐私说明
+
+本应用内存在可关闭的遥测统计，用于显示页面顶部的这张图片。由用户ID哈希之后上传服务器，区分独立用户。
