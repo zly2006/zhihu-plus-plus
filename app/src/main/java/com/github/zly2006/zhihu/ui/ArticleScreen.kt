@@ -38,6 +38,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -385,14 +386,14 @@ fun ArticleScreen(
                     if (activity.navController.currentBackStackEntry.hasRoute(Article::class)) {
                         activity.navController.popBackStack()
                     }
-                    onNavigate(dest)
+                    onNavigate(dest.target!!.navDestination!!)
                 }
             },
         ) {
             if (navigatingToNextAnswer) {
                 CircularProgressIndicator(modifier = Modifier.size(30.dp))
             } else {
-                Icon(Icons.Default.SkipNext, contentDescription = "刷新")
+                Icon(Icons.Default.SkipNext, contentDescription = "下一个回答")
             }
         }
     }

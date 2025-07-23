@@ -56,7 +56,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
     var questionId by mutableLongStateOf(0L)
     var collections = mutableStateListOf<Collection>()
-    var nextAnswerFuture: Deferred<Article> = CompletableDeferred()
+    var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     val isFavorited: Boolean
         get() = collections.any { it.is_favorited }
@@ -65,7 +65,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     class ArticlesSharedData : ViewModel() {
         var viewingQuestionId: Long = 0L
         var nextUrl: String = ""
-        var destinations = mutableListOf<Article>()
+        var destinations = mutableListOf<Feed>()
     }
 
     @OptIn(ExperimentalStdlibApi::class, DelicateCoroutinesApi::class)
@@ -122,10 +122,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                         sharedData.nextUrl =
                                             jojo["paging"]?.jsonObject?.get("next")?.jsonPrimitive?.content ?: ""
                                         sharedData.viewingQuestionId = questionId
-                                        sharedData.destinations = data.mapNotNull {
-                                            it.target?.navDestination as? Article
-                                        }.filter {
-                                            it != article // filter out the current article
+                                        sharedData.destinations = data.filter {
+                                            it.target?.navDestination is Article && it != article // filter out the current article
                                         }.toMutableList()
                                     }
                                     sharedData.destinations.removeAt(0)
