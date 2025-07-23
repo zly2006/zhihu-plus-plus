@@ -53,6 +53,10 @@ fun AccountSettingScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // 手动设置Cookie弹窗状态
+    var showCookieDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         val data = AccountData.data
         if (data.login) {
@@ -143,6 +147,17 @@ fun AccountSettingScreen(
             ) {
                 Text("退出登录")
             }
+            Button(
+                onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text("查看收藏夹")
+            }
         } else {
             Button(
                 onClick = {
@@ -153,17 +168,18 @@ fun AccountSettingScreen(
                 Text("登录")
             }
         }
+        // 为未登录用户也提供手动设置Cookie选项
         Button(
-            onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
-            contentPadding = PaddingValues(horizontal = 8.dp),
+            onClick = { showCookieDialog = true },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
             )
         ) {
-            Text("查看收藏夹")
+            Text("手动设置Cookie")
         }
+
         val networkStatus = remember {
             buildString {
                 val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
@@ -682,6 +698,113 @@ fun AccountSettingScreen(
                     is UpdateState.Downloading -> "下载中..."
                     is UpdateState.Downloaded -> "安装更新"
                     is UpdateState.Error -> "检查更新失败，点击重试"
+                }
+            )
+        }
+
+        // 手动设置Cookie弹窗
+        if (showCookieDialog) {
+            var cookieInputText by remember { mutableStateOf("") }
+            var showCookieText by remember { mutableStateOf(false) }
+            AlertDialog(
+                onDismissRequest = {
+                    showCookieDialog = false
+                    cookieInputText = ""
+                    showCookieText = false
+                },
+                title = { Text("手动设置Cookie") },
+                text = {
+                    Column {
+                        Text(
+                            "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        OutlinedTextField(
+                            value = cookieInputText,
+                            onValueChange = { cookieInputText = it },
+                            label = { Text("Cookie字符串") },
+                            placeholder = { Text("name1=value1; name2=value2; name3=value3") },
+                            visualTransformation = if (showCookieText) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showCookieText = !showCookieText }) {
+                                    Icon(
+                                        imageVector = if (showCookieText) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (showCookieText) "隐藏" else "显示"
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 5
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (cookieInputText.isNotBlank()) {
+                                try {
+                                    // 解析cookie字符串
+                                    val cookies = mutableMapOf<String, String>()
+                                    cookieInputText.split("; ").forEach { cookieItem ->
+                                        val parts = cookieItem.split("=", limit = 2)
+                                        if (parts.size == 2) {
+                                            cookies[parts[0].trim()] = parts[1].trim()
+                                        }
+                                    }
+
+                                    if (cookies.isNotEmpty()) {
+                                        // 保存cookie数据
+                                        val currentData = AccountData.data
+                                        AccountData.saveData(
+                                            context,
+                                            currentData.copy(
+                                                cookies = cookies,
+                                                login = true
+                                            )
+                                        )
+
+                                        // 验证登录状态
+                                        coroutineScope.launch {
+                                            try {
+                                                if (AccountData.verifyLogin(context, cookies)) {
+                                                    Toast.makeText(context, "Cookie设置成功并验证登录状态", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(context, "Cookie设置成功，但验证登录失败，请检查Cookie是否有效", Toast.LENGTH_LONG).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "验证登录时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+
+                                        showCookieDialog = false
+                                        cookieInputText = ""
+                                        showCookieText = false
+                                    } else {
+                                        Toast.makeText(context, "未能解析有效的Cookie数据", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "解析Cookie时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            } else {
+                                Toast.makeText(context, "请输入Cookie字符串", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Text("确认设置")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showCookieDialog = false
+                            cookieInputText = ""
+                            showCookieText = false
+                        }
+                    ) {
+                        Text("取消")
+                    }
                 }
             )
         }

@@ -196,19 +196,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalStdlibApi::class)
     suspend fun signRequest96(url: String): String {
         val dc0 = AccountData.data.cookies["d_c0"] ?: ""
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
         val signSource = "$ZSE93+$pathname+$dc0"
-        val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).joinToString("") {
-            "%02x".format(it)
-        }
+        val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
+        val timeStart = System.currentTimeMillis()
         val future = CompletableDeferred<String>()
         runOnUiThread {
             webview.evaluateJavascript("exports.encrypt('$md5')") {
                 Log.i("MainActivity", "Sign request: $url")
                 Log.i("MainActivity", "Sign source: $signSource")
                 Log.i("MainActivity", "Sign result: $it")
+                val time = System.currentTimeMillis() - timeStart
+                Log.i("MainActivity", "Sign time: $time ms")
                 future.complete(it.trim('"'))
             }
         }
