@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.github.zly2006.zhihu.data.AccountData
@@ -20,7 +21,9 @@ import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import androidx.core.net.toUri
 import coil3.ImageLoader
@@ -72,6 +75,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdgeCompat()
         history = HistoryStorage(this)
         AccountData.loadData(this)
+
+        // 应用启动时执行内容过滤数据库清理
+        lifecycleScope.launch {
+            try {
+                ContentFilterExtensions.performMaintenanceCleanup(this@MainActivity)
+                Log.i("MainActivity", "Content filter maintenance cleanup completed")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to perform content filter cleanup", e)
+            }
+        }
+
         webview = WebView(this)
         Log.i("MainActivity", "Webview created")
         webview.setupUpWebviewClient()

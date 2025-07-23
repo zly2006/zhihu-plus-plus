@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
@@ -22,6 +23,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -31,10 +33,17 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
-@OptIn(ExperimentalMaterial3Api::class)
+interface IHomeFeedViewModel {
+    suspend fun recordContentInteraction(context: Context, feed: Feed)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
@@ -98,6 +107,9 @@ fun HomeScreen(
             FeedCard(item) {
                 feed?.let {
                     DataHolder.putFeed(feed)
+                    GlobalScope.launch {
+                        (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
+                    }
                 }
                 if (navDestination != null) {
                     onNavigate(navDestination)

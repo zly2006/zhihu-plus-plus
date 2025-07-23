@@ -2,10 +2,8 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -38,6 +36,8 @@ import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
+import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -314,6 +314,155 @@ fun AccountSettingScreen(
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
                 }
             )
+
+            Text(
+                "内容过滤设置",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+
+            val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
+            SwitchSettingItem(
+                title = "启用智能内容过滤",
+                description = "自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐",
+                checked = enableContentFilter.value,
+                onCheckedChange = {
+                    enableContentFilter.value = it
+                    preferences.edit { putBoolean("enableContentFilter", it) }
+                }
+            )
+
+            val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
+            SwitchSettingItem(
+                title = "过滤已关注用户内容",
+                description = "是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示",
+                checked = filterFollowedUserContent.value,
+                onCheckedChange = {
+                    filterFollowedUserContent.value = it
+                    preferences.edit { putBoolean("filterFollowedUserContent", it) }
+                },
+                enabled = enableContentFilter.value // 只有启用内容过滤时才能设置此选项
+            )
+
+            // 显示过滤统计信息
+            var filterStats by remember { mutableStateOf<FilterStats?>(null) }
+            LaunchedEffect(Unit) {
+                try {
+                    val contentFilterManager = ContentFilterManager.getInstance(context)
+                    filterStats = contentFilterManager.getFilterStats()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            AnimatedVisibility(visible = enableContentFilter.value && filterStats != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "过滤统计",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        filterStats?.let { stats ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        "总记录数",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "${stats.totalRecords}",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        "已过滤内容",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "${stats.filteredCount}",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        "过滤率",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "${String.format("%.1f", stats.filterRate * 100)}%",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        try {
+                                            val contentFilterManager = ContentFilterManager.getInstance(context)
+                                            contentFilterManager.cleanupOldData()
+                                            filterStats = contentFilterManager.getFilterStats()
+                                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "清理失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("清理过期数据")
+                            }
+
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        try {
+                                            val contentFilterManager = ContentFilterManager.getInstance(context)
+                                            contentFilterManager.clearAllData()
+                                            filterStats = contentFilterManager.getFilterStats()
+                                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "重置失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
+                            ) {
+                                Text("重置所有数据")
+                            }
+                        }
+                    }
+                }
+            }
 
             Text(
                 "推荐算法设置",

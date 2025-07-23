@@ -26,8 +26,8 @@ abstract class BaseCommentViewModel(
     val comments get() = allData.map { createCommentItem(it, article) }
     protected val commentsMap = mutableMapOf<String, CommentItem>()
 
-    override fun processResponse(data: List<DataHolder.Comment>, rawData: JsonArray) {
-        super.processResponse(data, rawData)
+    override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
+        super.processResponse(context, data, rawData)
         data.forEach { comment ->
             val commentItem = createCommentItem(comment, article)
             commentsMap[comment.id] = commentItem

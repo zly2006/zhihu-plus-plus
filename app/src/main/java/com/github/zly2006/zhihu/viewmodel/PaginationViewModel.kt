@@ -19,7 +19,6 @@ import io.ktor.http.*
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -66,7 +65,7 @@ abstract class PaginationViewModel<T : Any>(
         return AccountData.httpClient(context)
     }
 
-    protected open fun processResponse(data: List<T>, rawData: JsonArray) {
+    protected open fun processResponse(context: Context, data: List<T>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
         allData.addAll(data) // 保存未flatten的数据
     }
@@ -84,6 +83,7 @@ abstract class PaginationViewModel<T : Any>(
                 val json = response.body<JsonObject>()
                 val jsonArray = json["data"]!!.jsonArray
                 processResponse(
+                    context,
                     jsonArray.mapNotNull {
                         if ("type" in it.jsonObject && it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
                                 "invited_answer", // invalid

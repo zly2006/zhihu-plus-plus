@@ -1,10 +1,12 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.delay
 
-class LocalHomeFeedViewModel : BaseFeedViewModel() {
+class LocalHomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
     private lateinit var recommendationEngine: LocalRecommendationEngine
 
     override val initialUrl: String
@@ -66,5 +68,12 @@ class LocalHomeFeedViewModel : BaseFeedViewModel() {
             displayItems.add(item)
             delay(500)
         }
+    }
+
+    override suspend fun recordContentInteraction(
+        context: Context,
+        feed: Feed
+    ) {
+
     }
 }

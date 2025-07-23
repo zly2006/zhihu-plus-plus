@@ -14,7 +14,7 @@ import kotlin.reflect.typeOf
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     val displayItems = mutableStateListOf<FeedDisplayItem>()
     var isPullToRefresh by mutableStateOf(false)
-        private set
+        protected set
 
     data class FeedDisplayItem(
         val title: String,
@@ -26,9 +26,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val isFiltered: Boolean = false
     )
 
-    override fun processResponse(data: List<Feed>, rawData: JsonArray) {
+    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         isPullToRefresh = false
-        super.processResponse(data, rawData)
+        super.processResponse(context, data, rawData)
         displayItems.addAll(data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
     }
 
@@ -106,9 +106,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
                     else -> {
                         FeedDisplayItem(
-                            title = feed.target?.javaClass?.simpleName ?: "广告",
+                            title = feed.target.javaClass.simpleName,
                             summary = "Not Implemented",
-                            details = feed.target?.detailsText ?: "广告",
+                            details = feed.target.detailsText,
                             feed = feed
                         )
                     }
