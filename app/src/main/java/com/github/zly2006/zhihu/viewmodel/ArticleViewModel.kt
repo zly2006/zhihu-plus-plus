@@ -118,6 +118,16 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                                 signFetchRequest(context)
                                             }
                                         val jojo = response.body<JsonObject>()
+                                        if ("data" !in jojo) {
+                                            Log.e("ArticleViewModel", "No data found in response: $jojo")
+                                            context.mainExecutor.execute {
+                                                Toast.makeText(
+                                                    context,
+                                                    "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
                                         val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
                                         sharedData.nextUrl =
                                             jojo["paging"]?.jsonObject?.get("next")?.jsonPrimitive?.content ?: ""
