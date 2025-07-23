@@ -23,6 +23,12 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import kotlinx.coroutines.CompletableDeferred
 import java.security.MessageDigest
 import androidx.core.net.toUri
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.disk.directory
+import coil3.memory.MemoryCache
+import coil3.request.crossfade
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
@@ -35,6 +41,25 @@ class MainActivity : ComponentActivity() {
     val httpClient by lazy {
         AccountData.httpClient(this)
     }
+    @Suppress("unused")
+    val imageLoader = ImageLoader.Builder(this)
+        .crossfade(true)
+        .memoryCache {
+            MemoryCache.Builder()
+                .maxSizePercent(this, 0.25)
+                .build()
+        }
+        .diskCache {
+            DiskCache.Builder()
+                .directory(this.cacheDir.resolve("image_cache"))
+                .maxSizeBytes(50L * 1024 * 1024) // 50 MB
+                .build()
+        }
+        .build().also { loader ->
+            SingletonImageLoader.setSafe {
+                loader
+            }
+        }
 
     lateinit var navController: NavHostController
 

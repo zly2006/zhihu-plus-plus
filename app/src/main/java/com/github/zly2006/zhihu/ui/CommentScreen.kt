@@ -3,7 +3,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,7 +32,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -173,7 +171,6 @@ fun CommentScreen(
                                 CommentItem(
                                     comment = commentItem,
                                     replyingTo = replyingTo,
-                                    httpClient = httpClient,
                                     useWebview = useWebview,
                                     pinWebview = pinWebview,
                                     isLiked = isLiked,
@@ -293,7 +290,6 @@ fun CommentTopText(content: NavDestination? = null) {
 private fun CommentItem(
     comment: CommentItem,
     replyingTo: CommentItem? = null,
-    httpClient: HttpClient,
     useWebview: Boolean,
     pinWebview: Boolean,
     isLiked: Boolean = false,
@@ -525,7 +521,6 @@ private fun CommentItemPreview() {
     CommentItem(
         comment,
         replyingTo = null,
-        httpClient = AccountData.httpClient(context),
         useWebview = true,
         pinWebview = true
     ) {
