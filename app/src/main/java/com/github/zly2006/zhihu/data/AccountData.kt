@@ -57,6 +57,7 @@ object AccountData {
 
     fun saveData(context: Context, data: Data) {
         dataState.value = data
+        //https://static.zhihu.com/zse-ck/v4/24df2abbfcb1b98cd5ce1b519f02eeabea28c83ac9d9ec2778dc5b03a3b8b710.js
         val file = File(context.filesDir, "account.json")
         file.writeText(json.encodeToString(data))
     }

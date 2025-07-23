@@ -574,9 +574,7 @@ object DataHolder {
         }
         val html = response.bodyAsText()
         val document = Jsoup.parse(html)
-        val zhSecScript = document.select("[data-web-reporter-config]").getOrNull(0)?.attribute("src")?.value
-        if (document.getElementById("js-initialData") == null ||
-            extractData(document) == 0) { // 触发风控
+        if (document.getElementById("js-initialData") == null || extractData(document) == 0) { // 触发风控
             // 知乎安全cookie v4检验
             val job = Job()
             activity.mainExecutor.execute {
@@ -584,9 +582,7 @@ object DataHolder {
                 val cm = CookieManager.getInstance()
                 cm.removeAllCookies { }
                 webView.settings.javaScriptEnabled = true
-                webView.loadUrl("https://zhuanlan.zhihu.com/p/1889009748944351977")
                 val cookies = AccountData.data.cookies
-                    .filter { (key, _) -> key !in listOf("BEC") }
                 cookies.forEach { (key, value) ->
                     cm.setCookie("https://www.zhihu.com", "$key=$value")
                 }

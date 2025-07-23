@@ -164,7 +164,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 (context as? MainActivity)?.postHistory(
                                     Article(
                                         id = article.id,
-                                        type = ArticleType.Answer,
+                                        type = ArticleType.Article,
                                         title = article.title,
                                         authorName = article.author.name,
                                         authorBio = article.author.headline,
