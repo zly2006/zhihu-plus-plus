@@ -263,77 +263,80 @@ fun ArticleScreen(
                         )
                     }
 
-                    // TTS朗读按钮
-                    if (false)
-                    IconButton(
-                        onClick = {
-                            val mainActivity = context as? MainActivity
-                            if (isSpeaking) {
-                                mainActivity?.stopSpeaking()
-                            } else if (!ttsLoading) {
-                                // 使用协程在后台处理文本提取，避免UI阻塞
-                                viewModel.viewModelScope.launch {
-                                    ttsLoading = true
-                                    try {
-                                        // 在IO线程中处理文本提取
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                            val textToRead = buildString {
-                                                append(viewModel.title)
-                                                append("。")
-                                                if (viewModel.content.isNotEmpty()) {
-                                                    // 从HTML内容中提取纯文本，限制处理的内容长度
-                                                    val contentToProcess = if (viewModel.content.length > 50000) {
-                                                        viewModel.content.substring(0, 50000) + "..."
-                                                    } else {
-                                                        viewModel.content
+                    // todo: TTS朗读按钮
+                    @Suppress("ConstantConditionIf")
+                    if (false) {
+                        IconButton(
+                            onClick = {
+                                val mainActivity = context as? MainActivity
+                                if (isSpeaking) {
+                                    mainActivity?.stopSpeaking()
+                                } else if (!ttsLoading) {
+                                    // 使用协程在后台处理文本提取，避免UI阻塞
+                                    viewModel.viewModelScope.launch {
+                                        ttsLoading = true
+                                        try {
+                                            // 在IO线程中处理文本提取
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                val textToRead = buildString {
+                                                    append(viewModel.title)
+                                                    append("。")
+                                                    if (viewModel.content.isNotEmpty()) {
+                                                        // 从HTML内容中提取纯文本，限制处理的内容长度
+                                                        val contentToProcess = if (viewModel.content.length > 50000) {
+                                                            viewModel.content.substring(0, 50000) + "..."
+                                                        } else {
+                                                            viewModel.content
+                                                        }
+                                                        val plainText = Jsoup.parse(contentToProcess).text()
+                                                        append(plainText)
                                                     }
-                                                    val plainText = Jsoup.parse(contentToProcess).text()
-                                                    append(plainText)
                                                 }
-                                            }
 
-                                            // 回到主线程执行TTS
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                if (textToRead.isNotBlank()) {
-                                                    mainActivity?.speakText(textToRead)
-                                                    Toast.makeText(context, "开始朗读", Toast.LENGTH_SHORT).show()
+                                                // 回到主线程执行TTS
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                    if (textToRead.isNotBlank()) {
+                                                        mainActivity?.speakText(textToRead)
+                                                        Toast.makeText(context, "开始朗读", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
+                                        } catch (e: Exception) {
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                Toast.makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        } finally {
+                                            ttsLoading = false
                                         }
-                                    } catch (e: Exception) {
-                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                            Toast.makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    } finally {
-                                        ttsLoading = false
                                     }
                                 }
-                            }
-                        },
-                        enabled = !ttsLoading,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = when {
-                                ttsLoading -> MaterialTheme.colorScheme.surfaceVariant
-                                isSpeaking -> Color(0xFF4CAF50)
-                                else -> MaterialTheme.colorScheme.primaryContainer
                             },
-                            contentColor = when {
-                                ttsLoading -> MaterialTheme.colorScheme.onSurfaceVariant
-                                isSpeaking -> Color.White
-                                else -> MaterialTheme.colorScheme.onPrimaryContainer
+                            enabled = !ttsLoading,
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = when {
+                                    ttsLoading -> MaterialTheme.colorScheme.surfaceVariant
+                                    isSpeaking -> Color(0xFF4CAF50)
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                },
+                                contentColor = when {
+                                    ttsLoading -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    isSpeaking -> Color.White
+                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                }
+                            )
+                        ) {
+                            when {
+                                ttsLoading -> CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                else -> Icon(
+                                    if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = if (isSpeaking) "停止朗读" else "开始朗读"
+                                )
                             }
-                        )
-                    ) {
-                        when {
-                            ttsLoading -> CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            else -> Icon(
-                                if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = if (isSpeaking) "停止朗读" else "开始朗读"
-                            )
                         }
                     }
 
@@ -490,6 +493,7 @@ fun ArticleScreen(
                     onNavigate(dest.target!!.navDestination!!)
                 }
             },
+            preferenceName = "buttonSkipAnswer",
         ) {
             if (navigatingToNextAnswer) {
                 CircularProgressIndicator(modifier = Modifier.size(30.dp))
