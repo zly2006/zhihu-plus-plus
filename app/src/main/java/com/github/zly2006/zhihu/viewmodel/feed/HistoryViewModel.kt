@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 
@@ -24,7 +25,7 @@ class HistoryViewModel : BaseFeedViewModel() {
             val displayItem = when (dest) {
                 is Article -> {
                     when (dest.type) {
-                        "answer" -> FeedDisplayItem(
+                        ArticleType.Answer -> FeedDisplayItem(
                             title = dest.title,
                             summary = dest.excerpt ?: "",
                             details = dest.authorName,
@@ -33,7 +34,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                             navDestination = dest,
                         )
 
-                        "article" -> FeedDisplayItem(
+                        ArticleType.Article -> FeedDisplayItem(
                             title = dest.title,
                             summary = dest.excerpt ?: "",
                             details = dest.authorName,
@@ -41,8 +42,6 @@ class HistoryViewModel : BaseFeedViewModel() {
                             avatarSrc = dest.avatarSrc,
                             navDestination = dest,
                         )
-
-                        else -> null
                     }
                 }
                 is Question -> {

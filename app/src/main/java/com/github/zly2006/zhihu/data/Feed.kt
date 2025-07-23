@@ -3,6 +3,7 @@
 package com.github.zly2006.zhihu.data
 
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed.Badge
 import kotlinx.serialization.SerialName
@@ -72,7 +73,7 @@ sealed interface Feed {
             get() = question.title
         override val navDestination = Article(
             title = question.title,
-            type = "answer",
+            type = ArticleType.Answer,
             id = id,
             authorName = author.name,
             authorBio = author.headline,
@@ -139,7 +140,7 @@ sealed interface Feed {
 
         override val navDestination = Article(
             title = title,
-            type = "article",
+            type = ArticleType.Article,
             id = id,
             authorName = author.name,
             authorBio = author.headline,

@@ -264,17 +264,9 @@ fun ArticleScreen(
                         onClick = {
                             val clipboard = (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                             val text = when (article.type) {
-                                "answer" -> {
-                                    "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                }
+                                ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
 
-                                "article" -> {
-                                    "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                                }
-
-                                else -> {
-                                    "暂不支持的链接类型"
-                                }
+                                ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                             }
                             (context as? MainActivity)?.sharedData?.clipboardDestination = article
                             clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
@@ -382,7 +374,7 @@ fun ArticleScreen(
         }
     }
 
-    if (article.type == "answer" && buttonSkipAnswer) {
+    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
         var navigatingToNextAnswer by remember { mutableStateOf(false) }
         DraggableRefreshButton(
             onClick = {
@@ -460,7 +452,7 @@ fun ArticleScreenPreview() {
     ArticleScreen(
         Article(
             "如何看待《狂暴之翼》中的人物设定？",
-            "answer",
+            ArticleType.Answer,
             123456789,
             "知乎用户",
             "知乎用户",

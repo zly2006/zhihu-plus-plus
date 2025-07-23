@@ -14,6 +14,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -30,6 +31,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
@@ -66,13 +68,13 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
         var destinations = mutableListOf<Article>()
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
+    @OptIn(ExperimentalStdlibApi::class, DelicateCoroutinesApi::class)
     fun loadArticle(context: Context) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    if (article.type == "answer") {
+                    if (article.type == ArticleType.Answer) {
                         DataHolder.getAnswerCallback(context, httpClient, article.id) { answer ->
                             if (answer != null) {
                                 title = answer.question.title
@@ -94,7 +96,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 (context as? MainActivity)?.postHistory(
                                     Article(
                                         id = answer.id,
-                                        type = "answer",
+                                        type = ArticleType.Answer,
                                         title = answer.question.title,
                                         authorName = answer.author.name,
                                         authorBio = answer.author.headline,
@@ -133,7 +135,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 Log.e("ArticleViewModel", "Answer not found")
                             }
                         }
-                    } else if (article.type == "article") {
+                    } else if (article.type == ArticleType.Article) {
                         DataHolder.getArticleCallback(context, httpClient, article.id) { article ->
                             if (article != null) {
                                 title = article.title
@@ -154,7 +156,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 (context as? MainActivity)?.postHistory(
                                     Article(
                                         id = article.id,
-                                        type = "answer",
+                                        type = ArticleType.Answer,
                                         title = article.title,
                                         authorName = article.author.name,
                                         authorBio = article.author.headline,
@@ -179,7 +181,10 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
         if (httpClient == null) return
         viewModelScope.launch {
             try {
-                val contentType = if (article.type == "answer") "answer" else "article"
+                val contentType = when (article.type) {
+                    ArticleType.Answer -> "answer"
+                    ArticleType.Article -> "article"
+                }
                 val action = if (remove) "remove" else "add"
                 val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
                 val body = "${action}_collections=$collectionId"
@@ -207,7 +212,10 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val contentType = if (article.type == "answer") "answer" else "article"
+                    val contentType = when (article.type) {
+                        ArticleType.Answer -> "answer"
+                        ArticleType.Article -> "article"
+                    }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
                     val collectionsResponse = httpClient.get(collectionsUrl)
 
@@ -229,15 +237,14 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
             try {
                 val newState = if (voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up
                 val endpoint = when (article.type) {
-                    "answer" -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-                    "article" -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-                    else -> return@launch
+                    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+                    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
                 val response = httpClient.post(endpoint) {
                     when (article.type) {
-                        "answer" -> setBody(mapOf("type" to newState.key))
-                        "article" -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                     }
                     contentType(ContentType.Application.Json)
                 }.body<Reaction>()

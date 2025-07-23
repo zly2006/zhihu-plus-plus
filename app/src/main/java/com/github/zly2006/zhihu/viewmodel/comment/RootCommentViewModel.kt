@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
@@ -10,11 +11,10 @@ import com.github.zly2006.zhihu.viewmodel.CommentItem
 class RootCommentViewModel(content: NavDestination) : BaseCommentViewModel(content) {
     override val initialUrl = when (content) {
         is Article -> {
-            if (content.type == "answer") {
-                "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
-            } else if (content.type == "article") {
-                "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
-            } else ""
+            when (content.type) {
+                ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
+                ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
+            }
         }
 
         is Question -> {

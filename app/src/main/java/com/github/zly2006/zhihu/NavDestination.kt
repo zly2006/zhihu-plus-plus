@@ -47,7 +47,7 @@ enum class ArticleType {
 data class Article(
     var title: String = "loading...",
     @SerialName("article_type_1")
-    val type: String,
+    val type: ArticleType,
     val id: Long,
     var authorName: String = "loading...",
     var authorBio: String = "loading...",
@@ -126,12 +126,12 @@ fun resolveContent(uri: Uri): NavDestination? {
                 && uri.pathSegments[2] == "answer"
             ) {
                 val answerId = uri.pathSegments[3].toLong()
-                return Article(type = "answer", id = answerId)
+                return Article(type = ArticleType.Answer, id = answerId)
             } else if (uri.pathSegments.size == 2
                 && uri.pathSegments[0] == "answer"
             ) {
                 val answerId = uri.pathSegments[1].toLong()
-                return Article(type = "answer", id = answerId)
+                return Article(type = ArticleType.Answer, id = answerId)
             } else if (uri.pathSegments.size == 2
                 && uri.pathSegments[0] == "question"
             ) {
@@ -142,7 +142,7 @@ fun resolveContent(uri: Uri): NavDestination? {
                 && uri.pathSegments[1] == "articles"
             ) {
                 val articleId = uri.pathSegments[2].toLong()
-                return Article(type = "article", id = articleId)
+                return Article(type = ArticleType.Article, id = articleId)
             } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "people") {
                 val urlToken = uri.pathSegments[1]
                 if (urlToken.length == 32 && urlToken.all { it in '0'..'9' || it in 'a'..'f' }) {
@@ -158,14 +158,14 @@ fun resolveContent(uri: Uri): NavDestination? {
                 && uri.pathSegments[0] == "p"
             ) {
                 val articleId = uri.pathSegments[1].toLong()
-                return Article(type = "article", id = articleId)
+                return Article(type = ArticleType.Article, id = articleId)
             }
         }
     }
     if (uri.scheme == "zhihu") {
         if (uri.host == "answers") {
             val answerId = uri.pathSegments[0].toLong()
-            return Article(type = "answer", id = answerId)
+            return Article(type = ArticleType.Answer, id = answerId)
         } else if (uri.host == "questions") {
             val questionId = uri.pathSegments[0].toLong()
             return Question(questionId)
@@ -173,7 +173,7 @@ fun resolveContent(uri: Uri): NavDestination? {
             return Home
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()
-            return Article(type = "article", id = articleId)
+            return Article(type = ArticleType.Article, id = articleId)
         }
     }
     return null
