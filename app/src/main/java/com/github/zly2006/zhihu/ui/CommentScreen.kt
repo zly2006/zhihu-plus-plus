@@ -45,7 +45,6 @@ import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.util.LinkMovementMethod
-import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
@@ -54,6 +53,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.*
+typealias CommentModel = com.github.zly2006.zhihu.viewmodel.CommentItem
 
 private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
@@ -64,10 +64,10 @@ val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 fun CommentScreen(
     httpClient: HttpClient,
     content: () -> NavDestination,
-    activeCommentItem: CommentItem? = null,
+    activeCommentItem: CommentModel? = null,
     topPadding: Dp = 100.dp,
     onNavigate: (NavDestination) -> Unit,
-    onChildCommentClick: (CommentItem) -> Unit
+    onChildCommentClick: (CommentModel) -> Unit
 ) {
     val context = LocalContext.current
     var commentInput by remember { mutableStateOf("") }
@@ -169,8 +169,8 @@ fun CommentScreen(
                         else -> {
                             @Composable
                             fun Comment(
-                                commentItem: CommentItem,
-                                onChildCommentClick: (CommentItem) -> Unit
+                                commentItem: CommentModel,
+                                onChildCommentClick: (CommentModel) -> Unit
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
                                 var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
@@ -212,12 +212,29 @@ fun CommentScreen(
                                     ) {
                                         if (commentItem.item.childComments.isNotEmpty()) {
                                             commentItem.item.childComments.forEach { childComment ->
-                                                val childCommentItem = CommentItem(
+                                                var liked by remember { mutableStateOf(childComment.liked) }
+                                                var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
+                                                val childCommentItem = CommentModel(
                                                     item = childComment.asComment(),
                                                     clickTarget = null // 子评论不需要点击跳转
                                                 )
                                                 CommentItem(
                                                     comment = childCommentItem,
+                                                    isLiked = liked,
+                                                    likeCount = likeCount,
+                                                    toggleLike = {
+                                                        viewModel.toggleLikeComment(
+                                                            childCommentItem.item,
+                                                            httpClient,
+                                                            context
+                                                        ) {
+                                                            val newLikeState = !liked
+                                                            liked = newLikeState
+                                                            likeCount += if (newLikeState) 1 else -1
+                                                            childCommentItem.item.liked = newLikeState
+                                                            childCommentItem.item.likeCount = likeCount
+                                                        }
+                                                    },
                                                     useWebview = useWebview,
                                                     pinWebview = pinWebview,
                                                     onNavigate = onNavigate,
@@ -346,8 +363,8 @@ fun CommentTopText(content: NavDestination? = null) {
 
 @Composable
 private fun CommentItem(
-    comment: CommentItem,
-    replyingTo: CommentItem? = null,
+    comment: CommentModel,
+    replyingTo: CommentModel? = null,
     useWebview: Boolean,
     pinWebview: Boolean,
     isLiked: Boolean = false,
@@ -355,7 +372,7 @@ private fun CommentItem(
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
     onNavigate: (NavDestination) -> Unit,
-    onChildCommentClick: (CommentItem) -> Unit
+    onChildCommentClick: (CommentModel) -> Unit
 ) {
     val commentData = comment.item
 
@@ -570,7 +587,7 @@ private fun isSameYear(date1: Date, date2: Date): Boolean {
 @Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
 @Composable
 private fun CommentItemPreview() {
-    val comment = CommentItem(
+    val comment = CommentModel(
         item = DataHolder.Comment(
             id = "123",
             content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
@@ -616,7 +633,7 @@ private fun CommentItemPreview() {
 @Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
 @Composable
 private fun NestedCommentPreview() {
-    val comment = CommentItem(
+    val comment = CommentModel(
         item = DataHolder.Comment(
             id = "123",
             content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",

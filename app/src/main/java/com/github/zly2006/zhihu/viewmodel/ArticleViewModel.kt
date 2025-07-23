@@ -56,6 +56,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
     var questionId by mutableLongStateOf(0L)
     var collections = mutableStateListOf<Collection>()
+    var updatedAt by mutableLongStateOf(0L)
+    var createdAt by mutableLongStateOf(0L)
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     val isFavorited: Boolean
@@ -92,6 +94,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                     -1 -> VoteUpState.Down
                                     else -> VoteUpState.Neutral
                                 }
+                                updatedAt = answer.updatedTime
+                                createdAt = answer.createdTime
 
                                 (context as? MainActivity)?.postHistory(
                                     Article(
@@ -160,6 +164,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                     -1 -> VoteUpState.Down
                                     else -> VoteUpState.Neutral
                                 }
+                                updatedAt = article.updated
+                                createdAt = article.created
 
                                 (context as? MainActivity)?.postHistory(
                                     Article(

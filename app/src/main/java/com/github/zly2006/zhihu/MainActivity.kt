@@ -48,9 +48,14 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     // TTS服务实例
-    private var textToSpeech: TextToSpeech? = null
+    var textToSpeech: TextToSpeech? = null
+    enum class TtsEngine {
+        Uninitialized, // 未初始化
+        Pico, Google
+    }
+    var ttsEngine: TtsEngine = TtsEngine.Uninitialized // 默认使用Pico TTS引擎
     private var isTtsInitialized = false
-    private val maxChunkLength = 3000 // 每段最大字符数
+    private val maxChunkLength = 100 // 每段最大字符数
     private var currentTextChunks = mutableListOf<String>()
     private var currentChunkIndex = 0
 
@@ -156,16 +161,47 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // 设置语言
-            val result = textToSpeech?.setLanguage(Locale.CHINESE)
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            // 设置使用Pico TTS引擎
+            val picoEngine = "com.svox.pico"
+            val availableEngines = textToSpeech?.engines?.map { it.name } ?: emptyList()
+
+            if (availableEngines.contains(picoEngine)) {
+                // 如果Pico TTS可用，切换到Pico引擎
+                textToSpeech?.shutdown()
+                textToSpeech = TextToSpeech(this, this, picoEngine)
+                Log.i("MainActivity", "Using Pico TTS engine")
+                ttsEngine = TtsEngine.Pico
+            } else {
+                Log.w("MainActivity", "Pico TTS not available, using default engine")
+                // 继续使用默认引擎的初始化
+                initializeTtsSettings()
+                ttsEngine = TtsEngine.Google
+            }
+        } else {
+            Log.e("MainActivity", "TTS Initialization failed")
+        }
+    }
+
+    private fun initializeTtsSettings() {
+        // 设置语言
+        val result = textToSpeech?.setLanguage(Locale.CHINESE)
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            // 如果中文不支持，尝试英文
+            val englishResult = textToSpeech?.setLanguage(Locale.ENGLISH)
+            if (englishResult == TextToSpeech.LANG_MISSING_DATA || englishResult == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("MainActivity", "Language not supported")
             } else {
+                Log.i("MainActivity", "Using English language for TTS")
                 isTtsInitialized = true
             }
         } else {
-            Log.e("MainActivity", "Initialization failed")
+            Log.i("MainActivity", "Using Chinese language for TTS")
+            isTtsInitialized = true
         }
+
+        // 设置语音参数
+        textToSpeech?.setSpeechRate(0.9f) // 稍微慢一点的语速
+        textToSpeech?.setPitch(1.0f) // 正常音调
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

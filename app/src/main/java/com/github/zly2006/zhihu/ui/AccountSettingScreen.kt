@@ -265,6 +265,91 @@ fun AccountSettingScreen(
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
             }
+
+            // TTS引擎信息显示
+            val mainActivity = context as? MainActivity
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        "语音朗读引擎信息",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "当前引擎",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            when (mainActivity?.ttsEngine) {
+                                MainActivity.TtsEngine.Pico -> "Pico TTS"
+                                MainActivity.TtsEngine.Google -> "Google TTS"
+                                else -> "未初始化"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "引擎状态",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            if (mainActivity?.isSpeaking() == true) "正在朗读"
+                            else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) "就绪"
+                            else "未就绪",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when {
+                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
+                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.error
+                            }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "引擎列表",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = when {
+                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
+                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.error
+                            }
+                        )
+                    }
+                }
+            }
+
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",

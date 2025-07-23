@@ -264,6 +264,7 @@ fun ArticleScreen(
                     }
 
                     // TTS朗读按钮
+                    if (false)
                     IconButton(
                         onClick = {
                             val mainActivity = context as? MainActivity
@@ -460,6 +461,18 @@ fun ArticleScreen(
                     )
                 }
             }
+            if (viewModel.createdAt != viewModel.updatedAt) {
+                Text(
+                    "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                    color = Color.Gray,
+                    fontSize = 11.sp,
+                )
+            }
+            Text(
+                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                color = Color.Gray,
+                fontSize = 11.sp,
+            )
         }
     }
 
