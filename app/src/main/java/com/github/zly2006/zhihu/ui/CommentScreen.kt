@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
@@ -440,6 +441,7 @@ private fun CommentItem(
                 } else {
                     // 评论内容
                     val context = LocalContext.current
+                    val contentColor = LocalContentColor.current
                     AndroidView({
                         TextView(context).apply {
                             autoLinkMask = Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS
@@ -451,11 +453,8 @@ private fun CommentItem(
                             }
                             setTextIsSelectable(true)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                            setTextColor(Color.BLACK)
+                            setTextColor(contentColor.toArgb())
                             movementMethod = LinkMovementMethod.getInstance()
-//                            SpannableString
-//                            setOnClickListener {
-//                            }
                         }
                     })
                 }

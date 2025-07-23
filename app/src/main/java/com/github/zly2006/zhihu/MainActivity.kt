@@ -47,7 +47,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         AccountData.httpClient(this)
     }
 
+    // TTS服务实例
     private var textToSpeech: TextToSpeech? = null
+    private var isTtsInitialized = false
+    private val maxChunkLength = 3000 // 每段最大字符数
+    private var currentTextChunks = mutableListOf<String>()
+    private var currentChunkIndex = 0
+
     lateinit var navController: NavHostController
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -154,6 +160,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             val result = textToSpeech?.setLanguage(Locale.CHINESE)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("MainActivity", "Language not supported")
+            } else {
+                isTtsInitialized = true
             }
         } else {
             Log.e("MainActivity", "Initialization failed")
@@ -241,11 +249,71 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     // TTS相关方法
     fun speakText(text: String) {
-        textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        if (isTtsInitialized && textToSpeech != null) {
+            // 将长文本分段
+            currentTextChunks = splitTextIntoChunks(text, maxChunkLength).toMutableList()
+            currentChunkIndex = 0
+            speakNextChunk()
+        }
+    }
+
+    private fun speakNextChunk() {
+        if (currentChunkIndex < currentTextChunks.size && isTtsInitialized) {
+            val chunk = currentTextChunks[currentChunkIndex]
+            textToSpeech?.speak(
+                chunk,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "chunk_$currentChunkIndex"
+            )
+            currentChunkIndex++
+
+            // 设置朗读完成监听器，自动播放下一段
+            textToSpeech?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {
+                    if (utteranceId?.startsWith("chunk_") == true) {
+                        // 延迟一点再播放下一段，避免太快
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            speakNextChunk()
+                        }, 500)
+                    }
+                }
+
+                override fun onError(utteranceId: String?) {}
+            })
+        }
+    }
+
+    private fun splitTextIntoChunks(text: String, maxLength: Int): List<String> {
+        if (text.length <= maxLength) return listOf(text)
+
+        val chunks = mutableListOf<String>()
+        var currentPos = 0
+
+        while (currentPos < text.length) {
+            val endPos = minOf(currentPos + maxLength, text.length)
+            var chunk = text.substring(currentPos, endPos)
+
+            // 如果不是最后一段，尝试在句号、感叹号、问号处分割
+            if (endPos < text.length) {
+                val lastSentenceEnd = chunk.lastIndexOfAny(listOf("。", "！", "？", ".", "!", "?"))
+                if (lastSentenceEnd > chunk.length / 2) {
+                    chunk = chunk.substring(0, lastSentenceEnd + 1)
+                }
+            }
+
+            chunks.add(chunk.trim())
+            currentPos += chunk.length
+        }
+
+        return chunks
     }
 
     fun stopSpeaking() {
         textToSpeech?.stop()
+        currentTextChunks.clear()
+        currentChunkIndex = 0
     }
 
     fun isSpeaking(): Boolean {
