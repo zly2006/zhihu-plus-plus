@@ -97,11 +97,14 @@ class MainActivity : ComponentActivity() {
             ZhihuTheme {
                 ZhihuMain(navController = navController)
             }
+        }
+        if (savedInstanceState == null) {
+            telemetry(this, "start")
             if (intent.data != null) {
                 if (intent.data!!.authority == "zhihu-plus.internal") {
                     if (intent.data!!.path == "/error") {
                         val title = intent.data!!.getQueryParameter("title")
-                        val message = intent.data!!.getQueryParameter("message")
+//                        val message = intent.data!!.getQueryParameter("message")
                         val stack = intent.data!!.getQueryParameter("stack")
                         AlertDialog.Builder(this).apply {
                             setTitle(title)
@@ -117,9 +120,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-        if (savedInstanceState == null) {
-            telemetry(this, "start")
         }
 
         ImageLoader.Builder(this)
