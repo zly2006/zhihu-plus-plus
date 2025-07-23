@@ -104,6 +104,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        if (savedInstanceState == null) {
+            telemetry(this, "start")
+        }
 
         ImageLoader.Builder(this)
             .crossfade(true)

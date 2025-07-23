@@ -20,13 +20,10 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
-import io.ktor.client.request.*
-import io.ktor.http.*
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -135,21 +132,7 @@ class LoginActivity : ComponentActivity() {
                                                         }.create().show()
                                                     } else {
                                                         AccountData.saveData(this@LoginActivity, data)
-                                                        if (preferences.getBoolean("allowTelemetry", true)) {
-                                                            scope.launch(mainExecutor.asCoroutineDispatcher()) {
-                                                                runCatching {
-                                                                    AccountData.httpClient(this@LoginActivity)
-                                                                        .post("https://redenmc.com/api/zhihu/login") {
-                                                                            setBody(Json.encodeToString(data))
-                                                                            contentType(ContentType.Application.Json)
-                                                                            header(
-                                                                                HttpHeaders.UserAgent,
-                                                                                "Zhihu++/${BuildConfig.VERSION_NAME}"
-                                                                            )
-                                                                        }
-                                                                }
-                                                            }
-                                                        }
+                                                        telemetry(this@LoginActivity, "login")
                                                         this@LoginActivity.finish()
                                                     }
                                                 }
