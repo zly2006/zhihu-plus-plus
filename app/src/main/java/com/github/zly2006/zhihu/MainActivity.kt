@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -32,8 +33,9 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import java.util.Locale
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
         AccountData.httpClient(this)
     }
 
+    private var textToSpeech: TextToSpeech? = null
     lateinit var navController: NavHostController
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -140,6 +143,21 @@ class MainActivity : ComponentActivity() {
                     loader
                 }
             }
+
+        // 初始化TTS
+        textToSpeech = TextToSpeech(this, this)
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            // 设置语言
+            val result = textToSpeech?.setLanguage(Locale.CHINESE)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("MainActivity", "Language not supported")
+            }
+        } else {
+            Log.e("MainActivity", "Initialization failed")
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -219,6 +237,24 @@ class MainActivity : ComponentActivity() {
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
+    }
+
+    // TTS相关方法
+    fun speakText(text: String) {
+        textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+    }
+
+    fun stopSpeaking() {
+        textToSpeech?.stop()
+    }
+
+    fun isSpeaking(): Boolean {
+        return textToSpeech?.isSpeaking ?: false
+    }
+
+    override fun onDestroy() {
+        textToSpeech?.shutdown()
+        super.onDestroy()
     }
 
     companion object {

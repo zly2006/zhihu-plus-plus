@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
@@ -134,6 +136,18 @@ fun ArticleScreen(
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
 
+    // TTS状态管理
+    var isSpeaking by remember { mutableStateOf(false) }
+
+    // 监听TTS状态变化
+    LaunchedEffect(Unit) {
+        while (true) {
+            val mainActivity = context as? MainActivity
+            isSpeaking = mainActivity?.isSpeaking() ?: false
+            kotlinx.coroutines.delay(500) // 每500ms检查一次状态
+        }
+    }
+
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
         val scrollDelta = abs(currentScroll - previousScrollValue)
@@ -245,6 +259,40 @@ fun ArticleScreen(
                         Icon(
                             if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                             contentDescription = "收藏"
+                        )
+                    }
+
+                    // TTS朗读按钮
+                    IconButton(
+                        onClick = {
+                            val mainActivity = context as? MainActivity
+                            if (isSpeaking) {
+                                mainActivity?.stopSpeaking()
+                            } else {
+                                // 提取纯文本内容进行朗读
+                                val textToRead = buildString {
+                                    append(viewModel.title)
+                                    append("。")
+                                    if (viewModel.content.isNotEmpty()) {
+                                        // 从HTML内容中提取纯文本
+                                        val plainText = Jsoup.parse(viewModel.content).text()
+                                        append(plainText)
+                                    }
+                                }
+                                if (textToRead.isNotBlank()) {
+                                    mainActivity?.speakText(textToRead)
+                                    Toast.makeText(context, "开始朗读", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = if (isSpeaking) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = if (isSpeaking) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Icon(
+                            if (isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = if (isSpeaking) "停止朗读" else "开始朗读"
                         )
                     }
 
