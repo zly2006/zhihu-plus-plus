@@ -7,12 +7,9 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -23,13 +20,8 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
         get() = "https://api.zhihu.com/topstory/recommend"
 
     override suspend fun fetchFeeds(context: Context) {
-        val httpClient = HttpClient {
-            install(ContentNegotiation) {
-                json(AccountData.json)
-            }
-        }
         try {
-            val response = httpClient.get(initialUrl) {
+            val response = httpClient(context).get(initialUrl) {
                 AccountData.ANDROID_HEADERS.forEach { (key, value) ->
                     header(key, value)
                 }
@@ -85,7 +77,6 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
             throw e
         } finally {
             isLoading = false
-            httpClient.close()
         }
     }
 }

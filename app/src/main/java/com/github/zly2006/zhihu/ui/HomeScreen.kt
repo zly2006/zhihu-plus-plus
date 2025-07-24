@@ -51,9 +51,6 @@ fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
-    val onlineViewModel: HomeFeedViewModel by context.viewModels()
-    val localViewModel: AndroidHomeFeedViewModel by context.viewModels()
-
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -61,15 +58,16 @@ fun HomeScreen(
     // 获取当前推荐算法设置
     val currentRecommendationMode = remember {
         RecommendationMode.entries.find {
-            it.key == preferences.getString("recommendationMode", RecommendationMode.SERVER.key)
-        } ?: RecommendationMode.SERVER
+            it.key == preferences.getString("recommendationMode", RecommendationMode.WEB.key)
+        } ?: RecommendationMode.WEB
     }
 
     // 根据设置选择对应的ViewModel
-    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
-        RecommendationMode.SERVER -> onlineViewModel
-        RecommendationMode.LOCAL -> localViewModel
-        RecommendationMode.SIMILARITY -> onlineViewModel // 暂时使用在线推荐，因为相似度推荐还未实现
+    val viewModel: BaseFeedViewModel by when (currentRecommendationMode) {
+        RecommendationMode.WEB -> context.viewModels<HomeFeedViewModel>()
+        RecommendationMode.ANDROID -> context.viewModels<AndroidHomeFeedViewModel>()
+        RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
+        RecommendationMode.SIMILARITY -> context.viewModels<HomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
     if (!preferences.getBoolean("developer", false)) {
