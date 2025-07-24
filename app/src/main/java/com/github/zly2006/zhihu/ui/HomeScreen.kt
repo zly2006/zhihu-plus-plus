@@ -33,9 +33,11 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlin.getValue
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -50,7 +52,7 @@ fun HomeScreen(
 ) {
     val context = LocalActivity.current as MainActivity
     val onlineViewModel: HomeFeedViewModel by context.viewModels()
-    val localViewModel: LocalHomeFeedViewModel by context.viewModels()
+    val localViewModel: AndroidHomeFeedViewModel by context.viewModels()
 
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)

@@ -29,6 +29,12 @@ object AccountData {
         encodeDefaults = true
     }
 
+    internal val ANDROID_HEADERS = mapOf(
+        "x-api-version" to "3.1.8",
+        "x-app-version" to "10.61.0",
+        "x-app-za" to "OS=Android&Release=12&Model=sdk_gphone64_arm64&VersionName=10.61.0&VersionCode=26107&Product=com.zhihu.android&Width=1440&Height=2952&Installer=%E7%81%B0%E5%BA%A6&DeviceType=AndroidPhone&Brand=google",
+    )
+
     @Serializable
     data class Data(
         val login: Boolean = false,
