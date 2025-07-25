@@ -53,7 +53,7 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Additional Android Tools
         run: |
-          ls -al /usr/local/lib/android/sdk
+          ls -al
       - name: Setup rust
         if: ${{ inputs.minify }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -104,6 +104,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APKSIGNER_PATH: /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner
         run: |
           cd apk-recompress
           echo "Building Rust tool"
