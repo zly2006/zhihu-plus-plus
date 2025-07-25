@@ -49,10 +49,7 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
                 AccountData.ANDROID_HEADERS.forEach { (key, value) ->
                     header(key, value)
                 }
-                header(
-                    HttpHeaders.UserAgent,
-                    "com.zhihu.android/Futureve/10.61.0 Mozilla/5.0 (Linux; Android 12; sdk_gphone64_arm64 Build/SE1A.220630.001.A1; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/57.0.1000.10 Mobile Safari/537.36"
-                )
+                header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
             }
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
