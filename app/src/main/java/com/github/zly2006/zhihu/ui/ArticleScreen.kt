@@ -631,6 +631,11 @@ fun ArticleScreen(
                             IconButton(
                                 onClick = {
                                     context.stopSpeaking()
+                                    Toast.makeText(
+                                        context,
+                                        "已停止朗读",
+                                        Toast.LENGTH_SHORT
+                                    )
                                 },
                                 enabled = (context.ttsState !in listOf(
                                     TtsState.Error,
