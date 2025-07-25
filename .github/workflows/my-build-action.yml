@@ -49,6 +49,15 @@ jobs:
           distribution: 'zulu' # See 'Supported distributions' for available options
           java-version: '17'
           cache: 'gradle'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Additional Android Tools
+        run: |
+          sdkmanager --list
+          tree /usr/local/lib/android/sdk
+          /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager build-tools;35.0.0
+          which apksigner
+          tree /usr/local/lib/android/sdk
       - name: Setup rust
         if: ${{ inputs.minify }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -68,13 +77,6 @@ jobs:
             ./**/.gradle
           # dont invalidate cache if only gradle.properties is changed -- they
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Additional Android Tools
-        run: |
-          /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager build-tools;35.0.0
-          which apksigner
-          tree /usr/local/lib/android/sdk
       # Run Tests Build
       - name: Run gradle tests
         run: ./gradlew test
