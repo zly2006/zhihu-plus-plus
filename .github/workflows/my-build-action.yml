@@ -70,6 +70,10 @@ jobs:
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      - name: Additional Android Tools
+        run: |
+          /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager build-tools
+          which apksigner
       # Run Tests Build
       - name: Run gradle tests
         run: ./gradlew test
