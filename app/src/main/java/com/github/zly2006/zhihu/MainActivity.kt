@@ -289,10 +289,11 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         val future = CompletableDeferred<String>()
         runOnUiThread {
             webview.evaluateJavascript("exports.encrypt('$md5')") {
+                val time = System.currentTimeMillis() - timeStart
                 Log.i("MainActivity", "Sign request: $url")
                 Log.i("MainActivity", "Sign source: $signSource")
+                Log.i("MainActivity", "Sign input: $md5")
                 Log.i("MainActivity", "Sign result: $it")
-                val time = System.currentTimeMillis() - timeStart
                 Log.i("MainActivity", "Sign time: $time ms")
                 future.complete(it.trim('"'))
             }
