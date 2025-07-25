@@ -61,15 +61,15 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Uninitialized, // 未初始化
         Pico, Google
     }
-    enum class TtsState {
+    enum class TtsState(val isSpeaking: Boolean = false) {
         Uninitialized, // 未初始化
         Initializing, // 初始化中
         Ready, // 已初始化
         Error, // 失败，需要重新初始化
         LoadingText, // 正在加载文本
-        Speaking, // 正在朗读
+        Speaking(true), // 正在朗读
         Paused, // 暂停朗读
-        SwitchingChunk, // 切换朗读段落
+        SwitchingChunk(true), // 切换朗读段落
     }
 
     private val _ttsState = mutableStateOf(TtsState.Uninitialized)
