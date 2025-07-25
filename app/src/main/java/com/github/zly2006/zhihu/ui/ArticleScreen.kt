@@ -7,7 +7,11 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.EaseInCubic
+import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -118,103 +122,206 @@ fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
     context: Context,
+    showMenu: Boolean,
     onDismissRequest: () -> Unit,
 ) {
-    Column {
-        // 朗读按钮 (仅在debug模式下显示)
-        @Suppress("KotlinConstantConditions")
-        if (BuildConfig.BUILD_TYPE == "debug") {
-            val ttsState = (context as? MainActivity)?.ttsState ?: TtsState.Uninitialized
-            DropdownMenuItem(
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        when (ttsState) {
-                            TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                            else -> Icon(
-                                if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+    AnimatedVisibility(
+        visible = showMenu,
+        enter = fadeIn(animationSpec = tween(300)),
+        exit = fadeOut(animationSpec = tween(300))
+    ) {
+        // 背景遮罩
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable { onDismissRequest() }
+        ) {
+            // 菜单内容
+            AnimatedVisibility(
+                visible = showMenu,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(300, easing = EaseOutCubic)
+                ),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(300, easing = EaseInCubic)
+                ),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = false) { /* 阻止点击穿透 */ },
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        // 顶部拖拽指示器
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 20.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(4.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                        RoundedCornerShape(2.dp)
+                                    )
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(if (ttsState.isSpeaking) "停止朗读" else "开始朗读")
-                    }
-                },
-                onClick = {
-                    onDismissRequest()
-                    val mainActivity = context as? MainActivity
-                    if (ttsState.isSpeaking) {
-                        mainActivity?.stopSpeaking()
-                    } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                        // 使用协程在后台处理文本提取，避免UI阻塞
-                        viewModel.viewModelScope.launch {
-                            try {
-                                // 在IO线程中处理文本提取
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    val textToRead = buildString {
-                                        append(viewModel.title)
-                                        append("。")
-                                        if (viewModel.content.isNotEmpty()) {
-                                            // 从HTML内容中提取纯文本，限制处理的内容长度
-                                            val contentToProcess =
-                                                if (viewModel.content.length > 50000) {
-                                                    viewModel.content.substring(0, 50000) + "..."
-                                                } else {
-                                                    viewModel.content
-                                                }
-                                            val plainText = Jsoup.parse(contentToProcess).text()
-                                            append(plainText)
-                                        }
-                                    }
 
-                                    // 回到主线程执行TTS
-                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                        if (textToRead.isNotBlank()) {
-                                            mainActivity?.speakText(textToRead, viewModel.title)
+                        // 朗读按钮 (仅在debug模式下显示)
+                        @Suppress("KotlinConstantConditions")
+                        if (BuildConfig.BUILD_TYPE == "debug") {
+                            val ttsState = (context as? MainActivity)?.ttsState ?: TtsState.Uninitialized
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+                                    ) {
+                                        onDismissRequest()
+                                        val mainActivity = context as? MainActivity
+                                        if (ttsState.isSpeaking) {
+                                            mainActivity?.stopSpeaking()
+                                        } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                                            // 使用协程在后台处理文本提取，避免UI阻塞
+                                            viewModel.viewModelScope.launch {
+                                                try {
+                                                    // 在IO线程中处理文本提取
+                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                                        val textToRead = buildString {
+                                                            append(viewModel.title)
+                                                            append("。")
+                                                            if (viewModel.content.isNotEmpty()) {
+                                                                // 从HTML内容中提取纯文本，限制处理的内容长度
+                                                                val contentToProcess =
+                                                                    if (viewModel.content.length > 50000) {
+                                                                        viewModel.content.substring(0, 50000) + "..."
+                                                                    } else {
+                                                                        viewModel.content
+                                                                    }
+                                                                val plainText = Jsoup.parse(contentToProcess).text()
+                                                                append(plainText)
+                                                            }
+                                                        }
+
+                                                        // 回到主线程执行TTS
+                                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                            if (textToRead.isNotBlank()) {
+                                                                mainActivity?.speakText(textToRead, viewModel.title)
+                                                            }
+                                                        }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                        Toast.makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
+                                                            .show()
+                                                    }
+                                                }
+                                            }
                                         }
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    when (ttsState) {
+                                        TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        else -> Icon(
+                                            if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                            tint = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
                                     }
-                                }
-                            } catch (e: Exception) {
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    Toast.makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
-                                        .show()
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text(
+                                        text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
                                 }
                             }
-                        }
-                    }
-                },
-                enabled = (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
-            )
-        }
 
-        // 分享按钮
-        DropdownMenuItem(
-            text = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Share,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("复制链接")
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        // 分享按钮
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDismissRequest()
+                                    val clipboard =
+                                        (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
+                                    val text = when (article.type) {
+                                        ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                                        ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                    }
+                                    (context as? MainActivity)?.sharedData?.clipboardDestination = article
+                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
+                                    Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "复制链接",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // 底部安全区域
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
-            },
-            onClick = {
-                val clipboard =
-                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
-                val text = when (article.type) {
-                    ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                }
-                (context as? MainActivity)?.sharedData?.clipboardDestination = article
-                clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
-                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
             }
-        )
+        }
     }
 }
 
@@ -245,8 +352,10 @@ fun ArticleActionsMenuPreview() {
                         null
                     )
                 },
-                context = LocalContext.current
-            ) { }
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
         }
     }
 }
@@ -278,8 +387,10 @@ fun ArticleActionsMenuSpeakingPreview() {
                         null
                     )
                 },
-                context = LocalContext.current
-            ) { }
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
         }
     }
 }
@@ -311,8 +422,10 @@ fun ArticleActionsMenuLoadingPreview() {
                         null
                     )
                 },
-                context = LocalContext.current
-            ) { }
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
         }
     }
 }
@@ -340,6 +453,8 @@ fun ArticleScreen(
     var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
+    // 下拉菜单按钮 - 包含朗读和分享功能
+    var showActionsMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -534,32 +649,6 @@ fun ArticleScreen(
                             }
                         }
 
-                        var expanded by remember { mutableStateOf(false) }
-                        Box {
-                            IconButton(
-                                onClick = { expanded = true },
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = "更多选项"
-                                )
-                            }
-
-
-                            DropdownMenu(expanded, { expanded = false }) {
-                                ArticleActionsMenu(
-                                    article = article,
-                                    viewModel = viewModel,
-                                    context = context,
-                                    onDismissRequest = { expanded = false }
-                                )
-                            }
-                        }
-
                         Button(
                             onClick = { showComments = true },
                             contentPadding = PaddingValues(horizontal = 8.dp),
@@ -571,6 +660,19 @@ fun ArticleScreen(
                             Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "${viewModel.commentCount}")
+                        }
+
+                        IconButton(
+                            onClick = { showActionsMenu = true },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Icon(
+                                Icons.Filled.MoreVert,
+                                contentDescription = "更多选项"
+                            )
                         }
                     }
                 }
@@ -706,6 +808,19 @@ fun ArticleScreen(
         }
     }
 
+    // 全屏菜单
+    ArticleActionsMenu(
+        article = article,
+        viewModel = viewModel,
+        context = context,
+        showMenu = showActionsMenu,
+        onDismissRequest = { showActionsMenu = false }
+    )
+
+    BackHandler(showActionsMenu) {
+        showActionsMenu = false
+    }
+
     AnimatedVisibility(
         visible = showCollectionDialog
     ) {
@@ -758,19 +873,4 @@ fun ArticleScreen(
             content = article
         )
     }
-}
-
-@Preview
-@Composable
-fun ArticleScreenPreview() {
-    ArticleScreen(
-        Article(
-            "如何看待《狂暴之翼》中的人物设定？",
-            ArticleType.Answer,
-            123456789,
-            "知乎用户",
-            "知乎用户",
-            "",
-        )
-    ) {}
 }
