@@ -156,7 +156,6 @@ fun ArticleActionsMenu(
                         .clickable(enabled = false) { /* 阻止点击穿透 */ },
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp
                 ) {
                     Column(
                         modifier = Modifier
@@ -635,7 +634,7 @@ fun ArticleScreen(
                                         context,
                                         "已停止朗读",
                                         Toast.LENGTH_SHORT
-                                    )
+                                    ).show()
                                 },
                                 enabled = (context.ttsState !in listOf(
                                     TtsState.Error,
