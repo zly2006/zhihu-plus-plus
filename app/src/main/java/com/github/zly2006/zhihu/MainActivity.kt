@@ -21,6 +21,7 @@ import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
@@ -33,6 +34,8 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import java.util.Locale
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
@@ -157,6 +160,24 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         // 初始化TTS
         textToSpeech = TextToSpeech(this, this)
+
+        // 自动检查更新（在应用启动时）
+        if (savedInstanceState == null) {
+            @OptIn(DelicateCoroutinesApi::class)
+            GlobalScope.launch {
+                try {
+                    val hasUpdate = UpdateManager.autoCheckForUpdate(this@MainActivity)
+                    if (hasUpdate) {
+                        val updateState = UpdateManager.updateState.value
+                        if (updateState is UpdateManager.UpdateState.UpdateAvailable) {
+                            showUpdateDialog(updateState.version.toString(), updateState.isNightly)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to check for updates", e)
+                }
+            }
+        }
     }
 
     override fun onInit(status: Int) {
@@ -281,6 +302,135 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
+    }
+
+    /**
+     * 显示更新提醒对话框
+     */
+    private fun showUpdateDialog(version: String, isNightly: Boolean) {
+        val versionType = if (isNightly) "Nightly" else "正式版本"
+        val currentVersion = BuildConfig.VERSION_NAME
+
+        runOnUiThread {
+            AlertDialog.Builder(this).apply {
+                setTitle("发现新版本")
+                setMessage("当前版本：$currentVersion\n新版本：$version ($versionType)\n\n是否立即更新？")
+                setCancelable(false)
+
+                // 立即更新按钮
+                setPositiveButton("立即更新") { dialog, _ ->
+                    dialog.dismiss()
+                    showDownloadProgressDialog(version)
+                }
+
+                // 跳过此版本按钮
+                setNeutralButton("跳过此版本") { _, _ ->
+                    Log.i("MainActivity", "User chose to skip version $version")
+                    UpdateManager.skipVersion(this@MainActivity, version)
+                }
+
+                // 稍后提醒按钮
+                setNegativeButton("稍后提醒") { _, _ ->
+                    Log.i("MainActivity", "User chose to be reminded later")
+                    // 不做任何操作，下次启动时会再次检查
+                }
+            }.show()
+        }
+    }
+
+    /**
+     * 显示下载进度对话框
+     */
+    private fun showDownloadProgressDialog(version: String) {
+        val progressDialog = AlertDialog.Builder(this).apply {
+            setTitle("正在下载更新")
+            setMessage("正在下载版本 $version，请稍候...")
+            setCancelable(false)
+            setNegativeButton("取消") { dialog, _ ->
+                dialog.dismiss()
+                // 这里可以添加取消下载的逻辑
+            }
+        }.create()
+
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                Log.i("MainActivity", "Starting download for version $version")
+                UpdateManager.downloadUpdate(this@MainActivity)
+
+                // 监听下载状态
+                UpdateManager.updateState.collect { state ->
+                    when (state) {
+                        is UpdateManager.UpdateState.Downloading -> {
+                            runOnUiThread {
+                                progressDialog.setMessage("正在下载版本 $version，请稍候...")
+                            }
+                        }
+                        is UpdateManager.UpdateState.Downloaded -> {
+                            Log.i("MainActivity", "Update downloaded, installing...")
+                            runOnUiThread {
+                                progressDialog.dismiss()
+                                showInstallDialog(state.file)
+                            }
+                            return@collect // 结束收集
+                        }
+                        is UpdateManager.UpdateState.Error -> {
+                            Log.e("MainActivity", "Update download failed: ${state.message}")
+                            runOnUiThread {
+                                progressDialog.dismiss()
+                                AlertDialog.Builder(this@MainActivity).apply {
+                                    setTitle("下载失败")
+                                    setMessage("更���下载失败：${state.message}")
+                                    setPositiveButton("确定", null)
+                                }.show()
+                            }
+                            return@collect // 结束收集
+                        }
+                        else -> {
+                            // 其他状态暂不处理
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to download update", e)
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    AlertDialog.Builder(this@MainActivity).apply {
+                        setTitle("下载失败")
+                        setMessage("更新下载失败：${e.message}")
+                        setPositiveButton("确定", null)
+                    }.show()
+                }
+            }
+        }
+    }
+
+    /**
+     * 显示安装确认对话框
+     */
+    private fun showInstallDialog(file: java.io.File) {
+        AlertDialog.Builder(this).apply {
+            setTitle("下载完成")
+            setMessage("更新已下载完成，是否立即安装？")
+            setCancelable(false)
+            setPositiveButton("立即安装") { _, _ ->
+                try {
+                    UpdateManager.installUpdate(this@MainActivity, file)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to install update", e)
+                    AlertDialog.Builder(this@MainActivity).apply {
+                        setTitle("安装失败")
+                        setMessage("无法启动安装程序：${e.message}")
+                        setPositiveButton("确定", null)
+                    }.show()
+                }
+            }
+            setNegativeButton("稍后安装") { _, _ ->
+                // 用户选择稍后安装，不做任何操作
+                Log.i("MainActivity", "User chose to install later")
+            }
+        }.show()
     }
 
     // TTS相关方法

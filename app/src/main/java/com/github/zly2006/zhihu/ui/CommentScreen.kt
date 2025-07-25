@@ -3,7 +3,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
-import android.graphics.Color
 import android.text.Html
 import android.text.util.Linkify
 import android.util.TypedValue
@@ -53,6 +52,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.*
+
 typealias CommentModel = com.github.zly2006.zhihu.viewmodel.CommentItem
 
 private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
@@ -245,13 +245,13 @@ fun CommentScreen(
                                         Button(
                                             onClick = { onChildCommentClick(commentItem) },
                                             modifier = Modifier
-                                                .height(32.dp),
+                                                .height(28.dp),
                                             shape = RoundedCornerShape(50),
                                             colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                             ),
-                                            contentPadding = PaddingValues(horizontal = 16.dp)
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
                                         ) {
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.Comment,
@@ -259,9 +259,9 @@ fun CommentScreen(
                                                 modifier = Modifier.size(16.dp),
                                                 tint = MaterialTheme.colorScheme.surfaceTint
                                             )
-                                            Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 14.sp
+                                                "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 12.sp,
+                                                modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp)
                                             )
                                         }
                                     }
@@ -319,7 +319,7 @@ fun CommentScreen(
                         TextField(
                             value = commentInput,
                             onValueChange = { commentInput = it },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(36.dp),
                             placeholder = { Text("写下你的评论...") },
                             singleLine = false,
                             maxLines = 3,

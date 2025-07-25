@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.updater
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.FileProvider
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
@@ -19,10 +20,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.URI
+import androidx.core.content.edit
 
 object UpdateManager {
     private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
+    private const val PREF_SKIPPED_VERSION = "skippedVersion"
+    private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
+    private const val PREF_LAST_UPDATE_CHECK = "lastUpdateCheck"
 
     sealed class UpdateState {
         object NoUpdate : UpdateState()
@@ -46,6 +51,100 @@ object UpdateManager {
         return preferences.getBoolean("checkNightlyUpdates", false)
     }
 
+    /**
+     * 检查是否启用自动更新检查
+     */
+    private fun isAutoCheckEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)
+    }
+
+    /**
+     * 获取跳过的版本
+     */
+    private fun getSkippedVersion(context: Context): String? {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getString(PREF_SKIPPED_VERSION, null)
+    }
+
+    /**
+     * 设置跳过的版本
+     */
+    fun skipVersion(context: Context, version: String) {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences.edit { putString(PREF_SKIPPED_VERSION, version) }
+    }
+
+    /**
+     * 检查是否需要进行自动更新检查（避免频繁检查）
+     */
+    private fun shouldPerformAutoCheck(context: Context): Boolean {
+        if (!isAutoCheckEnabled(context)) return false
+
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val lastCheck = preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)
+        val now = System.currentTimeMillis()
+        val dayInMillis = 24 * 60 * 60 * 1000L
+
+        return (now - lastCheck) > dayInMillis // 每天最多检查一次
+    }
+
+    /**
+     * 更新最后检查时间
+     */
+    private fun updateLastCheckTime(context: Context) {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
+    }
+
+    /**
+     * 自动检查更新（在应用启动时调用）
+     */
+    suspend fun autoCheckForUpdate(context: Context): Boolean {
+        if (!shouldPerformAutoCheck(context) && getGitHubToken(context) == null) return false
+        Log.i("UpdateManager", "Performing auto update check")
+
+        try {
+            updateState.value = UpdateState.Checking
+            updateLastCheckTime(context)
+
+            val client = AccountData.httpClient(context)
+            val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
+            val skippedVersion = getSkippedVersion(context)
+
+            var latestVersion: SchematicVersion?
+
+            // 检查正式版本
+            val latestResponse = client.get(GITHUB_API_LATEST) {
+                getGitHubToken(context)?.let { token ->
+                    headers {
+                        append(HttpHeaders.Authorization, "Bearer $token")
+                    }
+                }
+            }.body<JsonObject>()
+            Log.i("UpdateManager", "Latest version response: $latestResponse")
+            latestVersion = latestResponse["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
+
+            if (latestVersion != null && latestVersion > currentVersion) {
+                val versionString = latestVersion.toString()
+                // 检查是否是被跳过的版本
+                if (skippedVersion != versionString) {
+                    updateState.value = UpdateState.UpdateAvailable(latestVersion, false)
+                    return true // 有可用更新且未被跳过
+                } else {
+                    updateState.value = UpdateState.Latest
+                }
+            } else {
+                updateState.value = UpdateState.Latest
+            }
+        } catch (e: Exception) {
+            Log.e("UpdateManager", "Error checking for updates", e)
+            updateState.value = UpdateState.Error(e.message ?: "Unknown error")
+        }
+
+        return false
+    }
+
     suspend fun checkForUpdate(context: Context) {
         try {
             updateState.value = UpdateState.Checking
@@ -53,6 +152,7 @@ object UpdateManager {
             val client = AccountData.httpClient(context)
             val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
             val checkNightly = shouldCheckNightly(context)
+            val skippedVersion = getSkippedVersion(context)
 
             var latestVersion: SchematicVersion?
             var isNightly = false
@@ -95,7 +195,13 @@ object UpdateManager {
             }
 
             if (latestVersion != null && latestVersion > currentVersion) {
-                updateState.value = UpdateState.UpdateAvailable(latestVersion, isNightly)
+                val versionString = latestVersion.toString()
+                // 检查是否是被跳过的版本
+                if (skippedVersion != versionString) {
+                    updateState.value = UpdateState.UpdateAvailable(latestVersion, isNightly)
+                } else {
+                    updateState.value = UpdateState.Latest
+                }
             } else {
                 updateState.value = UpdateState.Latest
             }
