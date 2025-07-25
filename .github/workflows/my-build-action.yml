@@ -13,6 +13,9 @@ on:
       release:
         required: false
         type: boolean
+      nightly_release:
+        required: false
+        type: boolean
     secrets:
       ANDROID_SIGNING_KEY:
         required: true
@@ -46,6 +49,11 @@ jobs:
           distribution: 'zulu' # See 'Supported distributions' for available options
           java-version: '17'
           cache: 'gradle'
+      - name: Setup rust
+        if: ${{ inputs.minify }}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          override: true
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
@@ -86,6 +94,25 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/release/app-release.apk app/build/upload/zhihu++.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/upload/zhihu++.aab
+      - name: Recompress APK
+        if: ${{ inputs.minify }}
+        env:
+          KEYSTORE_PATH: ../app/zhihu.jks
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APKSIGNER_PATH: /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner
+        run: |
+          cd apk-recompress
+          echo "Building Rust tool"
+          cargo build --release > /dev/null
+          echo "Recompressing APK with Rust tool"
+          cargo run --release -- \
+            -i ../app/build/upload/zhihu++.apk \
+            -o ./zhihu++.apk
+          echo "Moving recompressed APK to upload directory"
+          mv ./zhihu++.apk ../app/build/upload/zhihu++.apk
+
       - name: Upload APK / Bundle
         uses: actions/upload-artifact@v4
         with:
@@ -94,7 +121,7 @@ jobs:
 
       # Delete existing nightly release
       - name: Delete existing nightly release
-        if: ${{ inputs.minify }}
+        if: ${{ inputs.minify && inputs.nightly_release }}
         uses: dev-drprasad/delete-tag-and-release@v1.0
         continue-on-error: true
         with:
@@ -104,7 +131,7 @@ jobs:
 
       # Create new nightly release
       - name: Create Nightly Release
-        if: ${{ inputs.minify }}
+        if: ${{ inputs.minify && inputs.nightly_release }}
         id: nightly_release
         uses: softprops/action-gh-release@v2
         with:
