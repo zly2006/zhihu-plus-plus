@@ -74,6 +74,7 @@ jobs:
         run: |
           /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager build-tools
           which apksigner
+          tree /usr/local/lib/android/sdk
       # Run Tests Build
       - name: Run gradle tests
         run: ./gradlew test
