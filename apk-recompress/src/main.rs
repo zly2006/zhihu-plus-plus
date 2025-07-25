@@ -340,6 +340,7 @@ fn sign_apk_with_apksigner(config: &Config) -> Result<(), Box<dyn std::error::Er
         .arg("true")
         .arg(&config.output_apk)
         .output();
+    dbg!(&output);
 
     match output {
         Ok(result) => {
