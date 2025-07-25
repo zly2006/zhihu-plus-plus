@@ -48,9 +48,8 @@ jobs:
           cache: 'gradle'
       - name: Setup rust
         if: ${{ inputs.minify }}
-        uses: actions/setup-rust@v2
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          profile: minimal
           override: true
 
       - name: Change wrapper permissions
@@ -101,7 +100,14 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd apk-recompress
+          echo "Building Rust tool"
           cargo build --release
+          echo "Recompressing APK with Rust tool"
+          cargo run --release -- \
+            -i ../app/build/upload/zhihu++.apk \
+            -o ./zhihu++.apk
+          echo "Moving recompressed APK to upload directory"
+          mv ./zhihu++.apk ../app/build/upload/zhihu++.apk
 
       - name: Upload APK / Bundle
         uses: actions/upload-artifact@v4
