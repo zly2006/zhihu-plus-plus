@@ -43,7 +43,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
 
-class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
+class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
@@ -61,6 +61,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Uninitialized, // 未初始化
         Pico, Google
     }
+    @Suppress("unused")
     enum class TtsState(val isSpeaking: Boolean = false) {
         Uninitialized, // 未初始化
         Initializing, // 初始化中
@@ -184,7 +185,37 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
         // 初始化TTS
         ttsState = TtsState.Initializing
-        textToSpeech = TextToSpeech(this, this)
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                // 设置使用Pico TTS引擎
+                val picoEngine = "com.svox.pico"
+                val availableEngines = textToSpeech?.engines?.map { it.name } ?: emptyList()
+
+                if (availableEngines.contains(picoEngine)) {
+                    // 如果Pico TTS可用，切换到Pico引擎
+                    textToSpeech?.shutdown()
+                    ttsState = TtsState.Initializing
+                    textToSpeech = TextToSpeech(this, { status ->
+                        if (status == TextToSpeech.SUCCESS) {
+                            initializeTtsSettings()
+                            ttsEngine = TtsEngine.Pico
+                        } else {
+                            Log.e("MainActivity", "Pico TTS Initialization failed")
+                            ttsState = TtsState.Error
+                        }
+                    }, picoEngine)
+                    Log.i("MainActivity", "Using Pico TTS engine")
+                } else {
+                    Log.w("MainActivity", "Pico TTS not available, using default engine")
+                    // 继续使用默认引擎的初始化
+                    initializeTtsSettings()
+                    ttsEngine = TtsEngine.Google
+                }
+            } else {
+                Log.e("MainActivity", "TTS Initialization failed")
+                ttsState = TtsState.Error
+            }
+        }
 
         // 自动检查更新（在应用启动时）
         if (savedInstanceState == null) {
@@ -202,31 +233,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     Log.e("MainActivity", "Failed to check for updates", e)
                 }
             }
-        }
-    }
-
-    override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            // 设置使用Pico TTS引擎
-            val picoEngine = "com.svox.pico"
-            val availableEngines = textToSpeech?.engines?.map { it.name } ?: emptyList()
-
-            if (availableEngines.contains(picoEngine)) {
-                // 如果Pico TTS可用，切换到Pico引擎
-                textToSpeech?.shutdown()
-                ttsState = TtsState.Initializing
-                textToSpeech = TextToSpeech(this, this, picoEngine)
-                Log.i("MainActivity", "Using Pico TTS engine")
-                ttsEngine = TtsEngine.Pico
-            } else {
-                Log.w("MainActivity", "Pico TTS not available, using default engine")
-                // 继续使用默认引擎的初始化
-                initializeTtsSettings()
-                ttsEngine = TtsEngine.Google
-            }
-        } else {
-            Log.e("MainActivity", "TTS Initialization failed")
-            ttsState = TtsState.Error
         }
     }
 

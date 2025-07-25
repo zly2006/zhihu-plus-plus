@@ -324,111 +324,6 @@ fun ArticleActionsMenu(
     }
 }
 
-@Preview
-@Composable
-fun ArticleActionsMenuPreview() {
-    MaterialTheme {
-        Surface {
-            ArticleActionsMenu(
-                article = Article(
-                    "如何看待《狂暴之翼》中的人物设定？",
-                    ArticleType.Answer,
-                    123456789,
-                    "知乎用户",
-                    "知乎用户",
-                    "",
-                ),
-                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                    ArticleViewModel(
-                        Article(
-                            "如何看待《狂暴之翼》中的人物设定？",
-                            ArticleType.Answer,
-                            123456789,
-                            "知乎用户",
-                            "知乎用户",
-                            "",
-                        ),
-                        null
-                    )
-                },
-                context = LocalContext.current,
-                showMenu = true,
-                onDismissRequest = {}
-            )
-        }
-    }
-}
-
-@Preview(name = "Actions Menu - Speaking", showBackground = true)
-@Composable
-fun ArticleActionsMenuSpeakingPreview() {
-    MaterialTheme {
-        Surface {
-            ArticleActionsMenu(
-                article = Article(
-                    "深入理解Kotlin协程的工作原理",
-                    ArticleType.Article,
-                    987654321,
-                    "Android开发者",
-                    "专业Android开发工程师",
-                    "",
-                ),
-                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                    ArticleViewModel(
-                        Article(
-                            "深入理解Kotlin协程的工作原理",
-                            ArticleType.Article,
-                            987654321,
-                            "Android开发者",
-                            "专业Android开发工程师",
-                            "",
-                        ),
-                        null
-                    )
-                },
-                context = LocalContext.current,
-                showMenu = true,
-                onDismissRequest = {}
-            )
-        }
-    }
-}
-
-@Preview(name = "Actions Menu - Loading", showBackground = true)
-@Composable
-fun ArticleActionsMenuLoadingPreview() {
-    MaterialTheme {
-        Surface {
-            ArticleActionsMenu(
-                article = Article(
-                    "React vs Vue：前端框架的选择指南",
-                    ArticleType.Article,
-                    111222333,
-                    "前端工程师",
-                    "资深前端开发者，JavaScript专家",
-                    "",
-                ),
-                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-                    ArticleViewModel(
-                        Article(
-                            "React vs Vue：前端框架的选择指南",
-                            ArticleType.Article,
-                            111222333,
-                            "前端工程师",
-                            "资深前端开发者，JavaScript专家",
-                            "",
-                        ),
-                        null
-                    )
-                },
-                context = LocalContext.current,
-                showMenu = true,
-                onDismissRequest = {}
-            )
-        }
-    }
-}
-
 @Composable
 fun ArticleScreen(
     article: Article,
@@ -876,5 +771,125 @@ fun ArticleScreen(
             onNavigate = onNavigate,
             content = article
         )
+    }
+}
+
+@Preview
+@Composable
+fun ArticleScreenPreview() {
+    ArticleScreen(
+        Article(
+            "如何看待《狂暴之翼》中的人物设定？",
+            ArticleType.Answer,
+            123456789,
+            "知乎用户",
+            "知乎用户",
+            "",
+        )
+    ) {}
+}
+
+@Preview
+@Composable
+fun ArticleActionsMenuPreview() {
+    MaterialTheme {
+        Surface {
+            ArticleActionsMenu(
+                article = Article(
+                    "如何看待《狂暴之翼》中的人物设定？",
+                    ArticleType.Answer,
+                    123456789,
+                    "知乎用户",
+                    "知乎用户",
+                    "",
+                ),
+                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                    ArticleViewModel(
+                        Article(
+                            "如何看待《狂暴之翼》中的人物设定？",
+                            ArticleType.Answer,
+                            123456789,
+                            "知乎用户",
+                            "知乎用户",
+                            "",
+                        ),
+                        null
+                    )
+                },
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "Actions Menu - Speaking", showBackground = true)
+@Composable
+fun ArticleActionsMenuSpeakingPreview() {
+    MaterialTheme {
+        Surface {
+            ArticleActionsMenu(
+                article = Article(
+                    "深入理解Kotlin协程的工作原理",
+                    ArticleType.Article,
+                    987654321,
+                    "Android开发者",
+                    "专业Android开发工程师",
+                    "",
+                ),
+                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                    ArticleViewModel(
+                        Article(
+                            "深入理解Kotlin协程的工作原理",
+                            ArticleType.Article,
+                            987654321,
+                            "Android开发者",
+                            "专业Android开发工程师",
+                            "",
+                        ),
+                        null
+                    )
+                },
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
+        }
+    }
+}
+
+@Preview(name = "Actions Menu - Loading", showBackground = true)
+@Composable
+fun ArticleActionsMenuLoadingPreview() {
+    MaterialTheme {
+        Surface {
+            ArticleActionsMenu(
+                article = Article(
+                    "React vs Vue：前端框架的选择指南",
+                    ArticleType.Article,
+                    111222333,
+                    "前端工程师",
+                    "资深前端开发者，JavaScript专家",
+                    "",
+                ),
+                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                    ArticleViewModel(
+                        Article(
+                            "React vs Vue：前端框架的选择指南",
+                            ArticleType.Article,
+                            111222333,
+                            "前端工程师",
+                            "资深前端开发者，JavaScript专家",
+                            "",
+                        ),
+                        null
+                    )
+                },
+                context = LocalContext.current,
+                showMenu = true,
+                onDismissRequest = {}
+            )
+        }
     }
 }
