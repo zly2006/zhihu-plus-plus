@@ -5,11 +5,18 @@ import android.util.Log
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.AccountData.data
+import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -18,6 +25,23 @@ import kotlinx.serialization.json.jsonPrimitive
 class AndroidHomeFeedViewModel: BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
+
+    override fun httpClient(context: Context): HttpClient {
+        // 检查是否启用推荐内容时登录设置
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+        if (!loginForRecommendation) {
+            return HttpClient {
+                install(ContentNegotiation) {
+                    json(json)
+                }
+                install(UserAgent) {
+                    agent = data.userAgent
+                }
+            }
+        }
+        return super.httpClient(context)
+    }
 
     override suspend fun fetchFeeds(context: Context) {
         try {

@@ -9,6 +9,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
@@ -37,6 +39,7 @@ import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import kotlin.getValue
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
@@ -114,6 +117,25 @@ fun HomeScreen(
                 if (navDestination != null) {
                     onNavigate(navDestination)
                 }
+            }
+        }
+
+        @Suppress("KotlinConstantConditions")
+        if (BuildConfig.BUILD_TYPE == "debug") {
+            DraggableRefreshButton(
+                onClick = {
+                    val data = Json.encodeToString(viewModel.debugData)
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText(
+                        "data",
+                        data
+                    )
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                },
+                preferenceName = "copyAll"
+            ) {
+                Icon(Icons.Default.CopyAll, contentDescription = "复制")
             }
         }
 

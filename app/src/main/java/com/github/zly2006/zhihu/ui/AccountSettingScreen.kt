@@ -633,6 +633,28 @@ fun AccountSettingScreen(
                     }
                 }
             }
+
+            // 推荐内容登录设置
+            val isLoginForRecommendation = remember {
+                mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
+            }
+
+            SwitchSettingItem(
+                title = "推荐内容时登录",
+                description = "获取推荐内容时是否使用登录状态，关闭后将以游客身份获取推荐",
+                checked = isLoginForRecommendation.value,
+                onCheckedChange = { checked ->
+                    isLoginForRecommendation.value = checked
+                    preferences.edit {
+                        putBoolean("loginForRecommendation", checked)
+                    }
+                    Toast.makeText(
+                        context,
+                        if (checked) "已开启推荐内容时登录" else "已关闭推荐内容时登录",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+            )
         }
         // GitHub Token 设置
         Text(
