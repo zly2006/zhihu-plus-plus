@@ -264,8 +264,8 @@ fun ArticleScreen(
                     }
 
                     // todo: TTS朗读按钮
-                    @Suppress("ConstantConditionIf")
-                    if (false) {
+                    @Suppress("KotlinConstantConditions")
+                    if (BuildConfig.BUILD_TYPE == "debug") {
                         IconButton(
                             onClick = {
                                 val mainActivity = context as? MainActivity
