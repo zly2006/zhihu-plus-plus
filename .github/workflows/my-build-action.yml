@@ -105,7 +105,7 @@ jobs:
         run: |
           cd apk-recompress
           echo "Building Rust tool"
-          cargo build --release
+          cargo build --release > /dev/null
           echo "Recompressing APK with Rust tool"
           cargo run --release -- \
             -i ../app/build/upload/zhihu++.apk \

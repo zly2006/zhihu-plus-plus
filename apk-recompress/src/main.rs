@@ -239,8 +239,6 @@ fn recompress_apk(input_path: &str, output_path: &str) -> Result<(), Box<dyn std
             continue;
         }
 
-        println!("处理文件: {}", file_name);
-
         // 读取文件内容
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)?;
@@ -248,7 +246,6 @@ fn recompress_apk(input_path: &str, output_path: &str) -> Result<(), Box<dyn std
         // 根据文件类型选择压缩策略
         let options = if should_store_uncompressed(&file_name) {
             // 某些文件需要保持未压缩状态
-            println!("  -> 保持未压缩: {}", file_name);
             zip::write::FileOptions::default()
                 .compression_method(CompressionMethod::Stored)
         } else {
@@ -340,7 +337,6 @@ fn sign_apk_with_apksigner(config: &Config) -> Result<(), Box<dyn std::error::Er
         .arg("true")
         .arg(&config.output_apk)
         .output();
-    dbg!(&output);
 
     match output {
         Ok(result) => {
