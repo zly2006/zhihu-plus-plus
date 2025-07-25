@@ -56,11 +56,28 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         Uninitialized, // 未初始化
         Pico, Google
     }
+    enum class TtsState {
+        Uninitialized, // 未初始化
+        Initializing, // 初始化中
+        Ready, // 已初始化
+        Error, // 失败，需要重新初始化
+        LoadingText, // 正在加载文本
+        Speaking, // 正在朗读
+        Paused, // 暂停朗读
+        SwitchingChunk, // 切换朗读段落
+    }
+
+    var ttsState: TtsState = TtsState.Uninitialized
+        set(value) {
+            if (field != value) {
+                val oldState = field
+                field = value
+                Log.i("MainActivity", "TTS State: $oldState -> $value")
+            }
+        }
+
     var ttsEngine: TtsEngine = TtsEngine.Uninitialized // 默认使用Pico TTS引擎
     private var isTtsInitialized = false
-    private val maxChunkLength = 100 // 每段最大字符数
-    private var currentTextChunks = mutableListOf<String>()
-    private var currentChunkIndex = 0
 
     lateinit var navController: NavHostController
 
@@ -159,6 +176,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             }
 
         // 初始化TTS
+        ttsState = TtsState.Initializing
         textToSpeech = TextToSpeech(this, this)
 
         // 自动检查更新（在应用启动时）
@@ -189,6 +207,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             if (availableEngines.contains(picoEngine)) {
                 // 如果Pico TTS可用，切换到Pico引擎
                 textToSpeech?.shutdown()
+                ttsState = TtsState.Initializing
                 textToSpeech = TextToSpeech(this, this, picoEngine)
                 Log.i("MainActivity", "Using Pico TTS engine")
                 ttsEngine = TtsEngine.Pico
@@ -200,6 +219,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             }
         } else {
             Log.e("MainActivity", "TTS Initialization failed")
+            ttsState = TtsState.Error
         }
     }
 
@@ -211,13 +231,16 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             val englishResult = textToSpeech?.setLanguage(Locale.ENGLISH)
             if (englishResult == TextToSpeech.LANG_MISSING_DATA || englishResult == TextToSpeech.LANG_NOT_SUPPORTED) {
                 Log.e("MainActivity", "Language not supported")
+                ttsState = TtsState.Error
             } else {
                 Log.i("MainActivity", "Using English language for TTS")
                 isTtsInitialized = true
+                ttsState = TtsState.Ready
             }
         } else {
             Log.i("MainActivity", "Using Chinese language for TTS")
             isTtsInitialized = true
+            ttsState = TtsState.Ready
         }
 
         // 设置语音参数
@@ -365,7 +388,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     when (state) {
                         is UpdateManager.UpdateState.Downloading -> {
                             runOnUiThread {
-                                progressDialog.setMessage("正在下载版本 $version，请稍候...")
+                                progressDialog.setMessage("正在下载版本 $version，��稍候...")
                             }
                         }
                         is UpdateManager.UpdateState.Downloaded -> {
@@ -408,7 +431,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * 显示安装确认对话框
+     * 显示安����认对话框
      */
     private fun showInstallDialog(file: java.io.File) {
         AlertDialog.Builder(this).apply {
@@ -434,45 +457,86 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }.show()
     }
 
+    override fun onDestroy() {
+        textToSpeech?.shutdown()
+        super.onDestroy()
+    }
+
     // TTS相关方法
     fun speakText(text: String) {
-        if (isTtsInitialized && textToSpeech != null) {
-            // 将长文本分段
-            currentTextChunks = splitTextIntoChunks(text, maxChunkLength).toMutableList()
-            currentChunkIndex = 0
-            speakNextChunk()
-        }
-    }
+        if (!isTtsInitialized || textToSpeech == null) return
 
-    private fun speakNextChunk() {
-        if (currentChunkIndex < currentTextChunks.size && isTtsInitialized) {
-            val chunk = currentTextChunks[currentChunkIndex]
-            textToSpeech?.speak(
-                chunk,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "chunk_$currentChunkIndex"
-            )
-            currentChunkIndex++
+        ttsState = TtsState.LoadingText
 
-            // 设置朗读完成监听器，自动播放下一段
-            textToSpeech?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
-                override fun onStart(utteranceId: String?) {}
-                override fun onDone(utteranceId: String?) {
-                    if (utteranceId?.startsWith("chunk_") == true) {
-                        // 延迟一点再播放下一段，避免太快
-                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                            speakNextChunk()
-                        }, 500)
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch {
+            val maxChunkLength = 100
+            val textChunks = splitTextIntoChunks(text, maxChunkLength)
+
+            // 使用闭包来管理状态和递归调用
+            lateinit var speakNextChunk: (Int) -> Unit
+            speakNextChunk = { currentIndex ->
+                if (currentIndex < textChunks.size) {
+                    val chunk = textChunks[currentIndex]
+
+                    runOnUiThread {
+                        ttsState = TtsState.Speaking
+
+                        textToSpeech?.speak(
+                            chunk,
+                            TextToSpeech.QUEUE_FLUSH,
+                            null,
+                            "chunk_$currentIndex"
+                        )
+
+                        // 设置朗读完成监听器，自动播放下一段
+                        textToSpeech?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                            override fun onStart(utteranceId: String?) {
+                                if (utteranceId == "chunk_$currentIndex") {
+                                    ttsState = TtsState.Speaking
+                                }
+                            }
+
+                            override fun onDone(utteranceId: String?) {
+                                if (utteranceId == "chunk_$currentIndex") {
+                                    if (currentIndex + 1 < textChunks.size) {
+                                        ttsState = TtsState.SwitchingChunk
+                                        // 延迟一点再播放下一段，避免太快
+                                        @OptIn(DelicateCoroutinesApi::class)
+                                        GlobalScope.launch {
+                                            kotlinx.coroutines.delay(500)
+                                            runOnUiThread {
+                                                speakNextChunk(currentIndex + 1)
+                                            }
+                                        }
+                                    } else {
+                                        ttsState = TtsState.Ready
+                                    }
+                                }
+                            }
+
+                            override fun onError(utteranceId: String?) {
+                                if (utteranceId == "chunk_$currentIndex") {
+                                    ttsState = TtsState.Error
+                                }
+                            }
+                        })
+                    }
+                } else {
+                    runOnUiThread {
+                        ttsState = TtsState.Ready
                     }
                 }
+            }
 
-                override fun onError(utteranceId: String?) {}
-            })
+            // 开始播放第一段
+            runOnUiThread {
+                speakNextChunk(0)
+            }
         }
     }
 
-    private fun splitTextIntoChunks(text: String, maxLength: Int): List<String> {
+    private fun splitTextIntoChunks(text: String, maxLength: Int = 100): List<String> {
         if (text.length <= maxLength) return listOf(text)
 
         val chunks = mutableListOf<String>()
@@ -499,18 +563,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     fun stopSpeaking() {
         textToSpeech?.stop()
-        currentTextChunks.clear()
-        currentChunkIndex = 0
+        ttsState = TtsState.Ready
     }
 
     fun isSpeaking(): Boolean {
         return textToSpeech?.isSpeaking ?: false
     }
 
-    override fun onDestroy() {
-        textToSpeech?.shutdown()
-        super.onDestroy()
-    }
 
     companion object {
         const val ZSE93 = "101_3_3.0"

@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -313,17 +316,35 @@ fun CommentScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(40.dp)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextField(
+                        val state = remember { TextFieldState() }
+                        BasicTextField(
                             value = commentInput,
                             onValueChange = { commentInput = it },
                             modifier = Modifier.weight(1f).height(36.dp),
-                            placeholder = { Text("写下你的评论...") },
-                            singleLine = false,
-                            maxLines = 3,
-                            colors = TextFieldDefaults.colors()
+////                            placeholder = { Text("写下你的评论...") },
+////                            singleLine = false,
+////                            maxLines = 3,
+////                            colors = TextFieldDefaults.colors(),
+//                            state = state,
+//                            decorator = { inner -> inner() }
+                            decorationBox = { inner ->
+                                Box {
+                                    if (commentInput.isEmpty()) {
+                                        Text(
+                                            "写下你的评论...",
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                    inner()
+                                }
+                            },
+                            textStyle = TextStyle.Default.copy(
+                                fontSize = 16.sp
+                            )
                         )
 
                         IconButton(

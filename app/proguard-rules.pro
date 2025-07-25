@@ -64,6 +64,7 @@
 -keepnames class ** implements com.github.zly2006.zhihu.data.Feed$Target
 # Keep all enums
 -keep enum ** {
+    <fields>;
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }

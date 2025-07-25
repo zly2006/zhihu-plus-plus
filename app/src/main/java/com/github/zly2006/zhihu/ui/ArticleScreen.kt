@@ -327,6 +327,7 @@ fun ArticleScreen(
                                 onClick = {
                                     val mainActivity = context as? MainActivity
                                     if (isSpeaking) {
+                                        mainActivity?.stopSpeaking()
                                     } else if (!ttsLoading) {
                                         // 使用协程在后台处理文本提取，避免UI阻塞
                                         viewModel.viewModelScope.launch {
@@ -353,6 +354,7 @@ fun ArticleScreen(
                                                     // 回到主线程执行TTS
                                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                                         if (textToRead.isNotBlank()) {
+                                                            mainActivity?.speakText(textToRead, viewModel.title)
                                                             Toast.makeText(context, "开始朗读", Toast.LENGTH_SHORT)
                                                                 .show()
                                                         }
