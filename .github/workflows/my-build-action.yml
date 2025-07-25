@@ -97,7 +97,7 @@ jobs:
       - name: Recompress APK
         if: ${{ inputs.minify }}
         env:
-          KEYSTORE_PATH: app/zhihu.jks
+          KEYSTORE_PATH: ../app/zhihu.jks
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

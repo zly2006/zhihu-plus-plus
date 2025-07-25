@@ -317,10 +317,8 @@ fn should_store_uncompressed(file_name: &str) -> bool {
 
 fn sign_apk_with_apksigner(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     println!("步骤2: 使用apksigner重新签名APK文件");
-
-    // 首先检查是否存在keystore文件，如果不存在则创建debug keystore
     if !std::path::Path::new(&config.keystore_path).exists() {
-        println!("debug.keystore不存在，正在创建...");
+        println!("keystore不存在！");
         exit(1);
     }
 
