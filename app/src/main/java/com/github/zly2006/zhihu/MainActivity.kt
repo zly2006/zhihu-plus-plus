@@ -1,3 +1,5 @@
+@file:Suppress("PropertyName")
+
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
@@ -6,12 +8,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
@@ -67,11 +72,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         SwitchingChunk, // 切换朗读段落
     }
 
-    var ttsState: TtsState = TtsState.Uninitialized
-        set(value) {
-            if (field != value) {
-                val oldState = field
-                field = value
+    private val _ttsState = mutableStateOf(TtsState.Uninitialized)
+    var ttsState: TtsState
+        get() = _ttsState.value
+        private set(value) {
+            if (_ttsState.value != value) {
+                val oldState = _ttsState.value
+                _ttsState.value = value
                 Log.i("MainActivity", "TTS State: $oldState -> $value")
             }
         }
@@ -463,7 +470,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     }
 
     // TTS相关方法
-    fun speakText(text: String) {
+    fun speakText(text: String, title: String) {
         if (!isTtsInitialized || textToSpeech == null) return
 
         ttsState = TtsState.LoadingText
@@ -490,8 +497,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         )
 
                         // 设置朗读完成监听器，自动播放下一段
-                        textToSpeech?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+                        textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String?) {
+                                if (currentIndex == 0) {
+                                    Toast.makeText(this@MainActivity, "开始朗读：$title", Toast.LENGTH_SHORT)
+                                        .show()
+                                }
                                 if (utteranceId == "chunk_$currentIndex") {
                                     ttsState = TtsState.Speaking
                                 }
@@ -536,6 +547,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    @Suppress("SameParameterValue")
     private fun splitTextIntoChunks(text: String, maxLength: Int = 100): List<String> {
         if (text.length <= maxLength) return listOf(text)
 

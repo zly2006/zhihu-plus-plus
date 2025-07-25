@@ -39,6 +39,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -355,8 +356,6 @@ fun ArticleScreen(
                                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                                         if (textToRead.isNotBlank()) {
                                                             mainActivity?.speakText(textToRead, viewModel.title)
-                                                            Toast.makeText(context, "开始朗读", Toast.LENGTH_SHORT)
-                                                                .show()
                                                         }
                                                     }
                                                 }
@@ -371,16 +370,16 @@ fun ArticleScreen(
                                         }
                                     }
                                 },
-                                enabled = !ttsLoading,
+                                enabled = ((context as? MainActivity)?.ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)),
                                 colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = when {
-                                        ttsLoading -> MaterialTheme.colorScheme.surfaceVariant
-                                        isSpeaking -> Color(0xFF4CAF50)
+                                    containerColor = when ((context as? MainActivity)?.ttsState) {
+                                        TtsState.Initializing -> MaterialTheme.colorScheme.surfaceVariant
+                                        TtsState.Speaking, TtsState.SwitchingChunk -> Color(0xFF4CAF50)
                                         else -> MaterialTheme.colorScheme.primaryContainer
                                     },
-                                    contentColor = when {
-                                        ttsLoading -> MaterialTheme.colorScheme.onSurfaceVariant
-                                        isSpeaking -> Color.White
+                                    contentColor = when ((context as? MainActivity)?.ttsState) {
+                                        TtsState.Initializing -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        TtsState.Speaking, TtsState.SwitchingChunk -> Color.White
                                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                                     }
                                 )
