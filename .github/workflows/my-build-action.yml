@@ -46,6 +46,12 @@ jobs:
           distribution: 'zulu' # See 'Supported distributions' for available options
           java-version: '17'
           cache: 'gradle'
+      - name: Setup rust
+        if: ${{ inputs.minify }}
+        uses: actions/setup-rust@v2
+        with:
+          profile: minimal
+          override: true
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
@@ -86,6 +92,17 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/release/app-release.apk app/build/upload/zhihu++.apk
           mv app/build/outputs/bundle/release/app-release.aab app/build/upload/zhihu++.aab
+      - name: Recompress APK
+        if: ${{ inputs.minify }}
+        env:
+          KEYSTORE_PATH: app/zhihu.jks
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cd apk-recompress
+          cargo build --release
+
       - name: Upload APK / Bundle
         uses: actions/upload-artifact@v4
         with:
