@@ -24,10 +24,19 @@ jobs:
     secrets: inherit
   build_minified_release:
     uses: ./.github/workflows/my-build-action.yml
-    #if: startsWith(github.ref, 'refs/heads/')
+    if: startsWith(github.ref, 'refs/heads/')
     with:
       name: 'Minified Builds'
       minify: true
+      nightly_release: true
+    secrets: inherit
+  build_minified_pr:
+    uses: ./.github/workflows/my-build-action.yml
+    if: github.event_name == 'pull_request'
+    with:
+      name: 'Minified PR Builds'
+      minify: true
+      nightly_release: false
     secrets: inherit
   release:
     uses: ./.github/workflows/my-build-action.yml

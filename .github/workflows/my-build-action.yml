@@ -13,6 +13,9 @@ on:
       release:
         required: false
         type: boolean
+      nightly_release:
+        required: false
+        type: boolean
     secrets:
       ANDROID_SIGNING_KEY:
         required: true
@@ -117,7 +120,7 @@ jobs:
 
       # Delete existing nightly release
       - name: Delete existing nightly release
-        if: ${{ inputs.minify }}
+        if: ${{ inputs.minify && inputs.nightly_release }}
         uses: dev-drprasad/delete-tag-and-release@v1.0
         continue-on-error: true
         with:
@@ -127,7 +130,7 @@ jobs:
 
       # Create new nightly release
       - name: Create Nightly Release
-        if: ${{ inputs.minify }}
+        if: ${{ inputs.minify && inputs.nightly_release }}
         id: nightly_release
         uses: softprops/action-gh-release@v2
         with:
