@@ -245,11 +245,10 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
         }
     }
 
-    fun toggleVoteUp(context: Context) {
+    fun toggleVoteUp(context: Context, newState: VoteUpState) {
         if (httpClient == null) return
         viewModelScope.launch {
             try {
-                val newState = if (voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up
                 val endpoint = when (article.type) {
                     ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
