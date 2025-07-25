@@ -53,11 +53,7 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Additional Android Tools
         run: |
-          sdkmanager --list
-          tree /usr/local/lib/android/sdk
-          /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager build-tools;35.0.0
-          which apksigner
-          tree /usr/local/lib/android/sdk
+          ls -al /usr/local/lib/android/sdk
       - name: Setup rust
         if: ${{ inputs.minify }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
