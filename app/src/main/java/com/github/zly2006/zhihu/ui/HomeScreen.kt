@@ -85,7 +85,9 @@ fun HomeScreen(
 
     // 初始加载
     LaunchedEffect(currentRecommendationMode) {
-        if (!AccountData.data.login) {
+        if (!AccountData.data.login &&
+            preferences.getBoolean("loginForRecommendation", true)
+        ) {
             val myIntent = Intent(context, LoginActivity::class.java)
             context.startActivity(myIntent)
         } else if (viewModel.displayItems.isEmpty()) {

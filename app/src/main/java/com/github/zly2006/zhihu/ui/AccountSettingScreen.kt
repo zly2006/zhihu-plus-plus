@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
+import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
@@ -159,6 +160,18 @@ fun AccountSettingScreen(
             ) {
                 Text("退出登录")
             }
+
+            // 扫码登录功能 - 适用于已登录用户协助其他设备登录
+            QRCodeLogin(
+                modifier = Modifier.fillMaxWidth(),
+                onScanResult = { qrContent ->
+                    // 处理扫描到的登录二维码
+                    Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
+                    // 这里可以添加处理二维码登录的逻辑
+                    // 例如发送HTTP请求到扫描到的URL或处理特定的登录协议
+                }
+            )
+
             Button(
                 onClick = { onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),

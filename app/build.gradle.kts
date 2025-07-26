@@ -107,6 +107,9 @@ dependencies {
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
+    // ZXing for QR code scanning
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.2")
@@ -123,6 +126,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.room:room-common-jvm:2.7.2")
     implementation("androidx.room:room-runtime-android:2.7.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     annotationProcessor("androidx.room:room-compiler:2.7.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")

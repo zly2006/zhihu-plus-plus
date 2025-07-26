@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-feature
+            android:name="android.hardware.camera"
+            android:required="false"/>
+
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -11,6 +15,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
             android:allowBackup="true"
@@ -22,6 +27,14 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.Zhihu"
             tools:targetApi="31">
+        <activity
+                android:name=".CaptureActivity"
+                android:exported="false"
+                android:label="@string/title_activity_capture"
+                android:theme="@style/Theme.Zhihu"
+                android:screenOrientation="portrait"
+                android:stateNotNeeded="true"
+                tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
         <activity
                 android:name=".MainActivity"
                 android:exported="true"
@@ -58,16 +71,20 @@
                 android:exported="false"/>
         <activity
                 android:name=".WebviewActivity"
+                android:exported="false"/>
+        <activity
+                android:name=".QRCodeScanActivity"
                 android:exported="false"
-                />
+                android:theme="@style/Theme.Zhihu"/>
+
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
-            android:exported="false"
-            android:grantUriPermissions="true">
+                android:name="androidx.core.content.FileProvider"
+                android:authorities="${applicationId}.provider"
+                android:exported="false"
+                android:grantUriPermissions="true">
             <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
+                    android:name="android.support.FILE_PROVIDER_PATHS"
+                    android:resource="@xml/file_paths"/>
         </provider>
     </application>
 
