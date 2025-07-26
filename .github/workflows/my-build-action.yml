@@ -66,6 +66,7 @@ jobs:
             ~/.m2/repository
             ./.gradle
             ./**/.gradle
+            ./apk-recompress/target
           # dont invalidate cache if only gradle.properties is changed -- they
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
