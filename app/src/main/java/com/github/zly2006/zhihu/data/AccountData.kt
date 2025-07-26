@@ -113,7 +113,8 @@ object AccountData {
         val httpClient = httpClient(context, map)
         val response = httpClient.get("https://www.zhihu.com/api/v4/me")
         if (response.status == HttpStatusCode.OK) {
-            val person = response.body<Person>()
+            val jojo = response.body<JsonObject>()
+            val person = decodeJson<Person>(jojo)
             saveData(
                 context, Data(
                     login = true,

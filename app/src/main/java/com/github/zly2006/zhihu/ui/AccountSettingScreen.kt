@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
@@ -7,7 +8,7 @@ import android.net.NetworkCapabilities
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -112,14 +113,25 @@ fun AccountSettingScreen(
         }
         Text(
             "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
-            modifier = Modifier.Companion.clickable {
-                clickTimes++
-                if (clickTimes == 5) {
-                    clickTimes = 0
-                    isDeveloper = true
-                    Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+            modifier = Modifier.Companion.combinedClickable(
+                onLongClick = {
+                    // Copy version number
+                    val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
+
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("version", versionInfo)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
+                },
+                onClick = {
+                    clickTimes++
+                    if (clickTimes == 5) {
+                        clickTimes = 0
+                        isDeveloper = true
+                        Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
+            )
         )
         val data by AccountData.asState()
         if (data.login) {
