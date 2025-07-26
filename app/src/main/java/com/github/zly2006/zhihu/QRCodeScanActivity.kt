@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.journeyapps.barcodescanner.ScanContract
@@ -30,7 +31,6 @@ import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 
 class QRCodeScanActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdgeCompat()
@@ -40,11 +40,13 @@ class QRCodeScanActivity : ComponentActivity() {
                 QRCodeScanScreen(
                     onBack = { finish() },
                     onScanResult = { result ->
-                        // 返回扫描结果
-                        val resultIntent = Intent().apply {
-                            putExtra(EXTRA_SCAN_RESULT, result)
+                        // 仅当是知乎登陆URL，返回扫描结果
+                        if (result.startsWith(LOGIN_PREFIX)) {
+                            val resultIntent = Intent().apply {
+                                putExtra(EXTRA_SCAN_RESULT, result)
+                            }
+                            setResult(RESULT_OK, resultIntent)
                         }
-                        setResult(RESULT_OK, resultIntent)
                         finish()
                     }
                 )
@@ -54,6 +56,7 @@ class QRCodeScanActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_SCAN_RESULT = "scan_result"
+        const val LOGIN_PREFIX = "https://www.zhihu.com/account/scan/login/"
     }
 }
 
@@ -92,8 +95,12 @@ private fun QRCodeScanScreen(
         contract = ScanContract()
     ) { result: ScanIntentResult ->
         if (result.contents != null) {
-            scanResult = result.contents
-            showResultDialog = true
+            if (result.contents.startsWith(LOGIN_PREFIX)) {
+                onScanResult(result.contents)
+            } else {
+                scanResult = result.contents
+                showResultDialog = true
+            }
         }
     }
 

@@ -41,9 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.MainActivity.TtsState
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -686,10 +689,15 @@ fun ArticleScreen(
                 viewModel.viewModelScope.launch {
                     val dest = viewModel.nextAnswerFuture.await()
                     val activity = context as? MainActivity ?: return@launch
-                    if (activity.navController.currentBackStackEntry.hasRoute(Article::class)) {
-                        activity.navController.popBackStack()
+                    val target = dest.target!!
+                    if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
+                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class)
+                            && activity.navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
+                        ) {
+                            activity.navController.popBackStack()
+                        }
+                        onNavigate(target.navDestination)
                     }
-                    onNavigate(dest.target!!.navDestination!!)
                 }
             },
             preferenceName = "buttonSkipAnswer",
