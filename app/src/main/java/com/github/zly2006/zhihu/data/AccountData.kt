@@ -14,6 +14,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -136,6 +137,16 @@ object AccountData {
         val json = snake_case2camelCase(json)
         try {
             return this.json.decodeFromJsonElement<T>(json)
+        } catch (e: SerializationException) {
+            Log.e("AccountData", "Failed to parse JSON: $json", e)
+            throw SerializationException("Failed to parse JSON: $json", e)
+        }
+    }
+
+    internal fun <T> decodeJson(serializer: KSerializer<T>, json: JsonElement): T {
+        val json = snake_case2camelCase(json)
+        try {
+            return this.json.decodeFromJsonElement(serializer, json)
         } catch (e: SerializationException) {
             Log.e("AccountData", "Failed to parse JSON: $json", e)
             throw SerializationException("Failed to parse JSON: $json", e)

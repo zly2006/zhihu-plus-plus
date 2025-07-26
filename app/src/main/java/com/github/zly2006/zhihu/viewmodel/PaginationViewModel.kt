@@ -70,16 +70,8 @@ abstract class PaginationViewModel<T : Any>(
         try {
             val url = lastPaging?.next ?: initialUrl
             val httpClient = httpClient(context)
-
-            // 检查是否启用推荐内容时登录设置
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
-
             val response = httpClient.get(url) {
-                // 只有当启用推荐内容时登录设置时才添加登录相关的请求头
-                if (loginForRecommendation) {
-                    signFetchRequest(context)
-                }
+                signFetchRequest(context)
             }
 
             if (response.status == HttpStatusCode.Companion.OK) {
@@ -97,10 +89,7 @@ abstract class PaginationViewModel<T : Any>(
                         }
                         try {
                             @Suppress("UNCHECKED_CAST")
-                            AccountData.json.decodeFromJsonElement(
-                                serializer(dataType) as KSerializer<T>,
-                                it
-                            )
+                            AccountData.decodeJson(serializer(dataType) as KSerializer<T>, it)
                         } catch (e: Exception) {
                             Log.e(this::class.simpleName, "Failed to decode item: $it", e)
                             null
