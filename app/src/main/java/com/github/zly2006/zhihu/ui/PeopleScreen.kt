@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
 import kotlinx.serialization.json.JsonObject
 
@@ -52,9 +53,9 @@ class PersonViewModel(
     }
 }
 
-fun HttpResponse.raiseForStatus() = apply {
+suspend fun HttpResponse.raiseForStatus() = apply {
     if (status.value >= 400) {
-        throw RuntimeException("HTTP error: ${status.value} ${status.description} on ${request.url}")
+        throw RuntimeException("HTTP error: ${status.value} ${status.description} on ${request.url}: \n ${bodyAsText()}")
     }
 }
 

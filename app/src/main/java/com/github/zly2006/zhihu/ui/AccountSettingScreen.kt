@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -42,10 +43,14 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
+import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import org.jsoup.Jsoup
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
@@ -165,10 +170,33 @@ fun AccountSettingScreen(
             QRCodeLogin(
                 modifier = Modifier.fillMaxWidth(),
                 onScanResult = { qrContent ->
-                    // 处理扫描到的登录二维码
+                    val url = Url(qrContent)
+                    if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
+                        Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
+                        return@QRCodeLogin
+                    }
+                    val key = url.rawSegments.last()
                     Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                    // 这里可以添加处理二维码登录的逻辑
-                    // 例如发送HTTP请求到扫描到的URL或处理特定的登录协议
+                    GlobalScope.launch {
+                        // 处理扫描到的登录二维码
+                        val httpClient = (context as MainActivity).httpClient
+                        httpClient.get(url) {
+                            AccountData.ANDROID_HEADERS.forEach {
+                                header(it.key, it.value)
+                            }
+                            header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
+                            signFetchRequest(context)
+                        }.raiseForStatus().bodyAsText()
+                        val response = httpClient.post("https://www.zhihu.com/api/v3/account/api/login/qrcode/${key}/confirm") {
+//                            AccountData.ANDROID_HEADERS.forEach {
+//                                header(it.key, it.value)
+//                            }
+//                            header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
+                            signFetchRequest(context)
+                        }.raiseForStatus()
+                        val body = response.bodyAsText()
+                        Log.i("QRCodeLogin", "Scan result: ${response.status}:\n$body")
+                    }
                 }
             )
 
