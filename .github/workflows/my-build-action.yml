@@ -79,10 +79,9 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
       - name: Build App
-        # Build .apk and .aab
+        # Build .apk
         run: |
           bash ./gradlew ${{inputs.args}} assembleRelease
-          bash ./gradlew ${{inputs.args}} bundleRelease
         env:
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -93,7 +92,6 @@ jobs:
         run: |
           mkdir -p app/build/upload
           mv app/build/outputs/apk/release/app-release.apk app/build/upload/zhihu++.apk
-          mv app/build/outputs/bundle/release/app-release.aab app/build/upload/zhihu++.aab
       - name: Recompress APK
         if: ${{ inputs.minify }}
         env:
@@ -105,7 +103,7 @@ jobs:
         run: |
           cd apk-recompress
           echo "Building Rust tool"
-          cargo build --release > /dev/null
+          cargo build --release 2> /dev/null
           echo "Recompressing APK with Rust tool"
           cargo run --release -- \
             -i ../app/build/upload/zhihu++.apk \
@@ -113,7 +111,7 @@ jobs:
           echo "Moving recompressed APK to upload directory"
           mv ./zhihu++.apk ../app/build/upload/zhihu++.apk
 
-      - name: Upload APK / Bundle
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.date_today }} - ${{ env.repository_name }} - ${{ inputs.name }}
@@ -142,7 +140,6 @@ jobs:
             This is an automated nightly release that gets updated with each new build.
           files: |
             app/build/upload/zhihu++.apk
-            app/build/upload/zhihu++.aab
           prerelease: true
       - name: Create Release
         if: ${{ inputs.release && startsWith(github.ref, 'refs/tags/') }}
@@ -155,6 +152,5 @@ jobs:
             Release ${{ github.ref_name }}
           files: |
             app/build/upload/zhihu++.apk
-            app/build/upload/zhihu++.aab
           prerelease: false
 
