@@ -1,19 +1,26 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
@@ -26,6 +33,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.annotations.Async
 
 class PersonViewModel(
     val person: Person,
@@ -33,6 +41,9 @@ class PersonViewModel(
     var avatar by mutableStateOf("")
     var name by mutableStateOf(person.name)
     var headline by mutableStateOf("")
+    var followerCount by mutableIntStateOf(0)
+    var answerCount by mutableIntStateOf(0)
+    var articleCount by mutableIntStateOf(0)
 
     suspend fun load(context: Context) {
         context as MainActivity
@@ -40,14 +51,17 @@ class PersonViewModel(
             signFetchRequest(context)
         }.raiseForStatus().body<JsonObject>()
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
-        this.avatar = person.avatar_url
+        this.avatar = person.avatarUrl
         this.name = person.name
         this.headline = person.headline
+        this.followerCount = person.followerCount
+        this.answerCount = person.answerCount
+        this.articleCount = person.articlesCount
         context.postHistory(
             Person(
                 id = person.id,
                 name = person.name,
-                urlToken = person.url_token ?: "",
+                urlToken = person.urlToken ?: "",
             )
         )
     }
@@ -71,11 +85,23 @@ fun PeopleScreen(
         viewModel.load(context)
     }
 
-    Surface(
+    Column(
         modifier = Modifier.padding(16.dp)
     ) {
+        AsyncImage(
+            model = viewModel.avatar,
+            contentDescription = "用户头像",
+            modifier = Modifier.padding(16.dp)
+                .width(128.dp)
+                .height(128.dp)
+                .clip(CircleShape),
+        )
         Text(
             "用户: ${person.name}",
         )
+        Text(viewModel.headline)
+        Text("关注者： ${viewModel.followerCount}")
+        Text("回答数： ${viewModel.answerCount}")
+        Text("文章数： ${viewModel.articleCount}")
     }
 }
