@@ -15,7 +15,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
                 summary = target.excerpt,
                 details = target.detailsText,
                 feed = feed,
-                avatarSrc = target.author.avatar_url
+                avatarSrc = target.author.avatarUrl
             )
         }
         return super.createDisplayItem(feed)

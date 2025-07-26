@@ -413,66 +413,67 @@ object DataHolder {
     data class Comment(
         val id: String,
         val type: String,
-        @SerialName("resource_type") val resourceType: String,
-//        @SerialName("member_id") val memberId: Long,
+        val resourceType: String,
+//         val memberId: Long,
         val url: String,
 //        val hot: Boolean,
         val top: Boolean,
         val content: String,
 //        val score: Int,
-        @SerialName("created_time") val createdTime: Long,
-        @SerialName("is_delete") val isDelete: Boolean,
+        val createdTime: Long,
+        val isDelete: Boolean,
         val collapsed: Boolean,
         val reviewing: Boolean,
-        @SerialName("reply_comment_id") val replyCommentId: String? = null,
-        @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
+        val replyCommentId: String? = null,
+        val replyRootCommentId: String? = null,
         var liked: Boolean = false,
-        @SerialName("like_count") var likeCount: Int = 0,
+        var likeCount: Int = 0,
         val disliked: Boolean = false,
-        @SerialName("dislike_count") val dislikeCount: Int = 0,
-        @SerialName("is_author") val isAuthor: Boolean,
-//        @SerialName("can_like") val canLike: Boolean,
-//        @SerialName("can_dislike") val canDislike: Boolean,
-//        @SerialName("can_delete") val canDelete: Boolean,
-//        @SerialName("can_reply") val canReply: Boolean,
-//        @SerialName("can_hot") val canHot: Boolean,
-//        @SerialName("can_author_top") val canAuthorTop: Boolean,
-        @SerialName("is_author_top") val isAuthorTop: Boolean = false,
-        @SerialName("can_collapse") val canCollapse: Boolean,
-//        @SerialName("can_share") val canShare: Boolean,
-//        @SerialName("can_unfold") val canUnfold: Boolean,
-//        @SerialName("can_truncate") val canTruncate: Boolean,
-//        @SerialName("can_more") val canMore: Boolean,
+        val dislikeCount: Int = 0,
+        val isAuthor: Boolean,
+//         val canLike: Boolean,
+//         val canDislike: Boolean,
+//         val canDelete: Boolean,
+//         val canReply: Boolean,
+//         val canHot: Boolean,
+//         val canAuthorTop: Boolean,
+        val isAuthorTop: Boolean = false,
+        val canCollapse: Boolean,
+//         val canShare: Boolean,
+//         val canUnfold: Boolean,
+//         val canTruncate: Boolean,
+//         val canMore: Boolean,
         val author: Author,
-        @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
-        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
-        @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
-        @SerialName("comment_tag") val commentTag: List<CommentTag> = emptyList(),
-        @SerialName("child_comment_count") val childCommentCount: Int,
-        @SerialName("child_comment_next_offset") val childCommentNextOffset: JsonElement? = null,
-        @SerialName("child_comments") val childComments: List<ChildComment>,
-        @SerialName("is_visible_only_to_myself") val isVisibleOnlyToMyself: Boolean = false,
-        @SerialName("_") val underscore: JsonElement? = null
+        val authorTag: List<JsonElement> = emptyList(),
+        val replyAuthorTag: List<JsonElement> = emptyList(),
+        val contentTag: List<JsonElement> = emptyList(),
+        val commentTag: List<CommentTag> = emptyList(),
+        val childCommentCount: Int,
+        val childCommentNextOffset: JsonElement? = null,
+        val childComments: List<ChildComment>,
+        val isVisibleOnlyToMyself: Boolean = false,
+        @SerialName("_")
+        val underscore: JsonElement? = null
     ) {
         @Serializable
         data class Author(
             val id: String,
-            @SerialName("url_token") val urlToken: String,
+            val urlToken: String,
             val name: String,
-            @SerialName("avatar_url") val avatarUrl: String,
-            @SerialName("avatar_url_template") val avatarUrlTemplate: String,
-            @SerialName("is_org") val isOrg: Boolean,
+            val avatarUrl: String,
+            val avatarUrlTemplate: String,
+            val isOrg: Boolean,
             val type: String,
             val url: String,
-            @SerialName("user_type") val userType: String,
+            val userType: String,
             val headline: String,
             val gender: Int,
-            @SerialName("is_advertiser") val isAdvertiser: Boolean,
-            @SerialName("badge_v2") val badgeV2: JsonElement? = null,
-            @SerialName("exposed_medal") val exposedMedal: JsonElement? = null,
-            @SerialName("vip_info") val vipInfo: JsonElement? = null,
-            @SerialName("level_info") val levelInfo: JsonElement? = null,
-            @SerialName("kvip_info") val kvipInfo: JsonElement? = null,
+            val isAdvertiser: Boolean,
+            val badgeV2: JsonElement? = null,
+            val exposedMedal: JsonElement? = null,
+            val vipInfo: JsonElement? = null,
+            val levelInfo: JsonElement? = null,
+            val kvipInfo: JsonElement? = null,
         )
 
         @Serializable
@@ -480,8 +481,8 @@ object DataHolder {
             val type: String,
             val text: String,
             val color: String,
-            @SerialName("night_color") val nightColor: String,
-            @SerialName("has_border") val hasBorder: Boolean
+            val nightColor: String,
+            val hasBorder: Boolean
         )
     }
 
@@ -490,33 +491,33 @@ object DataHolder {
         val type: String,
         val text: String,
         val color: String,
-        @SerialName("night_color") val nightColor: String,
-        @SerialName("has_border") val hasBorder: Boolean
+        val nightColor: String,
+        val hasBorder: Boolean
     )
 
     @Serializable
     data class ChildComment(
         val id: String,
         val type: String,
-        @SerialName("resource_type") val resourceType: String,
-//        @SerialName("member_id") val memberId: Long,
+        val resourceType: String,
+//         val memberId: Long,
         val url: String,
         val content: String,
-        @SerialName("created_time") val createdTime: Long,
-        @SerialName("is_delete") val isDelete: Boolean,
+        val createdTime: Long,
+        val isDelete: Boolean,
         val collapsed: Boolean,
         val reviewing: Boolean,
-        @SerialName("reply_comment_id") val replyCommentId: String? = null,
-        @SerialName("reply_root_comment_id") val replyRootCommentId: String? = null,
+        val replyCommentId: String? = null,
+        val replyRootCommentId: String? = null,
         val liked: Boolean = false,
-        @SerialName("like_count") val likeCount: Int = 0,
+        val likeCount: Int = 0,
         val disliked: Boolean = false,
-        @SerialName("dislike_count") val dislikeCount: Int = 0,
+        val dislikeCount: Int = 0,
         val author: Comment.Author,
-        @SerialName("author_tag") val authorTag: List<JsonElement> = emptyList(),
-        @SerialName("reply_author_tag") val replyAuthorTag: List<JsonElement> = emptyList(),
-        @SerialName("content_tag") val contentTag: List<JsonElement> = emptyList(),
-        @SerialName("comment_tag") val commentTag: List<CommentTag> = emptyList()
+        val authorTag: List<JsonElement> = emptyList(),
+        val replyAuthorTag: List<JsonElement> = emptyList(),
+        val contentTag: List<JsonElement> = emptyList(),
+        val commentTag: List<CommentTag> = emptyList()
     ) {
         fun asComment() = Comment(
             id = id,
@@ -589,9 +590,10 @@ object DataHolder {
                 webView.webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url1: String) {
                         if (url == url1) {
-                            val cookies = CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
-                                it.substringBefore("=").trim() to it.substringAfter("=")
-                            }
+                            val cookies =
+                                CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
+                                    it.substringBefore("=").trim() to it.substringAfter("=")
+                                }
                             AccountData.data.cookies.putAll(cookies)
                             AccountData.saveData(activity, AccountData.data)
                             view.evaluateJavascript("document.getElementsByTagName('html')[0].outerHTML") {
@@ -696,7 +698,7 @@ object DataHolder {
     }
 
     private fun Person.mock() = Author(
-        avatarUrl = avatar_url,
+        avatarUrl = avatarUrl,
         avatarUrlTemplate = "",
         gender = gender,
         headline = headline,
@@ -706,8 +708,8 @@ object DataHolder {
         name = name,
         type = "mock",
         url = url,
-        urlToken = url_token ?: "",
-        userType = user_type
+        urlToken = urlToken ?: "",
+        userType = userType
     )
 
     /**
@@ -763,33 +765,33 @@ object DataHolder {
     @Serializable
     data class People(
         val id: String,
-        @SerialName("url_token") val url_token: String? = null,
+        val url_token: String? = null,
         val name: String,
-        @SerialName("use_default_avatar") val use_default_avatar: Boolean = false,
-        @SerialName("avatar_url") val avatar_url: String,
-        @SerialName("avatar_url_template") val avatar_url_template: String = "",
-        @SerialName("is_org") val is_org: Boolean = false,
+        val use_default_avatar: Boolean = false,
+        val avatar_url: String,
+        val avatar_url_template: String = "",
+        val is_org: Boolean = false,
         val type: String = "people",
         val url: String,
-        @SerialName("user_type") val user_type: String = "people",
+        val user_type: String = "people",
         val headline: String,
-        @SerialName("headline_rendered") val headline_rendered: String? = null,
+        val headline_rendered: String? = null,
         val gender: Int,
-        @SerialName("is_advertiser") val is_advertiser: Boolean = false,
-        @SerialName("ip_info") val ip_info: String? = null,
-//        @SerialName("vip_info") val vip_info: VipInfo? = null,
-        @SerialName("kvip_info") val kvip_info: JsonElement? = null,
-        @SerialName("allow_message") val allow_message: Boolean = true,
-        @SerialName("is_following") val is_following: Boolean = false,
-        @SerialName("is_followed") val is_followed: Boolean = false,
-        @SerialName("is_blocking") val is_blocking: Boolean = false,
-        @SerialName("follower_count") val follower_count: Int = 0,
-        @SerialName("answer_count") val answer_count: Int = 0,
-        @SerialName("articles_count") val articles_count: Int = 0,
-        @SerialName("available_medals_count") val available_medals_count: Int = 0,
-        @SerialName("org_verify_status") val org_verify_status: JsonElement? = null,
-        @SerialName("is_realname") val is_realname: Boolean = false,
-        @SerialName("has_applying_column") val has_applying_column: Boolean = false
+        val is_advertiser: Boolean = false,
+        val ip_info: String? = null,
+//         val vip_info: VipInfo? = null,
+        val kvip_info: JsonElement? = null,
+        val allow_message: Boolean = true,
+        val is_following: Boolean = false,
+        val is_followed: Boolean = false,
+        val is_blocking: Boolean = false,
+        val follower_count: Int = 0,
+        val answer_count: Int = 0,
+        val articles_count: Int = 0,
+        val available_medals_count: Int = 0,
+        val org_verify_status: JsonElement? = null,
+        val is_realname: Boolean = false,
+        val has_applying_column: Boolean = false
     )
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -802,17 +804,17 @@ object DataHolder {
                         Answer(
                             adminClosedComment = false,
                             annotationAction = null,
-                            answerType = feed.answer_type ?: "",
+                            answerType = feed.answerType ?: "",
                             author = feed.author.mock(),
                             canComment = CanComment(
                                 status = false,
                                 reason = ""
                             ),
-                            commentCount = feed.comment_count,
+                            commentCount = feed.commentCount,
                             content = feed.content,
-                            createdTime = feed.created_time,
+                            createdTime = feed.createdTime,
                             excerpt = feed.excerpt ?: "",
-                            favlistsCount = feed.favorite_count,
+                            favlistsCount = feed.favoriteCount,
                             id = feed.id,
                             question = AnswerModelQuestion(
                                 created = 0,
@@ -825,11 +827,11 @@ object DataHolder {
                                 url = feed.question.url
                             ),
                             reshipmentSettings = "",
-                            thanksCount = feed.thanks_count,
+                            thanksCount = feed.thanksCount,
                             type = "answer",
-                            updatedTime = feed.updated_time,
+                            updatedTime = feed.updatedTime,
                             url = feed.url,
-                            voteupCount = feed.voteup_count,
+                            voteupCount = feed.voteupCount,
                         )
                     )
                 }
@@ -897,7 +899,7 @@ object DataHolder {
                             contentNeedTruncated = false,
                             excerpt = feed.excerpt,
                             title = feed.title,
-                            commentCount = feed.comment_count,
+                            commentCount = feed.commentCount,
                             id = feed.id,
                             canComment = CanComment(
                                 status = false,
@@ -906,7 +908,7 @@ object DataHolder {
                             type = "article",
                             created = feed.created,
                             updated = feed.updated,
-                            voteupCount = feed.voteup_count,
+                            voteupCount = feed.voteupCount,
                             url = feed.url,
                         )
                     )

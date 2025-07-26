@@ -36,8 +36,8 @@ fun telemetry(context: Context, usage: String) {
             @OptIn(ExperimentalStdlibApi::class)
             runCatching {
                 val hash = MessageDigest.getInstance("MD5").apply {
-                    data.self!!.user_type.toByteArray().let(this::update)
-                    data.self.url_token?.toByteArray()?.let(this::update)
+                    data.self!!.userType.toByteArray().let(this::update)
+                    data.self.urlToken?.toByteArray()?.let(this::update)
                 }
                     .digest(data.self!!.id.toByteArray())
                     .toHexString()

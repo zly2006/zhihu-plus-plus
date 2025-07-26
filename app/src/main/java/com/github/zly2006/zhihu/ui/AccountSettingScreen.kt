@@ -129,7 +129,7 @@ fun AccountSettingScreen(
             ) {
                 // 这里可以添加头像组件，暂时用 Box 代替
                 AsyncImage(
-                    model = data.self?.avatar_url,
+                    model = data.self?.avatarUrl,
                     contentDescription = "头像",
                     modifier = Modifier
                         .size(120.dp)
@@ -148,7 +148,7 @@ fun AccountSettingScreen(
                 Text("退出登录")
             }
             Button(
-                onClick = { onNavigate(Collections(AccountData.data.self!!.url_token!!)) },
+                onClick = { onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(

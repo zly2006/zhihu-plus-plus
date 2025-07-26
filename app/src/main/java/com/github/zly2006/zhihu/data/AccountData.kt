@@ -16,7 +16,6 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -133,6 +132,7 @@ object AccountData {
     }
 
     internal inline fun <reified T> decodeJson(json: JsonElement): T {
+        val json = snake_case2camelCase(json)
         try {
             return this.json.decodeFromJsonElement<T>(json)
         } catch (e: SerializationException) {
@@ -146,20 +146,19 @@ object AccountData {
             .replaceFirstChar { it.lowercase() }
     }
 
-    fun snake_case2camelCase(jsonElement: JsonElement): JsonElement {
-        return when (jsonElement) {
+    fun snake_case2camelCase(json: JsonElement): JsonElement {
+        return when (json) {
             is JsonObject -> buildJsonObject {
-                for ((key, value) in jsonElement) {
-                    val newKey = snake_case2camelCase(key)
-                    put(newKey, value)
+                for ((key, value) in json) {
+                    put(snake_case2camelCase(key), snake_case2camelCase(value))
                 }
             }
             is JsonArray -> buildJsonArray {
-                for (item in jsonElement) {
+                for (item in json) {
                     add(snake_case2camelCase(item))
                 }
             }
-            else -> jsonElement
+            else -> json
         }
     }
 }

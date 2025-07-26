@@ -54,7 +54,7 @@ class PersonViewModel(
 
 fun HttpResponse.raiseForStatus() = apply {
     if (status.value >= 400) {
-        throw RuntimeException("HTTP error: ${status.value} ${status.description} on ${request.url}",)
+        throw RuntimeException("HTTP error: ${status.value} ${status.description} on ${request.url}")
     }
 }
 

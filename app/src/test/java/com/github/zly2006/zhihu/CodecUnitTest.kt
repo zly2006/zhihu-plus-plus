@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu
 
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.ui.processCommentImages
@@ -47,9 +48,7 @@ class CodecUnitTest {
             }
             val articles = entities["articles"]!!.jsonObject
             articles.forEach { (_, it) ->
-                Json{
-                    ignoreUnknownKeys = true
-                }.decodeFromJsonElement<DataHolder.Article>(it)
+                AccountData.decodeJson<DataHolder.Article>(it)
             }
         }
     }
@@ -58,9 +57,7 @@ class CodecUnitTest {
     fun testComments() {
         comments.forEach {
             val jojo = Json.decodeFromString<JsonObject>(it)
-            Json {
-                namingStrategy = JsonNamingStrategy.SnakeCase
-            } .decodeFromJsonElement<List<DataHolder.Comment>>(jojo["data"]!!)
+            AccountData.decodeJson<List<DataHolder.Comment>>(jojo["data"]!!)
         }
     }
 
@@ -70,9 +67,7 @@ class CodecUnitTest {
             val decodeFromString = Json.decodeFromString<JsonObject>(it)
             val feeds = decodeFromString["data"]!!.jsonArray
             feeds.forEach {
-                Json{
-                    ignoreUnknownKeys = true
-                }.decodeFromJsonElement<Feed>(it)
+                AccountData.decodeJson<Feed>(it)
             }
         }
     }

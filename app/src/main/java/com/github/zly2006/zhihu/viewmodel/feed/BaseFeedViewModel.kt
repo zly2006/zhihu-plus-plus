@@ -66,7 +66,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                             FeedDisplayItem(
                                 title = feed.target.title,
                                 summary = feed.target.excerpt,
-                                details = listOfNotNull(feed.target.detailsText, feed.action_text)
+                                details = listOfNotNull(feed.target.detailsText, feed.actionText)
                                     .joinToString(" · "),
                                 feed = feed
                             )
@@ -85,7 +85,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             }
             is AdvertisementFeed -> FeedDisplayItem(
                 title = "已屏蔽",
-                summary = feed.action_text,
+                summary = feed.actionText,
                 details = "广告",
                 feed = null,
                 isFiltered = true

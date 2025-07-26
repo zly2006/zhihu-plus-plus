@@ -155,7 +155,7 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
      * 判断内容是否来自已关注用户
      */
     private fun isFromFollowedUser(feed: Feed): Boolean {
-        return feed.target?.author?.is_following == true
+        return feed.target?.author?.isFollowing == true
     }
 
     /**
