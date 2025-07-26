@@ -34,15 +34,15 @@ abstract class PaginationViewModel<T : Any>(
     var errorMessage: String? = null
         protected set
     protected var lastPaging: Paging? by mutableStateOf(null)
-    open val isEnd: Boolean get() = lastPaging?.is_end == true
+    open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
 
-    @Suppress("PropertyName")
     @Serializable
     class Paging(
         val page: Int = -1,
-        val is_end: Boolean,
+        val isEnd: Boolean,
         val next: String,
+        val prev: String? = null,
     )
 
     open fun refresh(context: Context) {
