@@ -4,13 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
@@ -29,19 +23,10 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.random.Random
 
 class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
     var title by mutableStateOf("")
@@ -110,7 +95,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                 )
                                 val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
                                 nextAnswerFuture = GlobalScope.async {
-                                    if (sharedData.destinations.isEmpty()) {
+                                    if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
                                         val url =
                                             if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
                                                 sharedData.nextUrl
