@@ -18,7 +18,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 
@@ -134,6 +138,28 @@ object AccountData {
         } catch (e: SerializationException) {
             Log.e("AccountData", "Failed to parse JSON: $json", e)
             throw SerializationException("Failed to parse JSON: $json", e)
+        }
+    }
+
+    fun snake_case2camelCase(snakeCase: String): String {
+        return snakeCase.split("_").joinToString("") { it.replaceFirstChar { char -> char.uppercase() } }
+            .replaceFirstChar { it.lowercase() }
+    }
+
+    fun snake_case2camelCase(jsonElement: JsonElement): JsonElement {
+        return when (jsonElement) {
+            is JsonObject -> buildJsonObject {
+                for ((key, value) in jsonElement) {
+                    val newKey = snake_case2camelCase(key)
+                    put(newKey, value)
+                }
+            }
+            is JsonArray -> buildJsonArray {
+                for (item in jsonElement) {
+                    add(snake_case2camelCase(item))
+                }
+            }
+            else -> jsonElement
         }
     }
 }

@@ -710,6 +710,88 @@ object DataHolder {
         userType = user_type
     )
 
+    /**
+     * {
+     *     "id": "fe6ae971a4f7768add7aba938a7e6619",
+     *     "url_token": "41-9-73-12",
+     *     "name": "面壁者罗辑",
+     *     "use_default_avatar": false,
+     *     "avatar_url": "https://picx.zhimg.com/v2-778b8e89b050cc742ccdfafff8346638_xl.jpg?source=32738c0c\u0026needBackground=1",
+     *     "avatar_url_template": "https://pic1.zhimg.com/v2-778b8e89b050cc742ccdfafff8346638_l.jpg?source=32738c0c\u0026needBackground=1",
+     *     "is_org": false,
+     *     "type": "people",
+     *     "url": "https://www.zhihu.com/api/v4/people/41-9-73-12",
+     *     "user_type": "people",
+     *     "headline": "物质告诉时空如何弯曲，时空告诉物质如何运动。",
+     *     "headline_render": "物质告诉时空如何弯曲，时空告诉物质如何运动。",
+     *     "gender": 1,
+     *     "is_advertiser": false,
+     *     "ip_info": "IP 属地辽宁",
+     *     "vip_info": {
+     *         "is_vip": false,
+     *         "vip_type": 0,
+     *         "rename_days": "0",
+     *         "entrance_v2": null,
+     *         "rename_frequency": 0,
+     *         "rename_await_days": 0
+     *     },
+     *     "kvip_info": {
+     *         "is_vip": false
+     *     },
+     *     "badge": [],
+     *     "badge_v2": {
+     *         "title": "",
+     *         "merged_badges": [],
+     *         "detail_badges": [],
+     *         "icon": "",
+     *         "night_icon": ""
+     *     },
+     *     "allow_message": true,
+     *     "is_following": false,
+     *     "is_followed": false,
+     *     "is_blocking": false,
+     *     "follower_count": 1448,
+     *     "answer_count": 264,
+     *     "articles_count": 54,
+     *     "available_medals_count": 0,
+     *     "employments": [],
+     *     "org_verify_status": null,
+     *     "is_realname": true,
+     *     "has_applying_column": false
+     * }
+     */
+    @Serializable
+    data class People(
+        val id: String,
+        @SerialName("url_token") val url_token: String? = null,
+        val name: String,
+        @SerialName("use_default_avatar") val use_default_avatar: Boolean = false,
+        @SerialName("avatar_url") val avatar_url: String,
+        @SerialName("avatar_url_template") val avatar_url_template: String = "",
+        @SerialName("is_org") val is_org: Boolean = false,
+        val type: String = "people",
+        val url: String,
+        @SerialName("user_type") val user_type: String = "people",
+        val headline: String,
+        @SerialName("headline_rendered") val headline_rendered: String? = null,
+        val gender: Int,
+        @SerialName("is_advertiser") val is_advertiser: Boolean = false,
+        @SerialName("ip_info") val ip_info: String? = null,
+//        @SerialName("vip_info") val vip_info: VipInfo? = null,
+        @SerialName("kvip_info") val kvip_info: JsonElement? = null,
+        @SerialName("allow_message") val allow_message: Boolean = true,
+        @SerialName("is_following") val is_following: Boolean = false,
+        @SerialName("is_followed") val is_followed: Boolean = false,
+        @SerialName("is_blocking") val is_blocking: Boolean = false,
+        @SerialName("follower_count") val follower_count: Int = 0,
+        @SerialName("answer_count") val answer_count: Int = 0,
+        @SerialName("articles_count") val articles_count: Int = 0,
+        @SerialName("available_medals_count") val available_medals_count: Int = 0,
+        @SerialName("org_verify_status") val org_verify_status: JsonElement? = null,
+        @SerialName("is_realname") val is_realname: Boolean = false,
+        @SerialName("has_applying_column") val has_applying_column: Boolean = false
+    )
+
     @OptIn(DelicateCoroutinesApi::class)
     fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
