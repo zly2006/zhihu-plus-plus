@@ -304,9 +304,9 @@ fn should_store_uncompressed(file_name: &str) -> bool {
     }
 
     // 资源文件
-    // if file_name == "resources.arsc" {
-    //     return true;
-    // }
+    if file_name == "resources.arsc" {
+        return true;
+    }
 
     // 某些音频/视频文件已经压缩过了
     let already_compressed_extensions = [
