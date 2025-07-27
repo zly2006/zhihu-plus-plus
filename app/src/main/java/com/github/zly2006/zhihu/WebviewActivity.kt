@@ -3,7 +3,9 @@ package com.github.zly2006.zhihu
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.webkit.CookieManager
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +54,13 @@ class WebviewActivity : ComponentActivity() {
                 "$name=$value; domain=.zhihu.com; path=/"
             )
         }
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean {
+                return request.url.scheme == "zhihu" &&
+                        request.url.host == "webviewform"
+            }
+        }
+        webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
         cookieManager.flush()
     }
 }

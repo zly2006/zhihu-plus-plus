@@ -175,27 +175,10 @@ fun AccountSettingScreen(
                         Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
                         return@QRCodeLogin
                     }
-                    val key = url.rawSegments.last()
                     Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                    GlobalScope.launch {
-                        // 处理扫描到的登录二维码
-                        val httpClient = (context as MainActivity).httpClient
-                        httpClient.get(url) {
-                            AccountData.ANDROID_HEADERS.forEach {
-                                header(it.key, it.value)
-                            }
-                            header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
-                            signFetchRequest(context)
-                        }.raiseForStatus().bodyAsText()
-                        val response = httpClient.post("https://www.zhihu.com/api/v3/account/api/login/qrcode/${key}/confirm") {
-//                            AccountData.ANDROID_HEADERS.forEach {
-//                                header(it.key, it.value)
-//                            }
-//                            header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
-                            signFetchRequest(context)
-                        }.raiseForStatus()
-                        val body = response.bodyAsText()
-                        Log.i("QRCodeLogin", "Scan result: ${response.status}:\n$body")
+                    Intent(context, WebviewActivity::class.java).let {
+                        it.setData(qrContent.toUri())
+                        context.startActivity(it)
                     }
                 }
             )
