@@ -20,7 +20,7 @@ interface ContentFilterDao {
     @Query("UPDATE ${ContentViewRecord.TABLE_NAME} SET hasInteraction = 1, lastInteractionTime = :currentTime WHERE id = :id")
     suspend fun markAsInteracted(id: String, currentTime: Long = System.currentTimeMillis())
 
-    @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount AND hasInteraction = 0")
+    @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount")
     suspend fun getFilteredContent(maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<ContentViewRecord>
 
     @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount AND hasInteraction = 0")

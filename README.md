@@ -24,6 +24,8 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 ## 下载
 
+告别知乎 110MB+ 的客户端，只要 3 MB！
+
 [点我下载](https://github.com/zly2006/zhihu-plus-plus/releases)
 
 [下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
@@ -53,6 +55,8 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 - 其他
   - 支持 zse96 v2 签名算法（可以调用99%的网页端API）
   - 支持模拟安卓端 API 调用
+- 其他（非知乎）
+  - 提供了二维码扫码结果展示和复制功能，可用于提取网址、Wi-Fi密码等信息
 
 ### 实现了一半的功能
 
