@@ -48,7 +48,7 @@ class CollectionContentViewModel(
             navDestination = item.content.navDestination,
             feed = null,
             avatarSrc = when (item.content) {
-                is Feed.AnswerTarget -> item.content.author.avatarUrl
+                is Feed.AnswerTarget -> item.content.author?.avatarUrl
                 is Feed.ArticleTarget -> item.content.author.avatarUrl
                 is Feed.QuestionTarget -> item.content.author?.avatarUrl
                 else -> null

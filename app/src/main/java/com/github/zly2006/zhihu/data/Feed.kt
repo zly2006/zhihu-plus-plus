@@ -6,8 +6,13 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed.Badge
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.nullable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 
 @Serializable
@@ -30,17 +35,39 @@ sealed interface Feed {
 
         val detailsText: String
         val title: String
+        val url: String
         val excerpt: String?
         val author: Person?
         val navDestination: NavDestination?
+    }
+
+    private object LegacyAuthorSerCompat: KSerializer<Person?> {
+        override val descriptor: SerialDescriptor = Person.serializer().descriptor.nullable
+
+        override fun serialize(
+            encoder: Encoder,
+            value: Person?
+        ) {
+        }
+
+        override fun deserialize(decoder: Decoder): Person? {
+            try {
+                return Person.serializer().deserialize(decoder)
+            } catch (_: Exception) {
+                // consume a string -- legacy api compatibility
+                decoder.decodeString()
+                return null
+            }
+        }
     }
 
     @Serializable
     @SerialName("answer")
     data class AnswerTarget(
         val id: Long,
-        val url: String,
-        override val author: Person,
+        override val url: String,
+        @Serializable(with = LegacyAuthorSerCompat::class)
+        override val author: Person? = null,
         /**
          * -1 广告
          */
@@ -63,7 +90,7 @@ sealed interface Feed {
         val answerType: String? = null
     ) : Target {
         override fun filterReason(): String? {
-            return if (voteupCount < 10 && !author.isFollowing) {
+            return if (voteupCount < 10 && author?.isFollowing == false) {
                 "规则：回答；赞数 < 10，未关注作者"
             } else null
         }
@@ -75,9 +102,9 @@ sealed interface Feed {
             title = question.title,
             type = ArticleType.Answer,
             id = id,
-            authorName = author.name,
-            authorBio = author.headline,
-            avatarSrc = author.avatarUrl,
+            authorName = author?.name ?: "loading...",
+            authorBio = author?.headline ?: "",
+            avatarSrc = author?.avatarUrl,
             excerpt = excerpt
         )
     }
@@ -86,6 +113,7 @@ sealed interface Feed {
     @SerialName("zvideo")
     data class VideoTarget(
         val id: Long,
+        override val url: String = "",
         override val author: Person,
         val voteCount: Int = -1,
         val commentCount: Int,
@@ -108,7 +136,7 @@ sealed interface Feed {
     @SerialName("article")
     data class ArticleTarget(
         val id: Long,
-        val url: String,
+        override val url: String,
         override val author: Person,
         val voteupCount: Int,
         val commentCount: Int,
@@ -156,7 +184,7 @@ sealed interface Feed {
      */
     data class PinTarget(
         val id: Long,
-        val url: String,
+        override val url: String,
         override val author: Person,
         val commentCount: Int,
         val content: JsonArray,
@@ -178,7 +206,7 @@ sealed interface Feed {
     data class QuestionTarget(
         val id: Long,
         override val title: String,
-        val url: String,
+        override val url: String,
         val type: String,
         /**
          * 不存在于老API
@@ -266,7 +294,18 @@ val Feed.target: Feed.Target?
         is CommonFeed -> target
         is QuestionFeedCard -> target
         is MomentsFeed -> target
+        is FeedItemIndexGroup -> target
         else -> null
+    }
+
+val Feed.actionText: String?
+    get() = when (this) {
+        is CommonFeed -> actionText
+        is GroupFeed -> groupText
+        is AdvertisementFeed -> actionText
+        is QuestionFeedCard -> null
+        is MomentsFeed -> null
+        is FeedItemIndexGroup -> actionText
     }
 
 @Serializable
@@ -321,12 +360,21 @@ data class CommonFeed(
 ) : Feed
 
 @Serializable
+@SerialName("feed_item_index_group")
+data class FeedItemIndexGroup(
+    val id: String = "",
+    val target: Feed.Target,
+    val actors: List<Person>,
+    val actionText: String,
+    val actionTime: Long,
+) : Feed
+
+@Serializable
 @SerialName("moments_feed")
 data class MomentsFeed(
     val id: String,
 //    val interaction: Interaction? = null,
     val momentDesc: String = "",
-    val score: Double = 0.0,
     val target: Feed.Target,
     val targetType: String,
 ) : Feed {

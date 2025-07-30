@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
 import kotlinx.coroutines.*
-import java.util.concurrent.Executors
 
 /**
  * 智能任务调度器，负责管理爬虫任务的执行
@@ -12,60 +11,69 @@ class TaskScheduler(private val context: Context) {
     private val dao by lazy { database.contentDao() }
     private val crawlingExecutor by lazy { CrawlingExecutor(context) }
 
-    // 使用单线程执行器确保任务按优先级顺序执行
-    private val scheduler = Executors.newSingleThreadExecutor()
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var schedulerJob: Job? = null
 
     /**
      * 启动任务调度
      */
     fun startScheduling() {
-        scope.launch {
-            while (true) {
+        schedulerJob?.cancel()
+        schedulerJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive) {
                 try {
-                    executeNextTask()
-                    delay(5000) // 每5秒检查一次新任务
+                    executePendingTasks()
+                    cleanupOldData()
+                    delay(60_000) // 每分钟检查一次
                 } catch (e: Exception) {
-                    delay(10000) // 出错时等待更长时间
+                    // 记录错误但继续运行
+                    delay(300_000) // 出错时等待5分钟再试
                 }
             }
         }
     }
 
     /**
-     * 执行下一个优先级最高的任务
+     * 停止调度
      */
-    private suspend fun executeNextTask() {
-        val pendingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted)
-        val highPriorityTask = pendingTasks
-            .filter { it.retryCount < 3 } // 过滤重试次数过多的任务
-            .maxByOrNull { it.priority } // 选择优先级最高的任务
+    fun stopScheduling() {
+        schedulerJob?.cancel()
+        schedulerJob = null
+    }
 
-        highPriorityTask?.let { task ->
+    /**
+     * 执行待处理的任务
+     */
+    private suspend fun executePendingTasks() {
+        val pendingTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted)
+
+        // 限制并发执行的任务数量
+        pendingTasks.take(3).forEach { task ->
             try {
                 crawlingExecutor.executeTask(task)
             } catch (e: Exception) {
-                // 增加重试次数
-                dao.updateTask(task.copy(
-                    retryCount = task.retryCount + 1,
-                    errorMessage = e.message
-                ))
+                // 忽略单个任务的执行错误
             }
         }
     }
 
     /**
-     * 添加新任务
+     * 清理旧数据
      */
-    suspend fun addTask(task: CrawlingTask) {
-        dao.insertTask(task)
-    }
+    private suspend fun cleanupOldData() {
+        val oneWeekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
+        val oneMonthAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
 
-    /**
-     * 停止调度
-     */
-    fun stopScheduling() {
-        scope.cancel()
-        scheduler.shutdown()
+        // 清理旧的已完成任务
+        dao.cleanupOldTasks(CrawlingStatus.Completed, oneWeekAgo)
+        dao.cleanupOldTasks(CrawlingStatus.Failed, oneWeekAgo)
+
+        // 清理旧的爬虫结果
+        dao.cleanupOldResults(oneMonthAgo)
+
+        // 清理旧的推荐内容
+        dao.cleanupOldFeeds(oneMonthAgo)
+
+        // 清理旧的用户行为数据
+        dao.cleanupOldBehaviors(oneMonthAgo)
     }
 }

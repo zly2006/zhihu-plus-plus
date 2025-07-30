@@ -10,6 +10,7 @@ plugins {
     kotlin("plugin.compose")
     id("kotlin-parcelize")
     id("org.ajoberstar.grgit") version "5.2.2"
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -129,6 +130,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     annotationProcessor("androidx.room:room-compiler:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

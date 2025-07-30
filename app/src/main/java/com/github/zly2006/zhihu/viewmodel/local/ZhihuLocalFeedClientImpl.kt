@@ -1,60 +1,186 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
-import com.github.zly2006.zhihu.Person
-import com.github.zly2006.zhihu.Question
-import kotlin.random.Random
+import android.content.Context
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.serialization.json.decodeFromJsonElement
 
-class ZhihuLocalFeedClientImpl : ZhihuLocalFeedClient {
-
-    override fun pickAnswers(question: Question, offset: Int): List<CrawlingTask> {
-        // 生成问题回答相关的爬虫任务
-        return generateTasksForReason(
-            count = 10,
-            reason = CrawlingReason.UpvotedQuestion,
-            baseUrl = "https://www.zhihu.com/question/${question.questionId}/answer/"
-        )
-    }
-
-    override fun pickAuthorWorks(author: Person, offset: Int): List<CrawlingTask> {
-        // 生成作者作品相关的爬虫任务
-        return generateTasksForReason(
-            count = 15,
-            reason = CrawlingReason.Following,
-            baseUrl = "https://www.zhihu.com/people/${author.urlToken}/posts/"
-        )
-    }
-
-    override fun pickColumnArticles(column: Person, offset: Int): List<CrawlingTask> {
-        // 生成专栏文章相关的爬虫任务
-        return generateTasksForReason(
-            count = 12,
-            reason = CrawlingReason.Trending,
-            baseUrl = "https://zhuanlan.zhihu.com/p/"
-        )
-    }
-
-    override fun pickAuthorFollowing(author: Person, offset: Int): List<CrawlingTask> {
-        // 生成关注用户相关的爬虫任务
-        return generateTasksForReason(
-            count = 8,
-            reason = CrawlingReason.CollaborativeFiltering,
-            baseUrl = "https://www.zhihu.com/people/${author.urlToken}/following/"
-        )
-    }
-
-    private fun generateTasksForReason(
-        count: Int,
-        reason: CrawlingReason,
-        baseUrl: String
-    ): List<CrawlingTask> {
-        return (1..count).map { i ->
-            CrawlingTask(
-                id = Random.nextInt(100000, 999999),
-                url = "$baseUrl${Random.nextInt(1000000, 9999999)}",
-                status = CrawlingStatus.NotStarted,
-                reason = reason,
-                lastCrawled = 0L
+class ZhihuLocalFeedClientImpl(private val context: Context) : ZhihuLocalFeedClient {
+    override suspend fun crawlFollowingFeeds(): List<CrawlingResult> {
+        return withContext(Dispatchers.IO) {
+            val task = CrawlingTask(
+                url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
+                reason = CrawlingReason.Following,
+                priority = 8
             )
+            executeFollowingCrawl(task)
         }
+    }
+
+    override suspend fun crawlTrendingFeeds(): List<CrawlingResult> {
+        return withContext(Dispatchers.IO) {
+            val task = CrawlingTask(
+                url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20",
+                reason = CrawlingReason.Trending,
+                priority = 7
+            )
+            executeTrendingCrawl(task)
+        }
+    }
+
+    override suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult> {
+        return withContext(Dispatchers.IO) {
+            val task = CrawlingTask(
+                url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
+                reason = CrawlingReason.UpvotedQuestion,
+                priority = 6
+            )
+            executeUpvotedQuestionCrawl(task)
+        }
+    }
+
+    private suspend fun executeFollowingCrawl(task: CrawlingTask): List<CrawlingResult> {
+        val httpClient = AccountData.httpClient(context)
+        val response = httpClient.get(task.url)
+        val jsonData = Json.parseToJsonElement(response.bodyAsText())
+        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+
+        return feedArray.mapNotNull { feedElement ->
+            try {
+                val feed = AccountData.decodeJson<Feed>(feedElement)
+                val target = feed.target
+                if (target != null) {
+                    CrawlingResult(
+                        taskId = task.id,
+                        contentId = when (target) {
+                            is Feed.AnswerTarget -> target.id.toString()
+                            is Feed.ArticleTarget -> target.id.toString()
+                            is Feed.QuestionTarget -> target.id.toString()
+                            is Feed.VideoTarget -> target.id.toString()
+                            is Feed.PinTarget -> target.id.toString()
+                        },
+                        title = target.title,
+                        summary = target.excerpt ?: "",
+                        url = target.url,
+                        reason = CrawlingReason.Following,
+                        score = calculateScore(target)
+                    )
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private suspend fun executeTrendingCrawl(task: CrawlingTask): List<CrawlingResult> {
+        val httpClient = AccountData.httpClient(context)
+        val response = httpClient.get(task.url)
+        val jsonData = Json.parseToJsonElement(response.bodyAsText())
+        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+
+        return feedArray.mapNotNull { feedElement ->
+            try {
+                val feed = AccountData.decodeJson<Feed>(feedElement)
+                val target = feed.target
+                if (target != null) {
+                    CrawlingResult(
+                        taskId = task.id,
+                        contentId = when (target) {
+                            is Feed.AnswerTarget -> target.id.toString()
+                            is Feed.ArticleTarget -> target.id.toString()
+                            is Feed.QuestionTarget -> target.id.toString()
+                            is Feed.VideoTarget -> target.id.toString()
+                            is Feed.PinTarget -> target.id.toString()
+                        },
+                        title = target.title ?: "无标题",
+                        summary = target.excerpt ?: "",
+                        url = target.url ?: "",
+                        reason = CrawlingReason.Trending,
+                        score = calculateScore(target) * 1.2
+                    )
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private suspend fun executeUpvotedQuestionCrawl(task: CrawlingTask): List<CrawlingResult> {
+        val httpClient = AccountData.httpClient(context)
+        val response = httpClient.get(task.url)
+        val jsonData = Json.parseToJsonElement(response.bodyAsText())
+        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+
+        return feedArray.mapNotNull { feedElement ->
+            try {
+                val feed = AccountData.decodeJson<Feed>(feedElement)
+                val target = feed.target
+                if (target != null) {
+                    CrawlingResult(
+                        taskId = task.id,
+                        contentId = when (target) {
+                            is Feed.AnswerTarget -> target.id.toString()
+                            is Feed.ArticleTarget -> target.id.toString()
+                            is Feed.QuestionTarget -> target.id.toString()
+                            is Feed.VideoTarget -> target.id.toString()
+                            is Feed.PinTarget -> target.id.toString()
+                        },
+                        title = target.title,
+                        summary = target.excerpt ?: "",
+                        url = target.url,
+                        reason = CrawlingReason.UpvotedQuestion,
+                        score = calculateScore(target) * 1.1
+                    )
+                } else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun calculateScore(target: Feed.Target): Double {
+        var score = 1.0
+
+        when (target) {
+            is Feed.AnswerTarget -> {
+                score += (target.voteupCount / 100.0).coerceAtMost(5.0)
+                score += (target.commentCount / 50.0).coerceAtMost(2.0)
+            }
+            is Feed.ArticleTarget -> {
+                score += (target.voteupCount / 100.0).coerceAtMost(5.0)
+                score += (target.commentCount / 50.0).coerceAtMost(2.0)
+            }
+
+            is Feed.PinTarget -> {
+                score += (target.favoriteCount / 50.0).coerceAtMost(3.0)
+                score += (target.commentCount / 20.0).coerceAtMost(1.0)
+            }
+            is Feed.QuestionTarget -> {
+                score += (target.answerCount / 10.0).coerceAtMost(2.0)
+                score += (target.followerCount / 100.0).coerceAtMost(3.0)
+                score += (target.commentCount / 20.0).coerceAtMost(1.0)
+            }
+            is Feed.VideoTarget -> {
+                score += (target.commentCount / 50.0).coerceAtMost(1.0)
+            }
+        }
+
+        val contentLength = target.excerpt?.length ?: 0
+        score += when {
+            contentLength in 100..500 -> 1.0
+            contentLength in 50..100 || contentLength in 500..1000 -> 0.5
+            else -> 0.0
+        }
+
+        return score.coerceIn(0.1, 10.0)
     }
 }

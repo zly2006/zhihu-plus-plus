@@ -43,6 +43,7 @@ class LoginActivity : ComponentActivity() {
                         @SuppressLint("SetJavaScriptEnabled")
                         webView.settings.javaScriptEnabled = true
                         CookieManager.getInstance().removeAllCookies { }
+                        webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
                         webView.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(
                                 view: WebView?,

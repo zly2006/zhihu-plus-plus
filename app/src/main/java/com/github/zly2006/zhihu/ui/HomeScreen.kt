@@ -122,8 +122,7 @@ fun HomeScreen(
             }
         }
 
-        @Suppress("KotlinConstantConditions")
-        if (BuildConfig.BUILD_TYPE == "debug") {
+        if (BuildConfig.DEBUG) {
             DraggableRefreshButton(
                 onClick = {
                     val data = Json.encodeToString(viewModel.debugData)

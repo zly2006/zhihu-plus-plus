@@ -697,19 +697,19 @@ object DataHolder {
         answers.remove(answerId)
     }
 
-    private fun Person.mock() = Author(
-        avatarUrl = avatarUrl,
+    private fun Person?.mock() = Author(
+        avatarUrl = this?.avatarUrl ?: "",
         avatarUrlTemplate = "",
-        gender = gender,
-        headline = headline,
-        id = id,
+        gender = this?.gender ?: 0,
+        headline = this?.headline ?: "",
+        id = this?.id ?: "",
         isAdvertiser = false,
         isOrg = false,
-        name = name,
+        name = this?.name ?: "",
         type = "mock",
-        url = url,
-        urlToken = urlToken ?: "",
-        userType = userType
+        url = this?.url ?: "",
+        urlToken = this?.urlToken ?: "",
+        userType = this?.userType ?: ""
     )
 
     /**

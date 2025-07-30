@@ -17,13 +17,14 @@ class FeedGenerator(private val context: Context) {
     suspend fun generateFeedFromResult(result: CrawlingResult, reasonDisplay: String): LocalFeed {
         return withContext(Dispatchers.IO) {
             val feed = LocalFeed(
-                id = "feed_${result.id}_${System.currentTimeMillis()}",
+                id = generateFeedId(result),
                 resultId = result.id,
                 title = result.title,
-                summary = result.summary ?: result.content?.take(200) ?: "暂无摘要",
+                summary = result.summary,
                 reasonDisplay = reasonDisplay,
-                navDestination = result.url,
-                userFeedback = 0.0
+                navDestination = generateNavDestination(result),
+                userFeedback = 0.0,
+                createdAt = System.currentTimeMillis()
             )
 
             dao.insertFeed(feed)
@@ -43,6 +44,44 @@ class FeedGenerator(private val context: Context) {
                 generateFeedFromResult(result, reasonDisplay)
             }
         }
+    }
+
+    private fun generateFeedId(result: CrawlingResult): String {
+        return "local_feed_${result.contentId}_${result.reason.name.lowercase()}_${System.currentTimeMillis()}"
+    }
+
+    private fun generateNavDestination(result: CrawlingResult): String? {
+        // 根据内容类型生成导航目标
+        return when {
+            result.url.contains("/question/") -> {
+                val questionId = extractQuestionId(result.url)
+                questionId?.let { "question/$it" }
+            }
+            result.url.contains("/answer/") -> {
+                val answerId = extractAnswerId(result.url)
+                answerId?.let { "answer/$it" }
+            }
+            result.url.contains("/p/") -> {
+                val articleId = extractArticleId(result.url)
+                articleId?.let { "article/$it" }
+            }
+            else -> null
+        }
+    }
+
+    private fun extractQuestionId(url: String): String? {
+        val regex = """/question/(\d+)""".toRegex()
+        return regex.find(url)?.groupValues?.get(1)
+    }
+
+    private fun extractAnswerId(url: String): String? {
+        val regex = """/answer/(\d+)""".toRegex()
+        return regex.find(url)?.groupValues?.get(1)
+    }
+
+    private fun extractArticleId(url: String): String? {
+        val regex = """/p/(\d+)""".toRegex()
+        return regex.find(url)?.groupValues?.get(1)
     }
 
     /**

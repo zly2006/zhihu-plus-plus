@@ -23,6 +23,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val feed: Feed?,
         val navDestination: NavDestination? = feed?.target?.navDestination,
         val avatarSrc: String? = null,
+        val authorName: String? = null,
         val isFiltered: Boolean = false
     )
 
@@ -47,14 +48,14 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     open fun createDisplayItem(feed: Feed): FeedDisplayItem {
         return when (feed) {
-            is CommonFeed -> {
+            is CommonFeed, is FeedItemIndexGroup, is MomentsFeed -> {
                 val filterReason = feed.target?.filterReason()
 
                 if (filterReason != null) {
                     FeedDisplayItem(
                         title = "已屏蔽",
                         summary = filterReason,
-                        details = feed.target.detailsText,
+                        details = feed.target!!.detailsText,
                         feed = feed,
                         isFiltered = true
                     )
@@ -64,10 +65,12 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                         is Feed.ArticleTarget,
                         is Feed.QuestionTarget -> {
                             FeedDisplayItem(
-                                title = feed.target.title,
-                                summary = feed.target.excerpt,
-                                details = listOfNotNull(feed.target.detailsText, feed.actionText)
+                                title = feed.target!!.title,
+                                summary = feed.target!!.excerpt,
+                                details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
                                     .joinToString(" · "),
+                                avatarSrc = feed.target?.author?.avatarUrl,
+                                authorName = feed.target?.author?.name,
                                 feed = feed
                             )
                         }
@@ -83,6 +86,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     }
                 }
             }
+
             is AdvertisementFeed -> FeedDisplayItem(
                 title = "已屏蔽",
                 summary = feed.actionText,
@@ -90,30 +94,8 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 feed = null,
                 isFiltered = true
             )
-            is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
-            is MomentsFeed -> {
-                when (feed.target) {
-                    is Feed.AnswerTarget,
-                    is Feed.ArticleTarget,
-                    is Feed.QuestionTarget -> {
-                        FeedDisplayItem(
-                            title = feed.target.title,
-                            summary = feed.target.excerpt,
-                            details = feed.target.detailsText,
-                            feed = feed
-                        )
-                    }
 
-                    else -> {
-                        FeedDisplayItem(
-                            title = feed.target.javaClass.simpleName,
-                            summary = "Not Implemented",
-                            details = feed.target.detailsText,
-                            feed = feed
-                        )
-                    }
-                }
-            }
+            is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
             is QuestionFeedCard -> TODO()
         }
     }

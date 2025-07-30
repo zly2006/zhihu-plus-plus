@@ -36,26 +36,38 @@ fun FeedCard(
             modifier = Modifier.padding(8.dp)
         ) {
             if (!item.isFiltered) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    item.avatarSrc?.let {
-                        AsyncImage(
-                            model = it,
-                            contentDescription = "Avatar",
-                            modifier = Modifier.clip(CircleShape)
-                                .size(36.dp)
+                if (!item.title.isEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = item.title,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(Modifier.width(8.dp))
                     }
-
-                    Text(
-                        text = item.title,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                }
+                if (item.avatarSrc != null && item.authorName != null) {
+                    Row {
+                        item.avatarSrc.let {
+                            AsyncImage(
+                                model = it,
+                                contentDescription = "Avatar",
+                                modifier = Modifier.clip(CircleShape)
+                                    .size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = item.authorName,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
 
