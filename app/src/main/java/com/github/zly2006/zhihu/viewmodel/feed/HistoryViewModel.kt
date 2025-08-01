@@ -24,25 +24,15 @@ class HistoryViewModel : BaseFeedViewModel() {
         history.history.forEach { dest ->
             val displayItem = when (dest) {
                 is Article -> {
-                    when (dest.type) {
-                        ArticleType.Answer -> FeedDisplayItem(
-                            title = dest.title,
-                            summary = dest.excerpt ?: "",
-                            details = dest.authorName,
-                            feed = null,
-                            avatarSrc = dest.avatarSrc,
-                            navDestination = dest,
-                        )
-
-                        ArticleType.Article -> FeedDisplayItem(
-                            title = dest.title,
-                            summary = dest.excerpt ?: "",
-                            details = dest.authorName,
-                            feed = null,
-                            avatarSrc = dest.avatarSrc,
-                            navDestination = dest,
-                        )
-                    }
+                    FeedDisplayItem(
+                        title = dest.title,
+                        summary = dest.excerpt ?: "",
+                        details = "",
+                        authorName = dest.authorName,
+                        feed = null,
+                        avatarSrc = dest.avatarSrc,
+                        navDestination = dest,
+                    )
                 }
                 is Question -> {
                     FeedDisplayItem(
