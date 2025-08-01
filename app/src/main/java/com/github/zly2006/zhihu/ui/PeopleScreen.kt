@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -82,7 +84,16 @@ fun PeopleScreen(
     val viewModel = viewModel { PersonViewModel(person) }
 
     LaunchedEffect(viewModel) {
-        viewModel.load(context)
+        try {
+            viewModel.load(context)
+        } catch (e: Exception) {
+            Log.e("PeopleScreen", "Error loading person data", e)
+            Toast.makeText(
+                context,
+                "加载用户信息失败: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     Column(

@@ -51,10 +51,10 @@ fun CollectionContentScreen(
                 )
                 Text(
                     listOfNotNull(
-                        "${viewModel.collection?.item_count} 条收藏",
-                        "${viewModel.collection?.like_count} 个赞同",
-                        "${viewModel.collection?.comment_count} 条评论",
-                        viewModel.collection?.updated_time?.let { "${YMDHMS.format(Date(it * 1000))} 更新" }
+                        "${viewModel.collection?.itemCount} 条收藏",
+                        "${viewModel.collection?.likeCount} 个赞同",
+                        "${viewModel.collection?.commentCount} 条评论",
+                        viewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" }
                     ).fastJoinToString(" · "),
                 )
             }

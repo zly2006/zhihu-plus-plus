@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.github.zly2006.zhihu.ui.components
 
 import android.content.ContentValues
@@ -13,6 +15,7 @@ import android.provider.MediaStore
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.Window
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -34,28 +37,140 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
+import io.ktor.client.HttpClient
 import io.ktor.client.request.*
+import io.ktor.client.request.get
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
-private class CustomWebView : WebView {
+// HTML 点击事件监听器接口
+fun interface HtmlClickListener {
+    fun onElementClick(outerHtml: String)
+}
+
+class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     var document: Document? = null
+    private var htmlClickListener: HtmlClickListener? = null
+
+    // JavaScript 接口类
+    inner class JsInterface {
+        @OptIn(DelicateCoroutinesApi::class)
+        @JavascriptInterface
+        fun onElementClick(outerHtml: String) {
+            GlobalScope.launch(Dispatchers.Main) {
+                htmlClickListener?.onElementClick(outerHtml)
+            }
+        }
+    }
+
+    /**
+     * 设置 HTML 点击事件监听器
+     * 通过注入 JavaScript 监听页面中所有元素的点击事件
+     */
+    fun setHtmlClickListener(listener: HtmlClickListener?) {
+        this.htmlClickListener = listener
+
+        if (listener != null) {
+            // 添加 JavaScript 接口
+            addJavascriptInterface(JsInterface(), "AndroidInterface")
+
+            // 启用 JavaScript
+            @Suppress("SetJavaScriptEnabled")
+            settings.javaScriptEnabled = true
+        } else {
+            // 移除 JavaScript 接口
+            removeJavascriptInterface("AndroidInterface")
+        }
+    }
+
+    /**
+     * 注入点击监听的 JavaScript 代码
+     * 这个方法应该在页面加载完成后调用
+     */
+    fun injectClickListenerScript() {
+        if (htmlClickListener != null) {
+            val jsCode = """
+                (function() {
+                    // 移除之前的监听器（如果存在）
+                    if (window.zhihuPlusClickListener) {
+                        document.removeEventListener('click', window.zhihuPlusClickListener, true);
+                    }
+                    
+                    // 创建新的监听器
+                    window.zhihuPlusClickListener = function(event) {
+                        try {
+                            // 获取被点击元素的 outerHTML
+                            var outerHtml = event.target.outerHTML;
+                            // 调用 Android 接口
+                            if (window.AndroidInterface) {
+                                AndroidInterface.onElementClick(outerHtml);
+                            }
+                        } catch (e) {
+                            console.error('Error in click listener:', e);
+                        }
+                    };
+                    
+                    // 添加点击事件监听器
+                    document.addEventListener('click', window.zhihuPlusClickListener, true);
+                })();
+            """.trimIndent()
+
+            evaluateJavascript(jsCode, null)
+        }
+    }
+
+    fun openImage(httpClient: HttpClient, url: String) {
+        val dialog = object : ComponentDialog(context) {
+            init {
+                requestWindowFeature(Window.FEATURE_NO_TITLE)
+                setContentView(
+                    PhotoView(context).apply {
+                        GlobalScope.launch {
+                            httpClient.get(url).bodyAsChannel().toInputStream()
+                                .buffered().use {
+                                    val bitmap = BitmapFactory.decodeStream(it)
+                                    context.mainExecutor.execute {
+                                        setImageBitmap(bitmap)
+                                    }
+                                }
+                        }
+                        setImageURI(url.toUri())
+                        setBackgroundColor(Color.BLACK)
+                        setOnClickListener { dismiss() }
+                    }
+                )
+                window?.setBackgroundDrawable(Color.BLACK.toDrawable())
+                setCanceledOnTouchOutside(true)
+            }
+
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                window?.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        }
+        dialog.show()
+    }
 }
 
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
-    onLoad: (WebView) -> Unit,
+    onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -89,38 +204,7 @@ fun WebviewComp(
                         val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
                         if (url != null) {
                             menu.add("查看图片").setOnMenuItemClickListener {
-                                val dialog = object : ComponentDialog(context) {
-                                    init {
-                                        requestWindowFeature(Window.FEATURE_NO_TITLE)
-                                        setContentView(
-                                            PhotoView(context).apply {
-                                                GlobalScope.launch {
-                                                    httpClient.get(url).bodyAsChannel().toInputStream()
-                                                        .buffered().use {
-                                                            val bitmap = BitmapFactory.decodeStream(it)
-                                                            context.mainExecutor.execute {
-                                                                setImageBitmap(bitmap)
-                                                            }
-                                                        }
-                                                }
-                                                setImageURI(url.toUri())
-                                                setBackgroundColor(Color.BLACK)
-                                                setOnClickListener { dismiss() }
-                                            }
-                                        )
-                                        window?.setBackgroundDrawable(Color.BLACK.toDrawable())
-                                        setCanceledOnTouchOutside(true)
-                                    }
-
-                                    override fun onCreate(savedInstanceState: Bundle?) {
-                                        super.onCreate(savedInstanceState)
-                                        window?.setLayout(
-                                            ViewGroup.LayoutParams.MATCH_PARENT,
-                                            ViewGroup.LayoutParams.MATCH_PARENT
-                                        )
-                                    }
-                                }
-                                dialog.show()
+                                openImage(httpClient, url)
                                 true
                             }
                             menu.add("在浏览器中打开").setOnMenuItemClickListener {
@@ -264,6 +348,12 @@ fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
 
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
+
+            // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本
+            if (view is CustomWebView) {
+                view.injectClickListenerScript()
+            }
+
             onPageFinished?.invoke()
         }
     }

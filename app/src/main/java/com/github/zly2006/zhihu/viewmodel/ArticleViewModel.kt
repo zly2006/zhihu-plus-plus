@@ -46,7 +46,7 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     val isFavorited: Boolean
-        get() = collections.any { it.is_favorited }
+        get() = collections.any { it.isFavorited }
 
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {
@@ -219,7 +219,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                     val collectionsResponse = httpClient.get(collectionsUrl)
 
                     if (collectionsResponse.status.isSuccess()) {
-                        val collectionsData = collectionsResponse.body<CollectionResponse>()
+                        val jojo = collectionsResponse.body<JsonObject>()
+                        val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
                         collections.clear()
                         collections.addAll(collectionsData.data)
                     }

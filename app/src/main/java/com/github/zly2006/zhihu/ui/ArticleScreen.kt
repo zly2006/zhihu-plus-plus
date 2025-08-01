@@ -45,14 +45,11 @@ import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.MainActivity.TtsState
-import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
-import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.loadZhihu
+import com.github.zly2006.zhihu.ui.components.*
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import kotlinx.coroutines.launch
@@ -88,24 +85,24 @@ data class Reaction(
 @Serializable
 data class Collection(
     val id: String,
-    val is_favorited: Boolean = false,
+    val isFavorited: Boolean = false,
     val type: String = "collection",
     val title: String = "",
-    val is_public: Boolean = false,
+    val isPublic: Boolean = false,
     val url: String = "",
     val description: String = "",
-    val follower_count: Int = 0,
-    val answer_count: Int = 0,
-    val item_count: Int = 0,
-    val like_count: Int = 0,
-    val view_count: Int = 0,
-    val comment_count: Int = 0,
-    val is_following: Boolean = false,
-    val is_liking: Boolean = false,
-    val created_time: Long = 0L,
-    val updated_time: Long = 0L,
+    val followerCount: Int = 0,
+    val answerCount: Int = 0,
+    val itemCount: Int = 0,
+    val likeCount: Int = 0,
+    val viewCount: Int = 0,
+    val commentCount: Int = 0,
+    val isFollowing: Boolean = false,
+    val isLiking: Boolean = false,
+    val createdTime: Long = 0L,
+    val updatedTime: Long = 0L,
     val creator: Person? = null,
-    val is_default: Boolean = false,
+    val isDefault: Boolean = false,
 )
 
 @Serializable
@@ -347,6 +344,9 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     // 下拉菜单按钮 - 包含朗读和分享功能
     var showActionsMenu by remember { mutableStateOf(false) }
+    // HTML 点击事件状态
+    var showHtmlDialog by remember { mutableStateOf(false) }
+    var clickedHtml by remember { mutableStateOf("") }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -643,6 +643,34 @@ fun ArticleScreen(
                 WebviewComp {
                     @SuppressLint("SetJavaScriptEnabled")
                     it.settings.javaScriptEnabled = true
+
+                    // 设置 HTML 点击监听器
+                    it.setHtmlClickListener { outerHtml: String ->
+                        clickedHtml = outerHtml
+                        showHtmlDialog = true
+                        val clicked = Jsoup.parse(outerHtml).body().child(0)
+                        if (clicked.tagName() == "img") {
+                            val url =
+                                clicked.attr("data-original").takeIf { it.isNotBlank() }
+                                    ?: clicked.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
+                                    ?: clicked.attr("src").takeIf { it.isNotBlank() }
+                            if (url != null) {
+                                val httpClient = AccountData.httpClient(context)
+                                it.openImage(httpClient, url)
+                            }
+                        }
+                        //                            AlertDialog.Builder(context)
+                        //                                .setTitle("HTML 元素")
+                        //                                .setMessage(clicked.outerHtml())
+                        //                                .setPositiveButton("复制") { _, _ ->
+                        //                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        //                                    clipboard.setPrimaryClip(ClipData.newPlainText("HTML Element", outerHtml))
+                        //                                    Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                        //                                }
+                        //                                .setNegativeButton("取消", null)
+                        //                                .show()
+                    }
+
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
                         Jsoup.parse(viewModel.content).apply {
@@ -736,7 +764,7 @@ fun ArticleScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    viewModel.toggleFavorite(collection.id, collection.is_favorited, context)
+                                    viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
                                     viewModel.loadCollections()
                                 }
                                 .padding(8.dp),
@@ -747,7 +775,7 @@ fun ArticleScreen(
                                 modifier = Modifier.weight(1f),
                                 fontSize = 16.sp
                             )
-                            if (collection.is_favorited) {
+                            if (collection.isFavorited) {
                                 Icon(
                                     imageVector = Icons.Filled.Bookmark,
                                     contentDescription = "已收藏",
