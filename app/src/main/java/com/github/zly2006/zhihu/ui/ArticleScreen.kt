@@ -641,36 +641,6 @@ fun ArticleScreen(
 
             if (viewModel.content.isNotEmpty()) {
                 WebviewComp {
-                    @SuppressLint("SetJavaScriptEnabled")
-                    it.settings.javaScriptEnabled = true
-
-                    // 设置 HTML 点击监听器
-                    it.setHtmlClickListener { outerHtml: String ->
-                        clickedHtml = outerHtml
-                        showHtmlDialog = true
-                        val clicked = Jsoup.parse(outerHtml).body().child(0)
-                        if (clicked.tagName() == "img") {
-                            val url =
-                                clicked.attr("data-original").takeIf { it.isNotBlank() }
-                                    ?: clicked.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
-                                    ?: clicked.attr("src").takeIf { it.isNotBlank() }
-                            if (url != null) {
-                                val httpClient = AccountData.httpClient(context)
-                                it.openImage(httpClient, url)
-                            }
-                        }
-                        //                            AlertDialog.Builder(context)
-                        //                                .setTitle("HTML 元素")
-                        //                                .setMessage(clicked.outerHtml())
-                        //                                .setPositiveButton("复制") { _, _ ->
-                        //                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        //                                    clipboard.setPrimaryClip(ClipData.newPlainText("HTML Element", outerHtml))
-                        //                                    Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        //                                }
-                        //                                .setNegativeButton("取消", null)
-                        //                                .show()
-                    }
-
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
                         Jsoup.parse(viewModel.content).apply {

@@ -38,7 +38,6 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
 import io.ktor.client.HttpClient
-import io.ktor.client.request.*
 import io.ktor.client.request.get
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -49,10 +48,11 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
-    fun onElementClick(outerHtml: String)
+    fun onElementClick(element: Element)
 }
 
 class CustomWebView : WebView {
@@ -68,8 +68,9 @@ class CustomWebView : WebView {
         @OptIn(DelicateCoroutinesApi::class)
         @JavascriptInterface
         fun onElementClick(outerHtml: String) {
+            val clicked = Jsoup.parse(outerHtml).body().child(0)
             GlobalScope.launch(Dispatchers.Main) {
-                htmlClickListener?.onElementClick(outerHtml)
+                htmlClickListener?.onElementClick(clicked)
             }
         }
     }
@@ -91,6 +92,19 @@ class CustomWebView : WebView {
         } else {
             // 移除 JavaScript 接口
             removeJavascriptInterface("AndroidInterface")
+        }
+    }
+
+    fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
+        if (clicked.tagName() == "img") {
+            val url =
+                clicked.attr("data-original").takeIf { it.isNotBlank() }
+                    ?: clicked.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
+                    ?: clicked.attr("src").takeIf { it.isNotBlank() }
+            if (url != null) {
+                val httpClient = AccountData.httpClient(context)
+                this.openImage(httpClient, url)
+            }
         }
     }
 
@@ -190,6 +204,7 @@ fun WebviewComp(
 
                 this.setupUpWebviewClient {
                 }
+                this.setHtmlClickListener(this.defaultHtmlClickListener())
                 onLoad(this)
                 setOnLongClickListener { view ->
                     view.showContextMenu()

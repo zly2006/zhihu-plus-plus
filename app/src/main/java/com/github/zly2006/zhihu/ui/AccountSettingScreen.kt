@@ -9,6 +9,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -144,6 +145,15 @@ fun AccountSettingScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
+                    .clickable {
+                        onNavigate(
+                            Person(
+                                id = data.self?.id ?: "",
+                                urlToken = data.self?.urlToken ?: "",
+                                name = data.username
+                            )
+                        )
+                    }
             ) {
                 // 这里可以添加头像组件，暂时用 Box 代替
                 AsyncImage(

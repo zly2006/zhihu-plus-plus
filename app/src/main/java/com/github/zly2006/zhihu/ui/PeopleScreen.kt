@@ -4,10 +4,13 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,19 +26,39 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.PaginatedList
+import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.annotations.Async
+import kotlin.reflect.typeOf
+
+class PeopleAnswersViewModel(val person: Person, val sort: String = "voteups")
+    : PaginationViewModel<DataHolder.Answer>(typeOf<DataHolder.Answer>()
+) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.id}/answers?sort_by=$sort"
+
+    override val include: String
+        get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp"
+}
 
 class PersonViewModel(
     val person: Person,
@@ -46,10 +69,18 @@ class PersonViewModel(
     var followerCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
     var articleCount by mutableIntStateOf(0)
+    val answersFeedModel = PeopleAnswersViewModel(person)
 
     suspend fun load(context: Context) {
         context as MainActivity
         val jojo = context.httpClient.get("https://www.zhihu.com/api/v4/members/${person.id}") {
+            url {
+                parameters.append(
+                    "include",
+                    // todo question_count pins_count
+                    "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,articles_count,question_count,pins_count"
+                )
+            }
             signFetchRequest(context)
         }.raiseForStatus().body<JsonObject>()
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
@@ -86,6 +117,7 @@ fun PeopleScreen(
     LaunchedEffect(viewModel) {
         try {
             viewModel.load(context)
+            viewModel.answersFeedModel.loadMore(context)
         } catch (e: Exception) {
             Log.e("PeopleScreen", "Error loading person data", e)
             Toast.makeText(
@@ -99,20 +131,49 @@ fun PeopleScreen(
     Column(
         modifier = Modifier.padding(16.dp)
     ) {
-        AsyncImage(
-            model = viewModel.avatar,
-            contentDescription = "用户头像",
-            modifier = Modifier.padding(16.dp)
-                .width(128.dp)
-                .height(128.dp)
-                .clip(CircleShape),
-        )
-        Text(
-            "用户: ${person.name}",
-        )
-        Text(viewModel.headline)
-        Text("关注者： ${viewModel.followerCount}")
-        Text("回答数： ${viewModel.answerCount}")
-        Text("文章数： ${viewModel.articleCount}")
+        PaginatedList(
+            items = viewModel.answersFeedModel.allData,
+            onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
+            isEnd = { viewModel.answersFeedModel.isEnd },
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            footer = ProgressIndicatorFooter,
+            topContent = {
+                item(0) {
+                    AsyncImage(
+                        model = viewModel.avatar,
+                        contentDescription = "用户头像",
+                        modifier = Modifier.padding(16.dp)
+                            .width(128.dp)
+                            .height(128.dp)
+                            .clip(CircleShape),
+                    )
+                    Text(
+                        "用户: ${person.name}",
+                    )
+                    Text(viewModel.headline)
+                    Text("关注者： ${viewModel.followerCount}")
+                    Text("回答数： ${viewModel.answerCount}")
+                    Text("文章数： ${viewModel.articleCount}")
+                }
+            }
+        ) {
+            FeedCard(
+                BaseFeedViewModel.FeedDisplayItem(
+                    title = it.question.title,
+                    summary = it.excerpt,
+                    details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                    feed = null
+                )
+            ) {
+                onNavigate(
+                    Article(
+                        type = ArticleType.Answer,
+                        id = it.id,
+                        title = it.question.title,
+                        excerpt = it.excerpt,
+                    )
+                )
+            }
+        }
     }
 }

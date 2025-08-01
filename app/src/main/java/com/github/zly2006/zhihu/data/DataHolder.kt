@@ -82,14 +82,14 @@ object DataHolder {
 
     @Serializable
     data class BizExt(
-        val shareGuide: ShareGuide
+        val shareGuide: ShareGuide? = null
     )
 
     @Serializable
     data class ShareGuide(
-        val hasPositiveBubble: Boolean,
-        val hasTimeBubble: Boolean,
-        val hitShareGuideCluster: Boolean
+        val hasPositiveBubble: Boolean = false,
+        val hasTimeBubble: Boolean = false,
+        val hitShareGuideCluster: Boolean = false
     )
 
     @Serializable
@@ -147,17 +147,16 @@ object DataHolder {
 
     @Serializable
     data class UnnormalDetails(
-        val description: String,
-        val note: String,
-        val reason: String,
-        val reasonId: Int,
-        val status: String
+        val description: String? = null,
+        val note: String? = null,
+        val reason: String? = null,
+        val reasonId: Int? = null,
+        val status: String? = null
     )
 
     @Serializable
     data class Answer(
         val adminClosedComment: Boolean = false,
-        val annotationAction: String? = null,
         val answerType: String,
         val author: Author,
         val canComment: CanComment,
@@ -803,7 +802,6 @@ object DataHolder {
                     callback(
                         Answer(
                             adminClosedComment = false,
-                            annotationAction = null,
                             answerType = feed.answerType ?: "",
                             author = feed.author.mock(),
                             canComment = CanComment(

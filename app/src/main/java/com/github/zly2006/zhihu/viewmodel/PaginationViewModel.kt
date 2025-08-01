@@ -37,6 +37,12 @@ abstract class PaginationViewModel<T : Any>(
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
 
+    /**
+     * Generally used fields to include in the API request.
+     * This can be overridden in subclasses to include more specific fields.
+     */
+    open val include = "data[*].content,excerpt,headline"
+
     @Serializable
     class Paging(
         val page: Int = -1,
@@ -71,6 +77,9 @@ abstract class PaginationViewModel<T : Any>(
             val url = lastPaging?.next ?: initialUrl
             val httpClient = httpClient(context)
             val response = httpClient.get(url) {
+                url {
+                    parameters.append("include", include)
+                }
                 signFetchRequest(context)
             }
 
