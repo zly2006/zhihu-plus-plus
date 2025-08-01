@@ -129,13 +129,12 @@ fun PeopleScreen(
     }
 
     Column(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(8.dp)
     ) {
         PaginatedList(
             items = viewModel.answersFeedModel.allData,
             onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
             isEnd = { viewModel.answersFeedModel.isEnd },
-            modifier = Modifier.fillMaxSize().padding(16.dp),
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(0) {
