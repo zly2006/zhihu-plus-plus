@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import android.content.Context.MODE_PRIVATE
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,16 +26,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -46,11 +50,15 @@ fun FeedCard(
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
     val density = LocalDensity.current
+    val context = LocalContext.current
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) }  // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) }    // 开始滑动时的Y位置
     var isDragging by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val enableSwipeReaction = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", true)
+    }
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -85,48 +93,52 @@ fun FeedCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .alpha(1 - max(actionAlpha, 0.5f))
+                .alpha(1 - min(actionAlpha, 0.5f))
                 .offset(x = with(density) { animatedOffsetX.toDp() })
                 .clickable {
                     if (!isDragging && abs(animatedOffsetX) < 10f) {
                         onClick(item)
                     }
-                }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { offset ->
-                            isDragging = true
-                            startY = offset.y  // 记录开始位置
-                            currentY = offset.y
-                        },
-                        onDragEnd = {
-                            isDragging = false
+                }.let {
+                    if (enableSwipeReaction) {
+                        it.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { offset ->
+                                    isDragging = true
+                                    startY = offset.y  // 记录开始位置
+                                    currentY = offset.y
+                                },
+                                onDragEnd = {
+                                    isDragging = false
 
-                            // 根据最终位置执行操作
-                            when {
-                                abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
-                                    onLike(item)  // 横向滑动足够 + 向上 = 喜欢
-                                }
-                                abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
-                                    onDislike(item)  // 横向滑动足够 + 向下 = 不喜欢
-                                }
-                            }
+                                    // 根据最终位置执行操作
+                                    when {
+                                        abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
+                                            onLike(item)  // 横向滑动足够 + 向上 = 喜欢
+                                        }
 
-                            // 重置位置
-                            coroutineScope.launch {
-                                offsetX = 0f
-                                currentY = 0f
-                                startY = 0f
+                                        abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
+                                            onDislike(item)  // 横向滑动足够 + 向下 = 不喜欢
+                                        }
+                                    }
+
+                                    // 重置位置
+                                    coroutineScope.launch {
+                                        offsetX = 0f
+                                        currentY = 0f
+                                        startY = 0f
+                                    }
+                                }
+                            ) { change, dragAmount ->
+                                // 更新当前手指位置
+                                currentY = change.position.y
+
+                                // 只允许向左滑动，并限制最大偏移量
+                                val newOffset = offsetX + dragAmount
+                                offsetX = max(newOffset, -250f).coerceAtMost(0f)
                             }
                         }
-                    ) { change, dragAmount ->
-                        // 更新当前手指位置
-                        currentY = change.position.y
-
-                        // 只允许向左滑动，并限制最大偏移量
-                        val newOffset = offsetX + dragAmount
-                        offsetX = max(newOffset, -250f).coerceAtMost(0f)
-                    }
+                    } else it
                 },
             elevation = CardDefaults.cardElevation(
                 defaultElevation = if (isDragging) 8.dp else 2.dp
@@ -193,7 +205,7 @@ fun FeedCard(
             }
         }
 
-        if (actionAlpha > 0f) {
+        if (actionAlpha > 0f && enableSwipeReaction) {
             Box(
                 modifier = Modifier
                     .matchParentSize()

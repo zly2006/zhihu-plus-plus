@@ -11,11 +11,12 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
         val target = feed.target
         if (target is Feed.AnswerTarget) {
             return FeedDisplayItem(
-                title = target.author?.name ?: "未知作者",
+                authorName = target.author?.name ?: "未知作者",
+                avatarSrc = target.author?.avatarUrl,
                 summary = target.excerpt,
                 details = target.detailsText,
                 feed = feed,
-                avatarSrc = target.author?.avatarUrl
+                title = ""
             )
         }
         return super.createDisplayItem(feed)
