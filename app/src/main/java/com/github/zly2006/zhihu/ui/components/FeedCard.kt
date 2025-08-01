@@ -58,7 +58,7 @@ fun FeedCard(
     val coroutineScope = rememberCoroutineScope()
     val enableSwipeReaction = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", true)
-    }
+    } && onLike != null && onDislike != null
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(

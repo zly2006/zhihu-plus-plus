@@ -109,7 +109,11 @@ fun HomeScreen(
             onLoadMore = { viewModel.loadMore(context) },
             footer = ProgressIndicatorFooter
         ) { item ->
-            FeedCard(item) {
+            FeedCard(item, onLike = {
+                Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+            }, onDislike = {
+                Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+            }) {
                 feed?.let {
                     DataHolder.putFeed(feed)
                     GlobalScope.launch {

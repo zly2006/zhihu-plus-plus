@@ -100,7 +100,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktor")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
-    implementation("androidx.browser:browser:1.8.0")
+    implementation("androidx.browser:browser:1.9.0")
 
     implementation("io.coil-kt.coil3:coil-compose:3.0.0")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.2.0")
@@ -142,5 +142,5 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }
