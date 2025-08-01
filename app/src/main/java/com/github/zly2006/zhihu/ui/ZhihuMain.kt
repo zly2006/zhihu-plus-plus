@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,59 @@ import kotlin.reflect.KClass
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val activity = LocalActivity.current as MainActivity
+
+    // 获取页面索引的函数
+    fun getPageIndex(route: androidx.navigation.NavDestination): Int {
+        return when {
+            route.hasRoute<Home>() -> 0
+            route.hasRoute<Follow>() -> 1
+            route.hasRoute<History>() -> 2
+            route.hasRoute<Account>() -> 3
+            else -> -1
+        }
+    }
+
+    // 通用动画创建函数
+    @Suppress("KotlinConstantConditions")
+    fun createSlideAnimation(
+        isEnter: Boolean,
+        isPop: Boolean,
+        fromIndex: Int,
+        toIndex: Int
+    ): Any {
+        // 如果不是一级页面之间的切换，使用默认动画
+        if (fromIndex == -1 || toIndex == -1) {
+            when {
+                isPop && isEnter -> {
+                    return EnterTransition.None
+                }
+                isPop && !isEnter -> {
+                    return slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                }
+                !isPop && isEnter -> {
+                    return slideInHorizontally(tween(300)) { it }
+                }
+                !isPop && !isEnter -> {
+                    return ExitTransition.None
+                }
+            }
+        }
+        // 一级页面之间的切换
+        val offset = when {
+            // 向右滑动
+            toIndex > fromIndex -> if (isEnter) 1 else -1
+            // 向左滑动
+            toIndex < fromIndex -> if (isEnter) -1 else 1
+            // 同一页面
+            else -> return if (isEnter) EnterTransition.None else ExitTransition.None
+        }
+        return if (isEnter) {
+            slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
+        } else {
+            slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+        }
+    }
+
     Scaffold(
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
@@ -100,10 +154,26 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             navController,
             modifier = Modifier.padding(innerPadding),
             startDestination = Home,
-            enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } + fadeIn(animationSpec = tween(300)) },
-            exitTransition = { slideOutHorizontally(animationSpec = tween(300)) { -it } + fadeOut(animationSpec = tween(300)) },
-            popEnterTransition = { slideInHorizontally(animationSpec = tween(300)) { -it } + fadeIn(animationSpec = tween(300)) },
-            popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } + fadeOut(animationSpec = tween(300)) }
+            enterTransition = {
+                val fromIndex = getPageIndex(initialState.destination)
+                val toIndex = getPageIndex(targetState.destination)
+                createSlideAnimation(isEnter = true, isPop = false, fromIndex, toIndex) as EnterTransition
+            },
+            exitTransition = {
+                val fromIndex = getPageIndex(initialState.destination)
+                val toIndex = getPageIndex(targetState.destination)
+                createSlideAnimation(isEnter = false, isPop = false, fromIndex, toIndex) as ExitTransition
+            },
+            popEnterTransition = {
+                val fromIndex = getPageIndex(initialState.destination)
+                val toIndex = getPageIndex(targetState.destination)
+                createSlideAnimation(isEnter = true, isPop = true, fromIndex, toIndex) as EnterTransition
+            },
+            popExitTransition = {
+                val fromIndex = getPageIndex(initialState.destination)
+                val toIndex = getPageIndex(targetState.destination)
+                createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
+            }
         ) {
             composable<Home> {
                 HomeScreen(activity::navigate)
@@ -148,7 +218,7 @@ private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.has
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
-    return dest.hierarchy.any { it.hasRoute(cls) } == true
+    return dest.hierarchy.any { it.hasRoute(cls) }
 }
 
 @Preview(showBackground = true)
