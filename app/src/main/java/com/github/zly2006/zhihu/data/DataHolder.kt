@@ -157,6 +157,7 @@ object DataHolder {
     @Serializable
     data class Answer(
         val adminClosedComment: Boolean = false,
+        val annotationAction: JsonElement? = null,
         val answerType: String,
         val author: Author,
         val canComment: CanComment,

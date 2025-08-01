@@ -3,7 +3,10 @@ package com.github.zly2006.zhihu.ui
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -23,33 +26,57 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
+import kotlinx.coroutines.launch
 
 class FollowScreenData: ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(
     onNavigate: (NavDestination) -> Unit
 ) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("动态", "推荐")
+    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val coroutineScope = rememberCoroutineScope()
+
+    // 同步PagerState和ViewModel的selectedTabIndex
+    LaunchedEffect(pagerState.currentPage) {
+        viewModel.selectedTabIndex = pagerState.currentPage
+    }
+
+    LaunchedEffect(viewModel.selectedTabIndex) {
+        if (pagerState.currentPage != viewModel.selectedTabIndex) {
+            pagerState.animateScrollToPage(viewModel.selectedTabIndex)
+        }
+    }
+
     Column {
         PrimaryTabRow(selectedTabIndex = viewModel.selectedTabIndex) {
             titles.forEachIndexed { index, title ->
                 Tab(
                     selected = viewModel.selectedTabIndex == index,
-                    onClick = { viewModel.selectedTabIndex = index },
+                    onClick = {
+                        viewModel.selectedTabIndex = index
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
                     text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 )
             }
         }
 
-        if (viewModel.selectedTabIndex == 0) {
-            FollowDynamicScreen(onNavigate)
-        } else {
-            FollowRecommendScreen(onNavigate)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> FollowDynamicScreen(onNavigate)
+                1 -> FollowRecommendScreen(onNavigate)
+            }
         }
     }
 }
