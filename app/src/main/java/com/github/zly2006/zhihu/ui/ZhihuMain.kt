@@ -1,6 +1,12 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
+import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,9 +41,9 @@ import kotlin.reflect.KClass
 
 @SuppressLint("RestrictedApi")
 @Composable
-fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostController) {
+fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
-    val activity = LocalContext.current as MainActivity
+    val activity = LocalActivity.current as MainActivity
     Scaffold(
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
@@ -93,7 +99,11 @@ fun ZhihuMain(modifier: Modifier = Modifier.Companion, navController: NavHostCon
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),
-            startDestination = Home
+            startDestination = Home,
+            enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } + fadeIn(animationSpec = tween(300)) },
+            exitTransition = { slideOutHorizontally(animationSpec = tween(300)) { -it } + fadeOut(animationSpec = tween(300)) },
+            popEnterTransition = { slideInHorizontally(animationSpec = tween(300)) { -it } + fadeIn(animationSpec = tween(300)) },
+            popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } + fadeOut(animationSpec = tween(300)) }
         ) {
             composable<Home> {
                 HomeScreen(activity::navigate)
