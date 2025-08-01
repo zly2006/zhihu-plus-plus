@@ -364,6 +364,16 @@ object DataHolder {
     ) : Thumbnail
 
     @Serializable
+    @SerialName("video")
+    data class ThumbnailVideo(
+        val attachedInfo: String,
+        val url: String,
+        val token: String,
+        val width: Int,
+        val height: Int
+    ) : Thumbnail
+
+    @Serializable
     @JvmInline
     value class ThumbnailString(val value: String) : Thumbnail
 
