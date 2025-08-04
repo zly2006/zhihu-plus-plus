@@ -57,7 +57,7 @@ fun FeedCard(
     var isDragging by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val enableSwipeReaction = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", true)
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", false)
     } && onLike != null && onDislike != null
 
     // 动画偏移量
