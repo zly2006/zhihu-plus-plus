@@ -31,6 +31,11 @@ abstract class BaseCommentViewModel(
         data.forEach { comment ->
             val commentItem = createCommentItem(comment, article)
             commentsMap[comment.id] = commentItem
+            // 载入可见的子评论
+            comment.childComments.forEach {
+                val childCommentItem = createCommentItem(it, article)
+                commentsMap[it.id] = childCommentItem
+            }
         }
     }
 

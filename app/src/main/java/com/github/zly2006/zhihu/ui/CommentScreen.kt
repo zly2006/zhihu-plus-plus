@@ -178,12 +178,9 @@ fun CommentScreen(
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
                                 var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
                                 var isLikeLoading by remember { mutableStateOf(false) }
-                                val replyingTo = if (!commentItem.item.replyCommentId.isNullOrEmpty()) {
-                                    viewModel.getCommentById(commentItem.item.replyCommentId)
-                                } else null
+
                                 CommentItem(
                                     comment = commentItem,
-                                    replyingTo = replyingTo,
                                     useWebview = useWebview,
                                     pinWebview = pinWebview,
                                     isLiked = isLiked,
@@ -218,7 +215,7 @@ fun CommentScreen(
                                                 var liked by remember { mutableStateOf(childComment.liked) }
                                                 var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
                                                 val childCommentItem = CommentModel(
-                                                    item = childComment.asComment(),
+                                                    item = childComment,
                                                     clickTarget = null // 子评论不需要点击跳转
                                                 )
                                                 CommentItem(
@@ -325,12 +322,10 @@ fun CommentScreen(
                             value = commentInput,
                             onValueChange = { commentInput = it },
                             modifier = Modifier.weight(1f).height(36.dp),
-////                            placeholder = { Text("写下你的评论...") },
-////                            singleLine = false,
-////                            maxLines = 3,
-////                            colors = TextFieldDefaults.colors(),
-//                            state = state,
-//                            decorator = { inner -> inner() }
+//                            placeholder = { Text("写下你的评论...") },
+//                            singleLine = false,
+//                            maxLines = 3,
+//                            colors = TextFieldDefaults.colors(),
                             decorationBox = { inner ->
                                 Box {
                                     if (commentInput.isEmpty()) {
@@ -385,7 +380,6 @@ fun CommentTopText(content: NavDestination? = null) {
 @Composable
 private fun CommentItem(
     comment: CommentModel,
-    replyingTo: CommentModel? = null,
     useWebview: Boolean,
     pinWebview: Boolean,
     isLiked: Boolean = false,
@@ -435,7 +429,7 @@ private fun CommentItem(
                             )
                         }
                     )
-                    if (replyingTo != null) {
+                    if (commentData.replyToAuthor != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "回复",
@@ -444,15 +438,15 @@ private fun CommentItem(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = replyingTo.item.author.name,
+                            text = commentData.replyToAuthor.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             modifier = Modifier.clickable {
                                 onNavigate(
                                     Person(
-                                        id = replyingTo.item.author.id,
-                                        name = replyingTo.item.author.name,
-                                        urlToken = replyingTo.item.author.urlToken,
+                                        id = commentData.replyToAuthor.id,
+                                        name = commentData.replyToAuthor.name,
+                                        urlToken = commentData.replyToAuthor.urlToken,
                                     )
                                 )
                             }
@@ -685,7 +679,7 @@ private fun NestedCommentPreview() {
             isAuthor = false,
             canCollapse = false,
             childComments = listOf(
-                DataHolder.ChildComment(
+                DataHolder.Comment(
                     id = "千早爱音",
                     content = "<p>我喜欢你</p>",
                     createdTime = System.currentTimeMillis() / 1000,
@@ -708,7 +702,7 @@ private fun NestedCommentPreview() {
                     url = "",
                     resourceType = "",
                     collapsed = false,
-                    reviewing = false
+                    reviewing = false,
                 )
             ),
         ),

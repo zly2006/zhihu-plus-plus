@@ -427,7 +427,7 @@ object DataHolder {
 //         val memberId: Long,
         val url: String,
 //        val hot: Boolean,
-        val top: Boolean,
+        val top: Boolean = false,
         val content: String,
 //        val score: Int,
         val createdTime: Long,
@@ -440,7 +440,7 @@ object DataHolder {
         var likeCount: Int = 0,
         val disliked: Boolean = false,
         val dislikeCount: Int = 0,
-        val isAuthor: Boolean,
+        val isAuthor: Boolean = false,
 //         val canLike: Boolean,
 //         val canDislike: Boolean,
 //         val canDelete: Boolean,
@@ -448,19 +448,20 @@ object DataHolder {
 //         val canHot: Boolean,
 //         val canAuthorTop: Boolean,
         val isAuthorTop: Boolean = false,
-        val canCollapse: Boolean,
-//         val canShare: Boolean,
-//         val canUnfold: Boolean,
-//         val canTruncate: Boolean,
-//         val canMore: Boolean,
+        val canCollapse: Boolean = false,
+        val canShare: Boolean = false,
+        val canUnfold: Boolean = false,
+        val canTruncate: Boolean = false,
+        val canMore: Boolean = false,
         val author: Author,
+        val replyToAuthor: Author? = null,
         val authorTag: List<JsonElement> = emptyList(),
         val replyAuthorTag: List<JsonElement> = emptyList(),
         val contentTag: List<JsonElement> = emptyList(),
         val commentTag: List<CommentTag> = emptyList(),
-        val childCommentCount: Int,
+        val childCommentCount: Int = 0,
         val childCommentNextOffset: JsonElement? = null,
-        val childComments: List<ChildComment>,
+        val childComments: List<Comment> = listOf(),
         val isVisibleOnlyToMyself: Boolean = false,
         @SerialName("_")
         val underscore: JsonElement? = null
@@ -504,61 +505,6 @@ object DataHolder {
         val nightColor: String,
         val hasBorder: Boolean
     )
-
-    @Serializable
-    data class ChildComment(
-        val id: String,
-        val type: String,
-        val resourceType: String,
-//         val memberId: Long,
-        val url: String,
-        val content: String,
-        val createdTime: Long,
-        val isDelete: Boolean,
-        val collapsed: Boolean,
-        val reviewing: Boolean,
-        val replyCommentId: String? = null,
-        val replyRootCommentId: String? = null,
-        val liked: Boolean = false,
-        val likeCount: Int = 0,
-        val disliked: Boolean = false,
-        val dislikeCount: Int = 0,
-        val author: Comment.Author,
-        val authorTag: List<JsonElement> = emptyList(),
-        val replyAuthorTag: List<JsonElement> = emptyList(),
-        val contentTag: List<JsonElement> = emptyList(),
-        val commentTag: List<CommentTag> = emptyList()
-    ) {
-        fun asComment() = Comment(
-            id = id,
-            type = type,
-            resourceType = resourceType,
-            url = url,
-            content = content,
-            createdTime = createdTime,
-            isDelete = isDelete,
-            collapsed = collapsed,
-            reviewing = reviewing,
-            replyCommentId = replyCommentId,
-            replyRootCommentId = replyRootCommentId,
-            liked = liked,
-            likeCount = likeCount,
-            disliked = disliked,
-            dislikeCount = dislikeCount,
-            author = author,
-            authorTag = authorTag,
-            replyAuthorTag = replyAuthorTag,
-            contentTag = contentTag,
-            commentTag = listOf(),
-
-            // mock
-            top = false,
-            isAuthor = false,
-            canCollapse = false,
-            childComments = listOf(),
-            childCommentCount = 0
-        )
-    }
 
     data class ReferenceCount<T>(
         val value: T,
