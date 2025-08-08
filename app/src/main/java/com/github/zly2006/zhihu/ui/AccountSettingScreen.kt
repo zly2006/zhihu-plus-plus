@@ -345,6 +345,7 @@ fun AccountSettingScreen(
                             when (mainActivity?.ttsEngine) {
                                 MainActivity.TtsEngine.Pico -> "Pico TTS"
                                 MainActivity.TtsEngine.Google -> "Google TTS"
+                                MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
                                 else -> "未初始化"
                             },
                             style = MaterialTheme.typography.bodyMedium,
