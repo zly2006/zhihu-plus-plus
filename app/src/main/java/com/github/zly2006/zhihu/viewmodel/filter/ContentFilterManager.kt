@@ -17,6 +17,7 @@ class ContentFilterManager private constructor(
 
     companion object {
         @Volatile
+        @Suppress("ktlint")
         private var INSTANCE: ContentFilterManager? = null
 
         // 数据清理配置

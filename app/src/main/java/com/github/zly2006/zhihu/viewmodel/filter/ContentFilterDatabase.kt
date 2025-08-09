@@ -15,6 +15,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
+        @Suppress("ktlint")
         private var INSTANCE: ContentFilterDatabase? = null
 
         fun getDatabase(context: Context): ContentFilterDatabase = INSTANCE ?: synchronized(this) {

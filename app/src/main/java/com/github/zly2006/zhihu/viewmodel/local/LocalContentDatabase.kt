@@ -17,6 +17,7 @@ abstract class LocalContentDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
+        @Suppress("ktlint")
         private var INSTANCE: LocalContentDatabase? = null
 
         fun getDatabase(context: Context): LocalContentDatabase = INSTANCE ?: synchronized(this) {
