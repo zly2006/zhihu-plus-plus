@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import android.content.Context
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 
 class HistoryViewModel : BaseFeedViewModel() {
@@ -37,6 +38,15 @@ class HistoryViewModel : BaseFeedViewModel() {
                     FeedDisplayItem(
                         title = dest.title,
                         details = "问题",
+                        feed = null,
+                        navDestination = dest,
+                        summary = "",
+                    )
+                }
+                is Person -> {
+                    FeedDisplayItem(
+                        title = dest.name,
+                        details = "用户",
                         feed = null,
                         navDestination = dest,
                         summary = "",

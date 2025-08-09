@@ -76,12 +76,13 @@ abstract class PaginationViewModel<T : Any>(
         try {
             val url = lastPaging?.next ?: initialUrl
             val httpClient = httpClient(context)
-            val response = httpClient.get(url) {
-                url {
-                    parameters.append("include", include)
-                }
-                signFetchRequest(context)
-            }.raiseForStatus()
+            val response = httpClient
+                .get(url) {
+                    url {
+                        parameters.append("include", include)
+                    }
+                    signFetchRequest(context)
+                }.raiseForStatus()
 
             val json = response.body<JsonObject>()
             val jsonArray = json["data"]!!.jsonArray
