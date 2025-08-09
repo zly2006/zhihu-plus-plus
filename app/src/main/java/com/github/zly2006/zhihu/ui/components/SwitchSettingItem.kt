@@ -30,7 +30,7 @@ fun SwitchSettingItem(
     description: String? = null,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
 ) {
     AnimatedVisibility(
         visible = enabled,
@@ -47,22 +47,23 @@ fun SwitchSettingItem(
                     if (!enabled) {
                         it.height(0.dp) // 禁用时高度为0
                     }
-                }
+                },
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    color = if (enabled) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
                 if (description != null) {
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = if (enabled)
+                            color = if (enabled) {
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                            else
+                            } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            },
                         ),
                     )
                 }
@@ -71,7 +72,7 @@ fun SwitchSettingItem(
             Switch(
                 checked = checked,
                 onCheckedChange = if (enabled) onCheckedChange else { _ -> },
-                enabled = enabled
+                enabled = enabled,
             )
         }
     }

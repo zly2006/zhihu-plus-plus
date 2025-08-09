@@ -3,7 +3,9 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 
-class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() {
+class QuestionFeedViewModel(
+    private val questionId: Long,
+) : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20"
 
@@ -16,7 +18,7 @@ class QuestionFeedViewModel(private val questionId: Long) : BaseFeedViewModel() 
                 summary = target.excerpt,
                 details = target.detailsText,
                 feed = feed,
-                title = ""
+                title = "",
             )
         }
         return super.createDisplayItem(feed)

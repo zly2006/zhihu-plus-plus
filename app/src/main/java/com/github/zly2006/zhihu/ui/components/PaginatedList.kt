@@ -20,7 +20,7 @@ val ProgressIndicatorFooter: @Composable (() -> Unit)? = {
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator()
     }
@@ -59,7 +59,7 @@ fun <T> PaginatedList(
 
     LazyColumn(
         state = listState,
-        modifier = modifier
+        modifier = modifier,
     ) {
         topContent(this)
 
@@ -73,7 +73,7 @@ fun <T> PaginatedList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = "已经到底啦",

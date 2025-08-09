@@ -8,7 +8,9 @@ import com.github.zly2006.zhihu.viewmodel.CommentItem
 /**
  * 注意：此view model不按照正常VM生命期管理，不要使用viewModel()函数创建
  */
-class ChildCommentViewModel(content: NavDestination) : BaseCommentViewModel(content) {
+class ChildCommentViewModel(
+    content: NavDestination,
+) : BaseCommentViewModel(content) {
     override val initialUrl: String = when (content) {
         is CommentHolder -> {
             "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"

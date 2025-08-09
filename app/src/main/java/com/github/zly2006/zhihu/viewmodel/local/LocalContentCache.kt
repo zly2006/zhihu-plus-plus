@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.serialization.Serializable
 
 /*
 关于 本地推荐模式：
@@ -25,7 +24,7 @@ data class CrawlingTask(
     val priority: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val executedAt: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )
 
 @Entity(tableName = "crawling_results")
@@ -44,7 +43,7 @@ data class CrawlingResult(
     val url: String,
     val reason: CrawlingReason,
     val score: Double = 0.0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "local_feeds")
@@ -57,7 +56,7 @@ data class LocalFeed(
     val reasonDisplay: String,
     val navDestination: String?,
     val userFeedback: Double = 0.0,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(tableName = "user_behaviors")
@@ -67,14 +66,14 @@ data class UserBehavior(
     val contentId: String,
     val action: String, // "like", "dislike", "share", "comment", "view"
     val timestamp: Long = System.currentTimeMillis(),
-    val duration: Long? = null // 阅读时长，毫秒
+    val duration: Long? = null, // 阅读时长，毫秒
 )
 
 enum class CrawlingStatus {
     NotStarted,
     InProgress,
     Completed,
-    Failed
+    Failed,
 }
 
 enum class CrawlingReason {
@@ -82,26 +81,32 @@ enum class CrawlingReason {
      * 已关注用户的内容
      */
     Following,
+
     /**
      * 官方推荐的内容
      */
     Trending,
+
     /**
      * 已关注用户的赞同
      */
     FollowingUpvote,
+
     /**
      * 用户赞同了某个回答，相同问题的优质回答
      */
     UpvotedQuestion,
+
     /**
      * 相似用户点赞的内容
      */
-    CollaborativeFiltering
+    CollaborativeFiltering,
 }
 
 interface ZhihuLocalFeedClient {
     suspend fun crawlFollowingFeeds(): List<CrawlingResult>
+
     suspend fun crawlTrendingFeeds(): List<CrawlingResult>
+
     suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult>
 }

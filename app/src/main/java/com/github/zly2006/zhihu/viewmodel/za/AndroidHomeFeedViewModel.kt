@@ -22,7 +22,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class AndroidHomeFeedViewModel: BaseFeedViewModel() {
+class AndroidHomeFeedViewModel : BaseFeedViewModel() {
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
@@ -59,7 +59,10 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
                         return@forEach
                     }
                     val route =
-                        card["action"]!!.jsonObject["parameter"]!!.jsonPrimitive.content.substringAfter("route_url=")
+                        card["action"]!!
+                            .jsonObject["parameter"]!!
+                            .jsonPrimitive.content
+                            .substringAfter("route_url=")
                     val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
                     val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
                     val title =
@@ -73,7 +76,10 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
                     val lineAuthor =
                         children.first { it["style"]?.jsonPrimitive?.content == "LineAuthor_default" }["elements"]!!.jsonArray.map { it.jsonObject }
                     val avatar =
-                        lineAuthor.first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                        lineAuthor
+                            .first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!
+                            .jsonObject["url"]!!
+                            .jsonPrimitive.content
                     val authorName =
                         lineAuthor.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
                     if (routeDest is Article) {
@@ -89,7 +95,7 @@ class AndroidHomeFeedViewModel: BaseFeedViewModel() {
                             title = title,
                             details = "$footerText · 手机版推荐",
                             feed = null,
-                        )
+                        ),
                     )
                 }
             }

@@ -12,7 +12,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 
 @Composable
 fun HistoryScreen(
-    onNavigate: (NavDestination) -> Unit
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val viewModel: HistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -27,7 +27,7 @@ fun HistoryScreen(
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { /* 不需要loadMore */ },
-            isEnd = { true }  // 始终为true，因为没有更多数据需要加载
+            isEnd = { true }, // 始终为true，因为没有更多数据需要加载
         ) { item ->
             FeedCard(item) {
                 navDestination?.let {

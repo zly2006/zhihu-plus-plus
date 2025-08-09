@@ -8,7 +8,9 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 
-class RootCommentViewModel(content: NavDestination) : BaseCommentViewModel(content) {
+class RootCommentViewModel(
+    content: NavDestination,
+) : BaseCommentViewModel(content) {
     override val initialUrl = when (content) {
         is Article -> {
             when (content.type) {
@@ -27,7 +29,9 @@ class RootCommentViewModel(content: NavDestination) : BaseCommentViewModel(conte
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
         val clickTarget = if (comment.childCommentCount > 0) {
             CommentHolder(comment.id, article)
-        } else null
+        } else {
+            null
+        }
 
         val commentItem = CommentItem(comment, clickTarget)
         commentsMap[comment.id] = commentItem

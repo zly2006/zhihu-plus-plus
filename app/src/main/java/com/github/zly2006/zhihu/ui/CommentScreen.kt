@@ -70,7 +70,7 @@ fun CommentScreen(
     activeCommentItem: CommentModel? = null,
     topPadding: Dp = 100.dp,
     onNavigate: (NavDestination) -> Unit,
-    onChildCommentClick: (CommentModel) -> Unit
+    onChildCommentClick: (CommentModel) -> Unit,
 ) {
     val context = LocalContext.current
     var commentInput by remember { mutableStateOf("") }
@@ -135,7 +135,7 @@ fun CommentScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
     ) {
         // 评论内容区域
         Surface(
@@ -145,7 +145,7 @@ fun CommentScreen(
                 .fillMaxHeight()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = MaterialTheme.colorScheme.surface
+            color = MaterialTheme.colorScheme.surface,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 CommentTopText(content())
@@ -173,7 +173,7 @@ fun CommentScreen(
                             @Composable
                             fun Comment(
                                 commentItem: CommentModel,
-                                onChildCommentClick: (CommentModel) -> Unit
+                                onChildCommentClick: (CommentModel) -> Unit,
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
                                 var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
@@ -208,7 +208,7 @@ fun CommentScreen(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 40.dp, top = 8.dp)
+                                            .padding(start = 40.dp, top = 8.dp),
                                     ) {
                                         if (commentItem.item.childComments.isNotEmpty()) {
                                             commentItem.item.childComments.forEach { childComment ->
@@ -216,7 +216,7 @@ fun CommentScreen(
                                                 var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
                                                 val childCommentItem = CommentModel(
                                                     item = childComment,
-                                                    clickTarget = null // 子评论不需要点击跳转
+                                                    clickTarget = null, // 子评论不需要点击跳转
                                                 )
                                                 CommentItem(
                                                     comment = childCommentItem,
@@ -226,7 +226,7 @@ fun CommentScreen(
                                                         viewModel.toggleLikeComment(
                                                             childCommentItem.item,
                                                             httpClient,
-                                                            context
+                                                            context,
                                                         ) {
                                                             val newLikeState = !liked
                                                             liked = newLikeState
@@ -238,7 +238,7 @@ fun CommentScreen(
                                                     useWebview = useWebview,
                                                     pinWebview = pinWebview,
                                                     onNavigate = onNavigate,
-                                                    onChildCommentClick = onChildCommentClick
+                                                    onChildCommentClick = onChildCommentClick,
                                                 )
                                             }
                                         }
@@ -249,19 +249,20 @@ fun CommentScreen(
                                             shape = RoundedCornerShape(50),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                             ),
-                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                         ) {
                                             Icon(
                                                 Icons.AutoMirrored.Outlined.Comment,
                                                 contentDescription = "查看子评论",
                                                 modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.surfaceTint
+                                                tint = MaterialTheme.colorScheme.surfaceTint,
                                             )
                                             Text(
-                                                "查看 ${commentItem.item.childCommentCount} 条子评论", fontSize = 12.sp,
-                                                modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp)
+                                                "查看 ${commentItem.item.childCommentCount} 条子评论",
+                                                fontSize = 12.sp,
+                                                modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
                                             )
                                         }
                                     }
@@ -271,7 +272,7 @@ fun CommentScreen(
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
                                 if (activeCommentItem != null) {
                                     item(0) {
@@ -294,7 +295,7 @@ fun CommentScreen(
                                     item {
                                         Box(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                            contentAlignment = Alignment.Center
+                                            contentAlignment = Alignment.Center,
                                         ) {
                                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                         }
@@ -308,14 +309,14 @@ fun CommentScreen(
                 // 评论输入框
                 Surface(
                     tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(40.dp)
                             .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val state = remember { TextFieldState() }
                         BasicTextField(
@@ -331,28 +332,29 @@ fun CommentScreen(
                                     if (commentInput.isEmpty()) {
                                         Text(
                                             "写下你的评论...",
-                                            fontSize = 16.sp
+                                            fontSize = 16.sp,
                                         )
                                     }
                                     inner()
                                 }
                             },
                             textStyle = TextStyle.Default.copy(
-                                fontSize = 16.sp
-                            )
+                                fontSize = 16.sp,
+                            ),
                         )
 
                         IconButton(
                             onClick = { submitComment() },
-                            enabled = !isSending && commentInput.isNotBlank()
+                            enabled = !isSending && commentInput.isNotBlank(),
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Outlined.Send,
                                 contentDescription = "发送评论",
-                                tint = if (!isSending && commentInput.isNotBlank())
+                                tint = if (!isSending && commentInput.isNotBlank()) {
                                     MaterialTheme.colorScheme.primary
-                                else
+                                } else {
                                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                },
                             )
                         }
                     }
@@ -366,14 +368,17 @@ fun CommentScreen(
 @Preview(showBackground = true)
 fun CommentTopText(content: NavDestination? = null) {
     Text(
-        if (content is CommentHolder) "回复"
-        else "评论",
+        if (content is CommentHolder) {
+            "回复"
+        } else {
+            "评论"
+        },
         style = Typography.bodyMedium.copy(
             fontWeight = FontWeight.Bold,
         ),
         modifier = Modifier.fillMaxWidth().height(26.dp),
         textAlign = TextAlign.Center,
-        fontSize = 18.sp
+        fontSize = 18.sp,
     )
 }
 
@@ -387,16 +392,15 @@ private fun CommentItem(
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
     onNavigate: (NavDestination) -> Unit,
-    onChildCommentClick: (CommentModel) -> Unit
+    onChildCommentClick: (CommentModel) -> Unit,
 ) {
     val commentData = comment.item
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 作者信息
         Row(
-            modifier = Modifier.fillMaxWidth()
-        )
-        {
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             // 头像
             AsyncImage(
                 model = commentData.author.avatarUrl,
@@ -404,12 +408,12 @@ private fun CommentItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
             )
             Spacer(modifier = Modifier.width(8.dp))
             Column(
                 verticalArrangement = Arrangement.Top,
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier.fillMaxHeight(),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -425,16 +429,16 @@ private fun CommentItem(
                                     id = commentData.author.id,
                                     name = commentData.author.name,
                                     urlToken = commentData.author.urlToken,
-                                )
+                                ),
                             )
-                        }
+                        },
                     )
                     if (commentData.replyToAuthor != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "回复",
                             fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -447,9 +451,9 @@ private fun CommentItem(
                                         id = commentData.replyToAuthor.id,
                                         name = commentData.replyToAuthor.name,
                                         urlToken = commentData.replyToAuthor.urlToken,
-                                    )
+                                    ),
                                 )
-                            }
+                            },
                         )
                     }
                 }
@@ -464,10 +468,11 @@ private fun CommentItem(
                         it.loadZhihu(
                             "",
                             Jsoup.parse(commentData.content).processCommentImages(),
-                            additionalStyle = """
-                          body { margin: 0; }
-                          p { margin: 0; margin-block: 0; }
-                        """.trimIndent()
+                            additionalStyle =
+                                """
+                                body { margin: 0; }
+                                p { margin: 0; margin-block: 0; }
+                                """.trimIndent(),
                         )
                     }
                 } else {
@@ -477,9 +482,17 @@ private fun CommentItem(
                     AndroidView({
                         TextView(context).apply {
                             autoLinkMask = Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS
-                            text = Html.fromHtml(Jsoup.parse(commentData.content).processCommentImages().body().html(), Html.FROM_HTML_MODE_COMPACT).let {
-                                it
-                            }
+                            text = Html
+                                .fromHtml(
+                                    Jsoup
+                                        .parse(commentData.content)
+                                        .processCommentImages()
+                                        .body()
+                                        .html(),
+                                    Html.FROM_HTML_MODE_COMPACT,
+                                ).let {
+                                    it
+                                }
                             if (text.endsWith("\n")) {
                                 text = text.subSequence(0, text.length - 1)
                             }
@@ -498,9 +511,8 @@ private fun CommentItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 44.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        )
-        {
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
             // 时间
             val formattedTime = remember(commentData.createdTime) {
                 val time = commentData.createdTime * 1000
@@ -518,7 +530,7 @@ private fun CommentItem(
             Text(
                 text = formattedTime,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -527,20 +539,20 @@ private fun CommentItem(
             if (comment.clickTarget != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onChildCommentClick(comment) }
+                    modifier = Modifier.clickable { onChildCommentClick(comment) },
                 ) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         Icons.AutoMirrored.Outlined.Comment,
                         contentDescription = "回复",
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = comment.item.childCommentCount.toString(),
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
@@ -551,26 +563,28 @@ private fun CommentItem(
             // 点赞
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(enabled = !isLikeLoading) { toggleLike() }
+                modifier = Modifier.clickable(enabled = !isLikeLoading) { toggleLike() },
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     Icons.Outlined.ThumbUp,
                     contentDescription = "点赞",
                     modifier = Modifier.size(16.dp),
-                    tint = if (isLiked)
+                    tint = if (isLiked) {
                         MaterialTheme.colorScheme.primary
-                    else
+                    } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = likeCount.toString(),
                     fontSize = 12.sp,
-                    color = if (isLiked)
+                    color = if (isLiked) {
                         MaterialTheme.colorScheme.primary
-                    else
+                    } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
                 Spacer(modifier = Modifier.width(4.dp))
             }
@@ -590,7 +604,7 @@ private fun isSameDay(date1: Date, date2: Date): Boolean {
     val cal1 = Calendar.getInstance().apply { time = date1 }
     val cal2 = Calendar.getInstance().apply { time = date2 }
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+        cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
 
 private fun isSameYear(date1: Date, date2: Date): Boolean {
@@ -620,7 +634,7 @@ private fun CommentItemPreview() {
                 avatarUrlTemplate = "",
                 isAdvertiser = false,
                 gender = 0,
-                userType = ""
+                userType = "",
             ),
             likeCount = 10,
             childCommentCount = 5,
@@ -635,13 +649,13 @@ private fun CommentItemPreview() {
             canCollapse = false,
             childComments = emptyList(),
         ),
-        clickTarget = null
+        clickTarget = null,
     )
     CommentItem(
         comment,
         useWebview = true,
         pinWebview = true,
-        onNavigate = { }
+        onNavigate = { },
     ) {
     }
 }
@@ -667,7 +681,7 @@ private fun NestedCommentPreview() {
                 avatarUrlTemplate = "",
                 isAdvertiser = false,
                 gender = 0,
-                userType = ""
+                userType = "",
             ),
             likeCount = 10,
             childCommentCount = 5,
@@ -705,16 +719,16 @@ private fun NestedCommentPreview() {
                     resourceType = "",
                     collapsed = false,
                     reviewing = false,
-                )
+                ),
             ),
         ),
-        clickTarget = null
+        clickTarget = null,
     )
     CommentItem(
         comment,
         useWebview = true,
         pinWebview = true,
-        onNavigate = { }
+        onNavigate = { },
     ) {
     }
 }

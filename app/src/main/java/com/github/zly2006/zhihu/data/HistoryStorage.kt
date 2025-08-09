@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 
 class HistoryStorage(
-    val activity: Context
+    val activity: Context,
 ) {
     private val _history = linkedMapOf<NavDestination, NavDestination>()
     val history: List<NavDestination> get() = _history.values.reversed()
@@ -33,10 +33,12 @@ class HistoryStorage(
 
     fun load() {
         val file = File(activity.filesDir, "history.json")
-        if (file.exists()) runCatching {
-            val json = file.readText()
-            val data = Json.decodeFromString<List<NavDestination>>(json)
-            data.forEach { _history[it] = it }
+        if (file.exists()) {
+            runCatching {
+                val json = file.readText()
+                val data = Json.decodeFromString<List<NavDestination>>(json)
+                data.forEach { _history[it] = it }
+            }
         }
     }
 

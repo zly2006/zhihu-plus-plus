@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
 abstract class BaseCommentViewModel(
-    val article: NavDestination
+    val article: NavDestination,
 ) : PaginationViewModel<DataHolder.Comment>(typeOf<DataHolder.Comment>()) {
     val comments get() = allData.map { createCommentItem(it, article) }
     protected val commentsMap = mutableMapOf<String, CommentItem>()
@@ -41,16 +41,14 @@ abstract class BaseCommentViewModel(
 
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem
 
-    fun getCommentById(id: String): CommentItem? {
-        return commentsMap[id]
-    }
+    fun getCommentById(id: String): CommentItem? = commentsMap[id]
 
     fun submitComment(
         content: NavDestination?,
         commentText: String,
         httpClient: HttpClient,
         context: Context,
-        onSuccess: () -> Unit
+        onSuccess: () -> Unit,
     ) {
         if (commentText.isBlank()) return
 
@@ -78,11 +76,12 @@ abstract class BaseCommentViewModel(
     }
 
     var isLikeLoading by mutableStateOf(false)
+
     fun toggleLikeComment(
         commentData: DataHolder.Comment,
         httpClient: HttpClient,
         context: Context,
-        onSuccess: () -> Unit
+        onSuccess: () -> Unit,
     ) {
         if (isLikeLoading) return
         isLikeLoading = true

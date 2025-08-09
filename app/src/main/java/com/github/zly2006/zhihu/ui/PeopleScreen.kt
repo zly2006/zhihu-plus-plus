@@ -51,9 +51,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
 
-class PeopleAnswersViewModel(val person: Person, val sort: String = "voteups")
-    : PaginationViewModel<DataHolder.Answer>(typeOf<DataHolder.Answer>()
-) {
+class PeopleAnswersViewModel(
+    val person: Person,
+    val sort: String = "voteups",
+) : PaginationViewModel<DataHolder.Answer>(
+        typeOf<DataHolder.Answer>(),
+    ) {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/members/${person.id}/answers?sort_by=$sort"
 
@@ -61,9 +64,12 @@ class PeopleAnswersViewModel(val person: Person, val sort: String = "voteups")
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp"
 }
 
-class PeopleArticlesViewModel(val person: Person, val sort: String = "created")
-    : PaginationViewModel<DataHolder.Article>(typeOf<DataHolder.Article>()
-) {
+class PeopleArticlesViewModel(
+    val person: Person,
+    val sort: String = "created",
+) : PaginationViewModel<DataHolder.Article>(
+        typeOf<DataHolder.Article>(),
+    ) {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/members/${person.id}/articles?sort_by=$sort"
 
@@ -87,16 +93,18 @@ class PersonViewModel(
 
     suspend fun load(context: Context) {
         context as MainActivity
-        val jojo = context.httpClient.get("https://www.zhihu.com/api/v4/members/${person.id}") {
-            url {
-                parameters.append(
-                    "include",
-                    // todo question_count pins_count
-                    "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,articles_count,question_count,pins_count"
-                )
-            }
-            signFetchRequest(context)
-        }.raiseForStatus().body<JsonObject>()
+        val jojo = context.httpClient
+            .get("https://www.zhihu.com/api/v4/members/${person.id}") {
+                url {
+                    parameters.append(
+                        "include",
+                        // todo question_count pins_count
+                        "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,articles_count,question_count,pins_count",
+                    )
+                }
+                signFetchRequest(context)
+            }.raiseForStatus()
+            .body<JsonObject>()
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl
         this.name = person.name
@@ -109,7 +117,7 @@ class PersonViewModel(
                 id = person.id,
                 name = person.name,
                 urlToken = person.urlToken ?: "",
-            )
+            ),
         )
     }
 }
@@ -153,20 +161,21 @@ fun PeopleScreen(
             }
         } catch (e: Exception) {
             Log.e("PeopleScreen", "Error loading person data", e)
-            Toast.makeText(
-                context,
-                "加载用户信息失败: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast
+                .makeText(
+                    context,
+                    "加载用户信息失败: ${e.message}",
+                    Toast.LENGTH_LONG,
+                ).show()
         }
     }
 
     Column(
-        modifier = Modifier.padding(8.dp)
+        modifier = Modifier.padding(8.dp),
     ) {
         ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
         ) {
             titles.forEachIndexed { index, title ->
                 Tab(
@@ -175,13 +184,13 @@ fun PeopleScreen(
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(index)
                         }
-                    }
+                    },
                 ) {
                     Text(
                         text = title,
                         modifier = Modifier.padding(16.dp),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -189,7 +198,7 @@ fun PeopleScreen(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         ) { page ->
             when (page) {
                 0 -> {
@@ -203,15 +212,15 @@ fun PeopleScreen(
                             item(0) {
                                 UserInfoHeader(viewModel, person)
                             }
-                        }
+                        },
                     ) {
                         FeedCard(
                             BaseFeedViewModel.FeedDisplayItem(
                                 title = it.question.title,
                                 summary = it.excerpt,
                                 details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                feed = null
-                            )
+                                feed = null,
+                            ),
                         ) {
                             onNavigate(
                                 Article(
@@ -219,7 +228,7 @@ fun PeopleScreen(
                                     id = it.id,
                                     title = it.question.title,
                                     excerpt = it.excerpt,
-                                )
+                                ),
                             )
                         }
                     }
@@ -235,15 +244,15 @@ fun PeopleScreen(
                             item(0) {
                                 UserInfoHeader(viewModel, person)
                             }
-                        }
+                        },
                     ) {
                         FeedCard(
                             BaseFeedViewModel.FeedDisplayItem(
                                 title = it.title,
                                 summary = it.excerpt,
                                 details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                feed = null
-                            )
+                                feed = null,
+                            ),
                         ) {
                             onNavigate(
                                 Article(
@@ -251,7 +260,7 @@ fun PeopleScreen(
                                     id = it.id,
                                     title = it.title,
                                     excerpt = it.excerpt,
-                                )
+                                ),
                             )
                         }
                     }
@@ -259,12 +268,12 @@ fun PeopleScreen(
                 else -> {
                     // 其他页面显示占位符内容，并包含用户信息头部
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     ) {
                         UserInfoHeader(viewModel, person)
                         Text(
                             text = "「${titles[page]}」功能正在开发中...",
-                            modifier = Modifier.padding(top = 16.dp)
+                            modifier = Modifier.padding(top = 16.dp),
                         )
                     }
                 }
@@ -278,7 +287,8 @@ private fun UserInfoHeader(viewModel: PersonViewModel, person: Person) {
     AsyncImage(
         model = viewModel.avatar,
         contentDescription = "用户头像",
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier
+            .padding(16.dp)
             .width(128.dp)
             .height(128.dp)
             .clip(CircleShape),

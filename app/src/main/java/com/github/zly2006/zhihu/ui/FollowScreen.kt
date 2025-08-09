@@ -28,14 +28,14 @@ import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import kotlinx.coroutines.launch
 
-class FollowScreenData: ViewModel() {
+class FollowScreenData : ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(
-    onNavigate: (NavDestination) -> Unit
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("动态", "推荐")
@@ -71,7 +71,7 @@ fun FollowScreen(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
                 0 -> FollowDynamicScreen(onNavigate)
@@ -83,7 +83,7 @@ fun FollowScreen(
 
 @Composable
 fun FollowDynamicScreen(
-    onNavigate: (NavDestination) -> Unit
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowViewModel by context.viewModels()
@@ -104,7 +104,7 @@ fun FollowDynamicScreen(
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter
+            footer = ProgressIndicatorFooter,
         ) { item ->
             FeedCard(item, onLike = {
                 Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
@@ -135,7 +135,7 @@ fun FollowDynamicScreen(
 
 @Composable
 fun FollowRecommendScreen(
-    onNavigate: (NavDestination) -> Unit
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowRecommendViewModel by context.viewModels()
@@ -160,12 +160,12 @@ fun FollowRecommendScreen(
                     Text(
                         "提示：此 API 已不再在知乎官网使用，未来有可能被移除。",
                         modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                 }
             },
             onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter
+            footer = ProgressIndicatorFooter,
         ) { item ->
             FeedCard(item) {
                 if (navDestination != null) {

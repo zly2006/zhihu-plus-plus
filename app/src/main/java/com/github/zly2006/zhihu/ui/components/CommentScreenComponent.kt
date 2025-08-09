@@ -25,16 +25,19 @@ fun CommentScreenComponent(
     onDismiss: () -> Unit,
     onNavigate: (NavDestination) -> Unit,
     httpClient: HttpClient,
-    content: NavDestination
+    content: NavDestination,
 ) {
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val commentTopPadding =
-        if (LocalConfiguration.current.screenHeightDp > 500) 100.dp
-        else 0.dp
+        if (LocalConfiguration.current.screenHeightDp > 500) {
+            100.dp
+        } else {
+            0.dp
+        }
     val commentPaddingPixels = LocalDensity.current.run {
         commentTopPadding.toPx()
     }
-    
+
     // 主评论区
     AnimatedVisibility(
         visible = showComments && activeChildComment == null,
@@ -42,7 +45,8 @@ fun CommentScreenComponent(
         exit = fadeOut(animationSpec = tween(300)),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
@@ -50,17 +54,17 @@ fun CommentScreenComponent(
                             onDismiss()
                         }
                     }
-                }
+                },
         )
     }
 
     AnimatedVisibility(
         visible = showComments,
         enter = slideInVertically(
-            animationSpec = tween(300)
+            animationSpec = tween(300),
         ) { it },
         exit = slideOutVertically(
-            animationSpec = tween(300)
+            animationSpec = tween(300),
         ) { it },
     ) {
         CommentScreen(
@@ -70,10 +74,10 @@ fun CommentScreenComponent(
             onNavigate = onNavigate,
             onChildCommentClick = {
                 activeChildComment = it
-            }
+            },
         )
     }
-    
+
     // 子评论区
     AnimatedVisibility(
         visible = showComments && activeChildComment != null,
@@ -82,7 +86,8 @@ fun CommentScreenComponent(
     ) {
         // 半透明背景,点击上方区域关闭
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
@@ -90,17 +95,17 @@ fun CommentScreenComponent(
                             activeChildComment = null
                         }
                     }
-                }
+                },
         )
     }
 
     AnimatedVisibility(
         visible = activeChildComment != null,
         enter = slideInVertically(
-            animationSpec = tween(300)
+            animationSpec = tween(300),
         ) { it },
         exit = slideOutVertically(
-            animationSpec = tween(300)
+            animationSpec = tween(300),
         ) { it },
     ) {
         var notNullActiveChildComment by remember { mutableStateOf(activeChildComment) }
@@ -115,7 +120,7 @@ fun CommentScreenComponent(
             content = { notNullActiveChildComment!!.clickTarget!! },
             activeCommentItem = notNullActiveChildComment,
             onNavigate = onNavigate,
-            onChildCommentClick = { }
+            onChildCommentClick = { },
         )
     }
 

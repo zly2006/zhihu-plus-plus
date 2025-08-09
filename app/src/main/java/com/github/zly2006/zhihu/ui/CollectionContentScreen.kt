@@ -47,14 +47,14 @@ fun CollectionContentScreen(
                 Text(
                     text = viewModel.title,
                     style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth(),
                 )
                 Text(
                     listOfNotNull(
                         "${viewModel.collection?.itemCount} 条收藏",
                         "${viewModel.collection?.likeCount} 个赞同",
                         "${viewModel.collection?.commentCount} 条评论",
-                        viewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" }
+                        viewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
                     ).fastJoinToString(" · "),
                 )
             }
@@ -62,7 +62,7 @@ fun CollectionContentScreen(
     ) { item ->
         FeedCard(
             item,
-            Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
         ) {
             navDestination?.let { onNavigate(it) }
         }

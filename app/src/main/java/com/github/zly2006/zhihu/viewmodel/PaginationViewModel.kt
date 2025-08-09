@@ -12,7 +12,6 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.signFetchRequest
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -25,7 +24,7 @@ import kotlinx.serialization.serializer
 import kotlin.reflect.KType
 
 abstract class PaginationViewModel<T : Any>(
-    val dataType: KType
+    val dataType: KType,
 ) : ViewModel() {
     val allData = mutableStateListOf<T>()
     val debugData: MutableList<JsonElement> = mutableListOf()
@@ -56,7 +55,7 @@ abstract class PaginationViewModel<T : Any>(
         errorMessage = null
         debugData.clear()
         allData.clear()
-        lastPaging = null  // 重置 lastPaging
+        lastPaging = null // 重置 lastPaging
         loadMore(context)
     }
 
@@ -89,11 +88,13 @@ abstract class PaginationViewModel<T : Any>(
                 processResponse(
                     context,
                     jsonArray.mapNotNull {
-                        if ("type" in it.jsonObject && it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
+                        if ("type" in it.jsonObject &&
+                            it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
                                 "invited_answer", // invalid
                                 "tab_list", // invalid
-                                "feed_item_index_group" // todo
-                        )) {
+                                "feed_item_index_group", // todo
+                            )
+                        ) {
                             return@mapNotNull null
                         }
                         try {
@@ -104,7 +105,7 @@ abstract class PaginationViewModel<T : Any>(
                             null
                         }
                     },
-                    jsonArray
+                    jsonArray,
                 )
                 if ("paging" in json) {
                     lastPaging = AccountData.decodeJson(json["paging"]!!)
@@ -125,7 +126,7 @@ abstract class PaginationViewModel<T : Any>(
     }
 
     open fun loadMore(context: Context) {
-        if (isLoading || isEnd) return  // 使用新的isEnd getter
+        if (isLoading || isEnd) return // 使用新的isEnd getter
         isLoading = true
         viewModelScope.launch {
             try {

@@ -11,11 +11,32 @@ plugins {
     id("kotlin-parcelize")
     id("org.ajoberstar.grgit") version "5.2.2"
     id("com.google.devtools.ksp")
+    id("org.jlleitschuh.gradle.ktlint")
+}
+
+ktlint {
+    android.set(true)
+    outputToConsole.set(true)
+    enableExperimentalRules.set(true)
+    filter {
+        exclude("**/generated/**")
+        exclude("**/build/**")
+    }
+    additionalEditorconfig.set(
+        mapOf(
+            "ktlint_standard_no-wildcard-imports" to "disabled",
+            "ktlint_standard_function-max-line-length" to "disabled",
+            "ktlint_standard_max-line-length" to "disabled",
+            "ktlint_standard_function-naming" to "disabled",
+            "ktlint_standard_multiline-expression-wrapping" to "disabled",
+            "ktlint_standard_function-signature" to "disabled",
+        ),
+    )
 }
 
 android {
     namespace = "com.github.zly2006.zhihu"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhihu"
@@ -36,9 +57,10 @@ android {
     signingConfigs {
         if (System.getenv("signingKey") != null) {
             register("env") {
-                storeFile = file("zhihu.jks").apply {
-                    writeBytes(Base64.decode(System.getenv("signingKey")))
-                }
+                storeFile =
+                    file("zhihu.jks").apply {
+                        writeBytes(Base64.decode(System.getenv("signingKey")))
+                    }
                 storePassword = System.getenv("keyStorePassword")
                 keyAlias = System.getenv("keyAlias")
                 keyPassword = System.getenv("keyPassword")
@@ -129,7 +151,7 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.compose.animation:animation:1.8.2")
     //noinspection GradleDependency
-    implementation("androidx.compose.animation:animation-core:1.8.2" )
+    implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.room:room-common-jvm:2.7.2")

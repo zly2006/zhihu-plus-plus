@@ -19,18 +19,14 @@ import kotlinx.serialization.json.JsonArray
 sealed interface Feed {
     @Serializable
     sealed interface Target {
-        fun filterReason(): String? {
-            return null
-        }
+        fun filterReason(): String? = null
 
-        fun description(): String {
-            return when (this) {
-                is AnswerTarget -> "回答"
-                is VideoTarget -> "视频"
-                is ArticleTarget -> "文章"
-                is PinTarget -> "想法"
-                is QuestionTarget -> "问题"
-            }
+        fun description(): String = when (this) {
+            is AnswerTarget -> "回答"
+            is VideoTarget -> "视频"
+            is ArticleTarget -> "文章"
+            is PinTarget -> "想法"
+            is QuestionTarget -> "问题"
         }
 
         val detailsText: String
@@ -41,12 +37,12 @@ sealed interface Feed {
         val navDestination: NavDestination?
     }
 
-    private object LegacyAuthorSerCompat: KSerializer<Person?> {
+    private object LegacyAuthorSerCompat : KSerializer<Person?> {
         override val descriptor: SerialDescriptor = Person.serializer().descriptor.nullable
 
         override fun serialize(
             encoder: Encoder,
-            value: Person?
+            value: Person?,
         ) {
         }
 
@@ -87,12 +83,12 @@ sealed interface Feed {
         val visitedCount: Int = 0,
         val thumbnails: List<String> = emptyList(),
         val favoriteCount: Int = 0,
-        val answerType: String? = null
+        val answerType: String? = null,
     ) : Target {
-        override fun filterReason(): String? {
-            return if (voteupCount < 10 && author?.isFollowing == false) {
-                "规则：回答；赞数 < 10，未关注作者"
-            } else null
+        override fun filterReason(): String? = if (voteupCount < 10 && author?.isFollowing == false) {
+            "规则：回答；赞数 < 10，未关注作者"
+        } else {
+            null
         }
 
         override val detailsText = "回答 · $voteupCount 赞同 · $commentCount 评论"
@@ -105,7 +101,7 @@ sealed interface Feed {
             authorName = author?.name ?: "loading...",
             authorBio = author?.headline ?: "",
             avatarSrc = author?.avatarUrl,
-            excerpt = excerpt
+            excerpt = excerpt,
         )
     }
 
@@ -121,10 +117,10 @@ sealed interface Feed {
         val description: String,
         override val excerpt: String,
     ) : Target {
-        override fun filterReason(): String? {
-            return if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
-                "规则：所有视频"
-            } else null
+        override fun filterReason(): String? = if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
+            "规则：所有视频"
+        } else {
+            null
         }
 
         override val detailsText = "视频 · $voteCount 赞 · $commentCount 评论"
@@ -158,10 +154,10 @@ sealed interface Feed {
         val visitedCount: Int = 0,
         val favoriteCount: Int = 0,
     ) : Target {
-        override fun filterReason(): String? {
-            return if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
-                "规则：文章；作者粉丝数 < 50 或 文章赞数 < 20，未关注作者"
-            } else null
+        override fun filterReason(): String? = if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
+            "规则：文章；作者粉丝数 < 50 或 文章赞数 < 20，未关注作者"
+        } else {
+            null
         }
 
         override val detailsText = "文章 · $voteupCount 赞 · $commentCount 评论"
@@ -173,7 +169,7 @@ sealed interface Feed {
             authorName = author.name,
             authorBio = author.headline,
             avatarSrc = author.avatarUrl,
-            excerpt = excerpt
+            excerpt = excerpt,
         )
     }
 
@@ -190,9 +186,7 @@ sealed interface Feed {
         val content: JsonArray,
         val favoriteCount: Int = 0,
     ) : Target {
-        override fun filterReason(): String? {
-            return null
-        }
+        override fun filterReason(): String? = null
 
         override val detailsText = "想法 · $favoriteCount 赞 · $commentCount 评论"
         override val title: String
@@ -230,24 +224,24 @@ sealed interface Feed {
     ) : Target {
         override val author: Person? = null
 
-        override fun filterReason(): String? {
-            return if (answerCount < 5 && followerCount < 50) {
-                "规则：问题；回答数 < 5，关注数 < 50"
-            } else null
+        override fun filterReason(): String? = if (answerCount < 5 && followerCount < 50) {
+            "规则：问题；回答数 < 5，关注数 < 50"
+        } else {
+            null
         }
 
         override val detailsText = "问题 · $followerCount 关注 · $answerCount 回答"
 
         override val navDestination = com.github.zly2006.zhihu.Question(
             questionId = id,
-            title = title
+            title = title,
         )
     }
 
     @Serializable
     data class Badge(
         val type: String,
-        val description: String
+        val description: String,
     )
 
     @Serializable
@@ -279,7 +273,7 @@ sealed interface Feed {
         /**
          * 是否已读
          */
-        val hasRead: Boolean = false
+        val hasRead: Boolean = false,
     ) {
         /**
          * 过滤原因
@@ -415,5 +409,3 @@ data class Relationship(
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
 )
-
-

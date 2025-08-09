@@ -4,22 +4,14 @@ import androidx.room.TypeConverter
 
 class LocalDatabaseConverters {
     @TypeConverter
-    fun fromCrawlingReason(reason: CrawlingReason): String {
-        return reason.name
-    }
+    fun fromCrawlingReason(reason: CrawlingReason): String = reason.name
 
     @TypeConverter
-    fun toCrawlingReason(reasonString: String): CrawlingReason {
-        return CrawlingReason.valueOf(reasonString)
-    }
+    fun toCrawlingReason(reasonString: String): CrawlingReason = CrawlingReason.valueOf(reasonString)
 
     @TypeConverter
-    fun fromCrawlingStatus(status: CrawlingStatus): String {
-        return status.name
-    }
+    fun fromCrawlingStatus(status: CrawlingStatus): String = status.name
 
     @TypeConverter
-    fun toCrawlingStatus(statusString: String): CrawlingStatus {
-        return CrawlingStatus.valueOf(statusString)
-    }
+    fun toCrawlingStatus(statusString: String): CrawlingStatus = CrawlingStatus.valueOf(statusString)
 }

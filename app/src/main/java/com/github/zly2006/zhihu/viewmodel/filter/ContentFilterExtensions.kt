@@ -12,7 +12,6 @@ import kotlinx.coroutines.withContext
  * 提供简化的API用于在UI层集成内容过滤功能
  */
 object ContentFilterExtensions {
-
     /**
      * 检查是否启用了内容过滤功能
      */
@@ -61,7 +60,7 @@ object ContentFilterExtensions {
      */
     suspend fun filterContentList(
         context: Context,
-        contentList: List<Feed>
+        contentList: List<Feed>,
     ): List<Feed> {
         if (!isContentFilterEnabled(context)) return contentList
 

@@ -74,12 +74,15 @@ fun HomeScreen(
     }
 
     if (!preferences.getBoolean("developer", false)) {
-        AlertDialog.Builder(context).apply {
-            setTitle("登录失败")
-            setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
-            setPositiveButton("OK") { _, _ ->
-            }
-        }.create().show()
+        AlertDialog
+            .Builder(context)
+            .apply {
+                setTitle("登录失败")
+                setMessage("您当前的IP不在校园内，禁止使用！本应用仅供学习使用，使用责任由您自行承担。")
+                setPositiveButton("OK") { _, _ ->
+                }
+            }.create()
+            .show()
         return
     }
 
@@ -107,7 +110,7 @@ fun HomeScreen(
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter
+            footer = ProgressIndicatorFooter,
         ) { item ->
             FeedCard(item, onLike = {
                 Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
@@ -133,12 +136,12 @@ fun HomeScreen(
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                     val clip = android.content.ClipData.newPlainText(
                         "data",
-                        data
+                        data,
                     )
                     clipboard.setPrimaryClip(clip)
                     Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
                 },
-                preferenceName = "copyAll"
+                preferenceName = "copyAll",
             ) {
                 Icon(Icons.Default.CopyAll, contentDescription = "复制")
             }

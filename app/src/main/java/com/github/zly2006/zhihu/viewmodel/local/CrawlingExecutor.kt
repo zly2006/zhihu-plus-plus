@@ -17,7 +17,9 @@ import kotlinx.serialization.json.jsonObject
 /**
  * 爬虫执行器，负责执行爬虫任务并生成结果
  */
-class CrawlingExecutor(private val context: Context) {
+class CrawlingExecutor(
+    private val context: Context,
+) {
     private val database by lazy { LocalContentDatabase.getDatabase(context) }
     private val dao by lazy { database.contentDao() }
 
@@ -28,10 +30,12 @@ class CrawlingExecutor(private val context: Context) {
         withContext(Dispatchers.IO) {
             try {
                 // 更新任务状态为进行中
-                dao.updateTask(task.copy(
-                    status = CrawlingStatus.InProgress,
-                    executedAt = System.currentTimeMillis()
-                ))
+                dao.updateTask(
+                    task.copy(
+                        status = CrawlingStatus.InProgress,
+                        executedAt = System.currentTimeMillis(),
+                    ),
+                )
 
                 val results = when (task.reason) {
                     CrawlingReason.Following -> executeFollowingTask(task)
@@ -46,13 +50,14 @@ class CrawlingExecutor(private val context: Context) {
 
                 // 更新任务状态为已完成
                 dao.updateTask(task.copy(status = CrawlingStatus.Completed))
-
             } catch (e: Exception) {
                 // 更新任务状态为失败
-                dao.updateTask(task.copy(
-                    status = CrawlingStatus.Failed,
-                    errorMessage = e.message
-                ))
+                dao.updateTask(
+                    task.copy(
+                        status = CrawlingStatus.Failed,
+                        errorMessage = e.message,
+                    ),
+                )
             }
         }
     }
@@ -132,7 +137,9 @@ class CrawlingExecutor(private val context: Context) {
                 // 检查是否为点赞类型的动态
                 if (isVoteupFeed(feed)) {
                     createCrawlingResult(feed, task.id, CrawlingReason.FollowingUpvote)
-                } else null
+                } else {
+                    null
+                }
             } catch (_: Exception) {
                 null
             }
@@ -171,7 +178,7 @@ class CrawlingExecutor(private val context: Context) {
         feed: Feed,
         taskId: Long,
         reason: CrawlingReason,
-        scoreMultiplier: Double = 1.0
+        scoreMultiplier: Double = 1.0,
     ): CrawlingResult? {
         val target = feed.target ?: return null
 
@@ -193,7 +200,7 @@ class CrawlingExecutor(private val context: Context) {
                 else -> ""
             },
             reason = reason,
-            score = calculateContentScore(target) * scoreMultiplier
+            score = calculateContentScore(target) * scoreMultiplier,
         )
     }
 
@@ -238,8 +245,8 @@ class CrawlingExecutor(private val context: Context) {
             is CommonFeed -> {
                 // 检查attachedInfo或brief中是否包含点赞相关信息
                 feed.brief.contains("赞同") ||
-                feed.brief.contains("点赞") ||
-                feed.attachedInfo.contains("VOTEUP")
+                    feed.brief.contains("点赞") ||
+                    feed.attachedInfo.contains("VOTEUP")
             }
             else -> false
         }

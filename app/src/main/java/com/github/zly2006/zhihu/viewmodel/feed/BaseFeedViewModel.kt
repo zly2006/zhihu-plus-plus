@@ -24,7 +24,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val navDestination: NavDestination? = feed?.target?.navDestination,
         val avatarSrc: String? = null,
         val authorName: String? = null,
-        val isFiltered: Boolean = false
+        val isFiltered: Boolean = false,
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
@@ -46,58 +46,57 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         refresh(context)
     }
 
-    open fun createDisplayItem(feed: Feed): FeedDisplayItem {
-        return when (feed) {
-            is CommonFeed, is FeedItemIndexGroup, is MomentsFeed -> {
-                val filterReason = feed.target?.filterReason()
+    open fun createDisplayItem(feed: Feed): FeedDisplayItem = when (feed) {
+        is CommonFeed, is FeedItemIndexGroup, is MomentsFeed -> {
+            val filterReason = feed.target?.filterReason()
 
-                if (filterReason != null) {
-                    FeedDisplayItem(
-                        title = "已屏蔽",
-                        summary = filterReason,
-                        details = feed.target!!.detailsText,
-                        feed = feed,
-                        isFiltered = true
-                    )
-                } else {
-                    when (feed.target) {
-                        is Feed.AnswerTarget,
-                        is Feed.ArticleTarget,
-                        is Feed.QuestionTarget -> {
-                            FeedDisplayItem(
-                                title = feed.target!!.title,
-                                summary = feed.target!!.excerpt,
-                                details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
-                                    .joinToString(" · "),
-                                avatarSrc = feed.target?.author?.avatarUrl,
-                                authorName = feed.target?.author?.name,
-                                feed = feed
-                            )
-                        }
+            if (filterReason != null) {
+                FeedDisplayItem(
+                    title = "已屏蔽",
+                    summary = filterReason,
+                    details = feed.target!!.detailsText,
+                    feed = feed,
+                    isFiltered = true,
+                )
+            } else {
+                when (feed.target) {
+                    is Feed.AnswerTarget,
+                    is Feed.ArticleTarget,
+                    is Feed.QuestionTarget,
+                    -> {
+                        FeedDisplayItem(
+                            title = feed.target!!.title,
+                            summary = feed.target!!.excerpt,
+                            details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
+                                .joinToString(" · "),
+                            avatarSrc = feed.target?.author?.avatarUrl,
+                            authorName = feed.target?.author?.name,
+                            feed = feed,
+                        )
+                    }
 
-                        else -> {
-                            FeedDisplayItem(
-                                title = feed.target?.javaClass?.simpleName ?: "广告",
-                                summary = "Not Implemented",
-                                details = feed.target?.detailsText ?: "广告",
-                                feed = feed
-                            )
-                        }
+                    else -> {
+                        FeedDisplayItem(
+                            title = feed.target?.javaClass?.simpleName ?: "广告",
+                            summary = "Not Implemented",
+                            details = feed.target?.detailsText ?: "广告",
+                            feed = feed,
+                        )
                     }
                 }
             }
-
-            is AdvertisementFeed -> FeedDisplayItem(
-                title = "已屏蔽",
-                summary = feed.actionText,
-                details = "广告",
-                feed = null,
-                isFiltered = true
-            )
-
-            is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
-            is QuestionFeedCard -> TODO()
         }
+
+        is AdvertisementFeed -> FeedDisplayItem(
+            title = "已屏蔽",
+            summary = feed.actionText,
+            details = "广告",
+            feed = null,
+            isFiltered = true,
+        )
+
+        is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
+        is QuestionFeedCard -> TODO()
     }
 
     @Suppress("NOTHING_TO_INLINE")

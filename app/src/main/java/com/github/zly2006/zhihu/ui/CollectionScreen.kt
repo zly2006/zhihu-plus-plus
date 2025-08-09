@@ -50,17 +50,17 @@ fun CollectionScreen(
                 Text(
                     text = "我的收藏",
                     style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth()
+                    modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth(),
                 )
             }
-        }
+        },
     ) { collection ->
         Card(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             elevation = CardDefaults.cardElevation(4.dp),
             onClick = {
                 onNavigate(CollectionContent(collection.id))
-            }
+            },
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = collection.title, style = MaterialTheme.typography.titleMedium)

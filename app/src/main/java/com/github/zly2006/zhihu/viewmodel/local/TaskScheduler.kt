@@ -6,7 +6,9 @@ import kotlinx.coroutines.*
 /**
  * 智能任务调度器，负责管理爬虫任务的执行
  */
-class TaskScheduler(private val context: Context) {
+class TaskScheduler(
+    private val context: Context,
+) {
     private val database by lazy { LocalContentDatabase.getDatabase(context) }
     private val dao by lazy { database.contentDao() }
     private val crawlingExecutor by lazy { CrawlingExecutor(context) }

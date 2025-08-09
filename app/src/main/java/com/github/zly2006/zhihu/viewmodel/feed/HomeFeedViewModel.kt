@@ -20,7 +20,9 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
-class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
+class HomeFeedViewModel :
+    BaseFeedViewModel(),
+    IHomeFeedViewModel {
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
 
@@ -37,7 +39,7 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
         debugData.addAll(rawData)
 
         GlobalScope.launch {
-            val filteredData =applyContentFilter(context, data)
+            val filteredData = applyContentFilter(context, data)
             recordContentDisplays(context, filteredData)
             displayItems.addAll(filteredData.flatten().map { createDisplayItem(it) })
         }
@@ -52,21 +54,21 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
                             ContentFilterExtensions.recordContentDisplay(
                                 context,
                                 ContentType.ANSWER,
-                                target.id.toString()
+                                target.id.toString(),
                             )
                         }
                         is Feed.ArticleTarget -> {
                             ContentFilterExtensions.recordContentDisplay(
                                 context,
                                 ContentType.ARTICLE,
-                                target.id.toString()
+                                target.id.toString(),
                             )
                         }
                         is Feed.QuestionTarget -> {
                             ContentFilterExtensions.recordContentDisplay(
                                 context,
                                 ContentType.QUESTION,
-                                target.id.toString()
+                                target.id.toString(),
                             )
                         }
                         else -> {
@@ -92,21 +94,21 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
                         ContentFilterExtensions.recordContentInteraction(
                             context,
                             ContentType.ANSWER,
-                            target.id.toString()
+                            target.id.toString(),
                         )
                     }
                     is Feed.ArticleTarget -> {
                         ContentFilterExtensions.recordContentInteraction(
                             context,
                             ContentType.ARTICLE,
-                            target.id.toString()
+                            target.id.toString(),
                         )
                     }
                     is Feed.QuestionTarget -> {
                         ContentFilterExtensions.recordContentInteraction(
                             context,
                             ContentType.QUESTION,
-                            target.id.toString()
+                            target.id.toString(),
                         )
                     }
                     else -> {
@@ -123,40 +125,36 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
      * 应用内容过滤，移除应该被过滤的内容
      * 根据用户设置决定是否过滤已关注用户的内容
      */
-    suspend fun applyContentFilter(context: Context, feeds: List<Feed>): List<Feed> {
-        return withContext(Dispatchers.IO) {
-            try {
-                // 检查用户是否启用了对已关注用户内容的过滤
-                val shouldFilterFollowed = shouldFilterFollowedUserContent(context)
+    suspend fun applyContentFilter(context: Context, feeds: List<Feed>): List<Feed> = withContext(Dispatchers.IO) {
+        try {
+            // 检查用户是否启用了对已关注用户内容的过滤
+            val shouldFilterFollowed = shouldFilterFollowedUserContent(context)
 
-                if (shouldFilterFollowed) {
-                    // 如果启用了对已关注用户的过滤，则对所有内容应用过滤规则
-                    ContentFilterExtensions.filterContentList(context, feeds)
-                } else {
-                    // 如果关闭了对已关注用户的过滤，则分离处理
-                    val (followedUserContent, otherContent) = feeds.partition { feed ->
-                        isFromFollowedUser(feed)
-                    }
-
-                    // 只对非关注用户的内容应用过滤
-                    val filteredOtherContent = ContentFilterExtensions.filterContentList(context, otherContent)
-
-                    // 合并已关注用户的内容和过滤后的其他内容
-                    followedUserContent + filteredOtherContent
+            if (shouldFilterFollowed) {
+                // 如果启用了对已关注用户的过滤，则对所有内容应用过滤规则
+                ContentFilterExtensions.filterContentList(context, feeds)
+            } else {
+                // 如果关闭了对已关注用户的过滤，则分离处理
+                val (followedUserContent, otherContent) = feeds.partition { feed ->
+                    isFromFollowedUser(feed)
                 }
-            } catch (e: Exception) {
-                Log.e("HomeFeedViewModel", "Failed to apply content filter", e)
-                feeds // 出错时返回原始数据
+
+                // 只对非关注用户的内容应用过滤
+                val filteredOtherContent = ContentFilterExtensions.filterContentList(context, otherContent)
+
+                // 合并已关注用户的内容和过滤后的其他内容
+                followedUserContent + filteredOtherContent
             }
+        } catch (e: Exception) {
+            Log.e("HomeFeedViewModel", "Failed to apply content filter", e)
+            feeds // 出错时返回原始数据
         }
     }
 
     /**
      * 判断内容是否来自已关注用户
      */
-    private fun isFromFollowedUser(feed: Feed): Boolean {
-        return feed.target?.author?.isFollowing == true
-    }
+    private fun isFromFollowedUser(feed: Feed): Boolean = feed.target?.author?.isFollowing == true
 
     /**
      * 检查是否应该过滤已关注用户的内容
@@ -172,37 +170,43 @@ class HomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
                 .filter { !it.isFiltered && it.feed?.target is Feed.AnswerTarget }
 
             if (untouchedAnswers.isNotEmpty()) {
-                httpClient.post("https://www.zhihu.com/lastread/touch") {
-                    header("x-requested-with", "fetch")
-                    signFetchRequest(context)
-                    setBody(
-                        MultiPartFormDataContent(
-                            formData {
-                                append("items", buildJsonArray {
-                                    untouchedAnswers.forEach { item ->
-                                        item.feed?.let { feed ->
-                                            when (val target = feed.target) {
-                                                is Feed.AnswerTarget -> {
-                                                    add(buildJsonArray {
-                                                        add("answer")
-                                                        add(target.id.toString())
-                                                        add("touch")
-                                                    })
-                                                }
+                httpClient
+                    .post("https://www.zhihu.com/lastread/touch") {
+                        header("x-requested-with", "fetch")
+                        signFetchRequest(context)
+                        setBody(
+                            MultiPartFormDataContent(
+                                formData {
+                                    append(
+                                        "items",
+                                        buildJsonArray {
+                                            untouchedAnswers.forEach { item ->
+                                                item.feed?.let { feed ->
+                                                    when (val target = feed.target) {
+                                                        is Feed.AnswerTarget -> {
+                                                            add(
+                                                                buildJsonArray {
+                                                                    add("answer")
+                                                                    add(target.id.toString())
+                                                                    add("touch")
+                                                                },
+                                                            )
+                                                        }
 
-                                                else -> {}
+                                                        else -> {}
+                                                    }
+                                                }
                                             }
-                                        }
-                                    }
-                                }.toString())
-                            }
+                                        }.toString(),
+                                    )
+                                },
+                            ),
                         )
-                    )
-                }.let { response ->
-                    if (!response.status.isSuccess()) {
-                        Log.e("Browse-Touch", response.bodyAsText())
+                    }.let { response ->
+                        if (!response.status.isSuccess()) {
+                            Log.e("Browse-Touch", response.bodyAsText())
+                        }
                     }
-                }
             }
         } catch (e: Exception) {
             Log.e("FeedViewModel", "Failed to mark items as touched", e)

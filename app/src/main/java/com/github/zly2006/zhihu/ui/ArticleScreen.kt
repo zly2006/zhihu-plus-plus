@@ -2,7 +2,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -45,7 +44,6 @@ import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.MainActivity.TtsState
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
@@ -111,7 +109,9 @@ data class CollectionResponse(
     val paging: Paging,
 )
 
-enum class VoteUpState(val key: String) {
+enum class VoteUpState(
+    val key: String,
+) {
     Up("up"),
     Down("down"),
     Neutral("neutral"),
@@ -128,27 +128,27 @@ fun ArticleActionsMenu(
     AnimatedVisibility(
         visible = showMenu,
         enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300))
+        exit = fadeOut(animationSpec = tween(300)),
     ) {
         // 背景遮罩
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { onDismissRequest() }
+                .clickable { onDismissRequest() },
         ) {
             // 菜单内容
             AnimatedVisibility(
                 visible = showMenu,
                 enter = slideInVertically(
                     initialOffsetY = { it },
-                    animationSpec = tween(300, easing = EaseOutCubic)
+                    animationSpec = tween(300, easing = EaseOutCubic),
                 ),
                 exit = slideOutVertically(
                     targetOffsetY = { it },
-                    animationSpec = tween(300, easing = EaseInCubic)
+                    animationSpec = tween(300, easing = EaseInCubic),
                 ),
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier.align(Alignment.BottomCenter),
             ) {
                 Surface(
                     modifier = Modifier
@@ -160,14 +160,14 @@ fun ArticleActionsMenu(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(16.dp),
                     ) {
                         // 顶部拖拽指示器
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 20.dp),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Box(
                                 modifier = Modifier
@@ -175,8 +175,8 @@ fun ArticleActionsMenu(
                                     .height(4.dp)
                                     .background(
                                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        RoundedCornerShape(2.dp)
-                                    )
+                                        RoundedCornerShape(2.dp),
+                                    ),
                             )
                         }
 
@@ -185,7 +185,7 @@ fun ArticleActionsMenu(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable(
-                                    enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)
+                                    enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
                                 ) {
                                     onDismissRequest()
                                     val mainActivity = context as? MainActivity
@@ -222,7 +222,8 @@ fun ArticleActionsMenu(
                                                 }
                                             } catch (e: Exception) {
                                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                    Toast.makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
+                                                    Toast
+                                                        .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
                                                         .show()
                                                 }
                                             }
@@ -230,40 +231,43 @@ fun ArticleActionsMenu(
                                     }
                                 },
                             shape = RoundedCornerShape(12.dp),
-                            color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                            color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                                 MaterialTheme.colorScheme.surfaceVariant
-                            else
+                            } else {
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            },
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 when (ttsState) {
                                     TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
                                         modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
+                                        strokeWidth = 2.dp,
                                     )
                                     else -> Icon(
                                         if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = null,
                                         modifier = Modifier.size(24.dp),
-                                        tint = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                                        tint = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                                             MaterialTheme.colorScheme.onSurfaceVariant
-                                        else
+                                        } else {
                                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        },
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing))
+                                    color = if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                                         MaterialTheme.colorScheme.onSurfaceVariant
-                                    else
+                                    } else {
                                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    },
                                 )
                             }
                         }
@@ -287,25 +291,25 @@ fun ArticleActionsMenu(
                                     Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                                 },
                             shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
                                     Icons.Filled.Share,
                                     contentDescription = null,
                                     modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = "复制链接",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -390,23 +394,23 @@ fun ArticleScreen(
                 modifier = Modifier
                     .wrapContentHeight(unbounded = true)
                     .onGloballyPositioned { coordinates ->
-                        if (coordinates.size.height >= topBarHeight)
+                        if (coordinates.size.height >= topBarHeight) {
                             topBarHeight = coordinates.size.height
-                    }
-                    .background(
+                        }
+                    }.background(
                         color = MaterialTheme.colorScheme.background,
-                        shape = RectangleShape
-                    )
+                        shape = RectangleShape,
+                    ),
             ) {
                 AnimatedVisibility(
                     visible = showTopBar,
                     enter = fadeIn() + expandVertically(
                         expandFrom = Alignment.Top,
-                        initialHeight = { 0 }
+                        initialHeight = { 0 },
                     ) + slideInVertically { it / 2 },
                     exit = fadeOut() + shrinkVertically(
                         shrinkTowards = Alignment.Top,
-                        targetHeight = { 0 }
+                        targetHeight = { 0 },
                     ) + slideOutVertically { it / 2 },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -417,7 +421,7 @@ fun ArticleScreen(
                         lineHeight = 32.sp,
                         modifier = Modifier
                             .padding(bottom = 8.dp)
-                            .clickable { onNavigate(Question(viewModel.questionId, viewModel.title)) }
+                            .clickable { onNavigate(Question(viewModel.questionId, viewModel.title)) },
                     )
                 }
             }
@@ -426,25 +430,23 @@ fun ArticleScreen(
             if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(
                         modifier = Modifier.clip(RoundedCornerShape(50)),
-                        horizontalArrangement = Arrangement.Start
-                    )
-                    {
+                        horizontalArrangement = Arrangement.Start,
+                    ) {
                         when (viewModel.voteUpState) {
                             VoteUpState.Neutral -> {
                                 Button(
                                     onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFF40B6F6),
-                                        contentColor = Color.Black
+                                        contentColor = Color.Black,
                                     ),
                                     shape = RectangleShape,
                                     contentPadding = PaddingValues(horizontal = 0.dp),
-                                )
-                                {
+                                ) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(Icons.Filled.ArrowUpward, "赞同")
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -454,13 +456,12 @@ fun ArticleScreen(
                                     onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFF40B6F6),
-                                        contentColor = Color.Black
+                                        contentColor = Color.Black,
                                     ),
                                     shape = RectangleShape,
                                     modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
                                     contentPadding = PaddingValues(horizontal = 0.dp),
-                                )
-                                {
+                                ) {
                                     Icon(Icons.Filled.ArrowDownward, "反对")
                                 }
                             }
@@ -469,12 +470,11 @@ fun ArticleScreen(
                                     onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFF0D47A1),
-                                        contentColor = Color.White
+                                        contentColor = Color.White,
                                     ),
                                     shape = RectangleShape,
                                     contentPadding = PaddingValues(horizontal = 0.dp),
-                                )
-                                {
+                                ) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Icon(Icons.Filled.ArrowUpward, "赞同")
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -492,8 +492,7 @@ fun ArticleScreen(
                                     shape = RectangleShape,
                                     modifier = Modifier.height(ButtonDefaults.MinHeight),
                                     contentPadding = PaddingValues(horizontal = 0.dp),
-                                )
-                                {
+                                ) {
                                     Icon(Icons.Filled.ArrowDownward, "反对")
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("反对")
@@ -504,18 +503,18 @@ fun ArticleScreen(
                     }
 
                     Row(
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.End,
                     ) {
                         IconButton(
                             onClick = { showCollectionDialog = true },
                             colors = IconButtonDefaults.iconButtonColors(
                                 containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                                contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
                         ) {
                             Icon(
                                 if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                contentDescription = "收藏"
+                                contentDescription = "收藏",
                             )
                         }
 
@@ -523,25 +522,28 @@ fun ArticleScreen(
                             IconButton(
                                 onClick = {
                                     context.stopSpeaking()
-                                    Toast.makeText(
-                                        context,
-                                        "已停止朗读",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            "已停止朗读",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
                                 },
-                                enabled = (context.ttsState !in listOf(
-                                    TtsState.Error,
-                                    TtsState.Uninitialized,
-                                    TtsState.Initializing
-                                )),
+                                enabled = (
+                                    context.ttsState !in listOf(
+                                        TtsState.Error,
+                                        TtsState.Uninitialized,
+                                        TtsState.Initializing,
+                                    )
+                                ),
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = Color(0xFF4CAF50),
                                     contentColor = Color.White,
-                                )
+                                ),
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.VolumeOff,
-                                    contentDescription = "停止朗读"
+                                    contentDescription = "停止朗读",
                                 )
                             }
                         }
@@ -551,8 +553,8 @@ fun ArticleScreen(
                             contentPadding = PaddingValues(horizontal = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            ),
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                             Spacer(modifier = Modifier.width(4.dp))
@@ -563,45 +565,47 @@ fun ArticleScreen(
                             onClick = { showActionsMenu = true },
                             colors = IconButtonDefaults.iconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
                         ) {
                             Icon(
                                 Icons.Filled.MoreVert,
-                                contentDescription = "更多选项"
+                                contentDescription = "更多选项",
                             )
                         }
                     }
                 }
             }
-        }
+        },
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(
-                start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                bottom = innerPadding.calculateBottomPadding(),
-            ).verticalScroll(scrollState),
+            modifier = Modifier
+                .padding(
+                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                    bottom = innerPadding.calculateBottomPadding(),
+                ).verticalScroll(scrollState),
         ) {
             Spacer(
                 modifier = Modifier.height(
                     height = LocalDensity.current.run {
                         topBarHeight.toDp()
-                    }
-                )
+                    },
+                ),
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clickable {
                         onNavigate(
                             Person(
                                 id = viewModel.authorId,
                                 urlToken = viewModel.authorUrlToken,
-                                name = viewModel.authorName
-                            )
+                                name = viewModel.authorName,
+                            ),
                         )
-                    }
+                    },
             ) {
                 if (viewModel.authorAvatarSrc.isNotEmpty()) {
                     AsyncImage(
@@ -609,14 +613,14 @@ fun ArticleScreen(
                         contentDescription = "作者头像",
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(CircleShape)
+                            .clip(CircleShape),
                     )
                 } else {
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Color.LightGray)
+                            .background(Color.LightGray),
                     )
                 }
 
@@ -624,17 +628,17 @@ fun ArticleScreen(
 
                 Column(
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.Start
+                    horizontalAlignment = Alignment.Start,
                 ) {
                     Text(
                         text = viewModel.authorName,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
                     )
                     Text(
                         text = viewModel.authorBio,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = Color.Gray,
                     )
                 }
             }
@@ -655,7 +659,7 @@ fun ArticleScreen(
                                     noscript.after(node)
                                 }
                             }
-                        }
+                        },
                     )
                 }
             }
@@ -689,8 +693,10 @@ fun ArticleScreen(
                     val activity = context as? MainActivity ?: return@launch
                     val target = dest.target!!
                     if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class)
-                            && activity.navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
+                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                            activity.navController.currentBackStackEntry
+                                ?.toRoute<Article>()
+                                ?.type == ArticleType.Answer
                         ) {
                             activity.navController.popBackStack()
                         }
@@ -714,7 +720,7 @@ fun ArticleScreen(
         viewModel = viewModel,
         context = context,
         showMenu = showActionsMenu,
-        onDismissRequest = { showActionsMenu = false }
+        onDismissRequest = { showActionsMenu = false },
     )
 
     BackHandler(showActionsMenu) {
@@ -722,7 +728,7 @@ fun ArticleScreen(
     }
 
     AnimatedVisibility(
-        visible = showCollectionDialog
+        visible = showCollectionDialog,
     ) {
         AlertDialog(
             onDismissRequest = { showCollectionDialog = false },
@@ -736,20 +742,19 @@ fun ArticleScreen(
                                 .clickable {
                                     viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
                                     viewModel.loadCollections()
-                                }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                }.padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = collection.title,
                                 modifier = Modifier.weight(1f),
-                                fontSize = 16.sp
+                                fontSize = 16.sp,
                             )
                             if (collection.isFavorited) {
                                 Icon(
                                     imageVector = Icons.Filled.Bookmark,
                                     contentDescription = "已收藏",
-                                    tint = Color(0xFFF57C00)
+                                    tint = Color(0xFFF57C00),
                                 )
                             }
                         }
@@ -760,7 +765,7 @@ fun ArticleScreen(
                 TextButton(onClick = { showCollectionDialog = false }) {
                     Text("关闭")
                 }
-            }
+            },
         )
     }
 
@@ -770,7 +775,7 @@ fun ArticleScreen(
             onDismiss = { showComments = false },
             httpClient = it,
             onNavigate = onNavigate,
-            content = article
+            content = article,
         )
     }
 }
@@ -786,7 +791,7 @@ fun ArticleScreenPreview() {
             "知乎用户",
             "知乎用户",
             "",
-        )
+        ),
     ) {}
 }
 
@@ -814,12 +819,12 @@ fun ArticleActionsMenuPreview() {
                             "知乎用户",
                             "",
                         ),
-                        null
+                        null,
                     )
                 },
                 context = LocalContext.current,
                 showMenu = true,
-                onDismissRequest = {}
+                onDismissRequest = {},
             )
         }
     }

@@ -4,7 +4,6 @@ import androidx.room.*
 
 @Dao
 interface LocalContentDao {
-
     // CrawlingTask 相关操作
     @Query("SELECT * FROM crawling_tasks WHERE status = :status ORDER BY priority DESC, createdAt ASC")
     suspend fun getTasksByStatus(status: CrawlingStatus): List<CrawlingTask>
@@ -84,5 +83,5 @@ interface LocalContentDao {
 
 data class ContentLikeCount(
     val contentId: String,
-    val count: Int
+    val count: Int,
 )

@@ -2,11 +2,13 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 
-class LocalRecommendationEngine(private val context: Context) {
+class LocalRecommendationEngine(
+    private val context: Context,
+) {
     private val database by lazy { LocalContentDatabase.getDatabase(context) }
     private val dao by lazy { database.contentDao() }
     private val feedGenerator by lazy { FeedGenerator(context) }
@@ -133,7 +135,8 @@ class LocalRecommendationEngine(private val context: Context) {
             return
         }
 
-        val highPriorityTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted)
+        val highPriorityTasks = dao
+            .getTasksByStatus(CrawlingStatus.NotStarted)
             .sortedByDescending { it.priority }
             .take(3) // 减少并发任务数量以避免被限流
 
@@ -152,15 +155,13 @@ class LocalRecommendationEngine(private val context: Context) {
     /**
      * 检查网络连接是否可用
      */
-    private fun isNetworkAvailable(): Boolean {
-        return try {
-            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val activeNetwork = connectivityManager.activeNetwork
-            val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-            networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-        } catch (e: Exception) {
-            false
-        }
+    private fun isNetworkAvailable(): Boolean = try {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val activeNetwork = connectivityManager.activeNetwork
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    } catch (e: Exception) {
+        false
     }
 
     /**
@@ -250,7 +251,8 @@ class LocalRecommendationEngine(private val context: Context) {
             }
 
             // 执行一些高优先级任务
-            val highPriorityTasks = dao.getTasksByStatus(CrawlingStatus.NotStarted)
+            val highPriorityTasks = dao
+                .getTasksByStatus(CrawlingStatus.NotStarted)
                 .sortedByDescending { it.priority }
                 .take(3)
 
@@ -292,14 +294,12 @@ class LocalRecommendationEngine(private val context: Context) {
         }
     }
 
-    private fun getDefaultWeight(reason: CrawlingReason): Double {
-        return when (reason) {
-            CrawlingReason.Following -> 1.2 // 关注内容权重较高
-            CrawlingReason.Trending -> 1.0 // 热门内容标准权重
-            CrawlingReason.UpvotedQuestion -> 0.9 // 相关问题稍低
-            CrawlingReason.FollowingUpvote -> 0.8 // 关注点赞内容较低
-            CrawlingReason.CollaborativeFiltering -> 0.7 // 协同过滤最低
-        }
+    private fun getDefaultWeight(reason: CrawlingReason): Double = when (reason) {
+        CrawlingReason.Following -> 1.2 // 关注内容权重较高
+        CrawlingReason.Trending -> 1.0 // 热门内容标准权重
+        CrawlingReason.UpvotedQuestion -> 0.9 // 相关问题稍低
+        CrawlingReason.FollowingUpvote -> 0.8 // 关注点赞内容较低
+        CrawlingReason.CollaborativeFiltering -> 0.7 // 协同过滤最低
     }
 
     private fun createTaskForReason(reason: CrawlingReason): CrawlingTask {
@@ -324,7 +324,7 @@ class LocalRecommendationEngine(private val context: Context) {
         return CrawlingTask(
             url = url,
             reason = reason,
-            priority = priority
+            priority = priority,
         )
     }
 }

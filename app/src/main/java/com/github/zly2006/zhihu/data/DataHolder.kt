@@ -71,25 +71,25 @@ object DataHolder {
     @Serializable
     data class VipInfo(
         val isVip: Boolean,
-        val vipIcon: VipIcon? = null
+        val vipIcon: VipIcon? = null,
     )
 
     @Serializable
     data class VipIcon(
         val nightModeUrl: String,
-        val url: String
+        val url: String,
     )
 
     @Serializable
     data class BizExt(
-        val shareGuide: ShareGuide? = null
+        val shareGuide: ShareGuide? = null,
     )
 
     @Serializable
     data class ShareGuide(
         val hasPositiveBubble: Boolean = false,
         val hasTimeBubble: Boolean = false,
-        val hitShareGuideCluster: Boolean = false
+        val hitShareGuideCluster: Boolean = false,
     )
 
     @Serializable
@@ -101,7 +101,7 @@ object DataHolder {
         val title: String,
         val type: String,
         val updatedTime: Long,
-        val url: String
+        val url: String,
     )
 
     @Serializable
@@ -113,7 +113,7 @@ object DataHolder {
         val isThanked: Boolean = false,
         val upvotedFollowees: List<String> = emptyList(),
         // 1 - 点赞， -1 - 点踩
-        val voting: Int = 0
+        val voting: Int = 0,
     )
 
     @Serializable
@@ -122,17 +122,17 @@ object DataHolder {
         val isRewardable: Boolean,
         val rewardMemberCount: Int,
         val rewardTotalMoney: Int,
-        val tagline: String
+        val tagline: String,
     )
 
     @Serializable
     data class Settings(
-        val tableOfContents: TableOfContents
+        val tableOfContents: TableOfContents,
     )
 
     @Serializable
     data class TableOfContents(
-        val enabled: Boolean
+        val enabled: Boolean,
     )
 
     @Serializable
@@ -142,7 +142,7 @@ object DataHolder {
         val tip: String,
         val title: String,
         val unnormalDetails: UnnormalDetails? = null,
-        val url: String
+        val url: String,
     )
 
     @Serializable
@@ -151,7 +151,7 @@ object DataHolder {
         val note: String? = null,
         val reason: String? = null,
         val reasonId: Int? = null,
-        val status: String? = null
+        val status: String? = null,
     )
 
     @Serializable
@@ -203,7 +203,7 @@ object DataHolder {
         val stickyInfo: String = "",
         val ipInfo: String? = null,
         val settings: Settings? = null,
-        val attachedInfo: JsonElement? = null
+        val attachedInfo: JsonElement? = null,
     )
 
     @Serializable
@@ -252,14 +252,14 @@ object DataHolder {
         val stickyInfo: String = "",
         val ipInfo: String? = null,
         val settings: Settings? = null,
-        val attachedInfo: JsonElement? = null
+        val attachedInfo: JsonElement? = null,
     )
 
     @Serializable
     data class RelevantInfo(
         val isRelevant: Boolean,
         val relevantText: String,
-        val relevantType: String
+        val relevantType: String,
     )
 
     @Serializable
@@ -310,7 +310,7 @@ object DataHolder {
         val isLocked: Boolean,
         val isClose: Boolean,
         val isEvaluate: Boolean,
-        val isSuggest: Boolean
+        val isSuggest: Boolean,
     )
 
     @Serializable
@@ -321,7 +321,7 @@ object DataHolder {
         val canLock: Boolean,
         val canStickAnswers: Boolean,
         val canCollapseAnswers: Boolean,
-        val voting: Int
+        val voting: Int,
     )
 
     @Serializable
@@ -331,9 +331,8 @@ object DataHolder {
         val url: String,
         val name: String,
         val avatarUrl: String,
-        val topicType: String
+        val topicType: String,
     )
-
 
     @Serializable
     data class BadgeV2(
@@ -348,7 +347,7 @@ object DataHolder {
     @Serializable
     data class CanComment(
         val status: Boolean,
-        val reason: String
+        val reason: String,
     )
 
     @Serializable
@@ -360,7 +359,7 @@ object DataHolder {
         val url: String,
         val token: String,
         val width: Int,
-        val height: Int
+        val height: Int,
     ) : Thumbnail
 
     @Serializable
@@ -370,18 +369,20 @@ object DataHolder {
         val url: String,
         val token: String,
         val width: Int,
-        val height: Int
+        val height: Int,
     ) : Thumbnail
 
     @Serializable
     @JvmInline
-    value class ThumbnailString(val value: String) : Thumbnail
+    value class ThumbnailString(
+        val value: String,
+    ) : Thumbnail
 
     @Serializable
     data class ThumbnailInfo(
         val count: Int,
         val type: String,
-        val thumbnails: List<Thumbnail>
+        val thumbnails: List<Thumbnail>,
     )
 
     @Serializable
@@ -390,17 +391,17 @@ object DataHolder {
         val tips: String,
         val editTips: String,
         val isReviewing: Boolean,
-        val editIsReviewing: Boolean
+        val editIsReviewing: Boolean,
     )
 
     @Serializable
     data class RelatedCard(
-        val type: String
+        val type: String,
     )
 
     @Serializable
     data class MuteInfo(
-        val type: String
+        val type: String,
     )
 
     @Serializable
@@ -464,7 +465,7 @@ object DataHolder {
         val childComments: List<Comment> = listOf(),
         val isVisibleOnlyToMyself: Boolean = false,
         @SerialName("_")
-        val underscore: JsonElement? = null
+        val underscore: JsonElement? = null,
     ) {
         @Serializable
         data class Author(
@@ -493,7 +494,7 @@ object DataHolder {
             val text: String,
             val color: String,
             val nightColor: String,
-            val hasBorder: Boolean
+            val hasBorder: Boolean,
         )
     }
 
@@ -503,12 +504,12 @@ object DataHolder {
         val text: String,
         val color: String,
         val nightColor: String,
-        val hasBorder: Boolean
+        val hasBorder: Boolean,
     )
 
     data class ReferenceCount<T>(
         val value: T,
-        var count: Int = 0
+        var count: Int = 0,
     ) : AutoCloseable {
         override fun close() {
             count--
@@ -524,7 +525,10 @@ object DataHolder {
     private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
 //        httpClient.plugin(HttpCookies)
         val response = httpClient.get(url)
-        if ("https://www.zhihu.com/404" == response.call.request.url.toString() && response.status.value == 200) {
+        if ("https://www.zhihu.com/404" == response.call.request.url
+                .toString() &&
+            response.status.value == 200
+        ) {
             activity.mainExecutor.execute {
                 Toast.makeText(activity, "疑似触发风控", Toast.LENGTH_SHORT).show()
             }
@@ -572,15 +576,15 @@ object DataHolder {
                 return
             } catch (e: Exception) {
                 activity.mainExecutor.execute {
-                    AlertDialog.Builder(activity)
+                    AlertDialog
+                        .Builder(activity)
                         .setTitle("登录过期")
                         .setMessage("登录过期或无效，需重新登录")
                         .setPositiveButton("重新登录") { _, _ ->
                             AccountData.delete(activity)
                             val myIntent = Intent(activity, LoginActivity::class.java)
                             activity.startActivity(myIntent)
-                        }
-                        .show()
+                        }.show()
                 }
                 return
             }
@@ -595,7 +599,7 @@ object DataHolder {
     private fun extractData(document: Document): Int {
         var extractedCount = 0
         val jojo = Json.decodeFromString<JsonObject>(
-            (document.getElementById("js-initialData")?.childNode(0) as? DataNode)?.wholeData ?: "{}"
+            (document.getElementById("js-initialData")?.childNode(0) as? DataNode)?.wholeData ?: "{}",
         )
         val entities = jojo["initialState"]!!.jsonObject["entities"]!!.jsonObject
         if ("questions" in entities) {
@@ -665,7 +669,7 @@ object DataHolder {
         type = "mock",
         url = this?.url ?: "",
         urlToken = this?.urlToken ?: "",
-        userType = this?.userType ?: ""
+        userType = this?.userType ?: "",
     )
 
     /**
@@ -747,7 +751,7 @@ object DataHolder {
         val availableMedalsCount: Int = 0,
         val orgVerifyStatus: JsonElement? = null,
         val isRealname: Boolean = false,
-        val hasApplyingColumn: Boolean = false
+        val hasApplyingColumn: Boolean = false,
     )
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -763,7 +767,7 @@ object DataHolder {
                             author = feed.author.mock(),
                             canComment = CanComment(
                                 status = false,
-                                reason = ""
+                                reason = "",
                             ),
                             commentCount = feed.commentCount,
                             content = feed.content,
@@ -779,7 +783,7 @@ object DataHolder {
                                 title = feed.question.title,
                                 type = "",
                                 updatedTime = 0,
-                                url = feed.question.url
+                                url = feed.question.url,
                             ),
                             reshipmentSettings = "",
                             thanksCount = feed.thanksCount,
@@ -787,7 +791,7 @@ object DataHolder {
                             updatedTime = feed.updatedTime,
                             url = feed.url,
                             voteupCount = feed.voteupCount,
-                        )
+                        ),
                     )
                 }
                 answers[id]?.also { it.count++ }?.value?.let(callback)
@@ -858,14 +862,14 @@ object DataHolder {
                             id = feed.id,
                             canComment = CanComment(
                                 status = false,
-                                reason = ""
+                                reason = "",
                             ),
                             type = "article",
                             created = feed.created,
                             updated = feed.updated,
                             voteupCount = feed.voteupCount,
                             url = feed.url,
-                        )
+                        ),
                     )
                 }
                 get(httpClient, "https://zhuanlan.zhihu.com/p/$id", activity)

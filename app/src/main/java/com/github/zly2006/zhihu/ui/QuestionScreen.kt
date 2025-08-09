@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
@@ -32,7 +33,6 @@ import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
-import androidx.core.net.toUri
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -71,8 +71,8 @@ fun QuestionScreen(
                     context.postHistory(
                         Question(
                             question.questionId,
-                            title
-                        )
+                            title,
+                        ),
                     )
                 } else {
                     context.mainExecutor.execute {
@@ -96,10 +96,10 @@ fun QuestionScreen(
                     fontSize = 24.sp,
                     lineHeight = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
             }
-        }
+        },
     ) { innerPadding ->
         FeedPullToRefresh(viewModel) {
             PaginatedList(
@@ -115,7 +115,7 @@ fun QuestionScreen(
                             WebviewComp {
                                 it.loadZhihu(
                                     "https://www.zhihu.com/question/${question.questionId}",
-                                    Jsoup.parse(questionContent)
+                                    Jsoup.parse(questionContent),
                                 )
                             }
                         }
@@ -125,7 +125,7 @@ fun QuestionScreen(
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Button(
                                 onClick = {
@@ -152,7 +152,7 @@ fun QuestionScreen(
                                     val clip = ClipData.newPlainText(
                                         "Link",
                                         "https://www.zhihu.com/question/${question.questionId}" +
-                                                "\n【${question.title}】"
+                                            "\n【${question.title}】",
                                     )
                                     clipboard.setPrimaryClip(clip)
                                     (context as? MainActivity)?.sharedData?.clipboardDestination = question
@@ -161,8 +161,8 @@ fun QuestionScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                ),
                             ) {
                                 Icon(Icons.Filled.Share, contentDescription = "复制链接")
                                 Spacer(Modifier.width(8.dp))
@@ -175,7 +175,7 @@ fun QuestionScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                 ),
                             ) {
                                 Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
@@ -188,7 +188,7 @@ fun QuestionScreen(
                             modifier = Modifier.padding(16.dp),
                         )
                     }
-                }
+                },
             ) { item ->
                 FeedCard(item) {
                     feed?.let { DataHolder.putFeed(it) }
@@ -203,7 +203,7 @@ fun QuestionScreen(
             onDismiss = { showComments = false },
             httpClient = context.httpClient,
             onNavigate = onNavigate,
-            content = question
+            content = question,
         )
     }
 }
@@ -214,6 +214,6 @@ fun QuestionScreenPreview() {
     val question = Question(123456789, "这是一个问题的标题")
     QuestionScreen(
         question = question,
-        onNavigate = { }
+        onNavigate = { },
     )
 }

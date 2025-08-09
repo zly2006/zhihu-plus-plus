@@ -29,7 +29,7 @@ class CollectionContentViewModel(
     @Serializable
     class CollectionItem(
         val created: String,
-        val content: Feed.Target
+        val content: Feed.Target,
     )
 
     override val initialUrl: String
@@ -40,30 +40,29 @@ class CollectionContentViewModel(
         displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据
     }
 
-    private fun createDisplayItem(item: CollectionItem): FeedDisplayItem {
-        return FeedDisplayItem(
-            title = item.content.title,
-            summary = item.content.excerpt,
-            details = item.content.detailsText,
-            navDestination = item.content.navDestination,
-            feed = null,
-            avatarSrc = when (item.content) {
-                is Feed.AnswerTarget -> item.content.author?.avatarUrl
-                is Feed.ArticleTarget -> item.content.author.avatarUrl
-                is Feed.QuestionTarget -> item.content.author?.avatarUrl
-                else -> null
-            }
-        )
-    }
+    private fun createDisplayItem(item: CollectionItem): FeedDisplayItem = FeedDisplayItem(
+        title = item.content.title,
+        summary = item.content.excerpt,
+        details = item.content.detailsText,
+        navDestination = item.content.navDestination,
+        feed = null,
+        avatarSrc = when (item.content) {
+            is Feed.AnswerTarget -> item.content.author?.avatarUrl
+            is Feed.ArticleTarget -> item.content.author.avatarUrl
+            is Feed.QuestionTarget -> item.content.author?.avatarUrl
+            else -> null
+        },
+    )
 
     override fun refresh(context: Context) {
         if (isLoading) return
         displayItems.clear()
         viewModelScope.launch {
             val httpClient = httpClient(context)
-            val jsonObject = httpClient.get("https://www.zhihu.com/api/v4/collections/$collectionId") {
-                signFetchRequest(context)
-            }.body<JsonObject>()
+            val jsonObject = httpClient
+                .get("https://www.zhihu.com/api/v4/collections/$collectionId") {
+                    signFetchRequest(context)
+                }.body<JsonObject>()
             collection = AccountData.decodeJson<Collection>(jsonObject["collection"]!!)
         }
         super.refresh(context)

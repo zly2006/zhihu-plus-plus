@@ -22,9 +22,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlin.math.roundToInt
-import androidx.core.content.edit
 
 @Composable
 fun DraggableRefreshButton(
@@ -58,12 +58,12 @@ fun DraggableRefreshButton(
     val animatedOffsetX by animateFloatAsState(
         targetValue = offsetX,
         animationSpec = tween(if (pressing) 1 else 300),
-        label = "offsetX"
+        label = "offsetX",
     )
     val animatedOffsetY by animateFloatAsState(
         targetValue = offsetY,
         animationSpec = tween(if (pressing) 1 else 300),
-        label = "offsetY"
+        label = "offsetY",
     )
 
     FloatingActionButton(
@@ -85,8 +85,8 @@ fun DraggableRefreshButton(
                         vibrator.vibrate(
                             VibrationEffect.createOneShot(
                                 50,
-                                VibrationEffect.DEFAULT_AMPLITUDE
-                            )
+                                VibrationEffect.DEFAULT_AMPLITUDE,
+                            ),
                         )
                     },
                     onDragEnd = {
@@ -95,8 +95,11 @@ fun DraggableRefreshButton(
                         with(density) {
                             val screenWidth = configuration.screenWidthDp.dp.toPx()
                             offsetX =
-                                if (offsetX < screenWidth / 2) 0f
-                                else screenWidth - 56.dp.toPx()
+                                if (offsetX < screenWidth / 2) {
+                                    0f
+                                } else {
+                                    screenWidth - 56.dp.toPx()
+                                }
                         }
                         preferences.edit {
                             putFloat("$preferenceName-x", offsetX)
@@ -110,9 +113,9 @@ fun DraggableRefreshButton(
                             offsetY += dragAmount.y
                             adjustFabPosition()
                         }
-                    }
+                    },
                 )
             },
-        content = content
+        content = content,
     )
 }

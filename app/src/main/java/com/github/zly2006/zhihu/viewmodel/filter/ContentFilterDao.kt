@@ -4,7 +4,6 @@ import androidx.room.*
 
 @Dao
 interface ContentFilterDao {
-
     @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE id = :id")
     suspend fun getViewRecord(id: String): ContentViewRecord?
 

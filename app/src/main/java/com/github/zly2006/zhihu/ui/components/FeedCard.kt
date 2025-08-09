@@ -52,43 +52,45 @@ fun FeedCard(
     val density = LocalDensity.current
     val context = LocalContext.current
     var offsetX by remember { mutableFloatStateOf(0f) }
-    var currentY by remember { mutableFloatStateOf(0f) }  // 当前手指Y位置
-    var startY by remember { mutableFloatStateOf(0f) }    // 开始滑动时的Y位置
+    var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
+    var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
     var isDragging by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val enableSwipeReaction = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", false)
-    } && onLike != null && onDislike != null
+    } &&
+        onLike != null &&
+        onDislike != null
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
         targetValue = if (isDragging) offsetX else 0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            stiffness = Spring.StiffnessMediumLow,
         ),
-        label = "offsetAnimation"
+        label = "offsetAnimation",
     )
 
     // 操作区域的透明度动画
     val actionAlpha by animateFloatAsState(
         targetValue = if (abs(animatedOffsetX) > 50f) (abs(animatedOffsetX) - 50f) / 100f else 0f,
         animationSpec = tween(150),
-        label = "actionAlpha"
+        label = "actionAlpha",
     )
 
     // 根据横向滑动距离和纵向位置确定当前操作类型
     val currentAction = when {
-        abs(animatedOffsetX) < 75f -> "none"  // 横向滑动不够，无操作
-        currentY - startY < -30f -> "like"    // 手指向上，喜欢
-        currentY - startY > 30f -> "dislike"  // 手指向下，不喜欢
-        else -> "neutral"  // 中间位置，待定
+        abs(animatedOffsetX) < 75f -> "none" // 横向滑动不够，无操作
+        currentY - startY < -30f -> "like" // 手指向上，喜欢
+        currentY - startY > 30f -> "dislike" // 手指向下，不喜欢
+        else -> "neutral" // 中间位置，待定
     }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Card(
             modifier = Modifier
@@ -105,7 +107,7 @@ fun FeedCard(
                             detectHorizontalDragGestures(
                                 onDragStart = { offset ->
                                     isDragging = true
-                                    startY = offset.y  // 记录开始位置
+                                    startY = offset.y // 记录开始位置
                                     currentY = offset.y
                                 },
                                 onDragEnd = {
@@ -114,11 +116,11 @@ fun FeedCard(
                                     // 根据最终位置执行操作
                                     when {
                                         abs(offsetX) >= 75f && currentY - startY < -30f && onLike != null -> {
-                                            onLike(item)  // 横向滑动足够 + 向上 = 喜欢
+                                            onLike(item) // 横向滑动足够 + 向上 = 喜欢
                                         }
 
                                         abs(offsetX) >= 75f && currentY - startY > 30f && onDislike != null -> {
-                                            onDislike(item)  // 横向滑动足够 + 向下 = 不喜欢
+                                            onDislike(item) // 横向滑动足够 + 向下 = 不喜欢
                                         }
                                     }
 
@@ -128,7 +130,7 @@ fun FeedCard(
                                         currentY = 0f
                                         startY = 0f
                                     }
-                                }
+                                },
                             ) { change, dragAmount ->
                                 // 更新当前手指位置
                                 currentY = change.position.y
@@ -138,40 +140,42 @@ fun FeedCard(
                                 offsetX = max(newOffset, -250f).coerceAtMost(0f)
                             }
                         }
-                    } else it
+                    } else {
+                        it
+                    }
                 },
             elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDragging) 8.dp else 2.dp
-            )
-        )
-        {
+                defaultElevation = if (isDragging) 8.dp else 2.dp,
+            ),
+        ) {
             Column(
-                modifier = Modifier.padding(8.dp)
+                modifier = Modifier.padding(8.dp),
             ) {
                 if (!item.isFiltered) {
                     if (!item.title.isEmpty()) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = item.title,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
                     if (item.avatarSrc != null && item.authorName != null) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             item.avatarSrc.let {
                                 AsyncImage(
                                     model = it,
                                     contentDescription = "Avatar",
-                                    modifier = Modifier.clip(CircleShape)
-                                        .size(20.dp)
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .size(20.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
@@ -180,7 +184,7 @@ fun FeedCard(
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
@@ -192,8 +196,8 @@ fun FeedCard(
                     maxLines = 3,
                     overflow = TextOverflow.Companion.Ellipsis,
                     modifier = Modifier.padding(
-                        top = if (item.isFiltered) 0.dp else 3.dp
-                    )
+                        top = if (item.isFiltered) 0.dp else 3.dp,
+                    ),
                 )
 
                 if (item.details.isNotEmpty()) {
@@ -218,17 +222,17 @@ fun FeedCard(
                             "neutral" -> Color(0xFF9E9E9E).copy(alpha = actionAlpha * 0.1f)
                             else -> Color.Transparent
                         },
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
                     ),
                 contentAlignment = when (currentAction) {
                     "like" -> Alignment.TopStart
                     "dislike" -> Alignment.BottomStart
                     else -> Alignment.CenterStart
-                }
+                },
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                 ) {
                     when (currentAction) {
                         "like" -> {
@@ -238,7 +242,7 @@ fun FeedCard(
                                 tint = Color(0xFF4CAF50),
                                 modifier = Modifier
                                     .size(32.dp)
-                                    .scale(1f + actionAlpha * 0.3f)
+                                    .scale(1f + actionAlpha * 0.3f),
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
@@ -246,7 +250,7 @@ fun FeedCard(
                                 color = Color(0xFF4CAF50),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                modifier = Modifier.scale(1f + actionAlpha * 0.2f)
+                                modifier = Modifier.scale(1f + actionAlpha * 0.2f),
                             )
                         }
                         "dislike" -> {
@@ -256,7 +260,7 @@ fun FeedCard(
                                 tint = Color(0xFFFF5722),
                                 modifier = Modifier
                                     .size(32.dp)
-                                    .scale(1f + actionAlpha * 0.3f)
+                                    .scale(1f + actionAlpha * 0.3f),
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
@@ -264,7 +268,7 @@ fun FeedCard(
                                 color = Color(0xFFFF5722),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                modifier = Modifier.scale(1f + actionAlpha * 0.2f)
+                                modifier = Modifier.scale(1f + actionAlpha * 0.2f),
                             )
                         }
                         "neutral" -> {
@@ -273,7 +277,7 @@ fun FeedCard(
                                 color = Color(0xFF9E9E9E),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                modifier = Modifier.scale(1f + actionAlpha * 0.2f)
+                                modifier = Modifier.scale(1f + actionAlpha * 0.2f),
                             )
                         }
                     }

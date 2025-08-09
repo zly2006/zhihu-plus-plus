@@ -16,15 +16,13 @@ data class ContentViewRecord(
     val hasInteraction: Boolean = false, // 是否有过交互（点击、点赞等）
     val firstViewTime: Long = System.currentTimeMillis(), // 首次展示时间
     val lastViewTime: Long = System.currentTimeMillis(), // 最后展示时间
-    val lastInteractionTime: Long? = null // 最后交互时间
+    val lastInteractionTime: Long? = null, // 最后交互时间
 ) {
     companion object {
         const val TABLE_NAME = "content_view_records"
         const val MAX_VIEW_COUNT_WITHOUT_INTERACTION = 2 // 超过此次数且无交互则过滤
 
         // 生成主键的辅助方法
-        fun generateId(targetType: String, targetId: String): String {
-            return "$targetType:$targetId"
-        }
+        fun generateId(targetType: String, targetId: String): String = "$targetType:$targetId"
     }
 }

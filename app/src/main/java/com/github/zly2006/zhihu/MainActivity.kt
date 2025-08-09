@@ -17,10 +17,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.disk.directory
+import coil3.memory.MemoryCache
+import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
@@ -30,23 +37,17 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.launch
-import java.security.MessageDigest
-import androidx.core.net.toUri
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
-import coil3.disk.DiskCache
-import coil3.disk.directory
-import coil3.memory.MemoryCache
-import coil3.request.crossfade
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import java.security.MessageDigest
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
+
     val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
     lateinit var webview: WebView
@@ -57,12 +58,18 @@ class MainActivity : ComponentActivity() {
 
     // TTS服务实例
     var textToSpeech: TextToSpeech? = null
+
     enum class TtsEngine {
         Uninitialized, // 未初始化
-        Pico, Google, Sherpa
+        Pico,
+        Google,
+        Sherpa,
     }
+
     @Suppress("unused")
-    enum class TtsState(val isSpeaking: Boolean = false) {
+    enum class TtsState(
+        val isSpeaking: Boolean = false,
+    ) {
         Uninitialized, // 未初始化
         Initializing, // 初始化中
         Ready, // 已初始化
@@ -95,19 +102,21 @@ class MainActivity : ComponentActivity() {
             Log.e(TAG, "Uncaught exception", e)
             val intent = Intent(
                 Intent.ACTION_VIEW,
-                Uri.Builder().apply {
-                    scheme("https")
-                    authority("zhihu-plus.internal")
-                    appendPath("error")
-                    appendQueryParameter("title", "Uncaught exception: ${e.message}")
-                    appendQueryParameter(
-                        "message",
-                        e.message
-                    )
-                    appendQueryParameter("stack", e.stackTraceToString())
-                }.build(),
+                Uri
+                    .Builder()
+                    .apply {
+                        scheme("https")
+                        authority("zhihu-plus.internal")
+                        appendPath("error")
+                        appendQueryParameter("title", "Uncaught exception: ${e.message}")
+                        appendQueryParameter(
+                            "message",
+                            e.message,
+                        )
+                        appendQueryParameter("stack", e.stackTraceToString())
+                    }.build(),
                 this,
-                MainActivity::class.java
+                MainActivity::class.java,
             )
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
@@ -148,36 +157,41 @@ class MainActivity : ComponentActivity() {
                         val title = intent.data!!.getQueryParameter("title")
 //                        val message = intent.data!!.getQueryParameter("message")
                         val stack = intent.data!!.getQueryParameter("stack")
-                        AlertDialog.Builder(this).apply {
-                            setTitle(title)
-                            setMessage(stack)
-                            setPositiveButton("OK") { _, _ ->
-                            }
-                            setNeutralButton("Copy") { _, _ ->
-                                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                                val clip = android.content.ClipData.newPlainText("error", "$stack")
-                                clipboard.setPrimaryClip(clip)
-                            }
-                        }.create().show()
+                        AlertDialog
+                            .Builder(this)
+                            .apply {
+                                setTitle(title)
+                                setMessage(stack)
+                                setPositiveButton("OK") { _, _ ->
+                                }
+                                setNeutralButton("Copy") { _, _ ->
+                                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = android.content.ClipData.newPlainText("error", "$stack")
+                                    clipboard.setPrimaryClip(clip)
+                                }
+                            }.create()
+                            .show()
                     }
                 }
             }
         }
 
-        ImageLoader.Builder(this)
+        ImageLoader
+            .Builder(this)
             .crossfade(true)
             .memoryCache {
-                MemoryCache.Builder()
+                MemoryCache
+                    .Builder()
                     .maxSizePercent(this, 0.25)
                     .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
+            }.diskCache {
+                DiskCache
+                    .Builder()
                     .directory(this.cacheDir.resolve("image_cache"))
                     .maxSizeBytes(50L * 1024 * 1024) // 50 MB
                     .build()
-            }
-            .build().also { loader ->
+            }.build()
+            .also { loader ->
                 SingletonImageLoader.setSafe {
                     loader
                 }
@@ -300,12 +314,15 @@ class MainActivity : ComponentActivity() {
                             navigate(destination, popup = true)
                         }
                     } else {
-                        AlertDialog.Builder(this).apply {
-                            setTitle("Unsupported URL")
-                            setMessage("Unknown URL: ${intent.data}")
-                            setPositiveButton("OK") { _, _ ->
-                            }
-                        }.create().show()
+                        AlertDialog
+                            .Builder(this)
+                            .apply {
+                                setTitle("Unsupported URL")
+                                setMessage("Unknown URL: ${intent.data}")
+                                setPositiveButton("OK") { _, _ ->
+                                }
+                            }.create()
+                            .show()
                     }
                 }
             } else {
@@ -376,29 +393,31 @@ class MainActivity : ComponentActivity() {
         val currentVersion = BuildConfig.VERSION_NAME
 
         runOnUiThread {
-            AlertDialog.Builder(this).apply {
-                setTitle("发现新版本")
-                setMessage("当前版本：$currentVersion\n新版本：$version ($versionType)\n\n是否立即更新？")
-                setCancelable(false)
+            AlertDialog
+                .Builder(this)
+                .apply {
+                    setTitle("发现新版本")
+                    setMessage("当前版本：$currentVersion\n新版本：$version ($versionType)\n\n是否立即更新？")
+                    setCancelable(false)
 
-                // 立即更新按钮
-                setPositiveButton("立即更新") { dialog, _ ->
-                    dialog.dismiss()
-                    showDownloadProgressDialog(version)
-                }
+                    // 立即更新按钮
+                    setPositiveButton("立即更新") { dialog, _ ->
+                        dialog.dismiss()
+                        showDownloadProgressDialog(version)
+                    }
 
-                // 跳过此版本按钮
-                setNeutralButton("跳过此版本") { _, _ ->
-                    Log.i(TAG, "User chose to skip version $version")
-                    UpdateManager.skipVersion(this@MainActivity, version)
-                }
+                    // 跳过此版本按钮
+                    setNeutralButton("跳过此版本") { _, _ ->
+                        Log.i(TAG, "User chose to skip version $version")
+                        UpdateManager.skipVersion(this@MainActivity, version)
+                    }
 
-                // 稍后提醒按钮
-                setNegativeButton("稍后提醒") { _, _ ->
-                    Log.i(TAG, "User chose to be reminded later")
-                    // 不做任何操作，下次启动时会再次检查
-                }
-            }.show()
+                    // 稍后提醒按钮
+                    setNegativeButton("稍后提醒") { _, _ ->
+                        Log.i(TAG, "User chose to be reminded later")
+                        // 不做任何操作，下次启动时会再次检查
+                    }
+                }.show()
         }
     }
 
@@ -406,15 +425,17 @@ class MainActivity : ComponentActivity() {
      * 显示下载进度对话框
      */
     private fun showDownloadProgressDialog(version: String) {
-        val progressDialog = AlertDialog.Builder(this).apply {
-            setTitle("正在下载更新")
-            setMessage("正在下载版本 $version，请稍候...")
-            setCancelable(false)
-            setNegativeButton("取消") { dialog, _ ->
-                dialog.dismiss()
-                // 这里可以添加取消下载的逻辑
-            }
-        }.create()
+        val progressDialog = AlertDialog
+            .Builder(this)
+            .apply {
+                setTitle("正在下载更新")
+                setMessage("正在下载版本 $version，请稍候...")
+                setCancelable(false)
+                setNegativeButton("取消") { dialog, _ ->
+                    dialog.dismiss()
+                    // 这里可以添加取消下载的逻辑
+                }
+            }.create()
 
         progressDialog.show()
 
@@ -443,11 +464,13 @@ class MainActivity : ComponentActivity() {
                             Log.e(TAG, "Update download failed: ${state.message}")
                             runOnUiThread {
                                 progressDialog.dismiss()
-                                AlertDialog.Builder(this@MainActivity).apply {
-                                    setTitle("下载失败")
-                                    setMessage("更���下载失败：${state.message}")
-                                    setPositiveButton("确定", null)
-                                }.show()
+                                AlertDialog
+                                    .Builder(this@MainActivity)
+                                    .apply {
+                                        setTitle("下载失败")
+                                        setMessage("更���下载失败：${state.message}")
+                                        setPositiveButton("确定", null)
+                                    }.show()
                             }
                             return@collect // 结束收集
                         }
@@ -460,11 +483,13 @@ class MainActivity : ComponentActivity() {
                 Log.e(TAG, "Failed to download update", e)
                 runOnUiThread {
                     progressDialog.dismiss()
-                    AlertDialog.Builder(this@MainActivity).apply {
-                        setTitle("下载失败")
-                        setMessage("更新下载失败：${e.message}")
-                        setPositiveButton("确定", null)
-                    }.show()
+                    AlertDialog
+                        .Builder(this@MainActivity)
+                        .apply {
+                            setTitle("下载失败")
+                            setMessage("更新下载失败：${e.message}")
+                            setPositiveButton("确定", null)
+                        }.show()
                 }
             }
         }
@@ -474,27 +499,31 @@ class MainActivity : ComponentActivity() {
      * 显示安����认对话框
      */
     private fun showInstallDialog(file: java.io.File) {
-        AlertDialog.Builder(this).apply {
-            setTitle("下载完成")
-            setMessage("更新已下载完成，是否立即安装？")
-            setCancelable(false)
-            setPositiveButton("立即安装") { _, _ ->
-                try {
-                    UpdateManager.installUpdate(this@MainActivity, file)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to install update", e)
-                    AlertDialog.Builder(this@MainActivity).apply {
-                        setTitle("安装失败")
-                        setMessage("无法启动安装程序：${e.message}")
-                        setPositiveButton("确定", null)
-                    }.show()
+        AlertDialog
+            .Builder(this)
+            .apply {
+                setTitle("下载完成")
+                setMessage("更新已下载完成，是否立即安装？")
+                setCancelable(false)
+                setPositiveButton("立即安装") { _, _ ->
+                    try {
+                        UpdateManager.installUpdate(this@MainActivity, file)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to install update", e)
+                        AlertDialog
+                            .Builder(this@MainActivity)
+                            .apply {
+                                setTitle("安装失败")
+                                setMessage("无法启动安装程序：${e.message}")
+                                setPositiveButton("确定", null)
+                            }.show()
+                    }
                 }
-            }
-            setNegativeButton("稍后安装") { _, _ ->
-                // 用户选择稍后安装，不做任何操作
-                Log.i(TAG, "User chose to install later")
-            }
-        }.show()
+                setNegativeButton("稍后安装") { _, _ ->
+                    // 用户选择稍后安装，不做任何操作
+                    Log.i(TAG, "User chose to install later")
+                }
+            }.show()
     }
 
     override fun onDestroy() {
@@ -526,14 +555,15 @@ class MainActivity : ComponentActivity() {
                             chunk,
                             TextToSpeech.QUEUE_FLUSH,
                             null,
-                            "chunk_$currentIndex"
+                            "chunk_$currentIndex",
                         )
 
                         // 设置朗读完成监听器，自动播放下一段
                         textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String?) {
                                 if (currentIndex == 0) {
-                                    Toast.makeText(this@MainActivity, "开始朗读：$title", Toast.LENGTH_SHORT)
+                                    Toast
+                                        .makeText(this@MainActivity, "开始朗读：$title", Toast.LENGTH_SHORT)
                                         .show()
                                 }
                                 if (utteranceId == "chunk_$currentIndex") {
@@ -618,10 +648,7 @@ class MainActivity : ComponentActivity() {
         ttsState = TtsState.Ready
     }
 
-    fun isSpeaking(): Boolean {
-        return textToSpeech?.isSpeaking ?: false
-    }
-
+    fun isSpeaking(): Boolean = textToSpeech?.isSpeaking ?: false
 
     companion object {
         const val ZSE93 = "101_3_3.0"

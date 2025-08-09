@@ -46,7 +46,7 @@ class LoginActivity : ComponentActivity() {
                         webView.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(
                                 view: WebView?,
-                                request: WebResourceRequest
+                                request: WebResourceRequest,
                             ): Boolean {
                                 if (request.url.toString() == "https://www.zhihu.com/") {
                                     webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
@@ -55,7 +55,8 @@ class LoginActivity : ComponentActivity() {
                                 }
                                 if (request.url.host == "graph.qq.com") {
                                     // QQ login
-                                    CustomTabsIntent.Builder()
+                                    CustomTabsIntent
+                                        .Builder()
                                         .setToolbarColor(0xff66CCFF.toInt())
                                         .build()
                                         .launchUrl(this@LoginActivity, request.url)
@@ -82,7 +83,10 @@ class LoginActivity : ComponentActivity() {
                                 super.onPageFinished(view, url)
                                 if (url == "https://www.zhihu.com/question/11474985081") {
                                     val cookies =
-                                        CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";")
+                                        CookieManager
+                                            .getInstance()
+                                            .getCookie("https://www.zhihu.com/")
+                                            .split(";")
                                             .associate {
                                                 it.substringBefore("=").trim() to it.substringAfter("=")
                                             }
@@ -90,12 +94,15 @@ class LoginActivity : ComponentActivity() {
                                         if (!loadedJs) {
                                             delay(1000)
                                             if (!loadedJs) {
-                                                AlertDialog.Builder(this@LoginActivity).apply {
-                                                    setTitle("登录失败")
-                                                    setMessage("模拟正常登录环境失败，请检查网络")
-                                                    setPositiveButton("OK") { _, _ ->
-                                                    }
-                                                }.create().show()
+                                                AlertDialog
+                                                    .Builder(this@LoginActivity)
+                                                    .apply {
+                                                        setTitle("登录失败")
+                                                        setMessage("模拟正常登录环境失败，请检查网络")
+                                                        setPositiveButton("OK") { _, _ ->
+                                                        }
+                                                    }.create()
+                                                    .show()
                                                 return@runBlocking false
                                             }
                                         }
@@ -104,33 +111,42 @@ class LoginActivity : ComponentActivity() {
 
                                             val preferences = this@LoginActivity.getSharedPreferences(
                                                 PREFERENCE_NAME,
-                                                MODE_PRIVATE
+                                                MODE_PRIVATE,
                                             )
                                             print(preferences.toString())
 
-                                            AlertDialog.Builder(this@LoginActivity).apply {
-                                                setTitle("登录成功")
-                                                setMessage("欢迎回来，${data.username}")
-                                                setPositiveButton("OK") { _, _ ->
-                                                }
-                                            }.create().show()
+                                            AlertDialog
+                                                .Builder(this@LoginActivity)
+                                                .apply {
+                                                    setTitle("登录成功")
+                                                    setMessage("欢迎回来，${data.username}")
+                                                    setPositiveButton("OK") { _, _ ->
+                                                    }
+                                                }.create()
+                                                .show()
                                             // back to the main activity
                                             scope.launch(mainExecutor.asCoroutineDispatcher()) {
                                                 delay(5000)
                                                 webView.evaluateJavascript("document.cookie") {
                                                     data.cookies.putAll(
-                                                        it.removeSurrounding("\"")
+                                                        it
+                                                            .removeSurrounding("\"")
                                                             .removeSurrounding("\'")
-                                                            .split(";").associate {
+                                                            .split(";")
+                                                            .associate {
                                                                 it.substringBefore("=").trim() to it.substringAfter("=")
-                                                            })
+                                                            },
+                                                    )
                                                     if ("__zse_ck" !in data.cookies) {
-                                                        AlertDialog.Builder(this@LoginActivity).apply {
-                                                            setTitle("登录失败")
-                                                            setMessage("模拟正常登录环境失败，请检查网络")
-                                                            setPositiveButton("OK") { _, _ ->
-                                                            }
-                                                        }.create().show()
+                                                        AlertDialog
+                                                            .Builder(this@LoginActivity)
+                                                            .apply {
+                                                                setTitle("登录失败")
+                                                                setMessage("模拟正常登录环境失败，请检查网络")
+                                                                setPositiveButton("OK") { _, _ ->
+                                                                }
+                                                            }.create()
+                                                            .show()
                                                     } else {
                                                         AccountData.saveData(this@LoginActivity, data)
                                                         telemetry(this@LoginActivity, "login")
@@ -140,12 +156,15 @@ class LoginActivity : ComponentActivity() {
                                             }
                                             return@runBlocking true
                                         } else {
-                                            AlertDialog.Builder(this@LoginActivity).apply {
-                                                setTitle("登录失败")
-                                                setMessage("请检查用户名和密码")
-                                                setPositiveButton("OK") { _, _ ->
-                                                }
-                                            }.create().show()
+                                            AlertDialog
+                                                .Builder(this@LoginActivity)
+                                                .apply {
+                                                    setTitle("登录失败")
+                                                    setMessage("请检查用户名和密码")
+                                                    setPositiveButton("OK") { _, _ ->
+                                                    }
+                                                }.create()
+                                                .show()
                                             return@runBlocking false
                                         }
                                     }
@@ -154,10 +173,9 @@ class LoginActivity : ComponentActivity() {
                         }
                         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
                         webView.loadUrl("https://www.zhihu.com/signin")
-                    }
+                    },
                 )
             }
         }
     }
-
 }

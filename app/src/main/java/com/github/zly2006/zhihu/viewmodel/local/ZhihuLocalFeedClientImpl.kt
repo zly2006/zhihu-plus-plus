@@ -4,48 +4,43 @@ import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import kotlinx.serialization.json.decodeFromJsonElement
 
-class ZhihuLocalFeedClientImpl(private val context: Context) : ZhihuLocalFeedClient {
-    override suspend fun crawlFollowingFeeds(): List<CrawlingResult> {
-        return withContext(Dispatchers.IO) {
-            val task = CrawlingTask(
-                url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
-                reason = CrawlingReason.Following,
-                priority = 8
-            )
-            executeFollowingCrawl(task)
-        }
+class ZhihuLocalFeedClientImpl(
+    private val context: Context,
+) : ZhihuLocalFeedClient {
+    override suspend fun crawlFollowingFeeds(): List<CrawlingResult> = withContext(Dispatchers.IO) {
+        val task = CrawlingTask(
+            url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
+            reason = CrawlingReason.Following,
+            priority = 8,
+        )
+        executeFollowingCrawl(task)
     }
 
-    override suspend fun crawlTrendingFeeds(): List<CrawlingResult> {
-        return withContext(Dispatchers.IO) {
-            val task = CrawlingTask(
-                url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20",
-                reason = CrawlingReason.Trending,
-                priority = 7
-            )
-            executeTrendingCrawl(task)
-        }
+    override suspend fun crawlTrendingFeeds(): List<CrawlingResult> = withContext(Dispatchers.IO) {
+        val task = CrawlingTask(
+            url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20",
+            reason = CrawlingReason.Trending,
+            priority = 7,
+        )
+        executeTrendingCrawl(task)
     }
 
-    override suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult> {
-        return withContext(Dispatchers.IO) {
-            val task = CrawlingTask(
-                url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
-                reason = CrawlingReason.UpvotedQuestion,
-                priority = 6
-            )
-            executeUpvotedQuestionCrawl(task)
-        }
+    override suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult> = withContext(Dispatchers.IO) {
+        val task = CrawlingTask(
+            url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
+            reason = CrawlingReason.UpvotedQuestion,
+            priority = 6,
+        )
+        executeUpvotedQuestionCrawl(task)
     }
 
     private suspend fun executeFollowingCrawl(task: CrawlingTask): List<CrawlingResult> {
@@ -72,9 +67,11 @@ class ZhihuLocalFeedClientImpl(private val context: Context) : ZhihuLocalFeedCli
                         summary = target.excerpt ?: "",
                         url = target.url,
                         reason = CrawlingReason.Following,
-                        score = calculateScore(target)
+                        score = calculateScore(target),
                     )
-                } else null
+                } else {
+                    null
+                }
             } catch (e: Exception) {
                 null
             }
@@ -105,9 +102,11 @@ class ZhihuLocalFeedClientImpl(private val context: Context) : ZhihuLocalFeedCli
                         summary = target.excerpt ?: "",
                         url = target.url ?: "",
                         reason = CrawlingReason.Trending,
-                        score = calculateScore(target) * 1.2
+                        score = calculateScore(target) * 1.2,
                     )
-                } else null
+                } else {
+                    null
+                }
             } catch (e: Exception) {
                 null
             }
@@ -138,9 +137,11 @@ class ZhihuLocalFeedClientImpl(private val context: Context) : ZhihuLocalFeedCli
                         summary = target.excerpt ?: "",
                         url = target.url,
                         reason = CrawlingReason.UpvotedQuestion,
-                        score = calculateScore(target) * 1.1
+                        score = calculateScore(target) * 1.1,
                     )
-                } else null
+                } else {
+                    null
+                }
             } catch (e: Exception) {
                 null
             }

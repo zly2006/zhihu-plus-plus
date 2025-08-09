@@ -20,7 +20,7 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 class WebviewActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         val url = intent.data?.toString() ?: run {
             finish()
             return
@@ -39,7 +39,7 @@ class WebviewActivity : ComponentActivity() {
                         @SuppressLint("SetJavaScriptEnabled")
                         webView.settings.javaScriptEnabled = true
                         webView.loadUrl(url)
-                    }
+                    },
                 )
             }
         }
@@ -51,14 +51,12 @@ class WebviewActivity : ComponentActivity() {
         AccountData.loadData(this).cookies.forEach { (name, value) ->
             cookieManager.setCookie(
                 "zhihu.com",
-                "$name=$value; domain=.zhihu.com; path=/"
+                "$name=$value; domain=.zhihu.com; path=/",
             )
         }
         webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean {
-                return request.url.scheme == "zhihu" &&
-                        request.url.host == "webviewform"
-            }
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest): Boolean = request.url.scheme == "zhihu" &&
+                request.url.host == "webviewform"
         }
         webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
         cookieManager.flush()

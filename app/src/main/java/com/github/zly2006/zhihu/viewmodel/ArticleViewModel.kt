@@ -28,7 +28,10 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class ArticleViewModel(private val article: Article, val httpClient: HttpClient?) : ViewModel() {
+class ArticleViewModel(
+    private val article: Article,
+    val httpClient: HttpClient?,
+) : ViewModel() {
     var title by mutableStateOf("")
     var authorId by mutableStateOf("")
     var authorUrlToken by mutableStateOf("")
@@ -90,8 +93,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                         authorName = answer.author.name,
                                         authorBio = answer.author.headline,
                                         avatarSrc = answer.author.avatarUrl,
-                                        excerpt = answer.excerpt
-                                    )
+                                        excerpt = answer.excerpt,
+                                    ),
                                 )
                                 val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
                                 nextAnswerFuture = GlobalScope.async {
@@ -110,20 +113,26 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                         if ("data" !in jojo) {
                                             Log.e("ArticleViewModel", "No data found in response: $jojo")
                                             context.mainExecutor.execute {
-                                                Toast.makeText(
-                                                    context,
-                                                    "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
-                                                    Toast.LENGTH_LONG
-                                                ).show()
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
+                                                        Toast.LENGTH_LONG,
+                                                    ).show()
                                             }
                                         }
                                         val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
                                         sharedData.nextUrl =
-                                            jojo["paging"]?.jsonObject?.get("next")?.jsonPrimitive?.content ?: ""
+                                            jojo["paging"]
+                                                ?.jsonObject
+                                                ?.get("next")
+                                                ?.jsonPrimitive
+                                                ?.content ?: ""
                                         sharedData.viewingQuestionId = questionId
-                                        sharedData.destinations = data.filter {
-                                            it.target?.navDestination is Article && it != article // filter out the current article
-                                        }.toMutableList()
+                                        sharedData.destinations = data
+                                            .filter {
+                                                it.target?.navDestination is Article && it != article // filter out the current article
+                                            }.toMutableList()
                                     }
                                     sharedData.destinations.removeAt(0)
                                 }
@@ -160,8 +169,8 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                                         authorName = article.author.name,
                                         authorBio = article.author.headline,
                                         avatarSrc = article.author.avatarUrl,
-                                        excerpt = article.excerpt
-                                    )
+                                        excerpt = article.excerpt,
+                                    ),
                                 )
                             } else {
                                 content = "<h1>文章不存在</h1>"
@@ -240,13 +249,14 @@ class ArticleViewModel(private val article: Article, val httpClient: HttpClient?
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
-                val response = httpClient.post(endpoint) {
-                    when (article.type) {
-                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
-                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
-                    }
-                    contentType(ContentType.Application.Json)
-                }.body<Reaction>()
+                val response = httpClient
+                    .post(endpoint) {
+                        when (article.type) {
+                            ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                            ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                        }
+                        contentType(ContentType.Application.Json)
+                    }.body<Reaction>()
 
                 voteUpState = newState
                 voteUpCount = response.voteup_count

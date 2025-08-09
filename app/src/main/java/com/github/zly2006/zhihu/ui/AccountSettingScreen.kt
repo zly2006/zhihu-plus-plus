@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -36,22 +35,19 @@ import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
+import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import org.jsoup.Jsoup
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
@@ -70,13 +66,14 @@ fun AccountSettingScreen(
         if (data.login) {
             try {
                 val httpClient = (context as MainActivity).httpClient
-                val response = httpClient.get("https://www.zhihu.com/api/v4/me") {
-                    signFetchRequest(context)
-                }.body<JsonObject>()
+                val response = httpClient
+                    .get("https://www.zhihu.com/api/v4/me") {
+                        signFetchRequest(context)
+                    }.body<JsonObject>()
                 val self = AccountData.decodeJson<Person>(response)
                 AccountData.saveData(
                     context,
-                    data.copy(self = self)
+                    data.copy(self = self),
                 )
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -88,7 +85,7 @@ fun AccountSettingScreen(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
         @Composable
         fun DisplayPadding(padding: PaddingValues) = buildString {
@@ -109,7 +106,7 @@ fun AccountSettingScreen(
         val preferences = remember {
             context.getSharedPreferences(
                 PREFERENCE_NAME,
-                Context.MODE_PRIVATE
+                Context.MODE_PRIVATE,
             )
         }
         var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
@@ -137,23 +134,24 @@ fun AccountSettingScreen(
                         isDeveloper = true
                         Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
                     }
-                }
-            )
+                },
+            ),
         )
         val data by AccountData.asState()
         if (data.login) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .clickable {
                         onNavigate(
                             Person(
                                 id = data.self?.id ?: "",
                                 urlToken = data.self?.urlToken ?: "",
-                                name = data.username
-                            )
+                                name = data.username,
+                            ),
                         )
-                    }
+                    },
             ) {
                 // 这里可以添加头像组件，暂时用 Box 代替
                 AsyncImage(
@@ -171,7 +169,7 @@ fun AccountSettingScreen(
                 onClick = {
                     AccountData.delete(context)
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("退出登录")
             }
@@ -190,7 +188,7 @@ fun AccountSettingScreen(
                         it.setData(qrContent.toUri())
                         context.startActivity(it)
                     }
-                }
+                },
             )
 
             Button(
@@ -199,8 +197,8 @@ fun AccountSettingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
             ) {
                 Text("查看收藏夹")
             }
@@ -209,7 +207,7 @@ fun AccountSettingScreen(
                 onClick = {
                     context.startActivity(Intent(context, LoginActivity::class.java))
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("登录")
             }
@@ -220,8 +218,8 @@ fun AccountSettingScreen(
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary
-            )
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+            ),
         ) {
             Text("手动设置Cookie")
         }
@@ -233,21 +231,30 @@ fun AccountSettingScreen(
                 append("网络状态：")
                 if (activeNetwork != null) {
                     append("已连接")
-                    if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
+                    if (connectivityManager
+                            .getNetworkCapabilities(activeNetwork)!!
                             .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                     ) {
                         append(" (移动数据)")
-                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    } else if (connectivityManager
+                            .getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                    ) {
                         append(" (Wi-Fi)")
-                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    } else if (connectivityManager
+                            .getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                    ) {
                         append(" (以太网)")
-                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) {
+                    } else if (connectivityManager
+                            .getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)
+                    ) {
                         append(" (蓝牙)")
-                    } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                    } else if (connectivityManager
+                            .getNetworkCapabilities(activeNetwork)!!
+                            .hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                    ) {
                         append(" (VPN)")
                     }
                 } else {
@@ -257,7 +264,7 @@ fun AccountSettingScreen(
         }
         Text(networkStatus)
         AnimatedVisibility(
-            visible = isDeveloper
+            visible = isDeveloper,
         ) {
             FlowRow {
                 Button(
@@ -265,7 +272,7 @@ fun AccountSettingScreen(
                         coroutineScope.launch {
                             if (AccountData.verifyLogin(
                                     context,
-                                    data.cookies
+                                    data.cookies,
                                 )
                             ) {
                                 Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
@@ -297,12 +304,12 @@ fun AccountSettingScreen(
             Text(
                 "账号信息设置",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 16.dp),
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     "用户名",
@@ -319,27 +326,27 @@ fun AccountSettingScreen(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ),
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 ) {
                     Text(
                         "语音朗读引擎信息",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             "当前引擎",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                         Text(
                             when (mainActivity?.ttsEngine) {
@@ -349,40 +356,44 @@ fun AccountSettingScreen(
                                 else -> "未初始化"
                             },
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             "引擎状态",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                         Text(
-                            if (mainActivity?.isSpeaking() == true) "正在朗读"
-                            else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) "就绪"
-                            else "未就绪",
+                            if (mainActivity?.isSpeaking() == true) {
+                                "正在朗读"
+                            } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
+                                "就绪"
+                            } else {
+                                "未就绪"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
                                 mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
                                 mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
-                            }
+                            },
                         )
                     }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             "引擎列表",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                         Text(
                             (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
@@ -391,7 +402,7 @@ fun AccountSettingScreen(
                                 mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
                                 mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
-                            }
+                            },
                         )
                     }
                 }
@@ -402,12 +413,12 @@ fun AccountSettingScreen(
                 title = "允许发送遥测统计数据",
                 description = "允许发送遥测数据给开发者，数据仅供统计使用",
                 checked = allowTelemetry,
-                onCheckedChange = { 
+                onCheckedChange = {
                     allowTelemetry = it
                     preferences.edit { putBoolean("allowTelemetry", it) }
-                }
+                },
             )
-            
+
             val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview", true)) }
             SwitchSettingItem(
                 title = "使用 WebView 显示评论",
@@ -416,9 +427,9 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     useWebview.value = it
                     preferences.edit { putBoolean("commentsUseWebview", it) }
-                }
+                },
             )
-            
+
             val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview", false)) }
             SwitchSettingItem(
                 title = "评论区 WebView 对象常驻",
@@ -427,9 +438,9 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     pinWebview.value = it
                     preferences.edit { putBoolean("commentsPinWebview", it) }
-                }
+                },
             )
-            
+
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
                 title = "WebView 硬件加速",
@@ -438,7 +449,7 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     useHardwareAcceleration.value = it
                     preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                }
+                },
             )
 
             val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
@@ -449,7 +460,7 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     isTitleAutoHide.value = it
                     preferences.edit { putBoolean("titleAutoHide", it) }
-                }
+                },
             )
 
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
@@ -460,13 +471,13 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     buttonSkipAnswer.value = it
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
-                }
+                },
             )
 
             Text(
                 "内容过滤设置",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 16.dp),
             )
 
             val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
@@ -477,7 +488,7 @@ fun AccountSettingScreen(
                 onCheckedChange = {
                     enableContentFilter.value = it
                     preferences.edit { putBoolean("enableContentFilter", it) }
-                }
+                },
             )
 
             val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
@@ -489,7 +500,7 @@ fun AccountSettingScreen(
                     filterFollowedUserContent.value = it
                     preferences.edit { putBoolean("filterFollowedUserContent", it) }
                 },
-                enabled = enableContentFilter.value // 只有启用内容过滤时才能设置此选项
+                enabled = enableContentFilter.value, // 只有启用内容过滤时才能设置此选项
             )
 
             // 显示过滤统计信息
@@ -509,55 +520,55 @@ fun AccountSettingScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     ) {
                         Text(
                             "过滤统计",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         filterStats?.let { stats ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column {
                                     Text(
                                         "总记录数",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         "${stats.totalRecords}",
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }
                                 Column {
                                     Text(
                                         "已过滤内容",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         "${stats.filteredCount}",
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }
                                 Column {
                                     Text(
                                         "过滤率",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         "${String.format("%.1f", stats.filterRate * 100)}%",
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }
                             }
@@ -566,7 +577,7 @@ fun AccountSettingScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Button(
                                 onClick = {
@@ -581,7 +592,7 @@ fun AccountSettingScreen(
                                         }
                                     }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             ) {
                                 Text("清理过期数据")
                             }
@@ -602,8 +613,8 @@ fun AccountSettingScreen(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError
-                                )
+                                    contentColor = MaterialTheme.colorScheme.onError,
+                                ),
                             ) {
                                 Text("重置所有数据")
                             }
@@ -615,14 +626,14 @@ fun AccountSettingScreen(
             Text(
                 "推荐算法设置",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 16.dp),
             )
 
             val currentRecommendationMode = remember {
                 mutableStateOf(
                     RecommendationMode.entries.find {
                         it.key == preferences.getString("recommendationMode", RecommendationMode.WEB.key)
-                    } ?: RecommendationMode.WEB
+                    } ?: RecommendationMode.WEB,
                 )
             }
 
@@ -631,7 +642,7 @@ fun AccountSettingScreen(
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 OutlinedTextField(
                     value = currentRecommendationMode.value.displayName,
@@ -640,16 +651,16 @@ fun AccountSettingScreen(
                     label = { Text("推荐算法") },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = expanded
+                            expanded = expanded,
                         )
                     },
                     modifier = Modifier
                         .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false }
+                    onDismissRequest = { expanded = false },
                 ) {
                     RecommendationMode.entries.forEach { mode ->
                         DropdownMenuItem(
@@ -659,7 +670,7 @@ fun AccountSettingScreen(
                                     Text(
                                         mode.description,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             },
@@ -669,13 +680,14 @@ fun AccountSettingScreen(
                                     putString("recommendationMode", mode.key)
                                 }
                                 expanded = false
-                                Toast.makeText(
-                                    context,
-                                    "已切换到${mode.displayName}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast
+                                    .makeText(
+                                        context,
+                                        "已切换到${mode.displayName}",
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
                             },
-                            enabled = mode !in listOf(RecommendationMode.SIMILARITY) // 相似度推荐还未实现
+                            enabled = mode !in listOf(RecommendationMode.SIMILARITY), // 相似度推荐还未实现
                         )
                     }
                 }
@@ -695,11 +707,12 @@ fun AccountSettingScreen(
                     preferences.edit {
                         putBoolean("loginForRecommendation", checked)
                     }
-                    Toast.makeText(
-                        context,
-                        if (checked) "已开启推荐内容时登录" else "已关闭推荐内容时登录",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            if (checked) "已开启推荐内容时登录" else "已关闭推荐内容时登录",
+                            Toast.LENGTH_SHORT,
+                        ).show()
                 },
             )
         }
@@ -707,7 +720,7 @@ fun AccountSettingScreen(
         Text(
             "GitHub 设置",
             style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(top = 16.dp)
+            modifier = Modifier.padding(top = 16.dp),
         )
 
         var githubToken by remember {
@@ -726,7 +739,7 @@ fun AccountSettingScreen(
             supportingText = {
                 Text(
                     "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问。",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
                 )
             },
             visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
@@ -734,11 +747,11 @@ fun AccountSettingScreen(
                 IconButton(onClick = { showGithubToken = !showGithubToken }) {
                     Icon(
                         imageVector = if (showGithubToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (showGithubToken) "隐藏" else "显示"
+                        contentDescription = if (showGithubToken) "隐藏" else "显示",
                     )
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
 
         val checkNightlyUpdates = remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
@@ -749,7 +762,7 @@ fun AccountSettingScreen(
             onCheckedChange = {
                 checkNightlyUpdates.value = it
                 preferences.edit { putBoolean("checkNightlyUpdates", it) }
-            }
+            },
         )
 
         val updateState by UpdateManager.updateState.collectAsState()
@@ -757,25 +770,27 @@ fun AccountSettingScreen(
             val updateState = updateState
             if (updateState is UpdateState.UpdateAvailable) {
                 val versionType = if (updateState.isNightly) "Nightly版本" else "正式版本"
-                Toast.makeText(
-                    context,
-                    "发现新$versionType ${updateState.version}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast
+                    .makeText(
+                        context,
+                        "发现新$versionType ${updateState.version}",
+                        Toast.LENGTH_SHORT,
+                    ).show()
             }
             if (updateState is UpdateState.Error) {
-                Toast.makeText(
-                    context,
-                    "检查更新失败: ${updateState.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast
+                    .makeText(
+                        context,
+                        "检查更新失败: ${updateState.message}",
+                        Toast.LENGTH_LONG,
+                    ).show()
             }
         }
         Row {
             Text(
                 "关于",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 16.dp),
             )
         }
         Row {
@@ -783,11 +798,11 @@ fun AccountSettingScreen(
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/zly2006/zhihu-plus-plus".toUri()
+                        "https://github.com/zly2006/zhihu-plus-plus".toUri(),
                     )
                     context.startActivity(intent)
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             ) {
                 Text("GitHub 项目地址")
             }
@@ -796,10 +811,10 @@ fun AccountSettingScreen(
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_VIEW,
-                        "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md".toUri()
+                        "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md".toUri(),
                     )
                     context.startActivity(intent)
-                }
+                },
             ) {
                 Text("开源协议")
             }
@@ -811,14 +826,14 @@ fun AccountSettingScreen(
             ),
         )
         AnimatedVisibility(
-            visible = isDeveloper
+            visible = isDeveloper,
         ) {
             SwitchSettingItem(
                 title = "开发者模式",
                 checked = isDeveloper,
                 onCheckedChange = {
                     isDeveloper = it
-                }
+                },
             )
         }
         Button(
@@ -834,14 +849,14 @@ fun AccountSettingScreen(
                         is UpdateState.Downloaded -> {
                             UpdateManager.installUpdate(
                                 context,
-                                updateState.file
+                                updateState.file,
                             )
                         }
                         UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
                 when (val updateState = updateState) {
@@ -852,7 +867,7 @@ fun AccountSettingScreen(
                     is UpdateState.Downloading -> "下载中..."
                     is UpdateState.Downloaded -> "安装更新"
                     is UpdateState.Error -> "检查更新失败，点击重试"
-                }
+                },
             )
         }
 
@@ -873,7 +888,7 @@ fun AccountSettingScreen(
                             "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 16.dp)
+                            modifier = Modifier.padding(bottom = 16.dp),
                         )
                         OutlinedTextField(
                             value = cookieInputText,
@@ -885,12 +900,12 @@ fun AccountSettingScreen(
                                 IconButton(onClick = { showCookieText = !showCookieText }) {
                                     Icon(
                                         imageVector = if (showCookieText) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (showCookieText) "隐藏" else "显示"
+                                        contentDescription = if (showCookieText) "隐藏" else "显示",
                                     )
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            maxLines = 5
+                            maxLines = 5,
                         )
                     }
                 },
@@ -915,8 +930,8 @@ fun AccountSettingScreen(
                                             context,
                                             currentData.copy(
                                                 cookies = cookies,
-                                                login = true
-                                            )
+                                                login = true,
+                                            ),
                                         )
 
                                         // 验证登录状态
@@ -944,7 +959,7 @@ fun AccountSettingScreen(
                             } else {
                                 Toast.makeText(context, "请输入Cookie字符串", Toast.LENGTH_SHORT).show()
                             }
-                        }
+                        },
                     ) {
                         Text("确认设置")
                     }
@@ -955,11 +970,11 @@ fun AccountSettingScreen(
                             showCookieDialog = false
                             cookieInputText = ""
                             showCookieText = false
-                        }
+                        },
                     ) {
                         Text("取消")
                     }
-                }
+                },
             )
         }
     }
@@ -970,6 +985,6 @@ fun AccountSettingScreen(
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
         innerPadding = PaddingValues(16.dp),
-        onNavigate = { }
+        onNavigate = { },
     )
 }

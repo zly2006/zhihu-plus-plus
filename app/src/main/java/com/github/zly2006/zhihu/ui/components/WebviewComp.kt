@@ -114,7 +114,8 @@ class CustomWebView : WebView {
      */
     fun injectClickListenerScript() {
         if (htmlClickListener != null) {
-            val jsCode = """
+            val jsCode =
+                """
                 (function() {
                     // 移除之前的监听器（如果存在）
                     if (window.zhihuPlusClickListener) {
@@ -138,7 +139,7 @@ class CustomWebView : WebView {
                     // 添加点击事件监听器
                     document.addEventListener('click', window.zhihuPlusClickListener, true);
                 })();
-            """.trimIndent()
+                """.trimIndent()
 
             evaluateJavascript(jsCode, null)
         }
@@ -151,8 +152,12 @@ class CustomWebView : WebView {
                 setContentView(
                     PhotoView(context).apply {
                         GlobalScope.launch {
-                            httpClient.get(url).bodyAsChannel().toInputStream()
-                                .buffered().use {
+                            httpClient
+                                .get(url)
+                                .bodyAsChannel()
+                                .toInputStream()
+                                .buffered()
+                                .use {
                                     val bitmap = BitmapFactory.decodeStream(it)
                                     context.mainExecutor.execute {
                                         setImageBitmap(bitmap)
@@ -162,7 +167,7 @@ class CustomWebView : WebView {
                         setImageURI(url.toUri())
                         setBackgroundColor(Color.BLACK)
                         setOnClickListener { dismiss() }
-                    }
+                    },
                 )
                 window?.setBackgroundDrawable(Color.BLACK.toDrawable())
                 setCanceledOnTouchOutside(true)
@@ -172,7 +177,7 @@ class CustomWebView : WebView {
                 super.onCreate(savedInstanceState)
                 window?.setLayout(
                     ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.MATCH_PARENT,
                 )
             }
         }
@@ -223,7 +228,8 @@ fun WebviewComp(
                                 true
                             }
                             menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                CustomTabsIntent.Builder()
+                                CustomTabsIntent
+                                    .Builder()
                                     .setToolbarColor(0xff66CCFF.toInt())
                                     .build()
                                     .launchUrl(context, url.toUri())
@@ -264,18 +270,20 @@ fun WebviewComp(
                                                 resolver.update(imageUri, contentValues, null, null)
                                             }
 
-                                            Toast.makeText(
-                                                context,
-                                                "图片已保存到相册",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    "图片已保存到相册",
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                         }
                                     } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "保存失败: ${e.message}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "保存失败: ${e.message}",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                     }
                                 }
                                 true
@@ -285,7 +293,7 @@ fun WebviewComp(
                 }
             }
         },
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -305,19 +313,22 @@ fun WebView.loadZhihu(
             ${
             // This is a workaround for the issue where the system font family name is not available in the WebView.
             // https://github.com/zly2006/zhihu-plus-plus/issues/9
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}" else ""
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}"
+            } else {
+                ""
             }
+        }
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
             <body>
             ${document.body().html()}
             </body>
-            """.trimIndent(),
+        """.trimIndent(),
         "text/html",
         "utf-8",
-        null
+        null,
     )
     if (this is CustomWebView) {
         this.document = document
@@ -327,14 +338,13 @@ fun WebView.loadZhihu(
 fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
     val context = this.context
-    val assetLoader = WebViewAssetLoader.Builder()
+    val assetLoader = WebViewAssetLoader
+        .Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
         .build()
     this.webViewClient = object : WebViewClientCompat() {
-        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-            return assetLoader.shouldInterceptRequest(request.url)
-        }
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {

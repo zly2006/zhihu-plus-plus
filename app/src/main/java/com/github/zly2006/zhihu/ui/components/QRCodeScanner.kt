@@ -17,13 +17,13 @@ import com.github.zly2006.zhihu.QRCodeScanActivity
 @Composable
 fun QRCodeLogin(
     modifier: Modifier = Modifier,
-    onScanResult: ((String) -> Unit)? = null
+    onScanResult: ((String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
     // Activity 结果启动器
     val scanActivityLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
+        contract = ActivityResultContracts.StartActivityForResult(),
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT)
@@ -45,12 +45,12 @@ fun QRCodeLogin(
         modifier = modifier,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.tertiary,
-            contentColor = MaterialTheme.colorScheme.onTertiary
-        )
+            contentColor = MaterialTheme.colorScheme.onTertiary,
+        ),
     ) {
         Icon(
             imageVector = Icons.Default.QrCodeScanner,
-            contentDescription = "扫码登录"
+            contentDescription = "扫码登录",
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text("扫码登录")

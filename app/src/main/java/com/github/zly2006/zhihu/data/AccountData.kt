@@ -47,7 +47,7 @@ object AccountData {
         val username: String = "",
         val cookies: MutableMap<String, String> = mutableMapOf(),
         val userAgent: String = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0",
-        val self: Person? = null
+        val self: Person? = null,
     )
 
     fun loadData(context: Context): Data {
@@ -69,43 +69,39 @@ object AccountData {
 
     fun saveData(context: Context, data: Data) {
         dataState.value = data
-        //https://static.zhihu.com/zse-ck/v4/24df2abbfcb1b98cd5ce1b519f02eeabea28c83ac9d9ec2778dc5b03a3b8b710.js
+        // https://static.zhihu.com/zse-ck/v4/24df2abbfcb1b98cd5ce1b519f02eeabea28c83ac9d9ec2778dc5b03a3b8b710.js
         val file = File(context.filesDir, "account.json")
         file.writeText(json.encodeToString(data))
     }
 
-    fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
-        return HttpClient {
-            install(HttpCache)
-            install(HttpCookies) {
-                storage = object : CookiesStorage {
-                    override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
-                        if (cookie.domain?.endsWith("zhihu.com") != false) {
-                            if (cookies == null) {
-                                data.cookies[cookie.name] = cookie.value
-                                saveData(context, data)
-                            } else {
-                                cookies[cookie.name] = cookie.value
-                            }
-                        }
-                    }
-
-                    override fun close() {
-                    }
-
-                    override suspend fun get(requestUrl: Url): List<Cookie> {
-                        return (cookies ?: data.cookies).map {
-                            Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
+    fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient = HttpClient {
+        install(HttpCache)
+        install(HttpCookies) {
+            storage = object : CookiesStorage {
+                override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
+                    if (cookie.domain?.endsWith("zhihu.com") != false) {
+                        if (cookies == null) {
+                            data.cookies[cookie.name] = cookie.value
+                            saveData(context, data)
+                        } else {
+                            cookies[cookie.name] = cookie.value
                         }
                     }
                 }
+
+                override fun close() {
+                }
+
+                override suspend fun get(requestUrl: Url): List<Cookie> = (cookies ?: data.cookies).map {
+                    Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
+                }
             }
-            install(ContentNegotiation) {
-                json(json)
-            }
-            install(UserAgent) {
-                agent = data.userAgent
-            }
+        }
+        install(ContentNegotiation) {
+            json(json)
+        }
+        install(UserAgent) {
+            agent = data.userAgent
         }
     }
 
@@ -117,12 +113,13 @@ object AccountData {
             val jojo = response.body<JsonObject>()
             val person = decodeJson<Person>(jojo)
             saveData(
-                context, Data(
+                context,
+                Data(
                     login = true,
                     cookies = map,
                     username = person.name,
-                    self = person
-                )
+                    self = person,
+                ),
             )
             return true
         }
@@ -153,24 +150,22 @@ object AccountData {
         }
     }
 
-    fun snake_case2camelCase(snakeCase: String): String {
-        return snakeCase.split("_").joinToString("") { it.replaceFirstChar { char -> char.uppercase() } }
-            .replaceFirstChar { it.lowercase() }
-    }
+    fun snake_case2camelCase(snakeCase: String): String = snakeCase
+        .split("_")
+        .joinToString("") { it.replaceFirstChar { char -> char.uppercase() } }
+        .replaceFirstChar { it.lowercase() }
 
-    fun snake_case2camelCase(json: JsonElement): JsonElement {
-        return when (json) {
-            is JsonObject -> buildJsonObject {
-                for ((key, value) in json) {
-                    put(snake_case2camelCase(key), snake_case2camelCase(value))
-                }
+    fun snake_case2camelCase(json: JsonElement): JsonElement = when (json) {
+        is JsonObject -> buildJsonObject {
+            for ((key, value) in json) {
+                put(snake_case2camelCase(key), snake_case2camelCase(value))
             }
-            is JsonArray -> buildJsonArray {
-                for (item in json) {
-                    add(snake_case2camelCase(item))
-                }
-            }
-            else -> json
         }
+        is JsonArray -> buildJsonArray {
+            for (item in json) {
+                add(snake_case2camelCase(item))
+            }
+        }
+        else -> json
     }
 }

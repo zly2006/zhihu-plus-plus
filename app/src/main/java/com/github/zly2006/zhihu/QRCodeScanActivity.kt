@@ -48,7 +48,7 @@ class QRCodeScanActivity : ComponentActivity() {
                             setResult(RESULT_OK, resultIntent)
                         }
                         finish()
-                    }
+                    },
                 )
             }
         }
@@ -64,7 +64,7 @@ class QRCodeScanActivity : ComponentActivity() {
 @Composable
 private fun QRCodeScanScreen(
     onBack: () -> Unit,
-    onScanResult: (String) -> Unit
+    onScanResult: (String) -> Unit,
 ) {
     var showResultDialog by remember { mutableStateOf(false) }
     var scanResult by remember { mutableStateOf("") }
@@ -75,14 +75,14 @@ private fun QRCodeScanScreen(
         mutableStateOf(
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+                Manifest.permission.CAMERA,
+            ) == PackageManager.PERMISSION_GRANTED,
         )
     }
 
     // 权限请求
     val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
+        contract = ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
         hasCameraPermission = isGranted
         if (!isGranted) {
@@ -92,7 +92,7 @@ private fun QRCodeScanScreen(
 
     // 二维码扫描器
     val scanLauncher = rememberLauncherForActivityResult(
-        contract = ScanContract()
+        contract = ScanContract(),
     ) { result: ScanIntentResult ->
         if (result.contents != null) {
             if (result.contents.startsWith(LOGIN_PREFIX)) {
@@ -112,9 +112,9 @@ private fun QRCodeScanScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                }
+                },
             )
-        }
+        },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -122,13 +122,13 @@ private fun QRCodeScanScreen(
                 .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
                 contentDescription = "扫码登录",
                 modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -136,7 +136,7 @@ private fun QRCodeScanScreen(
             Text(
                 text = "扫描电脑端登录二维码",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -144,7 +144,7 @@ private fun QRCodeScanScreen(
             Text(
                 text = "在电脑浏览器中打开知乎网站，使用此功能扫描登录二维码",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -156,7 +156,7 @@ private fun QRCodeScanScreen(
                             setPrompt("将登录二维码对准扫描框")
                             setBeepEnabled(false)
                             setDesiredBarcodeFormats(
-                                ScanOptions.QR_CODE
+                                ScanOptions.QR_CODE,
                             )
                             setCaptureActivity(CaptureActivity::class.java)
                         }
@@ -167,17 +167,17 @@ private fun QRCodeScanScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(56.dp)
+                    .height(56.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.QrCodeScanner,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (hasCameraPermission) "开始扫描" else "授权相机权限",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
                 )
             }
         }
@@ -194,7 +194,7 @@ private fun QRCodeScanScreen(
             },
             onConfirm = { text ->
                 onScanResult(text)
-            }
+            },
         )
     }
 }
@@ -204,7 +204,7 @@ private fun QRResultDialog(
     result: String,
     onDismiss: () -> Unit,
     onCopy: (String) -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (String) -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -218,13 +218,13 @@ private fun QRResultDialog(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
                 ) {
                     Text(
                         text = result,
                         modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
@@ -232,13 +232,13 @@ private fun QRResultDialog(
         confirmButton = {
             Row {
                 TextButton(
-                    onClick = { onCopy(result) }
+                    onClick = { onCopy(result) },
                 ) {
                     Text("复制")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(
-                    onClick = { onConfirm(result) }
+                    onClick = { onConfirm(result) },
                 ) {
                     Text("确定")
                 }
@@ -248,7 +248,7 @@ private fun QRResultDialog(
             TextButton(onClick = onDismiss) {
                 Text("取消")
             }
-        }
+        },
     )
 }
 

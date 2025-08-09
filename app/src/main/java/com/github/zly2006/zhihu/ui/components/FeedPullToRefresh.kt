@@ -17,7 +17,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 @Composable
 fun FeedPullToRefresh(
     viewModel: BaseFeedViewModel,
-    content: @Composable BoxScope.() -> Unit
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val context = LocalContext.current
     val state = rememberPullToRefreshState()
@@ -30,11 +30,11 @@ fun FeedPullToRefresh(
                 isRefreshing = viewModel.isPullToRefresh,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                state = state
+                state = state,
             )
         },
         state = state,
         modifier = Modifier.Companion.fillMaxSize(),
-        content = content
+        content = content,
     )
 }

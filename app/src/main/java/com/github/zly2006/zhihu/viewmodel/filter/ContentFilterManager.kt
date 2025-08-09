@@ -9,8 +9,9 @@ import java.util.concurrent.TimeUnit
  * 内容过滤管理器
  * 负责记录内容展示次数、用户交互，并提供过滤逻辑
  */
-class ContentFilterManager private constructor(context: Context) {
-
+class ContentFilterManager private constructor(
+    context: Context,
+) {
     private val database = ContentFilterDatabase.getDatabase(context)
     private val dao = database.contentFilterDao()
 
@@ -22,12 +23,10 @@ class ContentFilterManager private constructor(context: Context) {
         private val CLEANUP_INTERVAL_DAYS = 7L // 清理7天前的数据
         private val MAX_RECORDS = 10000 // 最大记录数
 
-        fun getInstance(context: Context): ContentFilterManager {
-            return INSTANCE ?: synchronized(this) {
-                val instance = ContentFilterManager(context.applicationContext)
-                INSTANCE = instance
-                instance
-            }
+        fun getInstance(context: Context): ContentFilterManager = INSTANCE ?: synchronized(this) {
+            val instance = ContentFilterManager(context.applicationContext)
+            INSTANCE = instance
+            instance
         }
     }
 
@@ -48,7 +47,7 @@ class ContentFilterManager private constructor(context: Context) {
                     id = recordId,
                     targetType = targetType,
                     targetId = targetId,
-                    viewCount = 1
+                    viewCount = 1,
                 )
                 dao.insertOrUpdateViewRecord(newRecord)
             }
@@ -68,45 +67,39 @@ class ContentFilterManager private constructor(context: Context) {
     /**
      * 检查内容是否应该被过滤
      */
-    suspend fun shouldFilterContent(targetType: String, targetId: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            val recordId = ContentViewRecord.generateId(targetType, targetId)
-            val record = dao.getViewRecord(recordId)
+    suspend fun shouldFilterContent(targetType: String, targetId: String): Boolean = withContext(Dispatchers.IO) {
+        val recordId = ContentViewRecord.generateId(targetType, targetId)
+        val record = dao.getViewRecord(recordId)
 
-            record?.let {
-                it.viewCount > ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION && !it.hasInteraction
-            } ?: false
-        }
+        record?.let {
+            it.viewCount > ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION && !it.hasInteraction
+        } ?: false
     }
 
     /**
      * 批量检查内容是否应该被过滤
      */
-    suspend fun filterContentList(content: List<Pair<String, String>>): List<Pair<String, String>> {
-        return withContext(Dispatchers.IO) {
-            val filteredIds = dao.getFilteredContentIds().toSet()
-            content.filter { (targetType, targetId) ->
-                val recordId = ContentViewRecord.generateId(targetType, targetId)
-                recordId !in filteredIds
-            }
+    suspend fun filterContentList(content: List<Pair<String, String>>): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+        val filteredIds = dao.getFilteredContentIds().toSet()
+        content.filter { (targetType, targetId) ->
+            val recordId = ContentViewRecord.generateId(targetType, targetId)
+            recordId !in filteredIds
         }
     }
 
     /**
      * 获取统计信息
      */
-    suspend fun getFilterStats(): FilterStats {
-        return withContext(Dispatchers.IO) {
-            val totalRecords = dao.getRecordCount()
-            val filteredContent = dao.getFilteredContent()
-            val filteredCount = filteredContent.size
+    suspend fun getFilterStats(): FilterStats = withContext(Dispatchers.IO) {
+        val totalRecords = dao.getRecordCount()
+        val filteredContent = dao.getFilteredContent()
+        val filteredCount = filteredContent.size
 
-            FilterStats(
-                totalRecords = totalRecords,
-                filteredCount = filteredCount,
-                filterRate = if (totalRecords > 0) filteredCount.toFloat() / totalRecords else 0f
-            )
-        }
+        FilterStats(
+            totalRecords = totalRecords,
+            filteredCount = filteredCount,
+            filterRate = if (totalRecords > 0) filteredCount.toFloat() / totalRecords else 0f,
+        )
     }
 
     /**
@@ -147,7 +140,7 @@ class ContentFilterManager private constructor(context: Context) {
                 targetType = targetType,
                 targetId = targetId,
                 viewCount = 0,
-                hasInteraction = false
+                hasInteraction = false,
             )
             dao.insertOrUpdateViewRecord(record)
         }
@@ -160,5 +153,5 @@ class ContentFilterManager private constructor(context: Context) {
 data class FilterStats(
     val totalRecords: Int,
     val filteredCount: Int,
-    val filterRate: Float
+    val filterRate: Float,
 )

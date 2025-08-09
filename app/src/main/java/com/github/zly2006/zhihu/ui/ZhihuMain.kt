@@ -47,14 +47,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
 
     // 获取页面索引的函数
-    fun getPageIndex(route: androidx.navigation.NavDestination): Int {
-        return when {
-            route.hasRoute<Home>() -> 0
-            route.hasRoute<Follow>() -> 1
-            route.hasRoute<History>() -> 2
-            route.hasRoute<Account>() -> 3
-            else -> -1
-        }
+    fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
+        route.hasRoute<Home>() -> 0
+        route.hasRoute<Follow>() -> 1
+        route.hasRoute<History>() -> 2
+        route.hasRoute<Account>() -> 3
+        else -> -1
     }
 
     // 通用动画创建函数
@@ -63,7 +61,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         isEnter: Boolean,
         isPop: Boolean,
         fromIndex: Int,
-        toIndex: Int
+        toIndex: Int,
     ): Any {
         // 如果不是一级页面之间的切换，使用默认动画
         if (fromIndex == -1 || toIndex == -1) {
@@ -125,10 +123,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                                 label = {
                                     Text(
-                                        label, style = TextStyle(
+                                        label,
+                                        style = TextStyle(
                                             fontSize = 9.sp,
-                                            color = LocalContentColor.current.copy(alpha = 0.6f)
-                                        )
+                                            color = LocalContentColor.current.copy(alpha = 0.6f),
+                                        ),
                                     )
                                 },
                                 alwaysShowLabel = false,
@@ -138,7 +137,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 ),
                                 icon = {
                                     Icon(icon, contentDescription = label)
-                                }
+                                },
                             )
                         }
                         Item(Home, "主页", Icons.Filled.Home)
@@ -148,7 +147,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
             }
-        }
+        },
     ) { innerPadding ->
         NavHost(
             navController,
@@ -173,7 +172,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 val fromIndex = getPageIndex(initialState.destination)
                 val toIndex = getPageIndex(targetState.destination)
                 createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
-            }
+            },
         ) {
             composable<Home> {
                 HomeScreen(activity::navigate)
@@ -212,9 +211,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 }
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
-        navEntry.hasRoute(Follow::class) ||
-        navEntry.hasRoute(History::class) ||
-        navEntry.hasRoute(Account::class)
+    navEntry.hasRoute(Follow::class) ||
+    navEntry.hasRoute(History::class) ||
+    navEntry.hasRoute(Account::class)
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false

@@ -17,8 +17,9 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     val url = url.buildString()
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
         header("x-zse-93", MainActivity.ZSE93)
-        header("x-zse-96",
-            (context as? MainActivity)?.signRequest96(url)
+        header(
+            "x-zse-96",
+            (context as? MainActivity)?.signRequest96(url),
         )
         header("x-requested-with", "fetch")
     }
@@ -35,18 +36,25 @@ fun telemetry(context: Context, usage: String) {
         GlobalScope.launch {
             @OptIn(ExperimentalStdlibApi::class)
             runCatching {
-                val hash = MessageDigest.getInstance("MD5").apply {
-                    data.self!!.userType.toByteArray().let(this::update)
-                    data.self.urlToken?.toByteArray()?.let(this::update)
-                }
-                    .digest(data.self!!.id.toByteArray())
+                val hash = MessageDigest
+                    .getInstance("MD5")
+                    .apply {
+                        data.self!!
+                            .userType
+                            .toByteArray()
+                            .let(this::update)
+                        data.self.urlToken
+                            ?.toByteArray()
+                            ?.let(this::update)
+                    }.digest(data.self!!.id.toByteArray())
                     .toHexString()
-                AccountData.httpClient(context)
+                AccountData
+                    .httpClient(context)
                     .post("https://redenmc.com/api/zhihu/usage?client_hash=$hash${data.self.id}&usage=$usage") {
                         contentType(ContentType.Application.Json)
                         header(
                             HttpHeaders.UserAgent,
-                            "Zhihu++/${BuildConfig.VERSION_NAME}"
+                            "Zhihu++/${BuildConfig.VERSION_NAME}",
                         )
                     }
             }
