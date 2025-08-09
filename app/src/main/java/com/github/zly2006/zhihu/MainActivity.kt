@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
-
+    val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
     lateinit var webview: WebView
     lateinit var history: HistoryStorage
@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
     var textToSpeech: TextToSpeech? = null
     enum class TtsEngine {
         Uninitialized, // 未初始化
-        Pico, Google
+        Pico, Google, Sherpa
     }
     @Suppress("unused")
     enum class TtsState(val isSpeaking: Boolean = false) {
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
             if (_ttsState.value != value) {
                 val oldState = _ttsState.value
                 _ttsState.value = value
-                Log.i("MainActivity", "TTS State: $oldState -> $value")
+                Log.i(TAG, "TTS State: $oldState -> $value")
             }
         }
 
@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            Log.e("MainActivity", "Uncaught exception", e)
+            Log.e(TAG, "Uncaught exception", e)
             val intent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.Builder().apply {
@@ -122,14 +122,14 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 ContentFilterExtensions.performMaintenanceCleanup(this@MainActivity)
-                Log.i("MainActivity", "Content filter maintenance cleanup completed")
+                Log.i(TAG, "Content filter maintenance cleanup completed")
             } catch (e: Exception) {
-                Log.e("MainActivity", "Failed to perform content filter cleanup", e)
+                Log.e(TAG, "Failed to perform content filter cleanup", e)
             }
         }
 
         webview = WebView(this)
-        Log.i("MainActivity", "Webview created")
+        Log.i(TAG, "Webview created")
         webview.setupUpWebviewClient()
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
@@ -189,7 +189,10 @@ class MainActivity : ComponentActivity() {
             if (status == TextToSpeech.SUCCESS) {
                 // 设置使用Pico TTS引擎
                 val picoEngine = "com.svox.pico"
+                val sherpaEngine = "com.k2fsa.sherpa.onnx.tts.engine"
                 val availableEngines = textToSpeech?.engines?.map { it.name } ?: emptyList()
+
+                Log.i(TAG, "availableEngines:$availableEngines")
 
                 if (availableEngines.contains(picoEngine)) {
                     // 如果Pico TTS可用，切换到Pico引擎
@@ -199,20 +202,36 @@ class MainActivity : ComponentActivity() {
                         if (status == TextToSpeech.SUCCESS) {
                             initializeTtsSettings()
                             ttsEngine = TtsEngine.Pico
+                            Log.i(TAG, "Using Pico TTS engine")
+                            ttsState = TtsState.Ready
                         } else {
-                            Log.e("MainActivity", "Pico TTS Initialization failed")
+                            Log.e(TAG, "Pico TTS engine Initialization failed")
                             ttsState = TtsState.Error
                         }
                     }, picoEngine)
-                    Log.i("MainActivity", "Using Pico TTS engine")
+                } else if (availableEngines.contains(sherpaEngine)) {
+                    // Sherpa TTS可用，切换到Sherpa引擎
+                    textToSpeech?.shutdown()
+                    ttsState = TtsState.Initializing
+                    textToSpeech = TextToSpeech(this, { status ->
+                        if (status == TextToSpeech.SUCCESS) {
+                            initializeTtsSettings()
+                            ttsEngine = TtsEngine.Sherpa
+                            Log.i(TAG, "Using Sherpa TTS engine")
+                            ttsState = TtsState.Ready
+                        } else {
+                            Log.e(TAG, "Sherpa TTS engine Initialization failed")
+                            ttsState = TtsState.Error
+                        }
+                    }, sherpaEngine)
                 } else {
-                    Log.w("MainActivity", "Pico TTS not available, using default engine")
+                    Log.w(TAG, "Pico TTS not available, using default engine")
                     // 继续使用默认引擎的初始化
                     initializeTtsSettings()
                     ttsEngine = TtsEngine.Google
                 }
             } else {
-                Log.e("MainActivity", "TTS Initialization failed")
+                Log.e(TAG, "TTS Initialization failed")
                 ttsState = TtsState.Error
             }
         }
@@ -230,7 +249,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e("MainActivity", "Failed to check for updates", e)
+                    Log.e(TAG, "Failed to check for updates", e)
                 }
             }
         }
@@ -243,29 +262,37 @@ class MainActivity : ComponentActivity() {
             // 如果中文不支持，尝试英文
             val englishResult = textToSpeech?.setLanguage(Locale.ENGLISH)
             if (englishResult == TextToSpeech.LANG_MISSING_DATA || englishResult == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("MainActivity", "Language not supported")
+                Log.e(TAG, "Language not supported")
                 ttsState = TtsState.Error
             } else {
-                Log.i("MainActivity", "Using English language for TTS")
+                Log.i(TAG, "Using English language for TTS")
                 isTtsInitialized = true
                 ttsState = TtsState.Ready
             }
         } else {
-            Log.i("MainActivity", "Using Chinese language for TTS")
+            Log.i(TAG, "Using Chinese language for TTS")
             isTtsInitialized = true
             ttsState = TtsState.Ready
         }
 
         // 设置语音参数
-        textToSpeech?.setSpeechRate(0.9f) // 稍微慢一点的语速
-        textToSpeech?.setPitch(1.0f) // 正常音调
+        when (ttsEngine) {
+            TtsEngine.Sherpa -> {
+                textToSpeech?.setSpeechRate(1.1f) // 稍微慢一点的语速
+                textToSpeech?.setPitch(1.0f) // 正常音调
+            }
+            else -> {
+                textToSpeech?.setSpeechRate(0.9f) // 稍微慢一点的语速
+                textToSpeech?.setPitch(1.0f) // 正常音调
+            }
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         if (hasFocus) {
             if (intent.data != null) {
                 if (intent.data!!.authority != "zhihu-plus.internal") {
-                    Log.i("MainActivity", "Intent data: ${intent.data}")
+                    Log.i(TAG, "Intent data: ${intent.data}")
                     val destination = resolveContent(intent.data!!)
                     if (destination != null) {
                         if (destination != sharedData.clipboardDestination) {
@@ -326,11 +353,11 @@ class MainActivity : ComponentActivity() {
         runOnUiThread {
             webview.evaluateJavascript("exports.encrypt('$md5')") {
                 val time = System.currentTimeMillis() - timeStart
-                Log.i("MainActivity", "Sign request: $url")
-                Log.i("MainActivity", "Sign source: $signSource")
-                Log.i("MainActivity", "Sign input: $md5")
-                Log.i("MainActivity", "Sign result: $it")
-                Log.i("MainActivity", "Sign time: $time ms")
+                Log.i(TAG, "Sign request: $url")
+                Log.i(TAG, "Sign source: $signSource")
+                Log.i(TAG, "Sign input: $md5")
+                Log.i(TAG, "Sign result: $it")
+                Log.i(TAG, "Sign time: $time ms")
                 future.complete(it.trim('"'))
             }
         }
@@ -362,13 +389,13 @@ class MainActivity : ComponentActivity() {
 
                 // 跳过此版本按钮
                 setNeutralButton("跳过此版本") { _, _ ->
-                    Log.i("MainActivity", "User chose to skip version $version")
+                    Log.i(TAG, "User chose to skip version $version")
                     UpdateManager.skipVersion(this@MainActivity, version)
                 }
 
                 // 稍后提醒按钮
                 setNegativeButton("稍后提醒") { _, _ ->
-                    Log.i("MainActivity", "User chose to be reminded later")
+                    Log.i(TAG, "User chose to be reminded later")
                     // 不做任何操作，下次启动时会再次检查
                 }
             }.show()
@@ -393,7 +420,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                Log.i("MainActivity", "Starting download for version $version")
+                Log.i(TAG, "Starting download for version $version")
                 UpdateManager.downloadUpdate(this@MainActivity)
 
                 // 监听下载状态
@@ -405,7 +432,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         is UpdateManager.UpdateState.Downloaded -> {
-                            Log.i("MainActivity", "Update downloaded, installing...")
+                            Log.i(TAG, "Update downloaded, installing...")
                             runOnUiThread {
                                 progressDialog.dismiss()
                                 showInstallDialog(state.file)
@@ -413,7 +440,7 @@ class MainActivity : ComponentActivity() {
                             return@collect // 结束收集
                         }
                         is UpdateManager.UpdateState.Error -> {
-                            Log.e("MainActivity", "Update download failed: ${state.message}")
+                            Log.e(TAG, "Update download failed: ${state.message}")
                             runOnUiThread {
                                 progressDialog.dismiss()
                                 AlertDialog.Builder(this@MainActivity).apply {
@@ -430,7 +457,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("MainActivity", "Failed to download update", e)
+                Log.e(TAG, "Failed to download update", e)
                 runOnUiThread {
                     progressDialog.dismiss()
                     AlertDialog.Builder(this@MainActivity).apply {
@@ -455,7 +482,7 @@ class MainActivity : ComponentActivity() {
                 try {
                     UpdateManager.installUpdate(this@MainActivity, file)
                 } catch (e: Exception) {
-                    Log.e("MainActivity", "Failed to install update", e)
+                    Log.e(TAG, "Failed to install update", e)
                     AlertDialog.Builder(this@MainActivity).apply {
                         setTitle("安装失败")
                         setMessage("无法启动安装程序：${e.message}")
@@ -465,7 +492,7 @@ class MainActivity : ComponentActivity() {
             }
             setNegativeButton("稍后安装") { _, _ ->
                 // 用户选择稍后安装，不做任何操作
-                Log.i("MainActivity", "User chose to install later")
+                Log.i(TAG, "User chose to install later")
             }
         }.show()
     }
@@ -521,7 +548,14 @@ class MainActivity : ComponentActivity() {
                                         // 延迟一点再播放下一段，避免太快
                                         @OptIn(DelicateCoroutinesApi::class)
                                         GlobalScope.launch {
-                                            kotlinx.coroutines.delay(500)
+                                            when (ttsEngine) {
+                                                TtsEngine.Sherpa -> {
+                                                    // 无需延迟, Sherpa 本身不会太快
+                                                }
+                                                else -> {
+                                                    kotlinx.coroutines.delay(500)
+                                                }
+                                            }
                                             runOnUiThread {
                                                 speakNextChunk(currentIndex + 1)
                                             }
