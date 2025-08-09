@@ -204,13 +204,12 @@ class MainActivity : ComponentActivity() {
                             ttsEngine = TtsEngine.Pico
                             Log.i(TAG, "Using Pico TTS engine")
                             ttsState = TtsState.Ready
-                        }else{
+                        } else {
                             Log.e(TAG, "Pico TTS engine Initialization failed")
                             ttsState = TtsState.Error
                         }
                     }, picoEngine)
-                }
-                else if(availableEngines.contains(sherpaEngine)){
+                } else if (availableEngines.contains(sherpaEngine)) {
                     // Sherpa TTS可用，切换到Sherpa引擎
                     textToSpeech?.shutdown()
                     ttsState = TtsState.Initializing
@@ -220,13 +219,12 @@ class MainActivity : ComponentActivity() {
                             ttsEngine = TtsEngine.Sherpa
                             Log.i(TAG, "Using Sherpa TTS engine")
                             ttsState = TtsState.Ready
-                        }else{
+                        } else {
                             Log.e(TAG, "Sherpa TTS engine Initialization failed")
                             ttsState = TtsState.Error
                         }
                     }, sherpaEngine)
-                }
-                else {
+                } else {
                     Log.w(TAG, "Pico TTS not available, using default engine")
                     // 继续使用默认引擎的初始化
                     initializeTtsSettings()
@@ -278,12 +276,12 @@ class MainActivity : ComponentActivity() {
         }
 
         // 设置语音参数
-        when (ttsEngine){
+        when (ttsEngine) {
             TtsEngine.Sherpa -> {
                 textToSpeech?.setSpeechRate(1.1f) // 稍微慢一点的语速
                 textToSpeech?.setPitch(1.0f) // 正常音调
             }
-            else ->{
+            else -> {
                 textToSpeech?.setSpeechRate(0.9f) // 稍微慢一点的语速
                 textToSpeech?.setPitch(1.0f) // 正常音调
             }
@@ -550,11 +548,11 @@ class MainActivity : ComponentActivity() {
                                         // 延迟一点再播放下一段，避免太快
                                         @OptIn(DelicateCoroutinesApi::class)
                                         GlobalScope.launch {
-                                            when(ttsEngine){
+                                            when (ttsEngine) {
                                                 TtsEngine.Sherpa -> {
                                                     // 无需延迟, Sherpa 本身不会太快
                                                 }
-                                                else ->{
+                                                else -> {
                                                     kotlinx.coroutines.delay(500)
                                                 }
                                             }
