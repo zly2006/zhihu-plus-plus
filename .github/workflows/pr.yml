@@ -1,0 +1,61 @@
+name: Pull Request Check
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build_pr:
+    name: Build PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Set Current Date As Env Variable
+      - name: Set current date as env variable
+        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      # Set Repository Name As Env Variable
+      - name: Set repository name as env variable
+        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu' # See 'Supported distributions' for available options
+          java-version: '17'
+          cache: 'gradle'
+      - name: Change wrapper permissions
+        run: chmod +x ./gradlew
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.m2/repository
+            ./.gradle
+            ./**/.gradle
+            ./apk-recompress/target
+          # dont invalidate cache if only gradle.properties is changed -- they
+          key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      # Run Tests Build
+      - name: Run KtLint
+        run: ./gradlew ktlintCheck
+      - name: Run gradle tests
+        run: ./gradlew test
+      - name: Build App
+        # Build .apk
+        run: |
+          bash ./gradlew assembleDebug
+        env:
+          CI_BUILD_MINIFY: false
+      - name: Move files
+        run: |
+          mkdir -p app/build/upload
+          mv app/build/outputs/apk/debug/app-release.apk app/build/upload/zhihu++.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR Debug artifacts
+          path: app/build/upload/

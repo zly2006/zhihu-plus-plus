@@ -150,11 +150,13 @@ object AccountData {
         }
     }
 
+    @Suppress("FunctionName")
     fun snake_case2camelCase(snakeCase: String): String = snakeCase
         .split("_")
         .joinToString("") { it.replaceFirstChar { char -> char.uppercase() } }
         .replaceFirstChar { it.lowercase() }
 
+    @Suppress("FunctionName")
     fun snake_case2camelCase(json: JsonElement): JsonElement = when (json) {
         is JsonObject -> buildJsonObject {
             for ((key, value) in json) {
