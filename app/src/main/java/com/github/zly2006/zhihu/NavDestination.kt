@@ -82,7 +82,7 @@ data class Person(
     /**
      * human-readable token, used in URL.
      */
-    val urlToken: String,
+    var urlToken: String,
     val name: String = "loading...",
 ) : NavDestination {
     override fun hashCode(): Int {
@@ -102,6 +102,8 @@ data class Person(
         }
         return false
     }
+
+    val userTokenOrId get() = urlToken.takeIf { it.isNotEmpty() } ?: id
 
     companion object {
         const val EMPTY_ID = "00000000000000000000000000000000"

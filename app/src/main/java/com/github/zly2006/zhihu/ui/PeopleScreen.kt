@@ -58,7 +58,7 @@ class PeopleAnswersViewModel(
         typeOf<DataHolder.Answer>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.id}/answers?sort_by=$sort"
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sort"
 
     override val include: String
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp"
@@ -71,10 +71,10 @@ class PeopleArticlesViewModel(
         typeOf<DataHolder.Article>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.id}/articles?sort_by=$sort"
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sort"
 
     override val include: String
-        get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info"
+        get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
 }
 
 class PeopleActivitiesViewModel(
@@ -82,7 +82,7 @@ class PeopleActivitiesViewModel(
     val sort: String = "created",
 ) : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v3/moments/${person.id}/activities"
+        get() = "https://www.zhihu.com/api/v3/moments/${person.userTokenOrId}/activities"
 }
 
 class PersonViewModel(
@@ -126,6 +126,9 @@ class PersonViewModel(
         this.followerCount = person.followerCount
         this.answerCount = person.answerCount
         this.articleCount = person.articlesCount
+        if (person.urlToken != null) {
+            this.person.urlToken = person.urlToken
+        }
         context.postHistory(
             Person(
                 id = person.id,

@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.ui.raiseForStatus
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -80,40 +81,34 @@ abstract class PaginationViewModel<T : Any>(
                     parameters.append("include", include)
                 }
                 signFetchRequest(context)
-            }
+            }.raiseForStatus()
 
-            if (response.status == HttpStatusCode.OK) {
-                val json = response.body<JsonObject>()
-                val jsonArray = json["data"]!!.jsonArray
-                processResponse(
-                    context,
-                    jsonArray.mapNotNull {
-                        if ("type" in it.jsonObject &&
-                            it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
-                                "invited_answer", // invalid
-                                "tab_list", // invalid
-                                "feed_item_index_group", // todo
-                            )
-                        ) {
-                            return@mapNotNull null
-                        }
-                        try {
-                            @Suppress("UNCHECKED_CAST")
-                            AccountData.decodeJson(serializer(dataType) as KSerializer<T>, it)
-                        } catch (e: Exception) {
-                            Log.e(this::class.simpleName, "Failed to decode item: $it", e)
-                            null
-                        }
-                    },
-                    jsonArray,
-                )
-                if ("paging" in json) {
-                    lastPaging = AccountData.decodeJson(json["paging"]!!)
-                }
-            } else {
-                context.mainExecutor.execute {
-                    Toast.makeText(context, "获取数据失败: ${response.status}", Toast.LENGTH_SHORT).show()
-                }
+            val json = response.body<JsonObject>()
+            val jsonArray = json["data"]!!.jsonArray
+            processResponse(
+                context,
+                jsonArray.mapNotNull {
+                    if ("type" in it.jsonObject &&
+                        it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
+                            "invited_answer", // invalid
+                            "tab_list", // invalid
+                            "feed_item_index_group", // todo
+                        )
+                    ) {
+                        return@mapNotNull null
+                    }
+                    try {
+                        @Suppress("UNCHECKED_CAST")
+                        AccountData.decodeJson(serializer(dataType) as KSerializer<T>, it)
+                    } catch (e: Exception) {
+                        Log.e(this::class.simpleName, "Failed to decode item: $it", e)
+                        null
+                    }
+                },
+                jsonArray,
+            )
+            if ("paging" in json) {
+                lastPaging = AccountData.decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)

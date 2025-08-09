@@ -91,7 +91,7 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/release/app-release.apk app/build/upload/zhihu++.apk
       - name: Recompress APK
-        if: ${{ inputs.release }}
+        if: ${{ inputs.minify }}
         env:
           KEYSTORE_PATH: ../app/zhihu.jks
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
