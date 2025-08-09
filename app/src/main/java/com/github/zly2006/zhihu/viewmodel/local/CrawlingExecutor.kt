@@ -190,7 +190,6 @@ class CrawlingExecutor(
                 is Feed.VideoTarget -> target.id.toString()
                 is Feed.QuestionTarget -> target.id.toString()
                 is Feed.PinTarget -> target.id.toString()
-                else -> target.hashCode().toString()
             },
             title = target.title,
             summary = target.excerpt ?: "",

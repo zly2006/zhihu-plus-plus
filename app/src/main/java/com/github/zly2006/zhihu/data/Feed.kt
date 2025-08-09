@@ -34,6 +34,8 @@ sealed interface Feed {
         val url: String
         val excerpt: String?
         val author: Person?
+        val createdTime: Long
+        val updatedTime: Long
         val navDestination: NavDestination?
     }
 
@@ -46,14 +48,12 @@ sealed interface Feed {
         ) {
         }
 
-        override fun deserialize(decoder: Decoder): Person? {
-            try {
-                return Person.serializer().deserialize(decoder)
-            } catch (_: Exception) {
-                // consume a string -- legacy api compatibility
-                decoder.decodeString()
-                return null
-            }
+        override fun deserialize(decoder: Decoder) = try {
+            Person.serializer().deserialize(decoder)
+        } catch (_: Exception) {
+            // consume a string -- legacy api compatibility
+            decoder.decodeString()
+            null
         }
     }
 
@@ -67,8 +67,8 @@ sealed interface Feed {
         /**
          * -1 广告
          */
-        val createdTime: Long = -1,
-        val updatedTime: Long = -1,
+        override val createdTime: Long = -1,
+        override val updatedTime: Long = -1,
         val voteupCount: Int = -1,
         val thanksCount: Int = -1,
         val commentCount: Int = -1,
@@ -126,6 +126,12 @@ sealed interface Feed {
         override val detailsText = "视频 · $voteCount 赞 · $commentCount 评论"
 
         override val navDestination = null
+
+        override val createdTime: Long
+            get() = -1
+
+        override val updatedTime: Long
+            get() = -1
     }
 
     @Serializable
@@ -139,7 +145,7 @@ sealed interface Feed {
         override val title: String,
         override val excerpt: String = "",
         /**
-         * 老API不�������持
+         * 老API不支持
          */
         val content: String = "",
         /**
@@ -171,6 +177,12 @@ sealed interface Feed {
             avatarSrc = author.avatarUrl,
             excerpt = excerpt,
         )
+
+        override val updatedTime: Long
+            get() = updated
+
+        override val createdTime: Long
+            get() = created
     }
 
     @Serializable
@@ -193,6 +205,12 @@ sealed interface Feed {
             get() = "想法"
         override val excerpt = null
         override val navDestination = null
+
+        override val updatedTime: Long
+            get() = -1
+
+        override val createdTime: Long
+            get() = -1
     }
 
     @Serializable
@@ -236,6 +254,11 @@ sealed interface Feed {
             questionId = id,
             title = title,
         )
+
+        override val updatedTime: Long
+            get() = -1
+        override val createdTime: Long
+            get() = created
     }
 
     @Serializable

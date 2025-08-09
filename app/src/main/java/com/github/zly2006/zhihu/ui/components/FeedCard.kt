@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -45,6 +46,7 @@ import kotlin.math.min
 fun FeedCard(
     item: BaseFeedViewModel.FeedDisplayItem,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 16.dp,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
@@ -90,7 +92,7 @@ fun FeedCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = horizontalPadding, vertical = 8.dp),
     ) {
         Card(
             modifier = Modifier

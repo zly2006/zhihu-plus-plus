@@ -77,6 +77,14 @@ class PeopleArticlesViewModel(
         get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,is_labeled,label_info"
 }
 
+class PeopleActivitiesViewModel(
+    val person: Person,
+    val sort: String = "created",
+) : BaseFeedViewModel() {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v3/moments/${person.id}/activities"
+}
+
 class PersonViewModel(
     val person: Person,
 ) : ViewModel() {
@@ -90,6 +98,12 @@ class PersonViewModel(
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
     val articlesFeedModel = PeopleArticlesViewModel(person)
+    val activitiesFeedModel = PeopleActivitiesViewModel(person)
+    val subFeedModels = arrayOf(
+        answersFeedModel,
+        articlesFeedModel,
+        activitiesFeedModel,
+    )
 
     suspend fun load(context: Context) {
         context as MainActivity
@@ -150,15 +164,10 @@ fun PeopleScreen(
 
     val pagerState = rememberPagerState(pageCount = { titles.size })
 
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, pagerState.currentPage) {
         try {
             viewModel.load(context)
-            // 根据当前页面加载对应数据
-            when (pagerState.currentPage) {
-                0 -> viewModel.answersFeedModel.loadMore(context)
-                1 -> viewModel.articlesFeedModel.loadMore(context)
-                // 其他页面暂时不加载数据
-            }
+            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(context)
         } catch (e: Exception) {
             Log.e("PeopleScreen", "Error loading person data", e)
             Toast
@@ -221,6 +230,7 @@ fun PeopleScreen(
                                 details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                 feed = null,
                             ),
+                            horizontalPadding = 4.dp,
                         ) {
                             onNavigate(
                                 Article(
@@ -253,6 +263,7 @@ fun PeopleScreen(
                                 details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                 feed = null,
                             ),
+                            horizontalPadding = 4.dp,
                         ) {
                             onNavigate(
                                 Article(
@@ -262,6 +273,27 @@ fun PeopleScreen(
                                     excerpt = it.excerpt,
                                 ),
                             )
+                        }
+                    }
+                }
+                2 -> {
+                    // 动态
+                    PaginatedList(
+                        items = viewModel.activitiesFeedModel.displayItems,
+                        onLoadMore = { viewModel.activitiesFeedModel.loadMore(context) },
+                        isEnd = { viewModel.activitiesFeedModel.isEnd },
+                        footer = ProgressIndicatorFooter,
+                        topContent = {
+                            item(0) {
+                                UserInfoHeader(viewModel, person)
+                            }
+                        },
+                    ) {
+                        FeedCard(
+                            it,
+                            horizontalPadding = 4.dp,
+                        ) {
+                            it.navDestination?.let(onNavigate)
                         }
                     }
                 }

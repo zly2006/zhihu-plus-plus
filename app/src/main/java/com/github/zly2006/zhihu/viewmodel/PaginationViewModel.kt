@@ -82,7 +82,7 @@ abstract class PaginationViewModel<T : Any>(
                 signFetchRequest(context)
             }
 
-            if (response.status == HttpStatusCode.Companion.OK) {
+            if (response.status == HttpStatusCode.OK) {
                 val json = response.body<JsonObject>()
                 val jsonArray = json["data"]!!.jsonArray
                 processResponse(
