@@ -601,6 +601,7 @@ private fun isSameYear(date1: Date, date2: Date): Boolean {
 
 @Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
 @Composable
+@Suppress("SpellCheckingInspection")
 private fun CommentItemPreview() {
     val comment = CommentModel(
         item = DataHolder.Comment(
@@ -647,6 +648,7 @@ private fun CommentItemPreview() {
 
 @Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
 @Composable
+@Suppress("SpellCheckingInspection")
 private fun NestedCommentPreview() {
     val comment = CommentModel(
         item = DataHolder.Comment(

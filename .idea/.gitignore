@@ -17,3 +17,6 @@
 /compiler.xml
 /detekt.xml
 /copilotDiffState.xml
+/kotlinc.xml
+/deviceManager.xml
+/AndroidProjectSystem.xml

@@ -2,7 +2,11 @@
   <dictionary name="project">
     <words>
       <w>favorited</w>
+      <w>nothelp</w>
+      <w>voteup</w>
       <w>voteups</w>
+      <w>webviewform</w>
+      <w>zhuanlan</w>
     </words>
   </dictionary>
 </component>

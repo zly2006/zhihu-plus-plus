@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+        Thread.setDefaultUncaughtExceptionHandler { _, e ->
             Log.e(TAG, "Uncaught exception", e)
             val intent = Intent(
                 Intent.ACTION_VIEW,
