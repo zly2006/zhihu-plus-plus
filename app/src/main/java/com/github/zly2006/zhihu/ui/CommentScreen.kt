@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -567,7 +568,11 @@ private fun CommentItem(
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    Icons.Outlined.ThumbUp,
+                    if (isLiked) {
+                        Icons.Filled.ThumbUp
+                    } else {
+                        Icons.Outlined.ThumbUp
+                    },
                     contentDescription = "点赞",
                     modifier = Modifier.size(16.dp),
                     tint = if (isLiked) {

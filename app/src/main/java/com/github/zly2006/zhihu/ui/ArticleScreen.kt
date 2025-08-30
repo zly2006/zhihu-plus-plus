@@ -5,6 +5,7 @@ package com.github.zly2006.zhihu.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
@@ -39,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
@@ -50,6 +52,8 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.*
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
@@ -326,12 +330,10 @@ fun ArticleActionsMenu(
 @Composable
 fun ArticleScreen(
     article: Article,
+    viewModel: ArticleViewModel,
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val viewModel: ArticleViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
-        ArticleViewModel(article, (context as? MainActivity)?.httpClient)
-    }
     val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
 
@@ -348,9 +350,6 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     // 下拉菜单按钮 - 包含朗读和分享功能
     var showActionsMenu by remember { mutableStateOf(false) }
-    // HTML 点击事件状态
-    var showHtmlDialog by remember { mutableStateOf(false) }
-    var clickedHtml by remember { mutableStateOf("") }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -358,6 +357,13 @@ fun ArticleScreen(
         if (scrollDelta > scrollDeltaThreshold) {
             isScrollingUp = currentScroll < previousScrollValue
             previousScrollValue = currentScroll
+        }
+
+        if (viewModel.rememberedScrollYSync) {
+            viewModel.rememberedScrollY.value = currentScroll
+        }
+        if (currentScroll == viewModel.rememberedScrollY.value && scrollState.maxValue != Int.MAX_VALUE) {
+            viewModel.rememberedScrollYSync = true
         }
     }
 
@@ -635,16 +641,32 @@ fun ArticleScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                     )
-                    Text(
-                        text = viewModel.authorBio,
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                    )
+                    if (viewModel.authorBio.isNotEmpty()) {
+                        Text(
+                            text = viewModel.authorBio,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                        )
+                    }
                 }
             }
 
             if (viewModel.content.isNotEmpty()) {
+                val coroutineScope = rememberCoroutineScope()
                 WebviewComp {
+                    it.setupUpWebviewClient {
+                        if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                            GlobalScope.launch(coroutineScope.coroutineContext) {
+                                val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                while (scrollState.maxValue < rememberedY) {
+                                    delay(100)
+                                }
+                                Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                scrollState.animateScrollTo(rememberedY)
+                                viewModel.rememberedScrollYSync = true
+                            }
+                        }
+                    }
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
                         Jsoup.parse(viewModel.content).apply {
@@ -792,6 +814,20 @@ fun ArticleScreenPreview() {
             "知乎用户",
             "",
         ),
+        viewModel = viewModel {
+            ArticleViewModel(
+                Article(
+                    "如何看待《狂暴之翼》中的人物设定？",
+                    ArticleType.Answer,
+                    123456789,
+                    "知乎用户",
+                    "知乎用户",
+                    "",
+                ),
+                null,
+                null,
+            )
+        },
     ) {}
 }
 
@@ -809,7 +845,7 @@ fun ArticleActionsMenuPreview() {
                     "知乎用户",
                     "",
                 ),
-                viewModel = androidx.lifecycle.viewmodel.compose.viewModel {
+                viewModel = viewModel {
                     ArticleViewModel(
                         Article(
                             "如何看待《狂暴之翼》中的人物设定？",
@@ -819,6 +855,7 @@ fun ArticleActionsMenuPreview() {
                             "知乎用户",
                             "",
                         ),
+                        null,
                         null,
                     )
                 },

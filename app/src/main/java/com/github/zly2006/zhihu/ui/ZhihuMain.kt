@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -38,6 +39,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.*
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
 
 @SuppressLint("RestrictedApi")
@@ -183,7 +185,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
             composable<Article> { navEntry ->
                 val article: Article = navEntry.toRoute()
-                ArticleScreen(article, activity::navigate)
+                val viewModel: ArticleViewModel = viewModel(navEntry) {
+                    ArticleViewModel(article, activity.httpClient, navEntry)
+                }
+                ArticleScreen(article, viewModel, activity::navigate)
             }
             composable<Follow> {
                 FollowScreen(activity::navigate)

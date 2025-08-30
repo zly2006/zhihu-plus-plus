@@ -335,7 +335,7 @@ fun WebView.loadZhihu(
     }
 }
 
-fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
+fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
     val context = this.context
     val assetLoader = WebViewAssetLoader
@@ -371,7 +371,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
             return super.shouldOverrideUrlLoading(view, request)
         }
 
-        override fun onPageFinished(view: WebView?, url: String?) {
+        override fun onPageFinished(view: WebView?, url: String) {
             super.onPageFinished(view, url)
 
             // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本
@@ -379,7 +379,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: (() -> Unit)? = null) {
                 view.injectClickListenerScript()
             }
 
-            onPageFinished?.invoke()
+            onPageFinished?.invoke(url)
         }
     }
 }

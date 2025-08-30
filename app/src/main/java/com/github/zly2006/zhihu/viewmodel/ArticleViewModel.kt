@@ -5,8 +5,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavBackStackEntry
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
@@ -31,6 +34,7 @@ import kotlinx.serialization.json.jsonPrimitive
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
+    private val navBackStackEntry: NavBackStackEntry?,
 ) : ViewModel() {
     var title by mutableStateOf("")
     var authorId by mutableStateOf("")
@@ -47,6 +51,20 @@ class ArticleViewModel(
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
+
+    // scroll fix
+    var rememberedScrollY = navBackStackEntry?.savedStateHandle?.getLiveData<Int>("scrollY", initialValue = 0)
+        ?: MutableLiveData<Int>(0)
+    var rememberedScrollYSync = true
+
+    init {
+        Log.i("zhihu-scroll", "me is $this, savedStateHandle is ${navBackStackEntry?.savedStateHandle}")
+        navBackStackEntry?.lifecycle?.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onPause(owner: LifecycleOwner) {
+                rememberedScrollYSync = false
+            }
+        })
+    }
 
     val isFavorited: Boolean
         get() = collections.any { it.isFavorited }
