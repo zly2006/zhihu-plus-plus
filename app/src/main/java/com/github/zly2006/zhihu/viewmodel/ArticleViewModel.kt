@@ -28,8 +28,10 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 class ArticleViewModel(
     private val article: Article,
@@ -233,6 +235,8 @@ class ArticleViewModel(
         }
     }
 
+    private val collectionOrder = mutableListOf<String>()
+
     fun loadCollections() {
         if (httpClient == null) return
         viewModelScope.launch {
@@ -249,7 +253,22 @@ class ArticleViewModel(
                         val jojo = collectionsResponse.body<JsonObject>()
                         val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
                         collections.clear()
-                        collections.addAll(collectionsData.data)
+                        collections.addAll(
+                            collectionsData.data
+                                .sortedWith { a, b ->
+                                    val indexA = collectionOrder.indexOf(a.id)
+                                    val indexB = collectionOrder.indexOf(b.id)
+                                    when {
+                                        indexA == -1 && indexB == -1 -> 0
+                                        // 把新的放前面
+                                        indexA == -1 -> -1
+                                        indexB == -1 -> 1
+                                        else -> indexA.compareTo(indexB)
+                                    }
+                                },
+                        )
+                        collectionOrder.clear()
+                        collectionOrder.addAll(collections.map { it.id })
                     }
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load collections", e)
@@ -258,12 +277,22 @@ class ArticleViewModel(
         }
     }
 
-    fun createNewCollection(title: String, description: String = "", isPublic: Boolean = false) {
-        // TODO: 实现创建新收藏夹的逻辑
-        // 参数:
-        // - title: 收藏夹标题
-        // - description: 收藏夹描述（可选）
-        // - isPublic: 是否公开（默认私有）
+    fun createNewCollection(context: Context, title: String, description: String = "", isPublic: Boolean = false) {
+        if (httpClient == null) return
+        viewModelScope.launch {
+            httpClient.post("https://www.zhihu.com/api/v4/collections") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("title", title)
+                        put("description", description)
+                        put("is_public", isPublic)
+                    },
+                )
+                signFetchRequest(context)
+            }
+            loadCollections()
+        }
     }
 
     fun toggleVoteUp(context: Context, newState: VoteUpState) {

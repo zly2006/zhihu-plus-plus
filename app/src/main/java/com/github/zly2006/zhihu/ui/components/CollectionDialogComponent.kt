@@ -35,6 +35,9 @@ fun CollectionDialogComponent(
     viewModel: ArticleViewModel,
     context: Context,
 ) {
+    // 新建收藏夹对话框状态
+    var showCreateDialog by remember { mutableStateOf(false) }
+
     val dialogTopPadding = if (LocalConfiguration.current.screenHeightDp > 500) {
         100.dp
     } else {
@@ -123,8 +126,7 @@ fun CollectionDialogComponent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    // TODO: 打开新建收藏夹对话框
-                                    viewModel.createNewCollection("新收藏夹", "")
+                                    showCreateDialog = true
                                 },
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
@@ -184,6 +186,15 @@ fun CollectionDialogComponent(
     ) {
         onDismiss()
     }
+
+    // 新建收藏夹对话框
+    CreateCollectionDialog(
+        showDialog = showCreateDialog,
+        onDismiss = { showCreateDialog = false },
+        onConfirm = { title, description ->
+            viewModel.createNewCollection(context, title, description)
+        },
+    )
 }
 
 @Composable
