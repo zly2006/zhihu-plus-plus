@@ -47,7 +47,10 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
 
@@ -139,9 +142,44 @@ class PersonViewModel(
     }
 }
 
+class HttpStatusException(
+    val status: HttpStatusCode,
+    val requestUrl: Url,
+    val bodyText: String,
+) : Exception() {
+    override val message: String
+        get() = "HTTP error: ${status.value} ${status.description} on $requestUrl: \n $bodyText"
+    
+    var dumpedCurlRequest: String? = null
+    
+    constructor(
+        response: HttpResponse,
+        dumpRequest: Boolean = false,
+    ) : this(
+        status = response.status,
+        requestUrl = response.request.url,
+        bodyText = runBlocking { response.bodyAsText() },
+    ) {
+        if (dumpRequest) {
+            dumpedCurlRequest = dumpCurlRequest(response)
+        }
+    }
+}
+
+fun dumpCurlRequest(response: HttpResponse): String {
+    val sb = StringBuilder()
+    sb.append("curl -X ${response.request.method.value} '${response.request.url}' ")
+    response.request.headers.forEach { key, values ->
+        values.forEach { value ->
+            sb.append("\\\n  -H '$key: $value' ")
+        }
+    }
+    return sb.toString()
+}
+
 suspend fun HttpResponse.raiseForStatus() = apply {
     if (status.value >= 400) {
-        throw RuntimeException("HTTP error: ${status.value} ${status.description} on ${request.url}: \n ${bodyAsText()}")
+        throw HttpStatusException(this, dumpRequest = true)
     }
 }
 
