@@ -749,47 +749,13 @@ fun ArticleScreen(
         showActionsMenu = false
     }
 
-    AnimatedVisibility(
-        visible = showCollectionDialog,
-    ) {
-        AlertDialog(
-            onDismissRequest = { showCollectionDialog = false },
-            title = { Text("选择收藏夹") },
-            text = {
-                Column {
-                    viewModel.collections.forEach { collection ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
-                                    viewModel.loadCollections()
-                                }.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = collection.title,
-                                modifier = Modifier.weight(1f),
-                                fontSize = 16.sp,
-                            )
-                            if (collection.isFavorited) {
-                                Icon(
-                                    imageVector = Icons.Filled.Bookmark,
-                                    contentDescription = "已收藏",
-                                    tint = Color(0xFFF57C00),
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showCollectionDialog = false }) {
-                    Text("关闭")
-                }
-            },
-        )
-    }
+    // 使用新的收藏夹对话框组件
+    CollectionDialogComponent(
+        showDialog = showCollectionDialog,
+        onDismiss = { showCollectionDialog = false },
+        viewModel = viewModel,
+        context = context,
+    )
 
     viewModel.httpClient?.let {
         CommentScreenComponent(
