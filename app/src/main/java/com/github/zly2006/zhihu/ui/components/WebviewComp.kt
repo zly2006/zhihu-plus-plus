@@ -13,12 +13,10 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.AttributeSet
+import android.util.Log
 import android.view.ViewGroup
 import android.view.Window
-import android.webkit.JavascriptInterface
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
+import android.webkit.*
 import android.widget.Toast
 import androidx.activity.ComponentDialog
 import androidx.browser.customtabs.CustomTabsIntent
@@ -30,15 +28,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
+import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
+import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
+import io.ktor.client.*
+import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.utils.io.jvm.javaio.*
@@ -343,8 +343,89 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
         .build()
+
+    // 设置WebChromeClient来监控控制台消息和加载进度
+    this.webChromeClient = object : WebChromeClient() {
+        override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+            consoleMessage?.let { msg ->
+                val logLevel = when (msg.messageLevel()) {
+                    ConsoleMessage.MessageLevel.ERROR -> Log.ERROR
+                    ConsoleMessage.MessageLevel.WARNING -> Log.WARN
+                    ConsoleMessage.MessageLevel.DEBUG -> Log.DEBUG
+                    else -> Log.INFO
+                }
+                Log.println(logLevel, "WebView-Console", "${msg.sourceId()}:${msg.lineNumber()} - ${msg.message()}")
+            }
+            return true
+        }
+
+        override fun onProgressChanged(view: WebView?, newProgress: Int) {
+            super.onProgressChanged(view, newProgress)
+            Log.d("WebView-Progress", "Page loading progress: $newProgress%")
+        }
+    }
+
     this.webViewClient = object : WebViewClientCompat() {
-        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
+        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+            val url = request.url.toString()
+
+            // 记录所有资源请求
+            Log.d("WebView-Resource", "Requesting: $url")
+
+            // 特别记录图片请求
+            if (url.contains(".jpg", true) ||
+                url.contains(".jpeg", true) ||
+                url.contains(".png", true) ||
+                url.contains(".gif", true) ||
+                url.contains(".webp", true) ||
+                url.contains(".svg", true)
+            ) {
+                Log.i("WebView-Image", "Loading image: $url")
+            }
+
+            return assetLoader.shouldInterceptRequest(request.url)
+        }
+
+        override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceErrorCompat) {
+            super.onReceivedError(view, request, error)
+            val url = request.url.toString()
+            val errorDescription = "${error.errorCode}: ${error.description}"
+
+            // 记录资源加载错误
+            Log.e("WebView-Error", "Failed to load resource: $url - $errorDescription")
+
+            // 特别记录图片加载失败
+            if (url.contains(".jpg", true) ||
+                url.contains(".jpeg", true) ||
+                url.contains(".png", true) ||
+                url.contains(".gif", true) ||
+                url.contains(".webp", true) ||
+                url.contains(".svg", true)
+            ) {
+                Log.e("WebView-Image-Error", "Failed to load image: $url - $errorDescription")
+            }
+        }
+
+        override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+            super.onReceivedHttpError(view, request, errorResponse)
+            val url = request.url.toString()
+            val statusCode = errorResponse.statusCode
+            val reasonPhrase = errorResponse.reasonPhrase ?: "unknown"
+
+            // 记录HTTP错误
+            Log.e("WebView-HTTP-Error", "HTTP error for: $url - $statusCode $reasonPhrase")
+
+            // 特别记录图片HTTP错误
+            if (url.contains(".jpg", true) ||
+                url.contains(".jpeg", true) ||
+                url.contains(".png", true) ||
+                url.contains(".gif", true) ||
+                url.contains(".webp", true) ||
+                url.contains(".svg", true)
+            ) {
+                Log.e("WebView-Image-HTTP-Error", "Image HTTP error: $url - $statusCode $reasonPhrase")
+            }
+        }
 
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
@@ -373,6 +454,79 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
 
         override fun onPageFinished(view: WebView?, url: String) {
             super.onPageFinished(view, url)
+            Log.i("WebView-Page", "Page finished loading: $url")
+
+            // 注入JavaScript来监控图片加载状态
+            if (BuildConfig.DEBUG) {
+                val imageMonitorScript =
+                    """
+                    (function() {
+                        // 监控所有图片元素的加载状态
+                        function monitorImages() {
+                            const images = document.querySelectorAll('img');
+                            images.forEach(function(img, index) {
+                                // 如果图片还没有加载完成
+                                if (!img.complete) {
+                                    img.addEventListener('load', function() {
+                                        console.log('Image loaded successfully: ' + img.src);
+                                    });
+                                    
+                                    img.addEventListener('error', function() {
+                                        console.error('Image failed to load: ' + img.src);
+                                        console.error('Image alt text: ' + img.alt);
+                                        console.error('Image data-original: ' + img.getAttribute('data-original'));
+                                    });
+                                } else if (img.naturalWidth === 0) {
+                                    // 图片已经"完成"但实际上是损坏的
+                                    console.error('Image appears to be broken: ' + img.src);
+                                }
+                            });
+                        }
+                        
+                        // 立即执行一次
+                        monitorImages();
+                        
+                        // 监控动态添加的图片
+                        const observer = new MutationObserver(function(mutations) {
+                            mutations.forEach(function(mutation) {
+                                mutation.addedNodes.forEach(function(node) {
+                                    if (node.nodeType === 1) { // Element node
+                                        if (node.tagName === 'IMG') {
+                                            // 新添加的图片元素
+                                            node.addEventListener('load', function() {
+                                                console.log('Dynamic image loaded successfully: ' + node.src);
+                                            });
+                                            node.addEventListener('error', function() {
+                                                console.error('Dynamic image failed to load: ' + node.src);
+                                            });
+                                        } else {
+                                            // 检查新添加元素内的图片
+                                            const imgs = node.querySelectorAll && node.querySelectorAll('img');
+                                            if (imgs) {
+                                                imgs.forEach(function(img) {
+                                                    img.addEventListener('load', function() {
+                                                        console.log('Nested image loaded successfully: ' + img.src);
+                                                    });
+                                                    img.addEventListener('error', function() {
+                                                        console.error('Nested image failed to load: ' + img.src);
+                                                    });
+                                                });
+                                            }
+                                        }
+                                    }
+                                });
+                            });
+                        });
+                        
+                        observer.observe(document.body, {
+                            childList: true,
+                            subtree: true
+                        });
+                    })();
+                    """.trimIndent()
+
+                view?.evaluateJavascript(imageMonitorScript, null)
+            }
 
             // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本
             if (view is CustomWebView) {

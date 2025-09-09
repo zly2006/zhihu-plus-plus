@@ -677,6 +677,15 @@ fun ArticleScreen(
                                         if (node.attr("class").contains("content_image")) {
                                             node.attr("src", node.attr("data-thumbnail"))
                                         }
+                                        if (node.attr("src").isEmpty()) {
+                                            if (node.attr("data-default-watermark-src").isNotEmpty()) {
+                                                node.attr("src", node.attr("data-default-watermark-src"))
+                                            } else {
+                                                context.mainExecutor.execute {
+                                                    Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
                                     }
                                     noscript.after(node)
                                 }
