@@ -149,9 +149,9 @@ class HttpStatusException(
 ) : Exception() {
     override val message: String
         get() = "HTTP error: ${status.value} ${status.description} on $requestUrl: \n $bodyText"
-    
+
     var dumpedCurlRequest: String? = null
-    
+
     constructor(
         response: HttpResponse,
         dumpRequest: Boolean = false,

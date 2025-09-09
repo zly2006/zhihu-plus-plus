@@ -118,43 +118,45 @@ abstract class PaginationViewModel<T : Any>(
             }
             if (false) {
                 context.mainExecutor.execute {
-                    AlertDialog.Builder(context)
+                    AlertDialog
+                        .Builder(context)
                         .setTitle("OK")
                         .setNeutralButton("复制curl") { _, _ ->
                             val curl = dumpCurlRequest(response)
-                            context.getSystemService(Context.CLIPBOARD_SERVICE)
+                            context
+                                .getSystemService(Context.CLIPBOARD_SERVICE)
                                 .let { it as android.content.ClipboardManager }
                                 .setPrimaryClip(
                                     ClipData.newPlainText(
                                         "curl",
-                                        curl
-                                    )
+                                        curl,
+                                    ),
                                 )
                             Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        }
-                        .show()
+                        }.show()
                 }
             }
         } catch (e: Exception) {
             if (e is HttpStatusException && BuildConfig.DEBUG) {
                 Log.e(this::class.simpleName, "Response: ${e.bodyText}", e)
                 context.mainExecutor.execute {
-                    AlertDialog.Builder(context)
+                    AlertDialog
+                        .Builder(context)
                         .setTitle("错误 ${e.status}")
                         .setMessage(e.bodyText)
                         .setNeutralButton("复制curl") { _, _ ->
                             val curl = e.dumpedCurlRequest
-                            context.getSystemService(Context.CLIPBOARD_SERVICE)
+                            context
+                                .getSystemService(Context.CLIPBOARD_SERVICE)
                                 .let { it as android.content.ClipboardManager }
                                 .setPrimaryClip(
                                     ClipData.newPlainText(
                                         "curl",
-                                        curl
-                                    )
+                                        curl,
+                                    ),
                                 )
                             Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        }
-                        .show()
+                        }.show()
                 }
             }
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)

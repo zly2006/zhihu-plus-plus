@@ -258,6 +258,14 @@ class ArticleViewModel(
         }
     }
 
+    fun createNewCollection(title: String, description: String = "", isPublic: Boolean = false) {
+        // TODO: 实现创建新收藏夹的逻辑
+        // 参数:
+        // - title: 收藏夹标题
+        // - description: 收藏夹描述（可选）
+        // - isPublic: 是否公开（默认私有）
+    }
+
     fun toggleVoteUp(context: Context, newState: VoteUpState) {
         if (httpClient == null) return
         viewModelScope.launch {
