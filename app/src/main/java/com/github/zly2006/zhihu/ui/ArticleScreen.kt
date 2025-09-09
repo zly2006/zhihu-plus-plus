@@ -671,10 +671,22 @@ fun ArticleScreen(
                         "https://www.zhihu.com/${article.type}/${article.id}",
                         Jsoup.parse(viewModel.content).apply {
                             select("noscript").forEach { noscript ->
+                                noscript.nextSibling()?.let { actualImg ->
+                                    if (actualImg.nodeName() == "img") {
+                                        if (actualImg.attr("data-actualsrc").isNotEmpty()) {
+                                            actualImg.attr("src", actualImg.attr("data-actualsrc"))
+                                            actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
+                                            noscript.remove()
+                                            return@forEach
+                                        }
+                                    }
+                                }
+
                                 if (noscript.childrenSize() > 0) {
                                     val node = noscript.child(0)
                                     if (node.tagName() == "img") {
                                         if (node.attr("class").contains("content_image")) {
+                                            // GIF 优化
                                             node.attr("src", node.attr("data-thumbnail"))
                                         }
                                         if (node.attr("src").isEmpty()) {
