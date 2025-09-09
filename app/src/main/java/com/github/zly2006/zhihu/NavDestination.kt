@@ -110,6 +110,11 @@ data class Person(
     }
 }
 
+@Serializable
+data class Video(
+    val id: Long,
+) : NavDestination
+
 fun resolveContent(uri: Uri): NavDestination? {
     if (uri.scheme == "http" || uri.scheme == "https") {
         if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
@@ -144,6 +149,9 @@ fun resolveContent(uri: Uri): NavDestination? {
                     // human-readable token
                     return Person(id = Person.EMPTY_ID, urlToken = urlToken)
                 }
+            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "video") {
+                val videoId = uri.pathSegments[1].toLongOrNull() ?: return null
+                return Video(id = videoId) // todo
             }
         } else if (uri.host == "zhuanlan.zhihu.com") {
             if (uri.pathSegments.size == 2 &&

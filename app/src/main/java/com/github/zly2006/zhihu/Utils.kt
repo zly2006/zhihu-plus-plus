@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.AccountData.json
 import io.ktor.client.request.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -11,15 +12,24 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.serializer
 import java.security.MessageDigest
 
 suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     val url = url.buildString()
+    val body = if (contentType() == ContentType.Application.Json) {
+        body as? String
+            ?: bodyType?.kotlinType?.let { type ->
+                json.encodeToString(serializer(type), body)
+            }
+    } else {
+        null
+    }
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
         header("x-zse-93", MainActivity.ZSE93)
         header(
             "x-zse-96",
-            (context as? MainActivity)?.signRequest96(url),
+            (context as? MainActivity)?.signRequest96(url, body),
         )
         header("x-requested-with", "fetch")
     }

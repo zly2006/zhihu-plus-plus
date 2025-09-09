@@ -667,10 +667,17 @@ fun ArticleScreen(
                             }
                         }
                     }
+                    it.contentId = article.id.toString()
                     it.loadZhihu(
                         "https://www.zhihu.com/${article.type}/${article.id}",
                         Jsoup.parse(viewModel.content).apply {
                             select("noscript").forEach { noscript ->
+                                /*
+                                 * 已修复的图片异常:
+                                 * https://www.zhihu.com/question/263764510/answer/273310677
+                                 * https://www.zhihu.com/question/21725193/answer/1931362214
+                                 * https://www.zhihu.com/question/419720398/answer/3155540572
+                                 */
                                 noscript.nextSibling()?.let { actualImg ->
                                     if (actualImg.nodeName() == "img") {
                                         if (actualImg.attr("data-actualsrc").isNotEmpty()) {

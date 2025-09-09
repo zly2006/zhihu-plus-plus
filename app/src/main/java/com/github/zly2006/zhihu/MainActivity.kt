@@ -360,10 +360,15 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    suspend fun signRequest96(url: String): String {
+    suspend fun signRequest96(url: String, body: String?): String {
         val dc0 = AccountData.data.cookies["d_c0"] ?: ""
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
-        val signSource = "$ZSE93+$pathname+$dc0"
+        val signSource = listOfNotNull(
+            ZSE93,
+            pathname,
+            dc0,
+            body,
+        ).joinToString("+")
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
         val timeStart = System.currentTimeMillis()
         val future = CompletableDeferred<String>()
