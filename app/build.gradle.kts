@@ -22,16 +22,6 @@ ktlint {
         exclude("**/generated/**")
         exclude("**/build/**")
     }
-    additionalEditorconfig.set(
-        mapOf(
-            "ktlint_standard_no-wildcard-imports" to "disabled",
-            "ktlint_standard_function-max-line-length" to "disabled",
-            "ktlint_standard_max-line-length" to "disabled",
-            "ktlint_standard_multiline-expression-wrapping" to "disabled",
-            "ktlint_standard_function-signature" to "disabled",
-            "ktlint_function_naming_ignore_when_annotated_with" to "Composable",
-        ),
-    )
 }
 
 android {

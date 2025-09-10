@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
@@ -134,10 +135,7 @@ fun HomeScreen(
                 onClick = {
                     val data = Json.encodeToString(viewModel.debugData)
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText(
-                        "data",
-                        data,
-                    )
+                    val clip = ClipData.newPlainText("data", data)
                     clipboard.setPrimaryClip(clip)
                     Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
                 },

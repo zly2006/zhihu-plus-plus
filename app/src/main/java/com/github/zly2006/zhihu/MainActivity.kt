@@ -374,12 +374,14 @@ class MainActivity : ComponentActivity() {
         val future = CompletableDeferred<String>()
         runOnUiThread {
             webview.evaluateJavascript("exports.encrypt('$md5')") {
-                val time = System.currentTimeMillis() - timeStart
-                Log.i(TAG, "Sign request: $url")
-                Log.i(TAG, "Sign source: $signSource")
-                Log.i(TAG, "Sign input: $md5")
-                Log.i(TAG, "Sign result: $it")
-                Log.i(TAG, "Sign time: $time ms")
+                if (BuildConfig.DEBUG) {
+                    val time = System.currentTimeMillis() - timeStart
+                    Log.i(TAG, "Sign request: $url")
+                    Log.i(TAG, "Sign source: $signSource")
+                    Log.i(TAG, "Sign input: $md5")
+                    Log.i(TAG, "Sign result: $it")
+                    Log.i(TAG, "Sign time: $time ms")
+                }
                 future.complete(it.trim('"'))
             }
         }
@@ -601,7 +603,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            override fun onError(utteranceId: String?) {
+                            @Deprecated("Deprecated in Java")
+                            override fun onError(p0: String?) { }
+
+                            override fun onError(utteranceId: String?, errorCode: Int) {
                                 if (utteranceId == "chunk_$currentIndex") {
                                     ttsState = TtsState.Error
                                 }
@@ -655,7 +660,11 @@ class MainActivity : ComponentActivity() {
 
     fun isSpeaking(): Boolean = textToSpeech?.isSpeaking ?: false
 
+    @Suppress("unused")
     companion object {
+        const val IOS = "5_2.0"
+        const val ANDROID = "4_2.0"
+        const val WEB = "3_2.0"
         const val ZSE93 = "101_3_3.0"
     }
 }
