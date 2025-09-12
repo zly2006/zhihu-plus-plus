@@ -10,15 +10,54 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,18 +70,24 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.*
+import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.Collections
+import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
-import io.ktor.client.call.*
-import io.ktor.client.request.*
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -70,7 +115,7 @@ fun AccountSettingScreen(
                     .get("https://www.zhihu.com/api/v4/me") {
                         signFetchRequest(context)
                     }.body<JsonObject>()
-                val self = AccountData.decodeJson<Person>(response)
+                val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
                 AccountData.saveData(
                     context,
                     data.copy(self = self),
@@ -117,7 +162,7 @@ fun AccountSettingScreen(
         }
         Text(
             "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
-            modifier = Modifier.Companion.combinedClickable(
+            modifier = Modifier.combinedClickable(
                 onLongClick = {
                     // Copy version number
                     val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
@@ -185,7 +230,8 @@ fun AccountSettingScreen(
                     }
                     Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
                     Intent(context, WebviewActivity::class.java).let {
-                        it.setData(qrContent.toUri())
+                        it.data = qrContent.toUri()
+                        it.clipData
                         context.startActivity(it)
                     }
                 },
@@ -567,7 +613,7 @@ fun AccountSettingScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
-                                        "${String.format("%.1f", stats.filterRate * 100)}%",
+                                        "%.1f%%".format(stats.filterRate * 100),
                                         style = MaterialTheme.typography.bodyLarge,
                                     )
                                 }

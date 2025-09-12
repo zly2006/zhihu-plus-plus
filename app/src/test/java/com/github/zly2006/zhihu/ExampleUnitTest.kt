@@ -1,6 +1,6 @@
 package com.github.zly2006.zhihu
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**

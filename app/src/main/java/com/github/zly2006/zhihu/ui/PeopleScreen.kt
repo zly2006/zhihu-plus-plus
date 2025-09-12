@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
@@ -179,7 +180,7 @@ fun dumpCurlRequest(response: HttpResponse): String {
 
 suspend fun HttpResponse.raiseForStatus() = apply {
     if (status.value >= 400) {
-        throw HttpStatusException(this, dumpRequest = true)
+        throw HttpStatusException(this, dumpRequest = BuildConfig.DEBUG)
     }
 }
 
