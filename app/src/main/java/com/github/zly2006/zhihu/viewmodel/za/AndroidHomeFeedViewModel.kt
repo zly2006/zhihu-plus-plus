@@ -10,13 +10,17 @@ import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.request.*
-import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
+import io.ktor.http.decodeURLPart
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.appendAll
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -46,9 +50,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
     override suspend fun fetchFeeds(context: Context) {
         try {
             val response = httpClient(context).get(initialUrl) {
-                AccountData.ANDROID_HEADERS.forEach { (key, value) ->
-                    header(key, value)
-                }
+                headers.appendAll(AccountData.ANDROID_HEADERS)
                 header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
             }
             if (response.status.isSuccess()) {
