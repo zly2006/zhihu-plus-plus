@@ -17,14 +17,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -327,7 +323,6 @@ fun AccountSettingScreen(
                             }
                         }
                     },
-//                    modifier = Modifier.weight(1f)
                 ) {
                     Text("重新fetch数据测试")
                 }
@@ -337,13 +332,9 @@ fun AccountSettingScreen(
                             throw Exception("测试异常")
                         }
                     },
-//                    modifier = Modifier.weight(1f)
                 ) {
                     Text("抛出异常测试")
                 }
-                Text("当前padding: ${DisplayPadding(innerPadding)}")
-                Text("statusBars: ${DisplayPadding(WindowInsets.statusBars.asPaddingValues())}")
-                Text("contentWindowInsets: ${DisplayPadding(ScaffoldDefaults.contentWindowInsets.asPaddingValues())}")
             }
         }
         Column {
