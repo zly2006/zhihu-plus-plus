@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
+import android.net.NetworkCapabilities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -159,8 +160,8 @@ class LocalRecommendationEngine(
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val activeNetwork = connectivityManager.activeNetwork
         val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-        networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    } catch (e: Exception) {
+        networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+    } catch (_: Exception) {
         false
     }
 
@@ -229,40 +230,6 @@ class LocalRecommendationEngine(
                 else -> "neutral"
             }
             userBehaviorAnalyzer.recordBehavior(feedId, action)
-        }
-    }
-
-    suspend fun refreshContent() {
-        withContext(Dispatchers.IO) {
-            // 创建新的爬虫任务
-            val tasks = mutableListOf<CrawlingTask>()
-
-            CrawlingReason.entries.forEach { reason ->
-                val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-                if (pendingCount < 2) {
-                    // 创建新任务
-                    val newTask = createTaskForReason(reason)
-                    tasks.add(newTask)
-                }
-            }
-
-            if (tasks.isNotEmpty()) {
-                dao.insertTasks(tasks)
-            }
-
-            // 执行一些高优先级任务
-            val highPriorityTasks = dao
-                .getTasksByStatus(CrawlingStatus.NotStarted)
-                .sortedByDescending { it.priority }
-                .take(3)
-
-            highPriorityTasks.forEach { task ->
-                try {
-                    crawlingExecutor.executeTask(task)
-                } catch (e: Exception) {
-                    // 忽略执行错误，继续处理其他任务
-                }
-            }
         }
     }
 

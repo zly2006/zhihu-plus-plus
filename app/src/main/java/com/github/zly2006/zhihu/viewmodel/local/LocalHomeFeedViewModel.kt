@@ -22,6 +22,7 @@ class LocalHomeFeedViewModel :
         try {
             if (!::recommendationEngine.isInitialized) {
                 recommendationEngine = LocalRecommendationEngine(context)
+                recommendationEngine.initialize()
             }
 
             // 获取本地推荐内容

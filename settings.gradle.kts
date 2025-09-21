@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Zhihu"
 include(":app")
+include(":local-recommendation-lib")
+include(":desktop-app")
