@@ -69,6 +69,7 @@ class ArticleViewModel(
     var collections = mutableStateListOf<Collection>()
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
+    var ipInfo by mutableStateOf<String?>(null)
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     // scroll fix
@@ -121,6 +122,7 @@ class ArticleViewModel(
                                 }
                                 updatedAt = answer.updatedTime
                                 createdAt = answer.createdTime
+                                ipInfo = answer.ipInfo
 
                                 (context as? MainActivity)?.postHistory(
                                     Article(
@@ -197,6 +199,7 @@ class ArticleViewModel(
                                 }
                                 updatedAt = article.updated
                                 createdAt = article.created
+                                ipInfo = article.ipInfo
 
                                 (context as? MainActivity)?.postHistory(
                                     Article(

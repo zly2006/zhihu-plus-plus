@@ -781,6 +781,13 @@ fun ArticleScreen(
                         fontSize = 11.sp,
                     )
                 }
+                if (viewModel.ipInfo != null) {
+                    Text(
+                        "IP属地：${viewModel.ipInfo}",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                    )
+                }
             }
         }
     }
