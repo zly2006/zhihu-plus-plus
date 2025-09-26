@@ -565,6 +565,16 @@ private fun CommentItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = comment.item.commentTag.firstOrNull {
+                    it.type == "ip_info"
+                }?.text ?: "",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             Spacer(modifier = Modifier.weight(1f))
 
             // 回复按钮
