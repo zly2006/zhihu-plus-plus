@@ -118,7 +118,10 @@ class CustomWebView : WebView {
     fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
         if (clicked.tagName() == "img") {
             val url =
-                clicked.attr("data-original").takeIf { it.isNotBlank() }
+                clicked.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
+                    "https://pic1.zhimg.com/$it"
+                }
+                    ?: clicked.attr("data-original").takeIf { it.isNotBlank() }
                     ?: clicked.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
                     ?: clicked.attr("src").takeIf { it.isNotBlank() }
             if (url != null) {
@@ -421,7 +424,10 @@ fun WebviewComp(
                         result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                     ) {
                         val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val dataOriginalUrl = imgElement?.attr("data-original")?.takeIf { it.isNotBlank() }
+                        val dataOriginalUrl =
+                            imgElement?.attr("data-original-token")?.takeIf { it.startsWith("v2-") }?.let {
+                                "https://pic1.zhimg.com/$it"
+                            } ?: imgElement?.attr("data-original")?.takeIf { it.isNotBlank() }
                         val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
                         if (url != null) {
                             menu.add("查看图片").setOnMenuItemClickListener {
