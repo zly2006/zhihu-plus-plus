@@ -460,7 +460,7 @@ object DataHolder {
         val canMore: Boolean = false,
         val author: Author,
         val replyToAuthor: Author? = null,
-        val authorTag: List<JsonElement> = emptyList(),
+        val authorTag: List<JsonObject> = emptyList(),
         val replyAuthorTag: List<JsonElement> = emptyList(),
         val contentTag: List<JsonElement> = emptyList(),
         val commentTag: List<CommentTag> = emptyList(),

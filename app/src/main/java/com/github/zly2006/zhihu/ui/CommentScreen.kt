@@ -81,6 +81,8 @@ import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
@@ -465,6 +467,29 @@ private fun CommentItem(
                             )
                         },
                     )
+
+                    val authorTag = comment.item.authorTag
+                        .firstOrNull()
+                        ?.get("text")
+                        ?.jsonPrimitive
+                        ?.contentOrNull
+
+                    if (authorTag != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = authorTag,
+                            fontSize = 12.sp,
+                            lineHeight = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                            modifier = Modifier
+//                                .border(
+//                                    width = 1.dp,
+//                                    color = Color.Gray,
+//                                    shape = RoundedCornerShape(3.dp),
+//                                ),
+                        )
+                    }
+
                     if (commentData.replyToAuthor != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -565,15 +590,19 @@ private fun CommentItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = comment.item.commentTag.firstOrNull {
+            val ipInfo = comment.item.commentTag
+                .firstOrNull {
                     it.type == "ip_info"
-                }?.text ?: "",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                }?.text
+            if (ipInfo != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = ipInfo,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
