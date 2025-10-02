@@ -357,6 +357,7 @@ object DataHolder {
     @Serializable
     sealed interface Thumbnail
 
+    @Suppress("unused")
     @Serializable
     @SerialName("image")
     data class ThumbnailRich(
@@ -366,6 +367,7 @@ object DataHolder {
         val height: Int,
     ) : Thumbnail
 
+    @Suppress("unused")
     @Serializable
     @SerialName("video")
     data class ThumbnailVideo(
@@ -376,6 +378,7 @@ object DataHolder {
         val height: Int,
     ) : Thumbnail
 
+    @Suppress("unused")
     @Serializable
     @JvmInline
     value class ThumbnailString(
@@ -502,15 +505,6 @@ object DataHolder {
         )
     }
 
-    @Serializable
-    data class CommentTag(
-        val type: String,
-        val text: String,
-        val color: String,
-        val nightColor: String,
-        val hasBorder: Boolean,
-    )
-
     data class ReferenceCount<T>(
         val value: T,
         var count: Int = 0,
@@ -562,7 +556,7 @@ object DataHolder {
                             AccountData.saveData(activity, AccountData.data)
                             view.evaluateJavascript("document.getElementsByTagName('html')[0].outerHTML") {
                                 val document = Jsoup.parse(it)
-                                Log.i("DataHolder", "Fetched data from $url")
+                                Log.i("DataHolder", "Fetched data from $url:\n$document")
                                 job.complete()
                             }
                         }
@@ -578,12 +572,12 @@ object DataHolder {
                     error("")
                 }
                 return
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 activity.mainExecutor.execute {
                     AlertDialog
                         .Builder(activity)
-                        .setTitle("登录过期")
-                        .setMessage("登录过期或无效，需重新登录")
+                        .setTitle("触发风控")
+                        .setMessage("请稍后尝试重新进入此页，或重新登录")
                         .setPositiveButton("重新登录") { _, _ ->
                             AccountData.delete(activity)
                             val myIntent = Intent(activity, LoginActivity::class.java)
@@ -652,15 +646,6 @@ object DataHolder {
         return extractedCount
     }
 
-    private fun removeAnswer(answerId: Long) {
-        val answer = answers[answerId]!!
-        val question = questions[answer.value.question.id]!!
-        if (--question.count == 0) {
-            questions.remove(question.value.id)
-        }
-        answers.remove(answerId)
-    }
-
     private fun Person?.mock() = Author(
         avatarUrl = this?.avatarUrl ?: "",
         avatarUrlTemplate = "",
@@ -676,56 +661,6 @@ object DataHolder {
         userType = this?.userType ?: "",
     )
 
-    /**
-     * {
-     *     "id": "fe6ae971a4f7768add7aba938a7e6619",
-     *     "url_token": "41-9-73-12",
-     *     "name": "面壁者罗辑",
-     *     "use_default_avatar": false,
-     *     "avatar_url": "https://picx.zhimg.com/v2-778b8e89b050cc742ccdfafff8346638_xl.jpg?source=32738c0c\u0026needBackground=1",
-     *     "avatar_url_template": "https://pic1.zhimg.com/v2-778b8e89b050cc742ccdfafff8346638_l.jpg?source=32738c0c\u0026needBackground=1",
-     *     "is_org": false,
-     *     "type": "people",
-     *     "url": "https://www.zhihu.com/api/v4/people/41-9-73-12",
-     *     "user_type": "people",
-     *     "headline": "物质告诉时空如何弯曲，时空告诉物质如何运动。",
-     *     "headline_render": "物质告诉时空如何弯曲，时空告诉物质如何运动。",
-     *     "gender": 1,
-     *     "is_advertiser": false,
-     *     "ip_info": "IP 属地辽宁",
-     *     "vip_info": {
-     *         "is_vip": false,
-     *         "vip_type": 0,
-     *         "rename_days": "0",
-     *         "entrance_v2": null,
-     *         "rename_frequency": 0,
-     *         "rename_await_days": 0
-     *     },
-     *     "kvip_info": {
-     *         "is_vip": false
-     *     },
-     *     "badge": [],
-     *     "badge_v2": {
-     *         "title": "",
-     *         "merged_badges": [],
-     *         "detail_badges": [],
-     *         "icon": "",
-     *         "night_icon": ""
-     *     },
-     *     "allow_message": true,
-     *     "is_following": false,
-     *     "is_followed": false,
-     *     "is_blocking": false,
-     *     "follower_count": 1448,
-     *     "answer_count": 264,
-     *     "articles_count": 54,
-     *     "available_medals_count": 0,
-     *     "employments": [],
-     *     "org_verify_status": null,
-     *     "is_realname": true,
-     *     "has_applying_column": false
-     * }
-     */
     @Serializable
     data class People(
         val id: String,
@@ -762,12 +697,12 @@ object DataHolder {
     fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {
             try {
-                if ("answer/$id" in feeds) {
+                if ("answer/$id" in feeds && id !in answers) {
                     val feed = feeds["answer/$id"]!!.target as Feed.AnswerTarget
                     callback(
                         Answer(
                             adminClosedComment = false,
-                            answerType = feed.answerType ?: "",
+                            answerType = "feed mock data",
                             author = feed.author.mock(),
                             canComment = CanComment(
                                 status = false,
@@ -797,14 +732,9 @@ object DataHolder {
                             voteupCount = feed.voteupCount,
                         ),
                     )
+                } else {
+                    answers[id]?.also { it.count++ }?.value?.let(callback)
                 }
-                answers[id]?.also { it.count++ }?.value?.let(callback)
-//                val response = httpClient.get("https://www.zhihu.com/api/v4/answers/$id") {
-//                    signFetchRequest(activity)
-//                }.body<JsonObject>()
-//                println(response)
-//                val target = AccountData.decodeJson<Feed.AnswerTarget>(response)
-//                println(target)
                 get(httpClient, "https://www.zhihu.com/answer/$id", activity)
                 callback(answers[id]?.also { it.count++ }?.value)
             } catch (e: UnknownHostException) {
@@ -825,9 +755,7 @@ object DataHolder {
 
     suspend fun getQuestion(activity: Context, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
         try {
-            if (id !in questions) {
-                get(httpClient, "https://www.zhihu.com/question/$id", activity)
-            }
+            get(httpClient, "https://www.zhihu.com/question/$id", activity)
             return questions[id]?.also { it.count++ }
         } catch (e: Exception) {
             Log.e("DataHolder", "Failed to get question $id", e)
@@ -852,7 +780,7 @@ object DataHolder {
     fun getArticleCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
         GlobalScope.launch {
             try {
-                if ("article/$id" in feeds) {
+                if ("article/$id" in feeds && id !in articles) {
                     val feed = feeds["article/$id"]!!.target as Feed.ArticleTarget
                     callback(
                         Article(
@@ -875,6 +803,8 @@ object DataHolder {
                             url = feed.url,
                         ),
                     )
+                } else {
+                    articles[id]?.also { it.count++ }?.value?.let(callback)
                 }
                 get(httpClient, "https://zhuanlan.zhihu.com/p/$id", activity)
                 callback(articles[id]?.also { it.count++ }?.value)
