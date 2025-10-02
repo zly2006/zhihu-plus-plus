@@ -492,7 +492,10 @@ fun ArticleScreen(
                         if (coordinates.size.height >= topBarHeight) {
                             topBarHeight = coordinates.size.height
                         }
-                    },
+                    }.background(
+                        color = MaterialTheme.colorScheme.background,
+                        shape = RectangleShape,
+                    ),
             ) {
                 AnimatedVisibility(
                     visible = showTopBar,
@@ -526,7 +529,9 @@ fun ArticleScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(
-                            modifier = Modifier.clip(RoundedCornerShape(50)),
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(
+                                color = Color(0xFF40B6F6),
+                            ),
                             horizontalArrangement = Arrangement.Start,
                         ) {
                             when (viewModel.voteUpState) {
