@@ -437,9 +437,7 @@ fun ArticleScreen(
     var topBarHeight by remember { mutableIntStateOf(0) }
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
-    // 下拉菜单按钮 - 包含朗读和分享功能
     var showActionsMenu by remember { mutableStateOf(false) }
-    // 导出对话框
     var showExportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollState.value) {
@@ -481,9 +479,10 @@ fun ArticleScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(
-                start = 16.dp,
-                end = 16.dp,
-                top = 0.dp,
+                horizontal = 16.dp,
+            ).background(
+                color = MaterialTheme.colorScheme.background,
+                shape = RectangleShape,
             ),
         topBar = {
             Box(
@@ -493,10 +492,7 @@ fun ArticleScreen(
                         if (coordinates.size.height >= topBarHeight) {
                             topBarHeight = coordinates.size.height
                         }
-                    }.background(
-                        color = MaterialTheme.colorScheme.background,
-                        shape = RectangleShape,
-                    ),
+                    },
             ) {
                 AnimatedVisibility(
                     visible = showTopBar,
@@ -526,7 +522,7 @@ fun ArticleScreen(
             Column {
                 if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
+                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(
