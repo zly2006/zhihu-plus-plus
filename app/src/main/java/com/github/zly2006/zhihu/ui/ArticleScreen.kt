@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
@@ -99,6 +100,7 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -180,6 +182,7 @@ fun ArticleActionsMenu(
     context: Context,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
+    onExportRequest: () -> Unit,
 ) {
     AnimatedVisibility(
         visible = showMenu,
@@ -370,6 +373,40 @@ fun ArticleActionsMenu(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 导出按钮
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onDismissRequest()
+                                    onExportRequest()
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.GetApp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
                         // 底部安全区域
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -402,6 +439,8 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     // 下拉菜单按钮 - 包含朗读和分享功能
     var showActionsMenu by remember { mutableStateOf(false) }
+    // 导出对话框
+    var showExportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -444,7 +483,6 @@ fun ArticleScreen(
             .padding(
                 start = 16.dp,
                 end = 16.dp,
-                bottom = 16.dp,
                 top = 0.dp,
             ),
         topBar = {
@@ -485,154 +523,159 @@ fun ArticleScreen(
             }
         },
         bottomBar = {
-            if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
+            Column {
+                if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                     Row(
-                        modifier = Modifier.clip(RoundedCornerShape(50)),
-                        horizontalArrangement = Arrangement.Start,
+                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        when (viewModel.voteUpState) {
-                            VoteUpState.Neutral -> {
-                                Button(
-                                    onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF40B6F6),
-                                        contentColor = Color.Black,
-                                    ),
-                                    shape = RectangleShape,
-                                    contentPadding = PaddingValues(horizontal = 0.dp),
-                                ) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.Filled.ArrowUpward, "赞同")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = viewModel.voteUpCount.toString())
-                                }
-                                Button(
-                                    onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF40B6F6),
-                                        contentColor = Color.Black,
-                                    ),
-                                    shape = RectangleShape,
-                                    modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
-                                    contentPadding = PaddingValues(horizontal = 0.dp),
-                                ) {
-                                    Icon(Icons.Filled.ArrowDownward, "反对")
-                                }
-                            }
-                            VoteUpState.Up -> {
-                                Button(
-                                    onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF0D47A1),
-                                        contentColor = Color.White,
-                                    ),
-                                    shape = RectangleShape,
-                                    contentPadding = PaddingValues(horizontal = 0.dp),
-                                ) {
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(Icons.Filled.ArrowUpward, "赞同")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = viewModel.voteUpCount.toString())
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-                            }
-                            VoteUpState.Down -> {
-                                Button(
-                                    onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF0D47A1),
-                                        contentColor = Color.White,
-                                    ),
-                                    shape = RectangleShape,
-                                    modifier = Modifier.height(ButtonDefaults.MinHeight),
-                                    contentPadding = PaddingValues(horizontal = 0.dp),
-                                ) {
-                                    Icon(Icons.Filled.ArrowDownward, "反对")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("反对")
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-                            }
-                        }
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        IconButton(
-                            onClick = { showCollectionDialog = true },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                            ),
+                        Row(
+                            modifier = Modifier.clip(RoundedCornerShape(50)),
+                            horizontalArrangement = Arrangement.Start,
                         ) {
-                            Icon(
-                                if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                contentDescription = "收藏",
-                            )
+                            when (viewModel.voteUpState) {
+                                VoteUpState.Neutral -> {
+                                    Button(
+                                        onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF40B6F6),
+                                            contentColor = Color.Black,
+                                        ),
+                                        shape = RectangleShape,
+                                        contentPadding = PaddingValues(horizontal = 0.dp),
+                                    ) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(Icons.Filled.ArrowUpward, "赞同")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(text = viewModel.voteUpCount.toString())
+                                    }
+                                    Button(
+                                        onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF40B6F6),
+                                            contentColor = Color.Black,
+                                        ),
+                                        shape = RectangleShape,
+                                        modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
+                                        contentPadding = PaddingValues(horizontal = 0.dp),
+                                    ) {
+                                        Icon(Icons.Filled.ArrowDownward, "反对")
+                                    }
+                                }
+
+                                VoteUpState.Up -> {
+                                    Button(
+                                        onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF0D47A1),
+                                            contentColor = Color.White,
+                                        ),
+                                        shape = RectangleShape,
+                                        contentPadding = PaddingValues(horizontal = 0.dp),
+                                    ) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(Icons.Filled.ArrowUpward, "赞同")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(text = viewModel.voteUpCount.toString())
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                }
+
+                                VoteUpState.Down -> {
+                                    Button(
+                                        onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF0D47A1),
+                                            contentColor = Color.White,
+                                        ),
+                                        shape = RectangleShape,
+                                        modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                        contentPadding = PaddingValues(horizontal = 0.dp),
+                                    ) {
+                                        Icon(Icons.Filled.ArrowDownward, "反对")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("反对")
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                }
+                            }
                         }
 
-                        if ((context as? MainActivity)?.ttsState?.isSpeaking == true) {
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                        ) {
                             IconButton(
-                                onClick = {
-                                    context.stopSpeaking()
-                                    Toast
-                                        .makeText(
-                                            context,
-                                            "已停止朗读",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
-                                },
-                                enabled = (
-                                    context.ttsState !in listOf(
-                                        TtsState.Error,
-                                        TtsState.Uninitialized,
-                                        TtsState.Initializing,
-                                    )
-                                ),
+                                onClick = { showCollectionDialog = true },
                                 colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = Color(0xFF4CAF50),
-                                    contentColor = Color.White,
+                                    containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
                                 ),
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.VolumeOff,
-                                    contentDescription = "停止朗读",
+                                    if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                    contentDescription = "收藏",
+                                )
+                            }
+
+                            if ((context as? MainActivity)?.ttsState?.isSpeaking == true) {
+                                IconButton(
+                                    onClick = {
+                                        context.stopSpeaking()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "已停止朗读",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    },
+                                    enabled = (
+                                        context.ttsState !in listOf(
+                                            TtsState.Error,
+                                            TtsState.Uninitialized,
+                                            TtsState.Initializing,
+                                        )
+                                    ),
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = Color(0xFF4CAF50),
+                                        contentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.VolumeOff,
+                                        contentDescription = "停止朗读",
+                                    )
+                                }
+                            }
+
+                            Button(
+                                onClick = { showComments = true },
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                ),
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "${viewModel.commentCount}")
+                            }
+
+                            IconButton(
+                                onClick = { showActionsMenu = true },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "更多选项",
                                 )
                             }
                         }
-
-                        Button(
-                            onClick = { showComments = true },
-                            contentPadding = PaddingValues(horizontal = 8.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            ),
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "${viewModel.commentCount}")
-                        }
-
-                        IconButton(
-                            onClick = { showActionsMenu = true },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        ) {
-                            Icon(
-                                Icons.Filled.MoreVert,
-                                contentDescription = "更多选项",
-                            )
-                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
         },
     ) { innerPadding ->
@@ -641,7 +684,6 @@ fun ArticleScreen(
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                    bottom = innerPadding.calculateBottomPadding(),
                 ).verticalScroll(scrollState),
         ) {
             Spacer(
@@ -789,6 +831,7 @@ fun ArticleScreen(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height((16 + 36).dp))
         }
     }
 
@@ -830,6 +873,7 @@ fun ArticleScreen(
         context = context,
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
+        onExportRequest = { showExportDialog = true },
     )
 
     BackHandler(showActionsMenu) {
@@ -853,6 +897,13 @@ fun ArticleScreen(
             content = article,
         )
     }
+
+    // 导出对话框
+    ExportDialogComponent(
+        showDialog = showExportDialog,
+        onDismiss = { showExportDialog = false },
+        viewModel = viewModel,
+    )
 }
 
 @Preview
@@ -915,6 +966,7 @@ fun ArticleActionsMenuPreview() {
                 context = LocalContext.current,
                 showMenu = true,
                 onDismissRequest = {},
+                onExportRequest = {},
             )
         }
     }
