@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -493,7 +494,7 @@ class ArticleViewModel(
             }
             return
         }
-        viewModelScope.launch {
+        GlobalScope.launch {
             try {
                 withContext(Dispatchers.Main) {
                     // 在主线程中创建和配置WebView
@@ -523,8 +524,23 @@ class ArticleViewModel(
                         override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             if (!isLoaded) {
-                                isLoaded = true
+                                //   = true
                                 webView.removeCallbacks(timeoutRunnable)
+                                // 确保 WebView 测量出足以容纳所有内容的尺寸
+                                val contentWidth = webView.measuredWidth // 使用当前的宽度（通常是屏幕宽度）
+                                // 获取整个网页内容的实际高度（很重要）
+                                val contentHeight = (webView.contentHeight * webView.scale).toInt()
+
+                                if (contentWidth > 0 && contentHeight > 0) {
+                                    // 1. 手动测量
+                                    webView.measure(
+                                        View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
+                                        View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY),
+                                    )
+
+                                    // 2. 手动布局
+                                    webView.layout(0, 0, contentWidth, contentHeight)
+                                }
                                 // 页面加载完成后，延迟一下确保渲染完成，然后截图
                                 view?.postDelayed({
                                     GlobalScope.launch {

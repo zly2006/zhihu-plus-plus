@@ -68,7 +68,7 @@ fun ExportDialogComponent(
 
     if (showDialog) {
         val coroutineScope = rememberCoroutineScope()
-        var commentCount by remember { mutableIntStateOf(10) }
+        var commentCount by remember { mutableIntStateOf(3) }
         var isExporting by remember { mutableStateOf(false) }
 
         Dialog(onDismissRequest = onDismiss) {
@@ -201,8 +201,8 @@ fun ExportDialogComponent(
                         Slider(
                             value = commentCount.toFloat(),
                             onValueChange = { commentCount = it.roundToInt() },
-                            valueRange = 0f..50f,
-                            steps = 49,
+                            valueRange = 0f..10f,
+                            steps = 9,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

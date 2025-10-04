@@ -7,6 +7,7 @@ import android.text.Html
 import android.text.util.Linkify
 import android.util.TypedValue
 import android.widget.TextView
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
@@ -475,19 +477,8 @@ private fun CommentItem(
                         ?.contentOrNull
 
                     if (authorTag != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = authorTag,
-                            fontSize = 12.sp,
-                            lineHeight = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-//                            modifier = Modifier
-//                                .border(
-//                                    width = 1.dp,
-//                                    color = Color.Gray,
-//                                    shape = RoundedCornerShape(3.dp),
-//                                ),
-                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        AuthorTag(authorTag)
                     }
 
                     if (commentData.replyToAuthor != null) {
@@ -732,6 +723,57 @@ private fun CommentItemPreview() {
         pinWebview = true,
         onNavigate = { },
     ) {
+    }
+}
+
+@Composable
+fun AuthorTag(authorTag: String) {
+    Box(
+        modifier = Modifier
+            .border(
+                width = 0.5.dp,
+                color = Color.Gray,
+                shape = RoundedCornerShape(3.dp),
+            ).padding(horizontal = 3.dp),
+    ) {
+        Text(
+            text = authorTag,
+            fontSize = 12.sp,
+            lineHeight = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Preview(backgroundColor = 0xFFFFFF, showBackground = true)
+@Composable
+fun CommentAuthorTagPreview() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "作者名",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable { },
+        )
+
+        Spacer(modifier = Modifier.width(4.dp))
+        AuthorTag("作者")
+
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            "回复",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = "zly2006",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable { },
+        )
     }
 }
 
