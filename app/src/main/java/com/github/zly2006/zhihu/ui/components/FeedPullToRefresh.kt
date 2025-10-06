@@ -26,7 +26,7 @@ fun FeedPullToRefresh(
         onRefresh = { viewModel.pullToRefresh(context) },
         indicator = {
             PullToRefreshDefaults.Indicator(
-                modifier = Modifier.Companion.align(Alignment.Companion.TopCenter),
+                modifier = Modifier.align(Alignment.TopCenter),
                 isRefreshing = viewModel.isPullToRefresh,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -34,7 +34,7 @@ fun FeedPullToRefresh(
             )
         },
         state = state,
-        modifier = Modifier.Companion.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         content = content,
     )
 }
