@@ -5,8 +5,10 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -117,6 +119,11 @@ fun FollowDynamicScreen(
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
+            topContent = {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            },
             footer = ProgressIndicatorFooter,
         ) { item ->
             FeedCard(item, onLike = {
@@ -175,6 +182,9 @@ fun FollowRecommendScreen(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
                     )
+                }
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             },
             onLoadMore = { viewModel.loadMore(context) },
