@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -110,9 +112,12 @@ fun FeedCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = horizontalPadding, vertical = 8.dp),
+            .padding(horizontal = horizontalPadding),
     ) {
         Card(
+            colors = CardDefaults.cardColors().copy(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .alpha(1 - min(actionAlpha, 0.5f))
@@ -165,7 +170,7 @@ fun FeedCard(
                     }
                 },
             elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDragging) 8.dp else 2.dp,
+                defaultElevation = 0.dp,
             ),
         ) {
             Column(
@@ -220,11 +225,13 @@ fun FeedCard(
                     ),
                 )
 
+                Spacer(modifier = Modifier.height(4.dp))
+
                 if (item.details.isNotEmpty()) {
                     Text(
                         text = item.details,
                         fontSize = 12.sp,
-                        lineHeight = 12.sp,
+                        lineHeight = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -305,4 +312,9 @@ fun FeedCard(
             }
         }
     }
+
+    HorizontalDivider(
+        modifier = Modifier.padding(vertical = 4.dp, horizontal = horizontalPadding),
+        thickness = 0.3.dp,
+    )
 }
