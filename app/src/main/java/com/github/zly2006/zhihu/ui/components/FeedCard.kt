@@ -191,6 +191,7 @@ fun FeedCard(
                         }
                     }
                     if (item.avatarSrc != null && item.authorName != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
