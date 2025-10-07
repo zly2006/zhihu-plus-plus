@@ -86,7 +86,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
@@ -875,7 +874,7 @@ fun AccountSettingScreen(
         }
         Button(
             onClick = {
-                GlobalScope.launch {
+                coroutineScope.launch {
                     when (val updateState = updateState) {
                         is UpdateState.NoUpdate, is UpdateState.Error -> {
                             UpdateManager.checkForUpdate(context)

@@ -18,6 +18,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.BuildConfig
@@ -38,7 +39,6 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlin.getValue
@@ -108,6 +108,7 @@ fun HomeScreen(
     }
 
     FeedPullToRefresh(viewModel) {
+        val coroutineScope = rememberCoroutineScope()
         PaginatedList(
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
@@ -120,7 +121,7 @@ fun HomeScreen(
             }) {
                 feed?.let {
                     DataHolder.putFeed(feed)
-                    GlobalScope.launch {
+                    coroutineScope.launch {
                         (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
                     }
                 }

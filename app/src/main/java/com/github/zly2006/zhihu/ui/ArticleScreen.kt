@@ -19,6 +19,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -63,8 +65,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,15 +80,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -111,24 +117,11 @@ import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import kotlin.math.abs
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.with
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.offset
-import androidx.compose.runtime.MutableFloatState
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import kotlin.math.min
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
@@ -192,7 +185,7 @@ fun createElasticLoadConnection(
     onLoadTriggered: (LoadDirection) -> Unit,
     canLoadUp: () -> Boolean,
     canLoadDown: () -> Boolean,
-    overscrollState: MutableFloatState
+    overscrollState: MutableFloatState,
 ): NestedScrollConnection {
     // 触发加载的阈值 (dp)
     val LOAD_THRESHOLD = 100f
@@ -254,23 +247,22 @@ fun createElasticLoadConnection(
 
         // 3. 检查并触发加载
         private fun checkLoadTrigger() {
-            // 向上加载 (overscrollDistance 为正，如 50dp)
             if (currentDirection == LoadDirection.UP && overscrollDistance >= LOAD_THRESHOLD) {
+                // 向上加载 (overscrollDistance 为正，如 50dp)
                 onLoadTriggered(LoadDirection.UP)
                 resetOverscroll()
-            }
-            // 向下加载 (overscrollDistance 为负，如 -50dp)
-            else if (currentDirection == LoadDirection.DOWN && overscrollDistance <= -LOAD_THRESHOLD) {
+            } else if (currentDirection == LoadDirection.DOWN && overscrollDistance <= -LOAD_THRESHOLD) {
+                // 向下加载 (overscrollDistance 为负，如 -50dp)
                 onLoadTriggered(LoadDirection.DOWN)
                 resetOverscroll()
-            }
-            // 用户反向滚动时，重置 overscroll
-            else if ((currentDirection == LoadDirection.UP && overscrollDistance < 0) || 
-                     (currentDirection == LoadDirection.DOWN && overscrollDistance > 0)) {
+            } else if ((currentDirection == LoadDirection.UP && overscrollDistance < 0) ||
+                (currentDirection == LoadDirection.DOWN && overscrollDistance > 0)
+            ) {
+                // 用户反向滚动时，重置 overscroll
                 resetOverscroll()
             }
         }
-        
+
         // 4. 用户抬起手指时的惯性滑动处理
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
             // 检查是否达到加载阈值
@@ -281,7 +273,7 @@ fun createElasticLoadConnection(
             }
             return available
         }
-        
+
         private fun resetOverscroll() {
             overscrollDistance = 0f
             currentDirection = LoadDirection.NONE
@@ -430,6 +422,7 @@ fun ArticleActionsMenu(
                                         modifier = Modifier.size(24.dp),
                                         strokeWidth = 2.dp,
                                     )
+
                                     else -> Icon(
                                         if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = null,
@@ -578,7 +571,9 @@ fun ArticleScreen(
                         val target = dest.target!!
                         if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
                             if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                                activity.navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
+                                activity.navController.currentBackStackEntry
+                                    ?.toRoute<Article>()
+                                    ?.type == ArticleType.Answer
                             ) {
                                 activity.navController.popBackStack()
                             }
@@ -906,7 +901,7 @@ fun ArticleScreen(
                 WebviewComp {
                     it.setupUpWebviewClient {
                         if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                            GlobalScope.launch(coroutineScope.coroutineContext) {
+                            coroutineScope.launch {
                                 val rememberedY = viewModel.rememberedScrollY.value ?: 0
                                 while (scrollState.maxValue < rememberedY) {
                                     delay(100)
@@ -987,7 +982,20 @@ fun ArticleScreen(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
+            AnimatedVisibility(
+                visible = overscroll.floatValue < -100f,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut(),
+            ) {
+                Text(
+                    "即将前往下一个回答",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            // fixme: 这个红框是为了显示边界，方便调试
+            Spacer(modifier = Modifier.height((16 + 36).dp).border(1.dp, Color.Red))
         }
     }
 
