@@ -123,8 +123,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.with
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.min
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
@@ -186,10 +191,11 @@ enum class LoadDirection { UP, DOWN, NONE }
 fun createElasticLoadConnection(
     onLoadTriggered: (LoadDirection) -> Unit,
     canLoadUp: () -> Boolean,
-    canLoadDown: () -> Boolean
+    canLoadDown: () -> Boolean,
+    overscrollState: MutableFloatState
 ): NestedScrollConnection {
     // 触发加载的阈值 (dp)
-    val LOAD_THRESHOLD = 50f
+    val LOAD_THRESHOLD = 100f
     // 滚动灵敏度降低的比例
     val DAMPING_FACTOR = 0.5f
 
@@ -206,16 +212,10 @@ fun createElasticLoadConnection(
 
             // 如果已经处于 overscroll 状态，则父 Composable（也就是这里的 connection）开始介入
             if (overscrollDistance != 0f) {
-                // 1.1 应用灵敏度降低
-                val consumed = available.copy(y = available.y * DAMPING_FACTOR)
-
-                // 1.2 更新 overscroll 距离
-                overscrollDistance += consumed.y
-
-                // 1.3 检查是否达到加载阈值
-                checkLoadTrigger()
-
-                return consumed // 告诉 LazyColumn，父 Composable 消耗了这部分滚动
+                overscrollDistance = min(LOAD_THRESHOLD + 10, overscrollDistance + available.y * DAMPING_FACTOR)
+                overscrollState.floatValue = overscrollDistance
+                // 不在这里检查触发
+                return available
             }
             return Offset.Zero
         }
@@ -241,17 +241,10 @@ fun createElasticLoadConnection(
                 if (canLoad) {
                     // 2.1 记录方向
                     currentDirection = if (isScrollingUp) LoadDirection.UP else LoadDirection.DOWN
-
-                    // 2.2 应用灵敏度降低
-                    val consumedByParent = available.copy(y = available.y * DAMPING_FACTOR)
-
-                    // 2.3 累加 overscroll 距离
-                    overscrollDistance += consumedByParent.y
-
-                    // 2.4 检查是否达到加载阈值
-                    checkLoadTrigger()
-
-                    return consumedByParent // 返回被父 Composable 消耗的距离
+                    overscrollDistance = min(LOAD_THRESHOLD + 10, overscrollDistance + available.y * DAMPING_FACTOR)
+                    overscrollState.floatValue = overscrollDistance
+                    // 不在这里检查触发
+                    return available
                 }
             }
 
@@ -280,14 +273,19 @@ fun createElasticLoadConnection(
         
         // 4. 用户抬起手指时的惯性滑动处理
         override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-            // 当惯性滑动结束，如果 overscrollDistance 还没有归零，这里可以添加一个动画让它平滑归零
-            resetOverscroll() // 简单实现：直接重置
+            // 检查是否达到加载阈值
+            checkLoadTrigger()
+            // 如果没有触发，重置 overscroll
+            if (overscrollDistance != 0f) {
+                resetOverscroll()
+            }
             return available
         }
         
         private fun resetOverscroll() {
             overscrollDistance = 0f
             currentDirection = LoadDirection.NONE
+            overscrollState.floatValue = 0f
         }
     }
 }
@@ -567,6 +565,8 @@ fun ArticleScreen(
     var overscrollAccumulated by remember { mutableFloatStateOf(0f) }
     var navigatingToNextAnswer by remember { mutableStateOf(false) }
 
+    val overscroll = remember { mutableFloatStateOf(0f) }
+
     val nestedScrollConnection = remember {
         createElasticLoadConnection(
             onLoadTriggered = { direction ->
@@ -588,7 +588,8 @@ fun ArticleScreen(
                 }
             },
             canLoadUp = { false }, // 不支持向上加载
-            canLoadDown = { article.type == ArticleType.Answer } // 只有回答支持向下加载
+            canLoadDown = { article.type == ArticleType.Answer }, // 只有回答支持向下加载
+            overscrollState = overscroll,
         )
     }
 
@@ -635,7 +636,7 @@ fun ArticleScreen(
             ).background(
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
-            ).nestedScroll(nestedScrollConnection),
+            ),
         topBar = {
             Box(
                 modifier = Modifier
@@ -837,7 +838,9 @@ fun ArticleScreen(
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ).verticalScroll(scrollState),
+                ).nestedScroll(nestedScrollConnection)
+                .verticalScroll(scrollState)
+                .offset { IntOffset(0, overscroll.floatValue.toInt()) },
         ) {
             Spacer(
                 modifier = Modifier.height(
