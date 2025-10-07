@@ -73,14 +73,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
@@ -112,6 +117,14 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import kotlin.math.abs
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.with
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
@@ -166,6 +179,118 @@ data class CollectionResponse(
     val data: List<Collection>,
     val paging: Paging,
 )
+
+// 模拟加载方向和状态
+enum class LoadDirection { UP, DOWN, NONE }
+
+fun createElasticLoadConnection(
+    onLoadTriggered: (LoadDirection) -> Unit,
+    canLoadUp: () -> Boolean,
+    canLoadDown: () -> Boolean
+): NestedScrollConnection {
+    // 触发加载的阈值 (dp)
+    val LOAD_THRESHOLD = 50f
+    // 滚动灵敏度降低的比例
+    val DAMPING_FACTOR = 0.5f
+
+    // 追踪超出边界的滚动距离
+    var overscrollDistance = 0f
+    var currentDirection = LoadDirection.NONE
+
+    return object : NestedScrollConnection {
+        // 1. 拦截滚动之前 (在 LazyColumn 滚动到尽头时触发)
+        // 'available' 是用户手指移动的距离
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            // 只关心拖拽手势 (用户手指)
+            if (source != NestedScrollSource.UserInput) return Offset.Zero
+
+            // 如果已经处于 overscroll 状态，则父 Composable（也就是这里的 connection）开始介入
+            if (overscrollDistance != 0f) {
+                // 1.1 应用灵敏度降低
+                val consumed = available.copy(y = available.y * DAMPING_FACTOR)
+
+                // 1.2 更新 overscroll 距离
+                overscrollDistance += consumed.y
+
+                // 1.3 检查是否达到加载阈值
+                checkLoadTrigger()
+
+                return consumed // 告诉 LazyColumn，父 Composable 消耗了这部分滚动
+            }
+            return Offset.Zero
+        }
+
+        // 2. 拦截滚动之后 (在 LazyColumn 无法再滚动时触发)
+        // 'consumed' 是 LazyColumn 自身消耗的距离 (例如，列表未到尽头)
+        // 'available' 是 LazyColumn 未消耗完的距离 (例如，列表到尽头后，用户继续拖拽)
+        override fun onPostScroll(
+            consumed: Offset,
+            available: Offset,
+            source: NestedScrollSource,
+        ): Offset {
+            if (source != NestedScrollSource.UserInput) return Offset.Zero
+
+            // 只有当 LazyColumn 无法滚动（available != Offset.Zero）时才进入弹性逻辑
+            if (available.y != 0f) {
+                val isScrollingUp = available.y > 0 // 向上滚动 (手指向下拖拽) -> 加载上一段
+                val isScrollingDown = available.y < 0 // 向下滚动 (手指向上拖拽) -> 加载下一段
+
+                // 检查是否允许加载
+                val canLoad = (isScrollingUp && canLoadUp()) || (isScrollingDown && canLoadDown())
+
+                if (canLoad) {
+                    // 2.1 记录方向
+                    currentDirection = if (isScrollingUp) LoadDirection.UP else LoadDirection.DOWN
+
+                    // 2.2 应用灵敏度降低
+                    val consumedByParent = available.copy(y = available.y * DAMPING_FACTOR)
+
+                    // 2.3 累加 overscroll 距离
+                    overscrollDistance += consumedByParent.y
+
+                    // 2.4 检查是否达到加载阈值
+                    checkLoadTrigger()
+
+                    return consumedByParent // 返回被父 Composable 消耗的距离
+                }
+            }
+
+            // 列表没有到尽头，或者不允许加载，则不进行 overscroll 处理
+            return Offset.Zero
+        }
+
+        // 3. 检查并触发加载
+        private fun checkLoadTrigger() {
+            // 向上加载 (overscrollDistance 为正，如 50dp)
+            if (currentDirection == LoadDirection.UP && overscrollDistance >= LOAD_THRESHOLD) {
+                onLoadTriggered(LoadDirection.UP)
+                resetOverscroll()
+            }
+            // 向下加载 (overscrollDistance 为负，如 -50dp)
+            else if (currentDirection == LoadDirection.DOWN && overscrollDistance <= -LOAD_THRESHOLD) {
+                onLoadTriggered(LoadDirection.DOWN)
+                resetOverscroll()
+            }
+            // 用户反向滚动时，重置 overscroll
+            else if ((currentDirection == LoadDirection.UP && overscrollDistance < 0) || 
+                     (currentDirection == LoadDirection.DOWN && overscrollDistance > 0)) {
+                resetOverscroll()
+            }
+        }
+        
+        // 4. 用户抬起手指时的惯性滑动处理
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            // 当惯性滑动结束，如果 overscrollDistance 还没有归零，这里可以添加一个动画让它平滑归零
+            resetOverscroll() // 简单实现：直接重置
+            return available
+        }
+        
+        private fun resetOverscroll() {
+            overscrollDistance = 0f
+            currentDirection = LoadDirection.NONE
+        }
+    }
+}
 
 enum class VoteUpState(
     val key: String,
@@ -439,6 +564,33 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var overscrollAccumulated by remember { mutableFloatStateOf(0f) }
+    var navigatingToNextAnswer by remember { mutableStateOf(false) }
+
+    val nestedScrollConnection = remember {
+        createElasticLoadConnection(
+            onLoadTriggered = { direction ->
+                if (direction == LoadDirection.DOWN && !navigatingToNextAnswer) {
+                    navigatingToNextAnswer = true
+                    viewModel.viewModelScope.launch {
+                        val dest = viewModel.nextAnswerFuture.await()
+                        val activity = context as? MainActivity ?: return@launch
+                        val target = dest.target!!
+                        if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
+                            if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                                activity.navController.currentBackStackEntry?.toRoute<Article>()?.type == ArticleType.Answer
+                            ) {
+                                activity.navController.popBackStack()
+                            }
+                            onNavigate(target.navDestination)
+                        }
+                    }
+                }
+            },
+            canLoadUp = { false }, // 不支持向上加载
+            canLoadDown = { article.type == ArticleType.Answer } // 只有回答支持向下加载
+        )
+    }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
@@ -483,7 +635,7 @@ fun ArticleScreen(
             ).background(
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
-            ),
+            ).nestedScroll(nestedScrollConnection),
         topBar = {
             Box(
                 modifier = Modifier
@@ -837,7 +989,6 @@ fun ArticleScreen(
     }
 
     if (article.type == ArticleType.Answer && buttonSkipAnswer) {
-        var navigatingToNextAnswer by remember { mutableStateOf(false) }
         DraggableRefreshButton(
             onClick = {
                 navigatingToNextAnswer = true
