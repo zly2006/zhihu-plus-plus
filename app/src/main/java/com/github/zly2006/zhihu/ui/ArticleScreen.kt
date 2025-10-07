@@ -995,7 +995,7 @@ fun ArticleScreen(
                 )
             }
             // fixme: 这个红框是为了显示边界，方便调试
-            Spacer(modifier = Modifier.height((16 + 36).dp).border(1.dp, Color.Red))
+            Spacer(modifier = Modifier.height((16 + 36).dp))
         }
     }
 
