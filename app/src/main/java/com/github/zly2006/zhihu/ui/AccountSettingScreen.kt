@@ -75,8 +75,10 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.SwipeDirection
 import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
+import com.github.zly2006.zhihu.ui.components.DropdownSettingItem
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
@@ -497,6 +499,33 @@ fun AccountSettingScreen(
                     isTitleAutoHide.value = it
                     preferences.edit { putBoolean("titleAutoHide", it) }
                 },
+            )
+
+            val swipeDirection = remember {
+                mutableStateOf(
+                    SwipeDirection.valueOf(
+                        preferences.getString(
+                            "swipeDirection",
+                            SwipeDirection.Horizontal.name
+                        )!!
+                    )
+                )
+            }
+            DropdownSettingItem(
+                title = "切换回答滑动方向",
+                description = "设置在回答之间切换时使用的手势",
+                selectedValue = swipeDirection.value,
+                values = SwipeDirection.values().toList(),
+                onValueChange = {
+                    swipeDirection.value = it
+                    preferences.edit { putString("swipeDirection", it.name) }
+                },
+                valueToString = {
+                    when (it) {
+                        SwipeDirection.Horizontal -> "左右滑动"
+                        SwipeDirection.Vertical -> "上下滑动"
+                    }
+                }
             )
 
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
