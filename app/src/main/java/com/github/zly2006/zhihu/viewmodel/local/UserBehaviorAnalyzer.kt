@@ -34,6 +34,7 @@ class UserBehaviorAnalyzer(
 
     /**
      * 获取用户偏好分析（简化版本）
+     * 优化：使用更高效的计算方式
      */
     suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.IO) {
         val recentBehaviors = dao.getBehaviorsByActionSince(
@@ -41,25 +42,24 @@ class UserBehaviorAnalyzer(
             System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L,
         )
 
-        val preferenceWeights = mutableMapOf<CrawlingReason, Double>()
-
-        // 基于用户行为调整推荐权重
-        recentBehaviors.forEach { behavior ->
-            // 简化的偏好分析，实际可以更复杂
-            when (behavior.action) {
-                "like" -> {
-                    CrawlingReason.entries.forEach { reason ->
-                        preferenceWeights[reason] = (preferenceWeights[reason] ?: 0.0) + 0.1
-                    }
+        // 优化：使用 groupingBy 和 fold 来减少重复遍历
+        val actionWeights = mapOf(
+            "like" to 0.1,
+            "share" to 0.2
+        )
+        
+        // 计算每个原因的总权重
+        return@withContext recentBehaviors
+            .groupingBy { it.action }
+            .eachCount()
+            .entries
+            .fold(mutableMapOf<CrawlingReason, Double>()) { acc, (action, count) ->
+                val weight = actionWeights[action] ?: 0.0
+                val totalWeight = weight * count
+                CrawlingReason.entries.forEach { reason ->
+                    acc[reason] = (acc[reason] ?: 0.0) + totalWeight
                 }
-                "share" -> {
-                    CrawlingReason.entries.forEach { reason ->
-                        preferenceWeights[reason] = (preferenceWeights[reason] ?: 0.0) + 0.2
-                    }
-                }
+                acc
             }
-        }
-
-        preferenceWeights
     }
 }
