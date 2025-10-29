@@ -14,19 +14,32 @@ object HTMLDecoder : KSerializer<String> {
         encoder.encodeString(value)
     }
 
+    // Compile regex once for better performance
+    private val htmlEntityRegex = Regex("&(?:quot|lt|gt|nbsp|apos|amp|#39|#x2F|#x27|#x60|#x3D);")
+    
+    // Map for entity replacements
+    private val entityMap = mapOf(
+        "&quot;" to "\"",
+        "&lt;" to "<",
+        "&gt;" to ">",
+        "&nbsp;" to " ",
+        "&apos;" to "'",
+        "&#39;" to "'",
+        "&#x2F;" to "/",
+        "&#x27;" to "'",
+        "&#x60;" to "`",
+        "&#x3D;" to "=",
+        "&amp;" to "&"
+    )
+
     override fun deserialize(decoder: Decoder): String {
         val string = decoder.decodeString()
-        return string
-            .replace("&quot;", "\"")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&nbsp;", " ")
-            .replace("&apos;", "'")
-            .replace("&#39;", "'")
-            .replace("&#x2F;", "/")
-            .replace("&#x27;", "'")
-            .replace("&#x60;", "`")
-            .replace("&#x3D;", "=")
-            .replace("&amp;", "&")
+        // Early return if no HTML entities found
+        if (!string.contains('&')) return string
+        
+        // Use regex replace for single-pass decoding
+        return htmlEntityRegex.replace(string) { matchResult ->
+            entityMap[matchResult.value] ?: matchResult.value
+        }
     }
 }

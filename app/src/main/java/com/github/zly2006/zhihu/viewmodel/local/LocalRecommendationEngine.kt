@@ -49,19 +49,15 @@ class LocalRecommendationEngine(
             // 获取用户偏好权重
             val userPreferences = userBehaviorAnalyzer.getUserPreferences()
 
-            // 从各个推荐原因获取内容并按权重排序
-            val allResults = mutableListOf<CrawlingResult>()
-
-            CrawlingReason.entries.forEach { reason ->
-                val weight = userPreferences[reason] ?: getDefaultWeight(reason)
-                val results = dao.getResultsByReason(reason)
-
-                // 根据权重调整分数并添加到结果中
-                val weightedResults = results.map { result ->
-                    result.copy(score = result.score * weight)
+            // 优化：使用 flatMap 和 asSequence 减少中间集合创建
+            val allResults = CrawlingReason.entries.asSequence()
+                .flatMap { reason ->
+                    val weight = userPreferences[reason] ?: getDefaultWeight(reason)
+                    dao.getResultsByReason(reason).asSequence().map { result ->
+                        result.copy(score = result.score * weight)
+                    }
                 }
-                allResults.addAll(weightedResults)
-            }
+                .toList()
 
             // 按分数排序并取前N个，同时确保多样性
             val topResults = allResults
@@ -104,21 +100,24 @@ class LocalRecommendationEngine(
 
     /**
      * 确保有足够的待处理任务
+     * 优化：减少重复的任务创建
      */
     private suspend fun ensurePendingTasks() {
-        val tasks = mutableListOf<CrawlingTask>()
-
-        CrawlingReason.entries.forEach { reason ->
-            val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-            val inProgressCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.InProgress)
-
-            // 如果待处理和进行中的任务总数少于2个，创建新任务
-            if (pendingCount + inProgressCount < 2) {
-                repeat(3 - pendingCount - inProgressCount) {
-                    tasks.add(createTaskForReason(reason))
-                }
+        // 优化：批量创建任务以减少循环次数
+        val tasks = CrawlingReason.entries.asSequence()
+            .mapNotNull { reason ->
+                val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
+                val inProgressCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.InProgress)
+                
+                // 如果待处理和进行中的任务总数少于2个，返回需要创建的数量
+                val needed = 3 - pendingCount - inProgressCount
+                if (needed > 0) reason to needed else null
             }
-        }
+            .flatMap { (reason, count) ->
+                // 为每个原因创建所需数量的任务
+                (1..count).map { createTaskForReason(reason) }
+            }
+            .toList()
 
         if (tasks.isNotEmpty()) {
             dao.insertTasks(tasks)
