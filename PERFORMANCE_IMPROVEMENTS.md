@@ -60,6 +60,27 @@ This document outlines the performance optimizations that have been made to the 
 - Reduced time complexity from O(n × m) to O(n + m)
 - More efficient for large behavior datasets
 
+### 4. CrawlingExecutor - Code Deduplication (✅ Implemented)
+
+**Location**: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/local/CrawlingExecutor.kt`
+
+**Problem**:
+- 5 similar task execution methods with ~95% duplicated code
+- Each method repeated the same pattern: fetch, parse, map, filter
+- Approximately 120 lines of nearly identical code
+
+**Solution**:
+- Created a generic `fetchAndProcessFeeds()` helper method
+- Parameterized the differences (URL, reason, score multiplier, filter)
+- Refactored all task methods to use the helper
+
+**Performance Impact**:
+- Reduced code from ~120 lines to ~40 lines (67% reduction)
+- Easier to maintain and update
+- Consistent error handling across all task types
+- Single point of modification for future API changes
+- Reduced binary size due to less code duplication
+
 ## Known Issues and Recommendations
 
 ### 1. GlobalScope Usage (⚠️ Code Smell)
