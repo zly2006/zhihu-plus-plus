@@ -62,11 +62,18 @@ class CrawlingExecutor(
         }
     }
 
-    private suspend fun executeFollowingTask(task: CrawlingTask): List<CrawlingResult> {
-        // 参考FollowRecommendViewModel的实现
+    /**
+     * Generic helper to fetch and process feeds from an API endpoint
+     * Reduces code duplication across task execution methods
+     */
+    private suspend fun fetchAndProcessFeeds(
+        url: String,
+        taskId: Long,
+        reason: CrawlingReason,
+        scoreMultiplier: Double = 1.0,
+        filter: (Feed) -> Boolean = { true }
+    ): List<CrawlingResult> {
         val httpClient = AccountData.httpClient(context)
-        val url = "https://api.zhihu.com/moments_v3?feed_type=recommend"
-
         val response = httpClient.get(url)
         val jsonData = Json.parseToJsonElement(response.bodyAsText())
         val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
@@ -74,69 +81,8 @@ class CrawlingExecutor(
         return feedArray.mapNotNull { feedElement ->
             try {
                 val feed = AccountData.decodeJson<Feed>(feedElement)
-                createCrawlingResult(feed, task.id, CrawlingReason.Following)
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-
-    private suspend fun executeTrendingTask(task: CrawlingTask): List<CrawlingResult> {
-        // 参考HomeFeedViewModel的实现
-        val httpClient = AccountData.httpClient(context)
-        val url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20"
-
-        val response = httpClient.get(url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
-
-        return feedArray.mapNotNull { feedElement ->
-            try {
-                val feed = AccountData.decodeJson<Feed>(feedElement)
-                createCrawlingResult(feed, task.id, CrawlingReason.Trending, 1.2) // 热门内容加权
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-
-    private suspend fun executeUpvotedQuestionTask(task: CrawlingTask): List<CrawlingResult> {
-        // 参考QuestionFeedViewModel的实现
-        // 从URL中提取问题ID
-        val questionId = extractQuestionIdFromUrl(task.url) ?: return emptyList()
-
-        val httpClient = AccountData.httpClient(context)
-        val url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20"
-
-        val response = httpClient.get(url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
-
-        return feedArray.mapNotNull { feedElement ->
-            try {
-                val feed = AccountData.decodeJson<Feed>(feedElement)
-                createCrawlingResult(feed, task.id, CrawlingReason.UpvotedQuestion, 1.1) // 相关问题内容加权
-            } catch (_: Exception) {
-                null
-            }
-        }
-    }
-
-    private suspend fun executeFollowingUpvoteTask(task: CrawlingTask): List<CrawlingResult> {
-        // 获取关注用户的点赞内容
-        val httpClient = AccountData.httpClient(context)
-        val url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20"
-
-        val response = httpClient.get(url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
-
-        return feedArray.mapNotNull { feedElement ->
-            try {
-                val feed = AccountData.decodeJson<Feed>(feedElement)
-                // 检查是否为点赞类型的动态
-                if (isVoteupFeed(feed)) {
-                    createCrawlingResult(feed, task.id, CrawlingReason.FollowingUpvote)
+                if (filter(feed)) {
+                    createCrawlingResult(feed, taskId, reason, scoreMultiplier)
                 } else {
                     null
                 }
@@ -146,11 +92,34 @@ class CrawlingExecutor(
         }
     }
 
+    private suspend fun executeFollowingTask(task: CrawlingTask): List<CrawlingResult> {
+        val url = "https://api.zhihu.com/moments_v3?feed_type=recommend"
+        return fetchAndProcessFeeds(url, task.id, CrawlingReason.Following)
+    }
+
+    private suspend fun executeTrendingTask(task: CrawlingTask): List<CrawlingResult> {
+        val url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20"
+        return fetchAndProcessFeeds(url, task.id, CrawlingReason.Trending, scoreMultiplier = 1.2)
+    }
+
+    private suspend fun executeUpvotedQuestionTask(task: CrawlingTask): List<CrawlingResult> {
+        val questionId = extractQuestionIdFromUrl(task.url) ?: return emptyList()
+        val url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20"
+        return fetchAndProcessFeeds(url, task.id, CrawlingReason.UpvotedQuestion, scoreMultiplier = 1.1)
+    }
+
+    private suspend fun executeFollowingUpvoteTask(task: CrawlingTask): List<CrawlingResult> {
+        val url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20"
+        return fetchAndProcessFeeds(
+            url = url,
+            taskId = task.id,
+            reason = CrawlingReason.FollowingUpvote,
+            filter = ::isVoteupFeed
+        )
+    }
+
     private suspend fun executeCollaborativeFilteringTask(task: CrawlingTask): List<CrawlingResult> {
         // 基于用户行为的协同过滤推荐
-        val httpClient = AccountData.httpClient(context)
-
-        // 获取用户最近点赞的内容，用于发现相似用户
         val recentLikes = dao.getBehaviorsByActionSince("like", System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000)
 
         if (recentLikes.isEmpty()) {
@@ -160,18 +129,7 @@ class CrawlingExecutor(
 
         // 基于最近点赞的内容获取相关推荐
         val url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20"
-        val response = httpClient.get(url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
-
-        return feedArray.mapNotNull { feedElement ->
-            try {
-                val feed = AccountData.decodeJson<Feed>(feedElement)
-                createCrawlingResult(feed, task.id, CrawlingReason.CollaborativeFiltering, 0.9) // 协同过滤内容权重稍低
-            } catch (_: Exception) {
-                null
-            }
-        }
+        return fetchAndProcessFeeds(url, task.id, CrawlingReason.CollaborativeFiltering, scoreMultiplier = 0.9)
     }
 
     private fun createCrawlingResult(
