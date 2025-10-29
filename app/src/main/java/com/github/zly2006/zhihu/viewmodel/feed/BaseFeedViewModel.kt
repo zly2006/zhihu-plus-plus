@@ -107,6 +107,11 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         is QuestionFeedCard -> TODO()
     }
 
+    /**
+     * Flattens feed list by expanding GroupFeed items.
+     * Marked inline for performance - avoids function call overhead
+     * in hot path during feed processing.
+     */
     @Suppress("NOTHING_TO_INLINE")
     inline fun List<Feed>.flatten() = flatMap {
         (it as? GroupFeed)?.list ?: listOf(it)

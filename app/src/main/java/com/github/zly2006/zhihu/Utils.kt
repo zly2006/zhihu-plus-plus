@@ -45,6 +45,8 @@ fun telemetry(context: Context, usage: String) {
     val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
     val data = AccountData.loadData(context)
     if (preferences.getBoolean("allowTelemetry", true)) {
+        // Note: GlobalScope is intentionally used here for fire-and-forget telemetry
+        // that should complete regardless of caller lifecycle
         GlobalScope.launch {
             @OptIn(ExperimentalStdlibApi::class)
             runCatching {
