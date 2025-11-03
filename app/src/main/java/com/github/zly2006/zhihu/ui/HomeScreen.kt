@@ -74,7 +74,8 @@ fun HomeScreen(
         RecommendationMode.SIMILARITY -> context.viewModels<HomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
-    if (!preferences.getBoolean("developer", false)) {
+    if (false) {
+        // !preferences.getBoolean("developer", false)
         AlertDialog
             .Builder(context)
             .apply {
