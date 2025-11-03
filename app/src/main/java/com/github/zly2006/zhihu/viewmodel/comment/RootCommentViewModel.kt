@@ -1,10 +1,10 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.CommentHolder
+import com.github.zly2006.zhihu.NavDestination.Article
+import com.github.zly2006.zhihu.NavDestination.ArticleType
+import com.github.zly2006.zhihu.NavDestination.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.NavDestination.Question
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 

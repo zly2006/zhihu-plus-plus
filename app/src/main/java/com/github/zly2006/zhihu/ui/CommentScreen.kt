@@ -71,9 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -119,7 +117,7 @@ fun CommentScreen(
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (val content = content()) {
-        is CommentHolder -> remember {
+        is NavDestination.CommentHolder -> remember {
             // 子评论不进行状态保存
             ChildCommentViewModel(content)
         }
@@ -404,7 +402,7 @@ fun CommentScreen(
 @Preview(showBackground = true)
 fun CommentTopText(content: NavDestination? = null) {
     Text(
-        if (content is CommentHolder) {
+        if (content is NavDestination.CommentHolder) {
             "回复"
         } else {
             "评论"
@@ -461,7 +459,7 @@ private fun CommentItem(
                         fontSize = 16.sp,
                         modifier = Modifier.clickable {
                             onNavigate(
-                                Person(
+                                NavDestination.Person(
                                     id = commentData.author.id,
                                     name = commentData.author.name,
                                     urlToken = commentData.author.urlToken,
@@ -495,7 +493,7 @@ private fun CommentItem(
                             fontSize = 16.sp,
                             modifier = Modifier.clickable {
                                 onNavigate(
-                                    Person(
+                                    NavDestination.Person(
                                         id = commentData.replyToAuthor.id,
                                         name = commentData.replyToAuthor.name,
                                         urlToken = commentData.replyToAuthor.urlToken,

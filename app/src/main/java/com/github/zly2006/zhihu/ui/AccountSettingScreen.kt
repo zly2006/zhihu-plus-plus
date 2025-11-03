@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -67,11 +68,9 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -187,7 +186,7 @@ fun AccountSettingScreen(
                     .fillMaxWidth()
                     .clickable {
                         onNavigate(
-                            Person(
+                            NavDestination.Person(
                                 id = data.self?.id ?: "",
                                 urlToken = data.self?.urlToken ?: "",
                                 name = data.username,
@@ -235,7 +234,7 @@ fun AccountSettingScreen(
             )
 
             Button(
-                onClick = { onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
+                onClick = { onNavigate(NavDestination.Collections(AccountData.data.self!!.urlToken!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -336,6 +335,13 @@ fun AccountSettingScreen(
                 ) {
                     Text("抛出异常测试")
                 }
+                Button(
+                        onClick = {
+                            onNavigate(NavDestination.Debug.HorizontalPagerLazyColumn)
+                        },
+                ) {
+                Text("HorizontalPagerLazyColumn")
+            }
             }
         }
         Column {

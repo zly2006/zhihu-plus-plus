@@ -34,7 +34,6 @@ import android.widget.TextView;
 import androidx.browser.customtabs.CustomTabsIntent;
 import com.github.zly2006.zhihu.MainActivity;
 import com.github.zly2006.zhihu.NavDestination;
-import com.github.zly2006.zhihu.NavDestinationKt;
 
 /**
  * A movement method that traverses links in the text buffer and scrolls if necessary.
@@ -209,7 +208,7 @@ public class LinkMovementMethod extends ScrollingMovementMethod {
             link.onClick(widget);
         } else if (link instanceof URLSpan) {
             Uri uri = Uri.parse(((URLSpan) link).getURL());
-            NavDestination navDestination = NavDestinationKt.resolveContent(uri);
+            NavDestination navDestination = NavDestination.Companion.resolveContent(uri);
             if (navDestination != null && widget.getContext() instanceof MainActivity) {
                 ((MainActivity) widget.getContext()).navigate(navDestination, false);
             }

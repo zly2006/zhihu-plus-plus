@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.CommentItem
@@ -12,7 +11,7 @@ class ChildCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
     override val initialUrl: String = when (content) {
-        is CommentHolder -> {
+        is NavDestination.CommentHolder -> {
             "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
         }
 

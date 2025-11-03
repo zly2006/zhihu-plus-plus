@@ -1,10 +1,10 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
-import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.Person
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.NavDestination.Article
+import com.github.zly2006.zhihu.NavDestination.Person
+import com.github.zly2006.zhihu.NavDestination.Question
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String

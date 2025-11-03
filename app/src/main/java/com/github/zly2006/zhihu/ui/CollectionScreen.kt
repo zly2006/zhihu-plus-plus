@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -59,7 +58,7 @@ fun CollectionScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             elevation = CardDefaults.cardElevation(4.dp),
             onClick = {
-                onNavigate(CollectionContent(collection.id))
+                onNavigate(NavDestination.CollectionContent(collection.id))
             },
         ) {
             Column(modifier = Modifier.padding(16.dp)) {

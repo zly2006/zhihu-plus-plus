@@ -99,12 +99,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
@@ -122,6 +119,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
@@ -205,7 +203,7 @@ fun createElasticLoadConnection(
 
             // 如果已经处于 overscroll 状态，则父 Composable（也就是这里的 connection）开始介入
             if (overscrollDistance != 0f) {
-                overscrollDistance = min(LOAD_THRESHOLD + 10, overscrollDistance + available.y * DAMPING_FACTOR)
+                overscrollDistance = max(-LOAD_THRESHOLD-10,min(0f, overscrollDistance + available.y * DAMPING_FACTOR))
                 overscrollState.floatValue = overscrollDistance
                 // 不在这里检查触发
                 return available
@@ -222,6 +220,7 @@ fun createElasticLoadConnection(
             source: NestedScrollSource,
         ): Offset {
             if (source != NestedScrollSource.UserInput) return Offset.Zero
+            if (available != Offset.Zero) Log.i("onPostScroll", "consumed: $consumed, available: $available")
 
             // 只有当 LazyColumn 无法滚动（available != Offset.Zero）时才进入弹性逻辑
             if (available.y != 0f) {
@@ -234,7 +233,7 @@ fun createElasticLoadConnection(
                 if (canLoad) {
                     // 2.1 记录方向
                     currentDirection = if (isScrollingUp) LoadDirection.UP else LoadDirection.DOWN
-                    overscrollDistance = min(LOAD_THRESHOLD + 10, overscrollDistance + available.y * DAMPING_FACTOR)
+                    overscrollDistance = max(-LOAD_THRESHOLD-10,min(0f, overscrollDistance + available.y * DAMPING_FACTOR))
                     overscrollState.floatValue = overscrollDistance
                     // 不在这里检查触发
                     return available
@@ -292,7 +291,7 @@ enum class VoteUpState(
 
 @Composable
 fun ArticleActionsMenu(
-    article: Article,
+    article: NavDestination.Article,
     viewModel: ArticleViewModel,
     context: Context,
     showMenu: Boolean,
@@ -458,8 +457,8 @@ fun ArticleActionsMenu(
                                     val clipboard =
                                         (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                                     val text = when (article.type) {
-                                        ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                        ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                        NavDestination.ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                                        NavDestination.ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                                     }
                                     (context as? MainActivity)?.sharedData?.clipboardDestination = article
                                     clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
@@ -534,7 +533,7 @@ fun ArticleActionsMenu(
 
 @Composable
 fun ArticleScreen(
-    article: Article,
+    article: NavDestination.Article,
     viewModel: ArticleViewModel,
     onNavigate: (NavDestination) -> Unit,
 ) {
@@ -570,10 +569,10 @@ fun ArticleScreen(
                         val activity = context as? MainActivity ?: return@launch
                         val target = dest.target!!
                         if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                            if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                            if (activity.navController.currentBackStackEntry.hasRoute(NavDestination.Article::class) &&
                                 activity.navController.currentBackStackEntry
-                                    ?.toRoute<Article>()
-                                    ?.type == ArticleType.Answer
+                                    ?.toRoute<NavDestination.Article>()
+                                    ?.type == NavDestination.ArticleType.Answer
                             ) {
                                 activity.navController.popBackStack()
                             }
@@ -583,7 +582,7 @@ fun ArticleScreen(
                 }
             },
             canLoadUp = { false }, // 不支持向上加载
-            canLoadDown = { article.type == ArticleType.Answer }, // 只有回答支持向下加载
+            canLoadDown = { article.type == NavDestination.ArticleType.Answer }, // 只有回答支持向下加载
             overscrollState = overscroll,
         )
     }
@@ -664,14 +663,14 @@ fun ArticleScreen(
                         lineHeight = 32.sp,
                         modifier = Modifier
                             .padding(bottom = 8.dp)
-                            .clickable { onNavigate(Question(viewModel.questionId, viewModel.title)) },
+                            .clickable { onNavigate(NavDestination.Question(viewModel.questionId, viewModel.title)) },
                     )
                 }
             }
         },
         bottomBar = {
             Column {
-                if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
+                if (backStackEntry?.hasRoute(NavDestination.Article::class) == true || context !is MainActivity) {
                     Row(
                         modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -850,7 +849,7 @@ fun ArticleScreen(
                     .fillMaxWidth()
                     .clickable {
                         onNavigate(
-                            com.github.zly2006.zhihu.Person(
+                            NavDestination.Person(
                                 id = viewModel.authorId,
                                 urlToken = viewModel.authorUrlToken,
                                 name = viewModel.authorName,
@@ -999,7 +998,7 @@ fun ArticleScreen(
         }
     }
 
-    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
+    if (article.type == NavDestination.ArticleType.Answer && buttonSkipAnswer) {
         DraggableRefreshButton(
             onClick = {
                 navigatingToNextAnswer = true
@@ -1008,10 +1007,10 @@ fun ArticleScreen(
                     val activity = context as? MainActivity ?: return@launch
                     val target = dest.target!!
                     if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                        if (activity.navController.currentBackStackEntry.hasRoute(NavDestination.Article::class) &&
                             activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
+                                ?.toRoute<NavDestination.Article>()
+                                ?.type == NavDestination.ArticleType.Answer
                         ) {
                             activity.navController.popBackStack()
                         }
@@ -1073,9 +1072,9 @@ fun ArticleScreen(
 @Composable
 fun ArticleScreenPreview() {
     ArticleScreen(
-        Article(
+        NavDestination.Article(
             "如何看待《狂暴之翼》中的人物设定？",
-            ArticleType.Answer,
+            NavDestination.ArticleType.Answer,
             123456789,
             "知乎用户",
             "知乎用户",
@@ -1083,9 +1082,9 @@ fun ArticleScreenPreview() {
         ),
         viewModel = viewModel {
             ArticleViewModel(
-                Article(
+                NavDestination.Article(
                     "如何看待《狂暴之翼》中的人物设定？",
-                    ArticleType.Answer,
+                    NavDestination.ArticleType.Answer,
                     123456789,
                     "知乎用户",
                     "知乎用户",
@@ -1104,9 +1103,9 @@ fun ArticleActionsMenuPreview() {
     MaterialTheme {
         Surface {
             ArticleActionsMenu(
-                article = Article(
+                article = NavDestination.Article(
                     "如何看待《狂暴之翼》中的人物设定？",
-                    ArticleType.Answer,
+                    NavDestination.ArticleType.Answer,
                     123456789,
                     "知乎用户",
                     "知乎用户",
@@ -1114,9 +1113,9 @@ fun ArticleActionsMenuPreview() {
                 ),
                 viewModel = viewModel {
                     ArticleViewModel(
-                        Article(
+                        NavDestination.Article(
                             "如何看待《狂暴之翼》中的人物设定？",
-                            ArticleType.Answer,
+                            NavDestination.ArticleType.Answer,
                             123456789,
                             "知乎用户",
                             "知乎用户",

@@ -2,8 +2,6 @@
 
 package com.github.zly2006.zhihu.data
 
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.Feed.Badge
 import kotlinx.serialization.KSerializer
@@ -94,9 +92,9 @@ sealed interface Feed {
         override val detailsText = "回答 · $voteupCount 赞同 · $commentCount 评论"
         override val title: String
             get() = question.title
-        override val navDestination = Article(
+        override val navDestination = NavDestination.Article(
             title = question.title,
-            type = ArticleType.Answer,
+            type = NavDestination.ArticleType.Answer,
             id = id,
             authorName = author?.name ?: "loading...",
             authorBio = author?.headline ?: "",
@@ -168,9 +166,9 @@ sealed interface Feed {
 
         override val detailsText = "文章 · $voteupCount 赞 · $commentCount 评论"
 
-        override val navDestination = Article(
+        override val navDestination = NavDestination.Article(
             title = title,
-            type = ArticleType.Article,
+            type = NavDestination.ArticleType.Article,
             id = id,
             authorName = author.name,
             authorBio = author.headline,
@@ -250,7 +248,7 @@ sealed interface Feed {
 
         override val detailsText = "问题 · $followerCount 关注 · $answerCount 回答"
 
-        override val navDestination = com.github.zly2006.zhihu.Question(
+        override val navDestination = NavDestination.Question(
             questionId = id,
             title = title,
         )

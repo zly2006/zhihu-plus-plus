@@ -33,7 +33,7 @@
         <activity
                 android:name=".CaptureActivity"
                 android:exported="false"
-                android:label="@string/title_activity_capture"
+                android:label="CaptureActivity"
                 android:theme="@style/Theme.Zhihu"
                 android:screenOrientation="portrait"
                 android:stateNotNeeded="true"

@@ -3,11 +3,11 @@ package com.github.zly2006.zhihu.viewmodel.za
 import android.content.Context
 import android.util.Log
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.NavDestination.Article
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.data
 import com.github.zly2006.zhihu.data.AccountData.json
-import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import io.ktor.client.HttpClient
@@ -65,7 +65,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                             .jsonObject["parameter"]!!
                             .jsonPrimitive.content
                             .substringAfter("route_url=")
-                    val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
+                    val routeDest = NavDestination.resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
                     val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
                     val title =
                         children.first { it["id"]?.jsonPrimitive?.content?.endsWith("Text") == true }["text"]!!.jsonPrimitive.content

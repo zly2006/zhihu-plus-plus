@@ -39,10 +39,10 @@ import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
-import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -642,7 +642,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                     return true
                 }
             } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {
-                val destination = resolveContent(request.url)
+                val destination = NavDestination.resolveContent(request.url)
                 if (destination != null) {
                     if (context is MainActivity) {
                         context.navigate(destination)

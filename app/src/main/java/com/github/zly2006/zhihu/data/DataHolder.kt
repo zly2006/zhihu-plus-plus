@@ -34,6 +34,10 @@ object DataHolder {
         "href=\"https://xg.zhihu.com/", // 知乎营销效果统计平台
     )
 
+    val JSON = Json {
+        ignoreUnknownKeys = true
+    }
+
     @Serializable
     data class Author(
         val avatarUrl: String,
@@ -307,6 +311,7 @@ object DataHolder {
         val canVote: Boolean,
         val reactionInstruction: ReactionInstruction,
         val invisibleAuthor: Boolean = false,
+        val answerCountDescription: String,
     )
 
     @Serializable

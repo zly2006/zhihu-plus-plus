@@ -27,8 +27,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.NavDestination.Article
+import com.github.zly2006.zhihu.NavDestination.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder

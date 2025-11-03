@@ -29,12 +29,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.NavDestination.Article
+import com.github.zly2006.zhihu.NavDestination.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.NavDestination.Person
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.signFetchRequest

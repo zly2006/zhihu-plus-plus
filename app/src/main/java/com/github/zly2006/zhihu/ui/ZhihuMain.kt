@@ -44,17 +44,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.github.zly2006.zhihu.Account
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.CollectionContent
-import com.github.zly2006.zhihu.Collections
-import com.github.zly2006.zhihu.Follow
-import com.github.zly2006.zhihu.History
-import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Person
-import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
@@ -67,10 +58,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
-        route.hasRoute<Home>() -> 0
-        route.hasRoute<Follow>() -> 1
-        route.hasRoute<History>() -> 2
-        route.hasRoute<Account>() -> 3
+        route.hasRoute<NavDestination.Home>() -> 0
+        route.hasRoute<NavDestination.Follow>() -> 1
+        route.hasRoute<NavDestination.History>() -> 2
+        route.hasRoute<NavDestination.Account>() -> 3
         else -> -1
     }
 
@@ -134,7 +125,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 onClick = {
                                     if (!navEntry.hasRoute(destination::class)) {
                                         navController.navigate(destination) {
-                                            popUpTo(Home)
+                                            popUpTo(NavDestination.Home)
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -159,10 +150,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                             )
                         }
-                        Item(Home, "主页", Icons.Filled.Home)
-                        Item(Follow, "关注", Icons.Filled.PersonAddAlt1)
-                        Item(History, "历史", Icons.Filled.History)
-                        Item(Account, "账号", Icons.Filled.ManageAccounts)
+                        Item(NavDestination.Home, "主页", Icons.Filled.Home)
+                        Item(NavDestination.Follow, "关注", Icons.Filled.PersonAddAlt1)
+                        Item(NavDestination.History, "历史", Icons.Filled.History)
+                        Item(NavDestination.Account, "账号", Icons.Filled.ManageAccounts)
                     }
                 }
             }
@@ -171,7 +162,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         NavHost(
             navController,
             modifier = Modifier.padding(innerPadding),
-            startDestination = Home,
+            startDestination = NavDestination.Home,
             enterTransition = {
                 val fromIndex = getPageIndex(initialState.destination)
                 val toIndex = getPageIndex(targetState.destination)
@@ -193,49 +184,52 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
             },
         ) {
-            composable<Home> {
+            composable<NavDestination.Home> {
                 HomeScreen(activity::navigate)
             }
-            composable<Question> { navEntry ->
-                val question: Question = navEntry.toRoute()
+            composable<NavDestination.Question> { navEntry ->
+                val question: NavDestination.Question = navEntry.toRoute()
                 QuestionScreen(question, activity::navigate)
             }
-            composable<Article> { navEntry ->
-                val article: Article = navEntry.toRoute()
+            composable<NavDestination.Article> { navEntry ->
+                val article: NavDestination.Article = navEntry.toRoute()
                 val viewModel: ArticleViewModel = viewModel(navEntry) {
                     ArticleViewModel(article, activity.httpClient, navEntry)
                 }
                 ArticleScreen(article, viewModel, activity::navigate)
             }
-            composable<Follow> {
+            composable<NavDestination.Follow> {
                 FollowScreen(activity::navigate)
             }
-            composable<History> {
+            composable<NavDestination.History> {
                 HistoryScreen(activity::navigate)
             }
-            composable<Account> {
+            composable<NavDestination.Account> {
                 AccountSettingScreen(innerPadding, activity::navigate)
             }
-            composable<Collections> {
-                val data: Collections = it.toRoute()
+            composable<NavDestination.Debug.HorizontalPagerLazyColumn> {
+                HorizontalPagerLazyColumnScreen(activity::navigate)
+            }
+            composable<NavDestination.Collections> {
+                val data: NavDestination.Collections = it.toRoute()
                 CollectionScreen(data.userToken, activity::navigate)
             }
-            composable<CollectionContent> {
-                val content: CollectionContent = it.toRoute()
+            composable<NavDestination.CollectionContent> {
+                val content: NavDestination.CollectionContent = it.toRoute()
                 CollectionContentScreen(content.collectionId, activity::navigate)
             }
-            composable<Person> {
-                val person: Person = it.toRoute()
+            composable<NavDestination.Person> {
+                val person: NavDestination.Person = it.toRoute()
                 PeopleScreen(person, activity::navigate)
             }
         }
     }
 }
 
-private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
-    navEntry.hasRoute(Follow::class) ||
-    navEntry.hasRoute(History::class) ||
-    navEntry.hasRoute(Account::class)
+private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(NavDestination.Home::class) ||
+    navEntry.hasRoute(NavDestination.Follow::class) ||
+    navEntry.hasRoute(NavDestination.History::class) ||
+    navEntry.hasRoute(NavDestination.Account::class)
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
