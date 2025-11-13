@@ -27,26 +27,26 @@ import kotlinx.coroutines.withContext
  * against the original JavaScript implementation
  */
 class ZseVerificationActivity : ComponentActivity() {
-    
+
     private lateinit var webview: WebView
-    
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         // Setup WebView for JavaScript execution
         webview = WebView(this)
         webview.setupUpWebviewClient()
         webview.settings.javaScriptEnabled = true
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
-        
+
         setContent {
             ZhihuTheme {
                 ZseVerificationScreen()
             }
         }
     }
-    
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ZseVerificationScreen() {
@@ -57,7 +57,7 @@ class ZseVerificationActivity : ComponentActivity() {
         var comparisonResult by remember { mutableStateOf("") }
         var isVerifying by remember { mutableStateOf(false) }
         var resultColor by remember { mutableStateOf(Color.Gray) }
-        
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -140,7 +140,7 @@ class ZseVerificationActivity : ComponentActivity() {
                         }
                     }
                 }
-                
+
                 // Kotlin result
                 if (kotlinResult.isNotEmpty()) {
                     ResultCard(
@@ -149,7 +149,7 @@ class ZseVerificationActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.primaryContainer
                     )
                 }
-                
+
                 // JavaScript result
                 if (jsResult.isNotEmpty()) {
                     ResultCard(
@@ -158,7 +158,7 @@ class ZseVerificationActivity : ComponentActivity() {
                         color = MaterialTheme.colorScheme.secondaryContainer
                     )
                 }
-                
+
                 // Comparison result
                 if (comparisonResult.isNotEmpty()) {
                     Card(
@@ -187,7 +187,7 @@ class ZseVerificationActivity : ComponentActivity() {
             }
         }
     }
-    
+
     @Composable
     fun ResultCard(title: String, content: String, color: Color) {
         Card(
@@ -213,7 +213,7 @@ class ZseVerificationActivity : ComponentActivity() {
             }
         }
     }
-    
+
     /**
      * Perform verification by comparing Kotlin and JavaScript encryption results
      */
@@ -228,7 +228,7 @@ class ZseVerificationActivity : ComponentActivity() {
         onKotlinResult("Computing...")
         onJsResult("Computing...")
         onComparison("Comparing...", Color.Gray)
-        
+
         kotlinx.coroutines.MainScope().launch {
             try {
                 // Get Kotlin result
@@ -238,13 +238,13 @@ class ZseVerificationActivity : ComponentActivity() {
                     val endTime = System.currentTimeMillis()
                     Triple(result, endTime - startTime, result.length)
                 }
-                
+
                 onKotlinResult(
                     "时间: ${kotlinResult.second}ms\n" +
                     "长度: ${kotlinResult.third} 字符\n" +
                     "结果: ${kotlinResult.first}"
                 )
-                
+
                 // Get JavaScript result
                 val jsResult = getJavaScriptResult(input)
                 onJsResult(
@@ -252,7 +252,7 @@ class ZseVerificationActivity : ComponentActivity() {
                     "长度: ${jsResult.third} 字符\n" +
                     "结果: ${jsResult.first}"
                 )
-                
+
                 // Compare results
                 val match = kotlinResult.first == jsResult.first
                 onComparison(
@@ -267,7 +267,7 @@ class ZseVerificationActivity : ComponentActivity() {
                     },
                     if (match) Color(0xFF4CAF50) else Color(0xFFF44336)
                 )
-                
+
             } catch (e: Exception) {
                 onComparison(
                     "错误: ${e.message}\n\n${e.stackTraceToString()}",
@@ -278,23 +278,23 @@ class ZseVerificationActivity : ComponentActivity() {
             }
         }
     }
-    
+
     /**
      * Execute JavaScript encryption and return result
      */
     private suspend fun getJavaScriptResult(input: String): Triple<String, Long, Int> = withContext(Dispatchers.Main) {
         val future = CompletableDeferred<Triple<String, Long, Int>>()
         val startTime = System.currentTimeMillis()
-        
+
         webview.evaluateJavascript("exports.encrypt('$input')") { result ->
             val endTime = System.currentTimeMillis()
             val cleanResult = result.trim('"')
             future.complete(Triple(cleanResult, endTime - startTime, cleanResult.length))
         }
-        
+
         future.await()
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         webview.destroy()

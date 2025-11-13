@@ -1,30 +1,27 @@
 package com.github.zly2006.zhihu.encryption
 
 import android.util.Base64
-import kotlin.experimental.and
-import kotlin.experimental.or
-import kotlin.experimental.xor
 
 /**
  * Kotlin implementation of ZSE v4 encryption algorithm
  * Ported from zse-v4.js
- * 
+ *
  * This is a complex encryption algorithm that uses:
  * - SM4 block cipher
  * - Custom virtual machine for bytecode execution (in JavaScript version)
  * - XOR operations and transformations
- * 
+ *
  * Note: The original JavaScript uses a virtual machine to execute bytecode.
  * This Kotlin implementation attempts to replicate the encryption logic
  * without the VM layer, which may result in differences from the JS version.
- * 
+ *
  * For production use, consider using ZseEncryptionWrapper which calls
  * the JavaScript implementation through WebView for guaranteed compatibility.
  */
 object ZseEncryption {
-    
+
     const val VERSION = "3.0"
-    
+
     // SM4 S-Box (substitution box used in SM4 encryption)
     private val SM4_SBOX = intArrayOf(
         0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05,
@@ -42,9 +39,9 @@ object ZseEncryption {
         0x8d, 0x1b, 0xaf, 0x92, 0xbb, 0xdd, 0xbc, 0x7f, 0x11, 0xd9, 0x5c, 0x41, 0x1f, 0x10, 0x5a, 0xd8,
         0x0a, 0xc1, 0x31, 0x88, 0xa5, 0xcd, 0x7b, 0xbd, 0x2d, 0x74, 0xd0, 0x12, 0xb8, 0xe5, 0xb4, 0xb0,
         0x89, 0x69, 0x97, 0x4a, 0x0c, 0x96, 0x77, 0x7e, 0x65, 0xb9, 0xf1, 0x09, 0xc5, 0x6e, 0xc6, 0x84,
-        0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48
+        0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48,
     )
-    
+
     // SM4 encryption round constants
     private val SM4_CK = intArrayOf(
         0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269,
@@ -54,9 +51,9 @@ object ZseEncryption {
         0xc0c7ced5.toInt(), 0xdce3eaf1.toInt(), 0xf8ff060d.toInt(), 0x141b2229,
         0x30373e45, 0x4c535a61, 0x686f767d, 0x848b9299.toInt(),
         0xa0a7aeb5.toInt(), 0xbcc3cad1.toInt(), 0xd8dfe6ed.toInt(), 0xf4fb0209.toInt(),
-        0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279
+        0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279,
     )
-    
+
     /**
      * Write a 32-bit integer to a byte array in big-endian format
      */
@@ -66,69 +63,69 @@ object ZseEncryption {
         buffer[offset + 2] = ((value ushr 8) and 0xFF).toByte()
         buffer[offset + 3] = (value and 0xFF).toByte()
     }
-    
+
     /**
      * Read a 32-bit integer from a byte array in big-endian format
      */
     private fun readInt32BE(buffer: ByteArray, offset: Int): Int {
         return ((buffer[offset].toInt() and 0xFF) shl 24) or
-                ((buffer[offset + 1].toInt() and 0xFF) shl 16) or
-                ((buffer[offset + 2].toInt() and 0xFF) shl 8) or
-                (buffer[offset + 3].toInt() and 0xFF)
+            ((buffer[offset + 1].toInt() and 0xFF) shl 16) or
+            ((buffer[offset + 2].toInt() and 0xFF) shl 8) or
+            (buffer[offset + 3].toInt() and 0xFF)
     }
-    
+
     /**
      * Rotate left operation
      */
     private fun rotl(value: Int, bits: Int): Int {
         return (value shl bits) or (value ushr (32 - bits))
     }
-    
+
     /**
      * SM4 tau transformation using S-Box
      */
     private fun tau(value: Int): Int {
         val temp = ByteArray(4)
         val result = ByteArray(4)
-        
+
         writeInt32BE(value, temp, 0)
         result[0] = SM4_SBOX[temp[0].toInt() and 0xFF].toByte()
         result[1] = SM4_SBOX[temp[1].toInt() and 0xFF].toByte()
         result[2] = SM4_SBOX[temp[2].toInt() and 0xFF].toByte()
         result[3] = SM4_SBOX[temp[3].toInt() and 0xFF].toByte()
-        
+
         val ti = readInt32BE(result, 0)
         return ti xor rotl(ti, 2) xor rotl(ti, 10) xor rotl(ti, 18) xor rotl(ti, 24)
     }
-    
+
     /**
      * SM4 block cipher encryption (one block = 16 bytes)
      */
     private fun sm4EncryptBlock(input: ByteArray): ByteArray {
         val output = ByteArray(16)
         val x = IntArray(36)
-        
+
         // Read input as 4 32-bit integers
         x[0] = readInt32BE(input, 0)
         x[1] = readInt32BE(input, 4)
         x[2] = readInt32BE(input, 8)
         x[3] = readInt32BE(input, 12)
-        
+
         // 32 rounds of SM4 encryption
         for (i in 0 until 32) {
             val ta = tau(x[i + 1] xor x[i + 2] xor x[i + 3] xor SM4_CK[i])
             x[i + 4] = x[i] xor ta
         }
-        
+
         // Write output in reverse order
         writeInt32BE(x[35], output, 0)
         writeInt32BE(x[34], output, 4)
         writeInt32BE(x[33], output, 8)
         writeInt32BE(x[32], output, 12)
-        
+
         return output
     }
-    
+
     /**
      * XOR-based encryption with SM4
      * Matches the __g.x function in JavaScript
@@ -137,36 +134,36 @@ object ZseEncryption {
         val result = mutableListOf<Byte>()
         var key = initialKey.copyOf(16)
         var offset = 0
-        
+
         while (offset < data.size) {
             // Process 16-byte blocks
             val blockSize = minOf(16, data.size - offset)
             val xorBlock = ByteArray(16)
-            
+
             // XOR data with key
             for (i in 0 until blockSize) {
                 xorBlock[i] = (data[offset + i].toInt() xor key[i].toInt()).toByte()
             }
-            
+
             // Encrypt the XOR'd block to get next key
             key = sm4EncryptBlock(xorBlock)
-            
+
             // Add encrypted block to result
             for (i in 0 until blockSize) {
                 result.add(key[i])
             }
-            
+
             offset += 16
         }
-        
+
         return result.toByteArray()
     }
-    
+
     /**
      * Main encryption function
      * This matches the D function in the JavaScript code
      * which calls __g._encrypt(encodeURIComponent(input))
-     * 
+     *
      * Note: __g._encrypt is defined by the VM at runtime,
      * so this implementation attempts to replicate its behavior
      * based on the visible __g.x and __g.r functions
@@ -178,18 +175,18 @@ object ZseEncryption {
         // while URLEncoder encodes * and ~
         val encoded = encodeURIComponent(input)
         val inputBytes = encoded.toByteArray(Charsets.UTF_8)
-        
+
         // Use a 16-byte zero key as initial value
         // This matches the initialization in the JavaScript
         val key = ByteArray(16) { 0 }
-        
+
         // Perform XOR encryption (matches __g.x)
         val encrypted = xorEncrypt(inputBytes, key)
-        
+
         // Base64 encode the result
         return Base64.encodeToString(encrypted, Base64.NO_WRAP)
     }
-    
+
     /**
      * JavaScript's encodeURIComponent equivalent
      * Encodes everything except: A-Z a-z 0-9 - _ . ! ~ * ' ( )
@@ -197,7 +194,7 @@ object ZseEncryption {
     private fun encodeURIComponent(str: String): String {
         val unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()"
         val result = StringBuilder()
-        
+
         for (char in str) {
             if (char in unreserved) {
                 result.append(char)
@@ -210,7 +207,7 @@ object ZseEncryption {
                 }
             }
         }
-        
+
         return result.toString()
     }
 }

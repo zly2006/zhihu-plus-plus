@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
     val httpClient by lazy {
         AccountData.httpClient(this)
     }
-    
+
     // ZSE encryption wrapper using the JavaScript implementation
     private val zseEncryption by lazy {
         com.github.zly2006.zhihu.encryption.ZseEncryptionWrapper(webview)
@@ -375,7 +375,7 @@ class MainActivity : ComponentActivity() {
             body,
         ).joinToString("+")
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-        
+
         if (BuildConfig.DEBUG) {
             val timeStart = System.currentTimeMillis()
             val result = zseEncryption.encryptWithPrefix(md5)
