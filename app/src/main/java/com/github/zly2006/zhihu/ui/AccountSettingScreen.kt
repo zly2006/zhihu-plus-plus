@@ -873,6 +873,19 @@ fun AccountSettingScreen(
                 },
             )
         }
+        AnimatedVisibility(
+            visible = isDeveloper,
+        ) {
+            Button(
+                onClick = {
+                    val intent = Intent(context, com.github.zly2006.zhihu.ZseVerificationActivity::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("ZSE加密验证（开发工具）")
+            }
+        }
         Button(
             onClick = {
                 GlobalScope.launch {

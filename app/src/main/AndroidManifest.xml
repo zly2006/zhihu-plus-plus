@@ -79,6 +79,11 @@
                 android:name=".QRCodeScanActivity"
                 android:exported="false"
                 android:theme="@style/Theme.Zhihu"/>
+        <activity
+                android:name=".ZseVerificationActivity"
+                android:exported="true"
+                android:label="ZSE Encryption Verification"
+                android:theme="@style/Theme.Zhihu"/>
 
         <provider
                 android:name="androidx.core.content.FileProvider"
