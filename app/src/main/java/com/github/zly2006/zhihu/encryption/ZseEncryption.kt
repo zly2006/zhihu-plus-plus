@@ -158,19 +158,52 @@ object ZseEncryption {
     /**
      * Main encryption function
      * This matches the D function in the JavaScript code
+     * which calls __g._encrypt(encodeURIComponent(input))
+     * 
+     * Note: __g._encrypt is defined by the VM at runtime,
+     * so this implementation attempts to replicate its behavior
+     * based on the visible __g.x and __g.r functions
      */
     fun encrypt(input: String): String {
-        // URL encode the input (as per JavaScript encodeURIComponent)
-        val encoded = java.net.URLEncoder.encode(input, "UTF-8")
+        // The JavaScript uses encodeURIComponent which is similar to URLEncoder
+        // but not exactly the same. JavaScript's encodeURIComponent doesn't encode:
+        // A-Z a-z 0-9 - _ . ! ~ * ' ( )
+        // while URLEncoder encodes * and ~
+        val encoded = encodeURIComponent(input)
         val inputBytes = encoded.toByteArray(Charsets.UTF_8)
         
         // Use a 16-byte zero key as initial value
+        // This matches the initialization in the JavaScript
         val key = ByteArray(16) { 0 }
         
-        // Perform XOR encryption
+        // Perform XOR encryption (matches __g.x)
         val encrypted = xorEncrypt(inputBytes, key)
         
         // Base64 encode the result
         return Base64.encodeToString(encrypted, Base64.NO_WRAP)
+    }
+    
+    /**
+     * JavaScript's encodeURIComponent equivalent
+     * Encodes everything except: A-Z a-z 0-9 - _ . ! ~ * ' ( )
+     */
+    private fun encodeURIComponent(str: String): String {
+        val unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()"
+        val result = StringBuilder()
+        
+        for (char in str) {
+            if (char in unreserved) {
+                result.append(char)
+            } else {
+                // Encode as UTF-8 bytes then to %XX format
+                val bytes = char.toString().toByteArray(Charsets.UTF_8)
+                for (byte in bytes) {
+                    result.append('%')
+                    result.append(String.format("%02X", byte.toInt() and 0xFF))
+                }
+            }
+        }
+        
+        return result.toString()
     }
 }

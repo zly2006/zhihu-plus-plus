@@ -50,7 +50,8 @@ class ZseVerificationActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ZseVerificationScreen() {
-        var inputText by remember { mutableStateOf("test123456") }
+        // Use MD5 hash as default test input (matching how MainActivity uses it)
+        var inputText by remember { mutableStateOf("5d41402abc4b2a76b9719d911017c592") }
         var kotlinResult by remember { mutableStateOf("") }
         var jsResult by remember { mutableStateOf("") }
         var comparisonResult by remember { mutableStateOf("") }
@@ -100,6 +101,25 @@ class ZseVerificationActivity : ComponentActivity() {
                             singleLine = true,
                             label = { Text("测试字符串") }
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { inputText = "5d41402abc4b2a76b9719d911017c592" },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isVerifying
+                            ) {
+                                Text("MD5示例1", style = MaterialTheme.typography.bodySmall)
+                            }
+                            Button(
+                                onClick = { inputText = "098f6bcd4621d373cade4e832627b4f6" },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isVerifying
+                            ) {
+                                Text("MD5示例2", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                         Button(
                             onClick = {
                                 performVerification(
