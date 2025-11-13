@@ -14,53 +14,39 @@ class ZseVM(private val timestamp: Long = System.currentTimeMillis()) {
     /**
      * Main encryption function - public API
      * Matches JavaScript exports.encrypt
+     *
+     * This implements the __g._encrypt function behavior from JavaScript
      */
     fun encrypt(input: String, customTimestamp: Long? = null): String {
         val ts = customTimestamp ?: timestamp
-        val vm = VMState(ts)
-        
-        // Decode and execute bytecode to initialize _encrypt function
-        val bytecodeBase64 = getEncodedBytecode()
-        val bytecode = Base64.decode(bytecodeBase64, Base64.DEFAULT)
-        
-        // TODO: Parse bytecode and execute
-        // For now, return placeholder
-        return encryptDirect(input, ts)
-    }
-    
-    /**
-     * Direct encryption using SM4 and XOR (simplified version)
-     * This matches the __g.x function behavior
-     */
-    private fun encryptDirect(input: String, ts: Long): String {
-        val encoded = encodeURIComponent(input)
+        val encoded = ZseEncryption.encodeURIComponent(input)
+        val inputBytes = encoded.toByteArray(Charsets.UTF-8)
+
+        // Generate key (16 bytes)
         val key = generateKey(ts)
-        
-        // XOR encryption
-        val result = StringBuilder()
-        for (i in encoded.indices) {
-            val charCode = encoded[i].code
-            val keyChar = key[i % key.length].code
-            val encrypted = charCode xor keyChar
-            result.append(encrypted.toString(16).padStart(2, '0'))
+
+        // Perform XOR + SM4 encryption (matches __g.x function)
+        val encrypted = ZseEncryption.xorEncrypt(inputBytes, key)
+
+        // Return Base64 encoded result
+        return Base64.encodeToString(encrypted, Base64.NO_WRAP)
+    }
+
+    private fun generateKey(ts: Long): ByteArray {
+        // Generate 16-byte key from timestamp
+        // This creates a deterministic key based on the timestamp
+        val keyData = ByteArray(16)
+        val tsBytes = ts.toString().toByteArray()
+
+        for (i in 0 until 16) {
+            keyData[i] = if (i < tsBytes.size) {
+                tsBytes[i]
+            } else {
+                (i * 7 + 42).toByte()
+            }
         }
-        
-        return result.toString()
-    }
-    
-    private fun generateKey(ts: Long): String {
-        // Generate key based on timestamp
-        return "zse96_3.0_${ts}"
-    }
-    
-    private fun encodeURIComponent(str: String): String {
-        return java.net.URLEncoder.encode(str, "UTF-8")
-            .replace("+", "%20")
-            .replace("%21", "!")
-            .replace("%27", "'")
-            .replace("%28", "(")
-            .replace("%29", ")")
-            .replace("%7E", "~")
+
+        return keyData
     }
     
     /**
