@@ -55,6 +55,11 @@ class MainActivity : ComponentActivity() {
     val httpClient by lazy {
         AccountData.httpClient(this)
     }
+    
+    // ZSE encryption wrapper using the JavaScript implementation
+    private val zseEncryption by lazy {
+        com.github.zly2006.zhihu.encryption.ZseEncryptionWrapper(webview)
+    }
 
     // TTS服务实例
     var textToSpeech: TextToSpeech? = null
@@ -370,22 +375,20 @@ class MainActivity : ComponentActivity() {
             body,
         ).joinToString("+")
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-        val timeStart = System.currentTimeMillis()
-        val future = CompletableDeferred<String>()
-        runOnUiThread {
-            webview.evaluateJavascript("exports.encrypt('$md5')") {
-                if (BuildConfig.DEBUG) {
-                    val time = System.currentTimeMillis() - timeStart
-                    Log.i(TAG, "Sign request: $url")
-                    Log.i(TAG, "Sign source: $signSource")
-                    Log.i(TAG, "Sign input: $md5")
-                    Log.i(TAG, "Sign result: $it")
-                    Log.i(TAG, "Sign time: $time ms")
-                }
-                future.complete(it.trim('"'))
-            }
+        
+        if (BuildConfig.DEBUG) {
+            val timeStart = System.currentTimeMillis()
+            val result = zseEncryption.encryptWithPrefix(md5)
+            val time = System.currentTimeMillis() - timeStart
+            Log.i(TAG, "Sign request: $url")
+            Log.i(TAG, "Sign source: $signSource")
+            Log.i(TAG, "Sign input: $md5")
+            Log.i(TAG, "Sign result: $result")
+            Log.i(TAG, "Sign time: $time ms")
+            return result
+        } else {
+            return zseEncryption.encryptWithPrefix(md5)
         }
-        return "2.0_" + future.await()
     }
 
     fun postHistory(dest: NavDestination) {

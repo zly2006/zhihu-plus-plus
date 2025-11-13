@@ -11,8 +11,15 @@ import kotlin.experimental.xor
  * 
  * This is a complex encryption algorithm that uses:
  * - SM4 block cipher
- * - Custom virtual machine for bytecode execution
+ * - Custom virtual machine for bytecode execution (in JavaScript version)
  * - XOR operations and transformations
+ * 
+ * Note: The original JavaScript uses a virtual machine to execute bytecode.
+ * This Kotlin implementation attempts to replicate the encryption logic
+ * without the VM layer, which may result in differences from the JS version.
+ * 
+ * For production use, consider using ZseEncryptionWrapper which calls
+ * the JavaScript implementation through WebView for guaranteed compatibility.
  */
 object ZseEncryption {
     
