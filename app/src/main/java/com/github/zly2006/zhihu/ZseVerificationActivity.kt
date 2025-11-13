@@ -5,12 +5,29 @@ import android.os.Bundle
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +37,7 @@ import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -27,7 +45,6 @@ import kotlinx.coroutines.withContext
  * against the original JavaScript implementation
  */
 class ZseVerificationActivity : ComponentActivity() {
-
     private lateinit var webview: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -64,10 +81,10 @@ class ZseVerificationActivity : ComponentActivity() {
                     title = { Text("ZSE加密验证") },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                 )
-            }
+            },
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -75,23 +92,23 @@ class ZseVerificationActivity : ComponentActivity() {
                     .padding(padding)
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Input section
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Text(
                             text = "输入测试字符串",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                         OutlinedTextField(
                             value = inputText,
@@ -99,23 +116,23 @@ class ZseVerificationActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth(),
                             enabled = !isVerifying,
                             singleLine = true,
-                            label = { Text("测试字符串") }
+                            label = { Text("测试字符串") },
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Button(
                                 onClick = { inputText = "5d41402abc4b2a76b9719d911017c592" },
                                 modifier = Modifier.weight(1f),
-                                enabled = !isVerifying
+                                enabled = !isVerifying,
                             ) {
                                 Text("MD5示例1", style = MaterialTheme.typography.bodySmall)
                             }
                             Button(
                                 onClick = { inputText = "098f6bcd4621d373cade4e832627b4f6" },
                                 modifier = Modifier.weight(1f),
-                                enabled = !isVerifying
+                                enabled = !isVerifying,
                             ) {
                                 Text("MD5示例2", style = MaterialTheme.typography.bodySmall)
                             }
@@ -130,11 +147,11 @@ class ZseVerificationActivity : ComponentActivity() {
                                         comparisonResult = result
                                         resultColor = color
                                     },
-                                    onVerifyingChange = { isVerifying = it }
+                                    onVerifyingChange = { isVerifying = it },
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !isVerifying && inputText.isNotEmpty()
+                            enabled = !isVerifying && inputText.isNotEmpty(),
                         ) {
                             Text(if (isVerifying) "验证中..." else "开始验证")
                         }
@@ -146,7 +163,7 @@ class ZseVerificationActivity : ComponentActivity() {
                     ResultCard(
                         title = "Kotlin实现结果",
                         content = kotlinResult,
-                        color = MaterialTheme.colorScheme.primaryContainer
+                        color = MaterialTheme.colorScheme.primaryContainer,
                     )
                 }
 
@@ -155,7 +172,7 @@ class ZseVerificationActivity : ComponentActivity() {
                     ResultCard(
                         title = "JavaScript实现结果",
                         content = jsResult,
-                        color = MaterialTheme.colorScheme.secondaryContainer
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                     )
                 }
 
@@ -164,22 +181,22 @@ class ZseVerificationActivity : ComponentActivity() {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = resultColor.copy(alpha = 0.1f)
-                        )
+                            containerColor = resultColor.copy(alpha = 0.1f),
+                        ),
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(
                                 text = "比对结果",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
                             )
                             Text(
                                 text = comparisonResult,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = resultColor
+                                color = resultColor,
                             )
                         }
                     }
@@ -193,22 +210,22 @@ class ZseVerificationActivity : ComponentActivity() {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = color
-            )
+                containerColor = color,
+            ),
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = content,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 )
             }
         }
@@ -222,7 +239,7 @@ class ZseVerificationActivity : ComponentActivity() {
         onKotlinResult: (String) -> Unit,
         onJsResult: (String) -> Unit,
         onComparison: (String, Color) -> Unit,
-        onVerifyingChange: (Boolean) -> Unit
+        onVerifyingChange: (Boolean) -> Unit,
     ) {
         onVerifyingChange(true)
         onKotlinResult("Computing...")
@@ -241,16 +258,16 @@ class ZseVerificationActivity : ComponentActivity() {
 
                 onKotlinResult(
                     "时间: ${kotlinResult.second}ms\n" +
-                    "长度: ${kotlinResult.third} 字符\n" +
-                    "结果: ${kotlinResult.first}"
+                        "长度: ${kotlinResult.third} 字符\n" +
+                        "结果: ${kotlinResult.first}",
                 )
 
                 // Get JavaScript result
                 val jsResult = getJavaScriptResult(input)
                 onJsResult(
                     "时间: ${jsResult.second}ms\n" +
-                    "长度: ${jsResult.third} 字符\n" +
-                    "结果: ${jsResult.first}"
+                        "长度: ${jsResult.third} 字符\n" +
+                        "结果: ${jsResult.first}",
                 )
 
                 // Compare results
@@ -258,20 +275,19 @@ class ZseVerificationActivity : ComponentActivity() {
                 onComparison(
                     if (match) {
                         "✓ 验证通过！\n\n两种实现产生完全相同的加密结果。\n" +
-                        "这证明Kotlin实现正确地复制了JavaScript的加密逻辑。"
+                            "这证明Kotlin实现正确地复制了JavaScript的加密逻辑。"
                     } else {
                         "✗ 验证失败\n\n加密结果不一致：\n\n" +
-                        "Kotlin长度: ${kotlinResult.third}\n" +
-                        "JavaScript长度: ${jsResult.third}\n\n" +
-                        "差异可能源于算法实现细节。"
+                            "Kotlin长度: ${kotlinResult.third}\n" +
+                            "JavaScript长度: ${jsResult.third}\n\n" +
+                            "差异可能源于算法实现细节。"
                     },
-                    if (match) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    if (match) Color(0xFF4CAF50) else Color(0xFFF44336),
                 )
-
             } catch (e: Exception) {
                 onComparison(
                     "错误: ${e.message}\n\n${e.stackTraceToString()}",
-                    Color(0xFFF44336)
+                    Color(0xFFF44336),
                 )
             } finally {
                 onVerifyingChange(false)

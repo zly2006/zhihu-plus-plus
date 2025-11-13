@@ -18,8 +18,9 @@ import kotlinx.coroutines.withContext
  * val encrypted = wrapper.encrypt("input_string")
  * ```
  */
-class ZseEncryptionWrapper(private val webView: WebView) {
-
+class ZseEncryptionWrapper(
+    private val webView: WebView,
+) {
     /**
      * Encrypts the input string using the JavaScript ZSE implementation
      *

@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -58,7 +57,8 @@ class MainActivity : ComponentActivity() {
 
     // ZSE encryption wrapper using the JavaScript implementation
     private val zseEncryption by lazy {
-        com.github.zly2006.zhihu.encryption.ZseEncryptionWrapper(webview)
+        com.github.zly2006.zhihu.encryption
+            .ZseEncryptionWrapper(webview)
     }
 
     // TTS服务实例
