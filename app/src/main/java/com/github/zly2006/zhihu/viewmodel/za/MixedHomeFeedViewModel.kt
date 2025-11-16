@@ -16,7 +16,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 
-class MixedHomeFeedViewModel : BaseFeedViewModel(), IHomeFeedViewModel {
+class MixedHomeFeedViewModel :
+    BaseFeedViewModel(),
+    IHomeFeedViewModel {
     val android = AndroidHomeFeedViewModel()
     val web = HomeFeedViewModel()
     override val initialUrl: String
