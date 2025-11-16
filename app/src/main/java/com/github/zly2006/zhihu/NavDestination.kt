@@ -1,6 +1,9 @@
 package com.github.zly2006.zhihu
 
 import android.net.Uri
+import com.github.zly2006.zhihu.data.AccountData
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -177,4 +180,21 @@ fun resolveContent(uri: Uri): NavDestination? {
         }
     }
     return null
+}
+
+suspend fun checkForAd(destination: NavDestination, context: MainActivity): Boolean {
+    val appViewUrl = when (destination) {
+        is Article -> when (destination.type) {
+            ArticleType.Article -> "https://www.zhihu.com/appview/p/${destination.id}"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content"
+        }
+        else -> return false
+    }
+    val httpClient = AccountData.httpClient(context)
+    val response = httpClient.get(appViewUrl) {
+        signFetchRequest(context)
+    }
+    val html = response.bodyAsText()
+    println(html)
+    return "xg.zhihu.com" in html
 }

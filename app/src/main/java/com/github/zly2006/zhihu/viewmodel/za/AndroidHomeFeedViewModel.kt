@@ -4,6 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.checkForAd
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.data
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -21,6 +23,9 @@ import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -56,50 +61,60 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
-                data.map { it.jsonObject }.forEach { card ->
-                    if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
-                        return@forEach
-                    }
-                    val route =
-                        card["action"]!!
-                            .jsonObject["parameter"]!!
-                            .jsonPrimitive.content
-                            .substringAfter("route_url=")
-                    val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
-                    val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
-                    val title =
-                        children.first { it["id"]?.jsonPrimitive?.content?.endsWith("Text") == true }["text"]!!.jsonPrimitive.content
-                    val summary =
-                        children.first { it["id"]?.jsonPrimitive?.content == "text_pin_summary" }["text"]!!.jsonPrimitive.content
-                    val footerLine =
-                        children.first { it["id"]?.jsonPrimitive?.content == "feed_footer" }["elements"]!!.jsonArray.map { it.jsonObject }
-                    val footerText =
-                        footerLine.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
-                    val lineAuthor =
-                        children.first { it["style"]?.jsonPrimitive?.content == "LineAuthor_default" }["elements"]!!.jsonArray.map { it.jsonObject }
-                    val avatar =
-                        lineAuthor
-                            .first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!
-                            .jsonObject["url"]!!
-                            .jsonPrimitive.content
-                    val authorName =
-                        lineAuthor.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
-                    if (routeDest is Article) {
-                        routeDest.authorName = authorName
-                        routeDest.title = title
-                        routeDest.avatarSrc = avatar
-                    }
-                    displayItems.add(
-                        FeedDisplayItem(
-                            navDestination = routeDest,
-                            avatarSrc = avatar,
-                            summary = summary,
-                            title = title,
-                            details = "$footerText · 手机版推荐",
-                            feed = null,
-                        ),
-                    )
-                }
+                data
+                    .map { it.jsonObject }
+                    .mapNotNull { card ->
+                        if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
+                            return@mapNotNull null
+                        }
+                        val route =
+                            card["action"]!!
+                                .jsonObject["parameter"]!!
+                                .jsonPrimitive.content
+                                .substringAfter("route_url=")
+                        val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@mapNotNull null
+                        val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@mapNotNull null
+                        val title =
+                            children.first { it["id"]?.jsonPrimitive?.content?.endsWith("Text") == true }["text"]!!.jsonPrimitive.content
+                        val summary =
+                            children.first { it["id"]?.jsonPrimitive?.content == "text_pin_summary" }["text"]!!.jsonPrimitive.content
+                        val footerLine =
+                            children.first { it["id"]?.jsonPrimitive?.content == "feed_footer" }["elements"]!!.jsonArray.map { it.jsonObject }
+                        val footerText =
+                            footerLine.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
+                        val lineAuthor =
+                            children.first { it["style"]?.jsonPrimitive?.content == "LineAuthor_default" }["elements"]!!.jsonArray.map { it.jsonObject }
+                        val avatar =
+                            lineAuthor
+                                .first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!
+                                .jsonObject["url"]!!
+                                .jsonPrimitive.content
+                        val authorName =
+                            lineAuthor.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
+                        if (routeDest is Article) {
+                            routeDest.authorName = authorName
+                            routeDest.title = title
+                            routeDest.avatarSrc = avatar
+                        }
+                        val task = coroutineScope {
+                            launch {
+                                if (!checkForAd(routeDest, context as MainActivity)) {
+                                    displayItems.add(
+                                        FeedDisplayItem(
+                                            navDestination = routeDest,
+                                            avatarSrc = avatar,
+                                            authorName = authorName,
+                                            summary = summary,
+                                            title = title,
+                                            details = "$footerText · 手机版推荐",
+                                            feed = null,
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                        task
+                    }.joinAll()
             }
         } catch (e: Exception) {
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)

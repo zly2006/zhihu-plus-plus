@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import android.util.Log
+import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.checkForAd
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
@@ -21,6 +23,8 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -48,7 +52,18 @@ class HomeFeedViewModel :
         GlobalScope.launch {
             val filteredData = applyContentFilter(context, data)
             recordContentDisplays(context, filteredData)
-            displayItems.addAll(filteredData.flatten().map { createDisplayItem(it) })
+
+            filteredData
+                .flatten()
+                .map { feed ->
+                    coroutineScope {
+                        launch {
+                            if (feed.target?.navDestination != null && !checkForAd(feed.target!!.navDestination!!, context as MainActivity)) {
+                                displayItems.add(createDisplayItem(feed))
+                            }
+                        }
+                    }
+                }.joinAll()
         }
     }
 
