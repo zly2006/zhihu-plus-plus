@@ -20,7 +20,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
-    val displayItems = mutableStateListOf<FeedDisplayItem>()
+    var displayItems = mutableStateListOf<FeedDisplayItem>()
     var isPullToRefresh by mutableStateOf(false)
         protected set
 

@@ -52,7 +52,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
         return super.httpClient(context)
     }
 
-    override suspend fun fetchFeeds(context: Context) {
+    public override suspend fun fetchFeeds(context: Context) {
         try {
             val response = httpClient(context).get(initialUrl) {
                 headers.appendAll(AccountData.ANDROID_HEADERS)

@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -62,8 +63,8 @@ fun HomeScreen(
     // 获取当前推荐算法设置
     val currentRecommendationMode = remember {
         RecommendationMode.entries.find {
-            it.key == preferences.getString("recommendationMode", RecommendationMode.WEB.key)
-        } ?: RecommendationMode.WEB
+            it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+        } ?: RecommendationMode.MIXED
     }
 
     // 根据设置选择对应的ViewModel
@@ -71,7 +72,7 @@ fun HomeScreen(
         RecommendationMode.WEB -> context.viewModels<HomeFeedViewModel>()
         RecommendationMode.ANDROID -> context.viewModels<AndroidHomeFeedViewModel>()
         RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
-        RecommendationMode.SIMILARITY -> context.viewModels<HomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
+        RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
     if (false) {

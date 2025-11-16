@@ -751,7 +751,7 @@ fun ArticleScreen(
                 WebviewComp {
                     it.setupUpWebviewClient {
                         if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                            GlobalScope.launch(coroutineScope.coroutineContext) {
+                            coroutineScope.launch(coroutineScope.coroutineContext) {
                                 val rememberedY = viewModel.rememberedScrollY.value ?: 0
                                 while (scrollState.maxValue < rememberedY) {
                                     delay(100)

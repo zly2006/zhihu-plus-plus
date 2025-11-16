@@ -37,7 +37,7 @@ class HomeFeedViewModel :
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
 
-    override suspend fun fetchFeeds(context: Context) {
+    public override suspend fun fetchFeeds(context: Context) {
         val httpClient = AccountData.httpClient(context)
         markItemsAsTouched(context, httpClient)
         super.fetchFeeds(context)

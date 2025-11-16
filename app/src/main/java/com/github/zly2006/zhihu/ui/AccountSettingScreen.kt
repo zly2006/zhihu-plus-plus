@@ -669,8 +669,8 @@ fun AccountSettingScreen(
             val currentRecommendationMode = remember {
                 mutableStateOf(
                     RecommendationMode.entries.find {
-                        it.key == preferences.getString("recommendationMode", RecommendationMode.WEB.key)
-                    } ?: RecommendationMode.WEB,
+                        it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+                    } ?: RecommendationMode.MIXED,
                 )
             }
 
@@ -724,7 +724,7 @@ fun AccountSettingScreen(
                                         Toast.LENGTH_SHORT,
                                     ).show()
                             },
-                            enabled = mode !in listOf(RecommendationMode.SIMILARITY), // 相似度推荐还未实现
+                            enabled = true,
                         )
                     }
                 }

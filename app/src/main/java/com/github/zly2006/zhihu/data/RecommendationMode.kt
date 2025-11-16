@@ -6,7 +6,7 @@ enum class RecommendationMode(
     val description: String,
 ) {
     WEB("Web 端推荐", "server", "使用知乎网页端的推荐算法"),
-    ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法（还没做盐选筛选）"),
+    ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法"),
     LOCAL("本地推荐", "local", "基于本地数据的推荐算法"),
-    SIMILARITY("相似度推荐", "similarity", "基于内容相似度的推荐算法 (开发中)"),
+    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤严选内容"),
 }
