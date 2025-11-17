@@ -7,7 +7,6 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.checkForAd
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AccountData.data
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -15,10 +14,9 @@ import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
 import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -30,6 +28,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+
+private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders", { }) {
+    onRequest { request, _ ->
+        request.headers.appendAll(AccountData.ANDROID_HEADERS)
+    }
+}
 
 class AndroidHomeFeedViewModel : BaseFeedViewModel() {
     override val initialUrl: String
@@ -45,8 +49,9 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                     json(json)
                 }
                 install(UserAgent) {
-                    agent = data.userAgent
+                    agent = AccountData.ANDROID_USER_AGENT
                 }
+                install(ZHIHU_PP_ANDROID_HEADERS)
             }
         }
         return super.httpClient(context)
@@ -54,10 +59,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
 
     public override suspend fun fetchFeeds(context: Context) {
         try {
-            val response = httpClient(context).get(initialUrl) {
-                headers.appendAll(AccountData.ANDROID_HEADERS)
-                header(HttpHeaders.UserAgent, AccountData.ANDROID_USER_AGENT)
-            }
+            val response = httpClient(context).get(initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")

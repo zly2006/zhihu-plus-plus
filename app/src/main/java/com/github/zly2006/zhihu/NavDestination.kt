@@ -185,7 +185,7 @@ fun resolveContent(uri: Uri): NavDestination? {
 suspend fun checkForAd(destination: NavDestination, context: MainActivity): Boolean {
     val appViewUrl = when (destination) {
         is Article -> when (destination.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles//${destination.id}"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles//${destination.id}?include=content"
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content"
         }
         else -> return false
