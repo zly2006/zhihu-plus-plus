@@ -185,7 +185,7 @@ fun resolveContent(uri: Uri): NavDestination? {
 suspend fun checkForAd(destination: NavDestination, context: MainActivity): Boolean {
     val appViewUrl = when (destination) {
         is Article -> when (destination.type) {
-            ArticleType.Article -> "https://www.zhihu.com/appview/p/${destination.id}"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles//${destination.id}"
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content"
         }
         else -> return false
@@ -196,5 +196,7 @@ suspend fun checkForAd(destination: NavDestination, context: MainActivity): Bool
     }
     val html = response.bodyAsText()
     println(html)
-    return "xg.zhihu.com" in html
+    val isAd = "xg.zhihu.com" in html // 广告
+    val isPayWall = "本内容版权为知乎及版权方所有，侵权必究" in html // 盐选
+    return isAd || isPayWall
 }
