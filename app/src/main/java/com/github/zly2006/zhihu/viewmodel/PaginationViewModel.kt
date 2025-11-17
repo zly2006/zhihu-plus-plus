@@ -14,14 +14,20 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.signFetchRequest
 import com.github.zly2006.zhihu.ui.HttpStatusException
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.dumpCurlRequest
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.cache.HttpCache
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.http.parameters
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -71,6 +77,20 @@ abstract class PaginationViewModel<T : Any>(
     }
 
     open fun httpClient(context: Context): HttpClient {
+        // 检查是否启用推荐内容时登录设置
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+        if (!loginForRecommendation) {
+            return HttpClient {
+                install(HttpCache)
+                install(ContentNegotiation) {
+                    json(json)
+                }
+                install(UserAgent) {
+                    agent = AccountData.data.username
+                }
+            }
+        }
         if (context is MainActivity) {
             return context.httpClient
         }

@@ -16,6 +16,7 @@ import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.get
 import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
@@ -43,18 +44,21 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
         // 检查是否启用推荐内容时登录设置
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
-        if (!loginForRecommendation) {
-            return HttpClient {
-                install(ContentNegotiation) {
-                    json(json)
+
+        return HttpClient {
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(UserAgent) {
+                agent = AccountData.ANDROID_USER_AGENT
+            }
+            install(ZHIHU_PP_ANDROID_HEADERS)
+            if (loginForRecommendation) {
+                install(HttpCookies) {
+                    storage = AccountData.cookieStorage(context, null)
                 }
-                install(UserAgent) {
-                    agent = AccountData.ANDROID_USER_AGENT
-                }
-                install(ZHIHU_PP_ANDROID_HEADERS)
             }
         }
-        return super.httpClient(context)
     }
 
     public override suspend fun fetchFeeds(context: Context) {

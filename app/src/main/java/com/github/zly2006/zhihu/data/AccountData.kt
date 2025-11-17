@@ -78,33 +78,35 @@ object AccountData {
         file.writeText(json.encodeToString(data))
     }
 
+    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) = object : CookiesStorage {
+        override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
+            // https://github.com/zly2006/zhihu-plus-plus/issues/25#issuecomment-3311926550
+            if (cookie.name == "z_c0" && cookie.value.isBlank()) {
+                // 避免被登出
+                return
+            }
+            if (cookie.domain?.endsWith("zhihu.com") != false) {
+                if (cookies == null) {
+                    data.cookies[cookie.name] = cookie.value
+                    saveData(context, data)
+                } else {
+                    cookies[cookie.name] = cookie.value
+                }
+            }
+        }
+
+        override fun close() {
+        }
+
+        override suspend fun get(requestUrl: Url): List<Cookie> = (cookies ?: data.cookies).map {
+            Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
+        }
+    }
+
     fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient = HttpClient {
         install(HttpCache)
         install(HttpCookies) {
-            storage = object : CookiesStorage {
-                override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
-                    // https://github.com/zly2006/zhihu-plus-plus/issues/25#issuecomment-3311926550
-                    if (cookie.name == "z_c0" && cookie.value.isBlank()) {
-                        // 避免被登出
-                        return
-                    }
-                    if (cookie.domain?.endsWith("zhihu.com") != false) {
-                        if (cookies == null) {
-                            data.cookies[cookie.name] = cookie.value
-                            saveData(context, data)
-                        } else {
-                            cookies[cookie.name] = cookie.value
-                        }
-                    }
-                }
-
-                override fun close() {
-                }
-
-                override suspend fun get(requestUrl: Url): List<Cookie> = (cookies ?: data.cookies).map {
-                    Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
-                }
-            }
+            storage = cookieStorage(context, cookies)
         }
         install(ContentNegotiation) {
             json(json)
