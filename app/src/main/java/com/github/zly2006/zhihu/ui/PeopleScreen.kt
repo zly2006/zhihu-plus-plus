@@ -4,15 +4,12 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -37,12 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -302,16 +297,15 @@ fun PeopleScreen(
         }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = {
-                    CollapsibleUserInfoHeader(
-                        viewModel = viewModel,
-                        collapsedFraction = scrollBehavior.state.collapsedFraction,
+                    UserInfoHeader(
+                        viewModel,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 },
@@ -524,66 +518,5 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
                 Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
             }
         }
-    }
-}
-
-@Composable
-private fun CollapsibleUserInfoHeader(
-    viewModel: PersonViewModel,
-    collapsedFraction: Float,
-    modifier: Modifier = Modifier,
-) {
-    val collapsedAlpha by animateFloatAsState(
-        targetValue = collapsedFraction.coerceIn(0f, 1f),
-        label = "collapsedAlpha",
-    )
-    val expandedAlpha by animateFloatAsState(
-        targetValue = 1f - collapsedAlpha,
-        label = "expandedAlpha",
-    )
-
-    val topBarHeight = lerp(220.dp, 48.dp, collapsedAlpha)
-
-    Box(
-        modifier = modifier.height(topBarHeight),
-        contentAlignment = Alignment.TopStart,
-    ) {
-        UserInfoHeader(
-            viewModel = viewModel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer { alpha = expandedAlpha },
-        )
-        CollapsedUserInfoBar(
-            viewModel = viewModel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer { alpha = collapsedAlpha },
-        )
-    }
-}
-
-@Composable
-private fun CollapsedUserInfoBar(viewModel: PersonViewModel, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .height(48.dp)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        AsyncImage(
-            model = viewModel.avatar,
-            contentDescription = "用户头像",
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape),
-        )
-        Text(
-            text = viewModel.name,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
