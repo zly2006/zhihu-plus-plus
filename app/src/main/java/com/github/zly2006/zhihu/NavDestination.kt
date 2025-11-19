@@ -6,6 +6,8 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 sealed interface NavDestination
@@ -197,6 +199,12 @@ suspend fun checkForAd(destination: NavDestination, context: MainActivity): Bool
     val html = response.bodyAsText()
     println(html)
     val isAd = "xg.zhihu.com" in html // 广告
-    val isPayWall = "本内容版权为知乎及版权方所有，侵权必究" in html // 盐选
+    var isPayWall = "本内容版权为知乎及版权方所有，侵权必究" in html // 盐选
+    runCatching {
+        val jojo = Json.decodeFromString<JsonObject>(html)
+        if ("paid_info" in jojo) {
+            isPayWall = true
+        }
+    }
     return isAd || isPayWall
 }
