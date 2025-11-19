@@ -3,38 +3,38 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,8 +68,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.runtime.snapshotFlow
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -117,7 +115,6 @@ class PersonViewModel(
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
 
-
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
     val articlesFeedModel = PeopleArticlesViewModel(person)
@@ -132,14 +129,16 @@ class PersonViewModel(
         context as MainActivity
         val client = context.httpClient
         if (isFollowing) {
-            client.delete("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
-                signFetchRequest(context)
-            }.raiseForStatus()
+            client
+                .delete("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+                    signFetchRequest(context)
+                }.raiseForStatus()
             isFollowing = false
         } else {
-            client.post("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
-                signFetchRequest(context)
-            }.raiseForStatus()
+            client
+                .post("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+                    signFetchRequest(context)
+                }.raiseForStatus()
             isFollowing = true
         }
     }
@@ -149,16 +148,18 @@ class PersonViewModel(
         val client = context.httpClient
         if (isBlocking) {
             // unblock
-            val response = client.delete("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
-                signFetchRequest(context)
-            }.raiseForStatus()
+            val response = client
+                .delete("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                    signFetchRequest(context)
+                }.raiseForStatus()
             Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
             isBlocking = false
         } else {
             // block
-            val response = client.post("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
-                signFetchRequest(context)
-            }.raiseForStatus()
+            val response = client
+                .post("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                    signFetchRequest(context)
+                }.raiseForStatus()
             Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
             isBlocking = true
         }
@@ -241,7 +242,7 @@ suspend fun HttpResponse.raiseForStatus() = apply {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
     person: Person,
@@ -290,149 +291,143 @@ fun PeopleScreen(
         }
     }
 
-    val listStates = remember {
-        titles.indices.map { LazyListState() }
+    val headerListStates = List(titles.size) {
     }
-    val currentListState = listStates[pagerState.currentPage]
-    val headerVisible = currentListState.lastScrolledBackward || (!currentListState.lastScrolledBackward && !currentListState.lastScrolledForward)
-    var headerHeightPx by remember { mutableStateOf(-1) }
-    var prevHeaderHeight by remember { mutableStateOf(0) }
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
-    LaunchedEffect(headerHeightPx) {
-        if (prevHeaderHeight != headerHeightPx && !currentListState.isScrollInProgress) { // Only compensate if visibility changed
-            val adjustment = headerHeightPx - prevHeaderHeight
-            currentListState.scrollBy(adjustment.toFloat())
-            prevHeaderHeight = headerHeightPx
-        }
-    }
-
-    Column(
-        modifier = Modifier.padding(8.dp),
-    ) {
-        ScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            modifier = Modifier.padding(bottom = 8.dp),
-        ) {
-            titles.forEachIndexed { index, title ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                ) {
-                    Text(
-                        text = title,
-                        modifier = Modifier.padding(16.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            TopAppBar(
+                title = {
+                    UserInfoHeader(
+                        viewModel,
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                }
-            }
-        }
-        AnimatedVisibility(
-            visible = headerVisible,
-            enter = expandVertically(), // Add animation for entering
-            exit = shrinkVertically(), // Add animation for exiting
-            modifier = Modifier.onSizeChanged {
-                if (headerHeightPx == -1) {
-                    prevHeaderHeight = it.height
-                }
-                headerHeightPx = it.height
-            }
+                },
+                scrollBehavior = scrollBehavior,
+                expandedHeight = 160.dp,
+                windowInsets = WindowInsets(0.dp),
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(horizontal = 8.dp),
         ) {
-            UserInfoHeader(viewModel)
-        }
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.weight(1f),
-        ) { page ->
-            when (page) {
-                0 -> {
-                    // 回答
-                    PaginatedList(
-                        items = viewModel.answersFeedModel.allData,
-                        onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
-                        isEnd = { viewModel.answersFeedModel.isEnd },
-                        footer = ProgressIndicatorFooter,
-                        listState = listStates[page]
-                    ) {
-                        FeedCard(
-                            BaseFeedViewModel.FeedDisplayItem(
-                                title = it.question.title,
-                                summary = it.excerpt,
-                                details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                feed = null,
-                            ),
-                            horizontalPadding = 4.dp,
-                        ) {
-                            onNavigate(
-                                Article(
-                                    type = ArticleType.Answer,
-                                    id = it.id,
-                                    title = it.question.title,
-                                    excerpt = it.excerpt,
-                                ),
-                            )
-                        }
-                    }
-                }
-                1 -> {
-                    // 文章
-                    PaginatedList(
-                        items = viewModel.articlesFeedModel.allData,
-                        onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
-                        isEnd = { viewModel.articlesFeedModel.isEnd },
-                        footer = ProgressIndicatorFooter,
-                        listState = listStates[page]
-                    ) {
-                        FeedCard(
-                            BaseFeedViewModel.FeedDisplayItem(
-                                title = it.title,
-                                summary = it.excerpt,
-                                details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                feed = null,
-                            ),
-                            horizontalPadding = 4.dp,
-                        ) {
-                            onNavigate(
-                                Article(
-                                    type = ArticleType.Article,
-                                    id = it.id,
-                                    title = it.title,
-                                    excerpt = it.excerpt,
-                                ),
-                            )
-                        }
-                    }
-                }
-                2 -> {
-                    // 动态
-                    PaginatedList(
-                        items = viewModel.activitiesFeedModel.displayItems,
-                        onLoadMore = { viewModel.activitiesFeedModel.loadMore(context) },
-                        isEnd = { viewModel.activitiesFeedModel.isEnd },
-                        footer = ProgressIndicatorFooter,
-                        listState = listStates[page]
-                    ) {
-                        FeedCard(
-                            it,
-                            horizontalPadding = 4.dp,
-                        ) {
-                            it.navDestination?.let(onNavigate)
-                        }
-                    }
-                }
-                else -> {
-                    // 其他页面显示占位符内容
-                    Column(
-                        modifier = Modifier.padding(16.dp),
+            ScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+            ) {
+                titles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
                     ) {
                         Text(
-                            text = "「${titles[page]}」功能正在开发中...",
-                            modifier = Modifier.padding(top = 16.dp),
+                            text = title,
+                            modifier = Modifier.padding(16.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
+                    }
+                }
+            }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+            ) { page ->
+                val pageHeaderState = headerListStates[page]
+                when (page) {
+                    0 -> {
+                        // 回答
+                        PaginatedList(
+                            items = viewModel.answersFeedModel.allData,
+                            onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
+                            isEnd = { viewModel.answersFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) {
+                            FeedCard(
+                                BaseFeedViewModel.FeedDisplayItem(
+                                    title = it.question.title,
+                                    summary = it.excerpt,
+                                    details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                    feed = null,
+                                ),
+                                horizontalPadding = 4.dp,
+                            ) {
+                                onNavigate(
+                                    Article(
+                                        type = ArticleType.Answer,
+                                        id = it.id,
+                                        title = it.question.title,
+                                        excerpt = it.excerpt,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+
+                    1 -> {
+                        // 文章
+                        PaginatedList(
+                            items = viewModel.articlesFeedModel.allData,
+                            onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
+                            isEnd = { viewModel.articlesFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) {
+                            FeedCard(
+                                BaseFeedViewModel.FeedDisplayItem(
+                                    title = it.title,
+                                    summary = it.excerpt,
+                                    details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                    feed = null,
+                                ),
+                                horizontalPadding = 4.dp,
+                            ) {
+                                onNavigate(
+                                    Article(
+                                        type = ArticleType.Article,
+                                        id = it.id,
+                                        title = it.title,
+                                        excerpt = it.excerpt,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+
+                    2 -> {
+                        // 动态
+                        PaginatedList(
+                            items = viewModel.activitiesFeedModel.displayItems,
+                            onLoadMore = { viewModel.activitiesFeedModel.loadMore(context) },
+                            isEnd = { viewModel.activitiesFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) {
+                            FeedCard(
+                                it,
+                                horizontalPadding = 4.dp,
+                            ) {
+                                it.navDestination?.let(onNavigate)
+                            }
+                        }
+                    }
+
+                    else -> {
+                        // 其他页面显示占位符内容
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Text(
+                                text = "「${titles[page]}」功能正在开发中...",
+                                modifier = Modifier.padding(top = 16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -454,11 +449,11 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
     val context = LocalContext.current
     Column(
         modifier = modifier.padding(vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
                 model = viewModel.avatar,
@@ -474,7 +469,7 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
                     viewModel.headline,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -482,7 +477,7 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+            horizontalArrangement = Arrangement.SpaceAround,
         ) {
             StatItem("回答", viewModel.answerCount)
             StatItem("文章", viewModel.articleCount)
@@ -492,7 +487,7 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             OutlinedButton(onClick = {
                 coroutineScope.launch {
