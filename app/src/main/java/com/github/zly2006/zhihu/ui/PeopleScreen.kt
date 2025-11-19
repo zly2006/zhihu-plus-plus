@@ -305,8 +305,11 @@ fun PeopleScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 },
+                colors = TopAppBarDefaults.topAppBarColors().copy(
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface
+                ),
                 scrollBehavior = scrollBehavior,
-                expandedHeight = 160.dp,
+                expandedHeight = 220.dp,
                 windowInsets = WindowInsets(0.dp),
             )
         },
