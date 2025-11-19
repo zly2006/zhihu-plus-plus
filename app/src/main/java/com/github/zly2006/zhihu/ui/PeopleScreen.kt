@@ -139,14 +139,16 @@ class PersonViewModel(
             val jojo = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                     signFetchRequest(context)
-                }.raiseForStatus().body<JsonObject>()
+                }.raiseForStatus()
+                .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount - 1)
             isFollowing = false
         } else {
             val jojo = client
                 .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                     signFetchRequest(context)
-                }.raiseForStatus().body<JsonObject>()
+                }.raiseForStatus()
+                .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount + 1)
             isFollowing = true
         }
