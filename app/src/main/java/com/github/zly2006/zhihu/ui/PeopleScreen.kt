@@ -72,6 +72,8 @@ import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.reflect.typeOf
 
 class PeopleAnswersViewModel(
@@ -134,16 +136,18 @@ class PersonViewModel(
         context as MainActivity
         val client = context.httpClient
         if (isFollowing) {
-            client
-                .delete("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+            val jojo = client
+                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                     signFetchRequest(context)
-                }.raiseForStatus()
+                }.raiseForStatus().body<JsonObject>()
+            this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount - 1)
             isFollowing = false
         } else {
-            client
-                .post("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+            val jojo = client
+                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
                     signFetchRequest(context)
-                }.raiseForStatus()
+                }.raiseForStatus().body<JsonObject>()
+            this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount + 1)
             isFollowing = true
         }
     }
