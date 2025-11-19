@@ -3,14 +3,24 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -19,10 +29,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -44,7 +58,9 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
@@ -54,6 +70,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
+import androidx.compose.material3.OutlinedButton
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -98,6 +115,9 @@ class PersonViewModel(
     var followerCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
     var articleCount by mutableIntStateOf(0)
+    var isFollowing by mutableStateOf(false)
+    var isBlocking by mutableStateOf(false)
+
 
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
@@ -108,6 +128,42 @@ class PersonViewModel(
         articlesFeedModel,
         activitiesFeedModel,
     )
+
+    suspend fun toggleFollow(context: Context) {
+        context as MainActivity
+        val client = context.httpClient
+        if (isFollowing) {
+            client.delete("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+                signFetchRequest(context)
+            }.raiseForStatus()
+            isFollowing = false
+        } else {
+            client.post("https://www.zhihu.com/api/v4/members/${person.id}/followers") {
+                signFetchRequest(context)
+            }.raiseForStatus()
+            isFollowing = true
+        }
+    }
+
+    suspend fun toggleBlock(context: Context) {
+        context as MainActivity
+        val client = context.httpClient
+        if (isBlocking) {
+            // unblock
+            val response = client.delete("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                signFetchRequest(context)
+            }.raiseForStatus()
+            Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
+            isBlocking = false
+        } else {
+            // block
+            val response = client.post("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                signFetchRequest(context)
+            }.raiseForStatus()
+            Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
+            isBlocking = true
+        }
+    }
 
     suspend fun load(context: Context) {
         context as MainActivity
@@ -130,6 +186,8 @@ class PersonViewModel(
         this.followerCount = person.followerCount
         this.answerCount = person.answerCount
         this.articleCount = person.articlesCount
+        this.isFollowing = person.isFollowing
+        this.isBlocking = person.isBlocking
         if (person.urlToken != null) {
             this.person.urlToken = person.urlToken
         }
@@ -184,7 +242,7 @@ suspend fun HttpResponse.raiseForStatus() = apply {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class)
 @Composable
 fun PeopleScreen(
     person: Person,
@@ -206,10 +264,9 @@ fun PeopleScreen(
 
     val pagerState = rememberPagerState(pageCount = { titles.size })
 
-    LaunchedEffect(viewModel, pagerState.currentPage) {
+    LaunchedEffect(viewModel) {
         try {
             viewModel.load(context)
-            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(context)
         } catch (e: Exception) {
             Log.e("PeopleScreen", "Error loading person data", e)
             Toast
@@ -219,6 +276,63 @@ fun PeopleScreen(
                     Toast.LENGTH_LONG,
                 ).show()
         }
+    }
+    LaunchedEffect(pagerState.currentPage) {
+        try {
+            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(context)
+        } catch (e: Exception) {
+            Log.e("PeopleScreen", "Error loading page data", e)
+            Toast
+                .makeText(
+                    context,
+                    "加载页面内容失败: ${e.message}",
+                    Toast.LENGTH_LONG,
+                ).show()
+        }
+    }
+
+    val listStates = remember {
+        titles.indices.map { LazyListState() }
+    }
+    val currentListState = listStates[pagerState.currentPage]
+    val headerVisible = remember { mutableStateOf(true) }
+    var headerHeightPx by remember { mutableStateOf(0) }
+
+    LaunchedEffect(currentListState) {
+        var lastScrollOffset = 0
+        var lastVisible = true
+        snapshotFlow { currentListState.firstVisibleItemScrollOffset }
+            .collect { scrollOffset ->
+                val newVisible = if (scrollOffset > lastScrollOffset) { // Scrolling down
+                    false
+                } else { // Scrolling up
+                    true
+                }
+                headerVisible.value =
+                    if (currentListState.firstVisibleItemIndex == 0 && scrollOffset < 50) {
+                        true
+                    } else {
+                        newVisible
+                    }
+
+                if (headerVisible.value != lastVisible) {
+                    val adjustment = if (headerVisible.value) {
+                        // is now visible, content pushed down, scroll content up
+                        headerHeightPx.toFloat()
+                    } else {
+                        // is now hidden, content jumped up, scroll content down
+                        -headerHeightPx.toFloat()
+                    }
+                    if (headerHeightPx > 0) {
+                        launch {
+                            currentListState.scrollBy(adjustment)
+                        }
+                    }
+                }
+
+                lastScrollOffset = scrollOffset
+                lastVisible = headerVisible.value
+            }
     }
 
     Column(
@@ -246,7 +360,11 @@ fun PeopleScreen(
                 }
             }
         }
-
+        AnimatedVisibility(visible = headerVisible.value) {
+            UserInfoHeader(viewModel, modifier = Modifier.onSizeChanged {
+                if (it.height > 0) headerHeightPx = it.height
+            })
+        }
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.weight(1f),
@@ -259,11 +377,7 @@ fun PeopleScreen(
                         onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
                         isEnd = { viewModel.answersFeedModel.isEnd },
                         footer = ProgressIndicatorFooter,
-                        topContent = {
-                            item(0) {
-                                UserInfoHeader(viewModel, person)
-                            }
-                        },
+                        listState = listStates[page]
                     ) {
                         FeedCard(
                             BaseFeedViewModel.FeedDisplayItem(
@@ -292,11 +406,7 @@ fun PeopleScreen(
                         onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
                         isEnd = { viewModel.articlesFeedModel.isEnd },
                         footer = ProgressIndicatorFooter,
-                        topContent = {
-                            item(0) {
-                                UserInfoHeader(viewModel, person)
-                            }
-                        },
+                        listState = listStates[page]
                     ) {
                         FeedCard(
                             BaseFeedViewModel.FeedDisplayItem(
@@ -325,11 +435,7 @@ fun PeopleScreen(
                         onLoadMore = { viewModel.activitiesFeedModel.loadMore(context) },
                         isEnd = { viewModel.activitiesFeedModel.isEnd },
                         footer = ProgressIndicatorFooter,
-                        topContent = {
-                            item(0) {
-                                UserInfoHeader(viewModel, person)
-                            }
-                        },
+                        listState = listStates[page]
                     ) {
                         FeedCard(
                             it,
@@ -340,11 +446,10 @@ fun PeopleScreen(
                     }
                 }
                 else -> {
-                    // 其他页面显示占位符内容，并包含用户信息头部
+                    // 其他页面显示占位符内容
                     Column(
                         modifier = Modifier.padding(16.dp),
                     ) {
-                        UserInfoHeader(viewModel, person)
                         Text(
                             text = "「${titles[page]}」功能正在开发中...",
                             modifier = Modifier.padding(top = 16.dp),
@@ -357,19 +462,81 @@ fun PeopleScreen(
 }
 
 @Composable
-private fun UserInfoHeader(viewModel: PersonViewModel, person: Person) {
-    AsyncImage(
-        model = viewModel.avatar,
-        contentDescription = "用户头像",
-        modifier = Modifier
-            .padding(16.dp)
-            .width(128.dp)
-            .height(128.dp)
-            .clip(CircleShape),
-    )
-    Text("用户: ${person.name}")
-    Text(viewModel.headline)
-    Text("关注者： ${viewModel.followerCount}")
-    Text("回答数： ${viewModel.answerCount}")
-    Text("文章数： ${viewModel.articleCount}")
+private fun StatItem(label: String, value: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value.toString(), style = MaterialTheme.typography.titleMedium)
+        Text(text = label, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modifier) {
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    Column(
+        modifier = modifier.padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = viewModel.avatar,
+                contentDescription = "用户头像",
+                modifier = Modifier
+                    .padding(end = 16.dp)
+                    .size(80.dp)
+                    .clip(CircleShape),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(viewModel.name, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    viewModel.headline,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            StatItem("回答", viewModel.answerCount)
+            StatItem("文章", viewModel.articleCount)
+            StatItem("关注者", viewModel.followerCount)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        ) {
+            OutlinedButton(onClick = {
+                coroutineScope.launch {
+                    try {
+                        viewModel.toggleFollow(context)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) {
+                Text(if (viewModel.isFollowing) "取消关注" else "关注")
+            }
+            OutlinedButton(onClick = {
+                coroutineScope.launch {
+                    try {
+                        viewModel.toggleBlock(context)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) {
+                Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
+            }
+        }
+    }
 }

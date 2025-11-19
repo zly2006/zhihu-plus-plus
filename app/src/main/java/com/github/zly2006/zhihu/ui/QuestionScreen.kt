@@ -56,6 +56,7 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
@@ -82,6 +83,11 @@ fun QuestionScreen(
         context as MainActivity
         withContext(Dispatchers.IO) {
             try {
+                if (viewModel.displayItems.isEmpty()) {
+                    launch {
+                        viewModel.refresh(context)
+                    }
+                }
                 val questionData = DataHolder.getQuestion(context, context.httpClient, question.questionId)?.value
                 if (questionData != null) {
                     questionContent = questionData.detail
@@ -90,9 +96,6 @@ fun QuestionScreen(
                     visitCount = questionData.visitCount
                     commentCount = questionData.commentCount
                     followerCount = questionData.followerCount
-                    if (viewModel.displayItems.isEmpty()) {
-                        viewModel.refresh(context)
-                    }
                     context.postHistory(
                         Question(
                             question.questionId,
