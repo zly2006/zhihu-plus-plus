@@ -88,7 +88,7 @@ abstract class PaginationViewModel<T : Any>(
                     json(json)
                 }
                 install(UserAgent) {
-                    agent = AccountData.data.username
+                    agent = AccountData.data.userAgent
                 }
             }
         }
