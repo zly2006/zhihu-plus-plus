@@ -49,6 +49,7 @@ abstract class PaginationViewModel<T : Any>(
         protected set
     var errorMessage: String? = null
         protected set
+    var allowGuestAccess = false
     protected var lastPaging: Paging? by mutableStateOf(null)
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
@@ -80,7 +81,7 @@ abstract class PaginationViewModel<T : Any>(
         // 检查是否启用推荐内容时登录设置
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
-        if (!loginForRecommendation) {
+        if (allowGuestAccess && !loginForRecommendation) {
             return HttpClient {
                 install(HttpCache)
                 install(ContentNegotiation) {

@@ -5,18 +5,17 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +69,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlin.reflect.typeOf
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.snapshotFlow
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -295,44 +294,16 @@ fun PeopleScreen(
         titles.indices.map { LazyListState() }
     }
     val currentListState = listStates[pagerState.currentPage]
-    val headerVisible = remember { mutableStateOf(true) }
-    var headerHeightPx by remember { mutableStateOf(0) }
+    val headerVisible = currentListState.lastScrolledBackward || (!currentListState.lastScrolledBackward && !currentListState.lastScrolledForward)
+    var headerHeightPx by remember { mutableStateOf(-1) }
+    var prevHeaderHeight by remember { mutableStateOf(0) }
 
-    LaunchedEffect(currentListState) {
-        var lastScrollOffset = 0
-        var lastVisible = true
-        snapshotFlow { currentListState.firstVisibleItemScrollOffset }
-            .collect { scrollOffset ->
-                val newVisible = if (scrollOffset > lastScrollOffset) { // Scrolling down
-                    false
-                } else { // Scrolling up
-                    true
-                }
-                headerVisible.value =
-                    if (currentListState.firstVisibleItemIndex == 0 && scrollOffset < 50) {
-                        true
-                    } else {
-                        newVisible
-                    }
-
-                if (headerVisible.value != lastVisible) {
-                    val adjustment = if (headerVisible.value) {
-                        // is now visible, content pushed down, scroll content up
-                        headerHeightPx.toFloat()
-                    } else {
-                        // is now hidden, content jumped up, scroll content down
-                        -headerHeightPx.toFloat()
-                    }
-                    if (headerHeightPx > 0) {
-                        launch {
-                            currentListState.scrollBy(adjustment)
-                        }
-                    }
-                }
-
-                lastScrollOffset = scrollOffset
-                lastVisible = headerVisible.value
-            }
+    LaunchedEffect(headerHeightPx) {
+        if (prevHeaderHeight != headerHeightPx && !currentListState.isScrollInProgress) { // Only compensate if visibility changed
+            val adjustment = headerHeightPx - prevHeaderHeight
+            currentListState.scrollBy(adjustment.toFloat())
+            prevHeaderHeight = headerHeightPx
+        }
     }
 
     Column(
@@ -360,10 +331,18 @@ fun PeopleScreen(
                 }
             }
         }
-        AnimatedVisibility(visible = headerVisible.value) {
-            UserInfoHeader(viewModel, modifier = Modifier.onSizeChanged {
-                if (it.height > 0) headerHeightPx = it.height
-            })
+        AnimatedVisibility(
+            visible = headerVisible,
+            enter = expandVertically(), // Add animation for entering
+            exit = shrinkVertically(), // Add animation for exiting
+            modifier = Modifier.onSizeChanged {
+                if (headerHeightPx == -1) {
+                    prevHeaderHeight = it.height
+                }
+                headerHeightPx = it.height
+            }
+        ) {
+            UserInfoHeader(viewModel)
         }
         HorizontalPager(
             state = pagerState,

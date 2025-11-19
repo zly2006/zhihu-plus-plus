@@ -35,7 +35,12 @@ class HomeFeedViewModel :
     BaseFeedViewModel(),
     IHomeFeedViewModel {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
+//        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
+        get() = "https://api.zhihu.com/topstory/recommend"
+
+    init {
+        allowGuestAccess = true
+    }
 
     public override suspend fun fetchFeeds(context: Context) {
         val httpClient = AccountData.httpClient(context)
