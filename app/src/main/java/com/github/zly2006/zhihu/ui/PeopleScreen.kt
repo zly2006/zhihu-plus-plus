@@ -313,7 +313,7 @@ fun PeopleScreen(
                     scrolledContainerColor = MaterialTheme.colorScheme.surface,
                 ),
                 scrollBehavior = scrollBehavior,
-                expandedHeight = 220.dp,
+                expandedHeight = 200.dp,
                 windowInsets = WindowInsets(0.dp),
             )
         },
