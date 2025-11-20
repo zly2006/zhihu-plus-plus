@@ -2,13 +2,6 @@ package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.SearchResult
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -24,101 +17,109 @@ import java.net.URLEncoder
  */
 class SearchUnitTest {
     /**
-     * Test making a real API call to Zhihu search API and parsing the response
-     * This test calls the actual search API to verify the implementation works
-     * Note: The API may return 403 without proper authentication headers
+     * Test parsing real Zhihu search API response
+     * This test uses actual JSON data returned by the Zhihu search API
      */
     @Test
-    fun testRealSearchAPICall() = runBlocking {
-        println("=".repeat(60))
-        println("Starting real Zhihu search API test...")
-        val searchQuery = "kotlin"
-        val encodedQuery = URLEncoder.encode(searchQuery, "UTF-8")
-        val url = "https://www.zhihu.com/api/v4/search_v3?gk_version=gz-gaokao&t=general&q=$encodedQuery&correction=1&search_source=Normal&limit=5"
-
-        println("Test URL: $url")
-        println("-".repeat(60))
-
-        val client = HttpClient(CIO) {
-            install(ContentNegotiation) {
-                json(
-                    Json {
-                        ignoreUnknownKeys = true
-                        isLenient = true
+    fun testRealZhihuSearchResponse() {
+        // Real JSON response from Zhihu search API
+        val realApiResponse =
+            """
+            {
+                "paging": {
+                    "is_end": false,
+                    "next": "https://api.zhihu.com/search_v3?advert_count=0&correction=1&gk_version=gz-gaokao&limit=20&offset=20&q=%E6%90%9C%E7%B4%A2%E5%86%85%E5%AE%B9&search_hash_id=f95dc1ab2d6bdae2dd9d96e558fddccd&t=general&vertical_info=0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C0%2C2%2C0%2C0"
+                },
+                "data": [
+                    {
+                        "type": "koc_box",
+                        "highlight": null,
+                        "object": {
+                            "title": "<em>搜索内容</em>",
+                            "excerpt": "我无意中在老公的手机里看到这样一条<em>搜索</em>记录：「怎样让老婆在生孩子时意外身亡？」我摸了摸自己已经七个月大的孕肚，不由得惊出了一身冷汗。晚上，老公在浴室洗澡。我在客厅准备待产包，手机没电了，下意识拿起他的手机，想要搜一些待产注意事项。却无意中翻到了他的历史<em>搜索</em>一栏，里面有两条记录瞬间吸引了我的注意",
+                            "type": "paid_column",
+                            "id": "1649808276936921088",
+                            "description": "来自内容 · 对我而言危险的她",
+                            "paid_column": {
+                                "id": "1649808276936921088",
+                                "paid_column_id": "1638186406705827840",
+                                "title": "对我而言危险的她",
+                                "attached_info_bytes": "OtEBCgtwbGFjZWhvbGRlchIgZjk1ZGMxYWIyZDZiZGFlMmRkOWQ5NmU1NThmZGRjY2QYUyITMTY0OTgwODI3NjkzNjkyMTA4OCoTMTY0OTgwODI3NjkzNjkyMTA4OEoM5pCc57Si5YaF5a65UABYAWABagzmkJzntKLlhoXlrrlwBIABjrLc3dr/kAOYAQCAAgC4AgCKAwCSAxMxNDkyNTcxMDE3MTMwNzk5MTA0mgMAogMAqgMAwgMXU09VUkNFX1NFQVJDSF9LT0NfS1ZfRELgBAA=",
+                                "is_mid_long": false
+                            },
+                            "icon_url": "https://picx.zhimg.com/v2-dd2abbbc9b844fcaf61e5c6c9e1d8fc2.png",
+                            "attached_info_bytes": "OuYBCgtwbGFjZWhvbGRlchIgZjk1ZGMxYWIyZDZiZGFlMmRkOWQ5NmU1NThmZGRjY2QYUyITMTY0OTgwODI3NjkzNjkyMTA4OCoTMTY0OTgwODI3NjkzNjkyMTA4OEoM5pCc57Si5YaF5a65UABYAWABagzmkJzntKLlhoXlrrlwBIABjrLc3dr/kAOYAQCgAQCwASqAAgC4AgCKAwCSAxMxNDkyNTcxMDE3MTMwNzk5MTA0mgMAogMAqgMAwgMXU09VUkNFX1NFQVJDSF9LT0NfS1ZfRELKAwzmkJzntKLlhoXlrrngBAA=",
+                            "source": "",
+                            "sub_type": "",
+                            "is_multi_koc": false,
+                            "more_url": ""
+                        },
+                        "hit_labels": null,
+                        "index": 0,
+                        "id": 1638186406705827840
                     },
-                )
+                    {
+                        "type": "knowledge_ad",
+                        "highlight": {},
+                        "object": {
+                            "header": {
+                                "card_title": "电子书",
+                                "no_more": false
+                            },
+                            "body": {
+                                "title": "<em>搜索内容</em>",
+                                "description": "<em>搜索内容</em>"
+                            }
+                        },
+                        "id": "knowledge_ad_1"
+                    }
+                ]
             }
-        }
+            """.trimIndent()
 
-        try {
-            println("Making HTTP request to Zhihu search API...")
-            val response = client.get(url)
-            println("Response status: ${response.status.value} ${response.status.description}")
+        // Parse the response
+        val json = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(realApiResponse)
 
-            val responseText = response.body<String>()
-            println("Response body preview: ${responseText.take(500)}")
+        // Verify response structure
+        assertTrue("Response should contain 'data' field", "data" in json)
+        assertTrue("Response should contain 'paging' field", "paging" in json)
 
-            // Try to parse as JSON
-            val json = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(responseText)
+        val dataArray = json["data"]?.jsonArray
+        assertNotNull("Data array should not be null", dataArray)
+        assertEquals("Should have 2 search results", 2, dataArray?.size)
 
-            // Check if this is an error response (403, etc.)
-            if ("error" in json) {
-                println("API returned error response:")
-                println("  ${json["error"]}")
-                println()
-                println("This is expected when calling the API without proper authentication.")
-                println("The Zhihu search API requires:")
-                println("  - User-Agent header")
-                println("  - x-zse-93 and x-zse-96 headers (signing)")
-                println("  - Cookie for authentication")
-                println()
-                println("SearchViewModel handles this by using signFetchRequest() which")
-                println("adds the required authentication headers.")
+        // Parse first result (koc_box type)
+        val firstElement = dataArray?.get(0)
+        assertNotNull("First element should not be null", firstElement)
 
-                // Test passes - we verified the API endpoint exists and returns structured error
-                assertTrue("API endpoint is reachable and returns JSON", true)
-                return@runBlocking
-            }
+        val firstResult = AccountData.decodeJson<SearchResult>(firstElement!!)
+        assertEquals("koc_box", firstResult.type)
+        assertEquals("1638186406705827840", firstResult.id)
+        assertNotNull("Object should not be null", firstResult.obj)
 
-            // If we get here, we have a successful response
-            assertTrue("Response should contain 'data' field", "data" in json)
-            val dataArray = json["data"]?.jsonArray
-            assertNotNull("Data array should not be null", dataArray)
+        println("Successfully parsed first search result:")
+        println("  Type: ${firstResult.type}")
+        println("  ID: ${firstResult.id}")
 
-            if (dataArray != null && dataArray.isNotEmpty()) {
-                println("SUCCESS: Got ${dataArray.size} search results")
+        // Parse second result (knowledge_ad type)
+        val secondElement = dataArray?.get(1)
+        assertNotNull("Second element should not be null", secondElement)
 
-                // Parse first result
-                val firstElement = dataArray.first()
-                val searchResult = AccountData.decodeJson<SearchResult>(firstElement)
+        val secondResult = AccountData.decodeJson<SearchResult>(secondElement!!)
+        assertEquals("knowledge_ad", secondResult.type)
+        assertEquals("knowledge_ad_1", secondResult.id)
+        assertNotNull("Object should not be null", secondResult.obj)
 
-                assertEquals("search_result", searchResult.type)
-                assertNotNull(searchResult.id)
-                assertNotNull(searchResult.obj)
+        println("Successfully parsed second search result:")
+        println("  Type: ${secondResult.type}")
+        println("  ID: ${secondResult.id}")
 
-                println("Successfully parsed search result:")
-                println("  Type: ${searchResult.type}")
-                println("  ID: ${searchResult.id}")
+        // Verify paging information
+        val pagingObj = json["paging"]
+        assertNotNull("Paging should not be null", pagingObj)
+        println("Paging information present in response")
 
-                // Try to convert to Feed
-                val feed = searchResult.toFeed()
-                println("  Feed conversion: ${if (feed != null) "SUCCESS" else "null"}")
-            }
-
-            println("=".repeat(60))
-        } catch (e: Exception) {
-            println("Exception occurred: ${e.javaClass.simpleName}")
-            println("Message: ${e.message}")
-            println()
-            println("Note: This is expected behavior when testing without authentication.")
-            println("The actual app uses signFetchRequest() to add required headers.")
-            println("=".repeat(60))
-
-            // Test passes - we verified the implementation structure is correct
-            assertTrue("Test completed (API requires authentication in production)", true)
-        } finally {
-            client.close()
-        }
+        println("All search results parsed successfully!")
     }
 
     /**
