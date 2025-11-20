@@ -1,5 +1,15 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import android.content.Context
+import android.util.Log
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.SearchResult
+import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.ui.raiseForStatus
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import java.net.URLEncoder
 
 class SearchViewModel(
@@ -12,5 +22,43 @@ class SearchViewModel(
         }
 
     // Override include to request necessary fields for search results
-    override val include = "data[*].highlight,suggest_edit,is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,is_sticky,collapsed_by,suggest_edit,comment_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,is_labeled,paid_info,paid_info_content,reaction_instruction,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp,is_recognized;data[*].mark_infos[*].url;data[*].author.follower_count,vip_info,badge[*].topics;data[*].settings.table_of_contents.enabled"
+    override val include = "data[*].highlight,object,type"
+
+    override suspend fun fetchFeeds(context: Context) {
+        try {
+            val url = lastPaging?.next ?: initialUrl
+            val httpClient = httpClient(context)
+            val response = httpClient
+                .get(url) {
+                    url {
+                        parameters.append("include", include)
+                    }
+                    signFetchRequest(context)
+                }.raiseForStatus()
+
+            val json = response.body<JsonObject>()
+            val jsonArray = json["data"]!!.jsonArray
+
+            // Parse search results and convert to Feed objects
+            val feeds = jsonArray.mapNotNull { element ->
+                try {
+                    val searchResult = AccountData.decodeJson<SearchResult>(element)
+                    searchResult.toFeed()
+                } catch (e: Exception) {
+                    Log.e("SearchViewModel", "Failed to decode search result: $element", e)
+                    null
+                }
+            }
+
+            processResponse(context, feeds, jsonArray)
+
+            // Handle pagination
+            if ("paging" in json) {
+                lastPaging = AccountData.decodeJson(json["paging"]!!)
+            }
+        } catch (e: Exception) {
+            Log.e("SearchViewModel", "Failed to fetch search results", e)
+            throw e
+        }
+    }
 }

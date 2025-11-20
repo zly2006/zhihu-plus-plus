@@ -54,9 +54,7 @@ fun SearchScreen(
     val viewModel: SearchViewModel by context.viewModels {
         object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return SearchViewModel(search.query) as T
-            }
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = SearchViewModel(search.query) as T
         }
     }
     val keyboardController = LocalSoftwareKeyboardController.current
