@@ -8,16 +8,30 @@ import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.BuildConfig
@@ -109,53 +123,105 @@ fun HomeScreen(
         }
     }
 
-    FeedPullToRefresh(viewModel) {
-        PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(item, onLike = {
-                Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-            }, onDislike = {
-                Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-            }) {
-                feed?.let {
-                    DataHolder.putFeed(feed)
-                    GlobalScope.launch {
-                        (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
+    Scaffold(
+        topBar = {
+            Surface(
+                shadowElevation = 4.dp,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        onClick = {
+                            onNavigate(
+                                com.github.zly2006.zhihu
+                                    .Search(query = ""),
+                            )
+                        },
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "搜索",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "搜索内容",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                     }
                 }
-                if (navDestination != null) {
-                    onNavigate(navDestination)
-                }
             }
-        }
-
-        if (BuildConfig.DEBUG) {
-            DraggableRefreshButton(
-                onClick = {
-                    val data = Json.encodeToString(viewModel.debugData)
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = ClipData.newPlainText("data", data)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                },
-                preferenceName = "copyAll",
-            ) {
-                Icon(Icons.Default.CopyAll, contentDescription = "复制")
-            }
-        }
-
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
-            },
+        },
+    ) { innerPadding ->
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.padding(innerPadding),
         ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            FeedPullToRefresh(viewModel) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    onLoadMore = { viewModel.loadMore(context) },
+                    footer = ProgressIndicatorFooter,
+                ) { item ->
+                    FeedCard(item, onLike = {
+                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                    }, onDislike = {
+                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                    }) {
+                        feed?.let {
+                            DataHolder.putFeed(feed)
+                            GlobalScope.launch {
+                                (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
+                            }
+                        }
+                        if (navDestination != null) {
+                            onNavigate(navDestination)
+                        }
+                    }
+                }
+
+                if (BuildConfig.DEBUG) {
+                    DraggableRefreshButton(
+                        onClick = {
+                            val data = Json.encodeToString(viewModel.debugData)
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clip = ClipData.newPlainText("data", data)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                        },
+                        preferenceName = "copyAll",
+                    ) {
+                        Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                    }
+                }
+
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
+                }
             }
         }
     }

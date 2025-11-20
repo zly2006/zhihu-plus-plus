@@ -213,11 +213,15 @@ sealed interface Feed {
             get() = -1
     }
 
+    @Suppress("PropertyName")
     @Serializable
     @SerialName("question")
     data class QuestionTarget(
         val id: Long,
-        override val title: String,
+        @SerialName("name")
+        val _name: String? = null,
+        @SerialName("title")
+        val _title: String? = null,
         override val url: String,
         val type: String,
         /**
@@ -240,6 +244,9 @@ sealed interface Feed {
         val relationship: Relationship? = null,
         val isFollowing: Boolean = false,
     ) : Target {
+        override val title: String
+            get() = _title ?: _name.orEmpty()
+
         override val author: Person? = null
 
         override fun filterReason(): String? = if (answerCount < 5 && followerCount < 50) {
