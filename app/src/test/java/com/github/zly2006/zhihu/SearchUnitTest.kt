@@ -2293,7 +2293,11 @@ class SearchUnitTest {
                         "updated_time": 1234567890
                     },
                     "excerpt": "This is a test excerpt",
-                    "content": "This is test content"
+                    "content": "This is test content",
+                    "relationship": {
+                        "is_author": false,
+                        "voting": 0
+                    }
                 },
                 "highlight": {
                     "title": ["Test <em>search</em> result"],
