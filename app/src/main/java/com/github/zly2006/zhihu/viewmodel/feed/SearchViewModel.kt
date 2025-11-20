@@ -59,6 +59,8 @@ class SearchViewModel(
         } catch (e: Exception) {
             Log.e("SearchViewModel", "Failed to fetch search results", e)
             throw e
+        } finally {
+            isLoading = false
         }
     }
 }

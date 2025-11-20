@@ -34,12 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -57,14 +59,9 @@ fun SearchScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
-    val viewModel: SearchViewModel by context.viewModels {
-        object : androidx.lifecycle.ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = SearchViewModel(search.query) as T
-        }
-    }
+    val viewModel = viewModel { SearchViewModel(search.query) }
     val keyboardController = LocalSoftwareKeyboardController.current
-    var searchText by mutableStateOf(search.query)
+    var searchText by remember { mutableStateOf(search.query) }
 
     // Load search results when query is not empty
     LaunchedEffect(search.query) {
