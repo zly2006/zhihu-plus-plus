@@ -162,7 +162,10 @@ fun HomeScreen(
 
         DraggableRefreshButton(
             onClick = {
-                onNavigate(com.github.zly2006.zhihu.Search)
+                onNavigate(
+                    com.github.zly2006.zhihu
+                        .Search(query = ""),
+                )
             },
             preferenceName = "searchButton",
         ) {

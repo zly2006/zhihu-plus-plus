@@ -43,12 +43,21 @@ import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    search: com.github.zly2006.zhihu.Search,
     onNavigate: (NavDestination) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: SearchViewModel by context.viewModels()
     val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Initialize search query from navigation parameter
+    LaunchedEffect(search.query) {
+        if (search.query.isNotEmpty() && viewModel.searchQuery != search.query) {
+            viewModel.updateSearchQuery(search.query)
+            viewModel.performSearch(context)
+        }
+    }
 
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {

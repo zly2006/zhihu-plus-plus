@@ -217,8 +217,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             composable<Account> {
                 AccountSettingScreen(innerPadding, activity::navigate)
             }
-            composable<Search> {
-                SearchScreen(activity::navigate) {
+            composable<Search> { navEntry ->
+                val search: Search = navEntry.toRoute()
+                SearchScreen(search, activity::navigate) {
                     navController.popBackStack()
                 }
             }
