@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
@@ -215,6 +216,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
             composable<Account> {
                 AccountSettingScreen(innerPadding, activity::navigate)
+            }
+            composable<Search> {
+                SearchScreen(activity::navigate) {
+                    navController.popBackStack()
+                }
             }
             composable<Collections> {
                 val data: Collections = it.toRoute()

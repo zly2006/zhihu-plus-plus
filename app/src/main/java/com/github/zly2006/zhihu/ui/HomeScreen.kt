@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -157,6 +158,15 @@ fun HomeScreen(
             } else {
                 Icon(Icons.Default.Refresh, contentDescription = "刷新")
             }
+        }
+
+        DraggableRefreshButton(
+            onClick = {
+                onNavigate(com.github.zly2006.zhihu.Search)
+            },
+            preferenceName = "searchButton",
+        ) {
+            Icon(Icons.Default.Search, contentDescription = "搜索")
         }
     }
 }

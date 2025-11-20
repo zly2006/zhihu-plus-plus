@@ -25,6 +25,9 @@ data object History : NavDestination
 data object Account : NavDestination
 
 @Serializable
+data object Search : NavDestination
+
+@Serializable
 data class Collections(
     val userToken: String,
 ) : NavDestination
