@@ -15,20 +15,25 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -345,39 +350,48 @@ fun CommentScreen(
                 // 评论输入框
                 Surface(
                     tonalElevation = 2.dp,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.ime),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp)
                             .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment = Alignment.Bottom,
                     ) {
-                        val state = remember { TextFieldState() }
-                        BasicTextField(
-                            value = commentInput,
-                            onValueChange = { commentInput = it },
-                            modifier = Modifier.weight(1f).height(36.dp),
-//                            placeholder = { Text("写下你的评论...") },
-//                            singleLine = false,
-//                            maxLines = 3,
-//                            colors = TextFieldDefaults.colors(),
-                            decorationBox = { inner ->
-                                Box {
-                                    if (commentInput.isEmpty()) {
-                                        Text(
-                                            "写下你的评论...",
-                                            fontSize = 16.sp,
-                                        )
+                        val scrollState = rememberScrollState()
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 40.dp, max = 120.dp),
+                        ) {
+                            BasicTextField(
+                                value = commentInput,
+                                onValueChange = { commentInput = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(scrollState),
+                                decorationBox = { inner ->
+                                    Box(
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                    ) {
+                                        if (commentInput.isEmpty()) {
+                                            Text(
+                                                "写下你的评论...",
+                                                fontSize = 16.sp,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                            )
+                                        }
+                                        inner()
                                     }
-                                    inner()
-                                }
-                            },
-                            textStyle = TextStyle.Default.copy(
-                                fontSize = 16.sp,
-                            ),
-                        )
+                                },
+                                textStyle = TextStyle.Default.copy(
+                                    fontSize = 16.sp,
+                                    lineHeight = 20.sp,
+                                ),
+                            )
+                        }
 
                         IconButton(
                             onClick = { submitComment() },
