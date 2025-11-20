@@ -112,7 +112,7 @@ object ContentFilterExtensions {
                 if (isKeywordBlockingEnabled(context)) {
                     val blocklistManager = BlocklistManager.getInstance(context)
                     filteredList = filteredList.filter { feed ->
-                        val target = feed.target
+                        val target = feed.target ?: return@filter true
                         val title = target.title
                         val excerpt = target.excerpt
                         val content = when (target) {
@@ -134,7 +134,8 @@ object ContentFilterExtensions {
                 if (isUserBlockingEnabled(context)) {
                     val blocklistManager = BlocklistManager.getInstance(context)
                     filteredList = filteredList.filter { feed ->
-                        val author = feed.target.author
+                        val target = feed.target ?: return@filter true
+                        val author = target.author
                         val authorId = author?.id
                         !blocklistManager.isUserBlocked(authorId)
                     }
