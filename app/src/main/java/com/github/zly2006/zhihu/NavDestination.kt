@@ -26,6 +26,9 @@ data object History : NavDestination
 data object Account : NavDestination
 
 @Serializable
+data object Blocklist : NavDestination
+
+@Serializable
 data class Search(
     val query: String = "",
 ) : NavDestination
