@@ -2,10 +2,10 @@ package com.github.zly2006.zhihu.ui
 
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -65,7 +65,7 @@ fun SearchScreen(
 
     // Load search results when query is not empty
     LaunchedEffect(search.query) {
-        if (search.query.isNotEmpty()) {
+        if (search.query.isNotEmpty() && viewModel.displayItems.isEmpty()) {
             viewModel.refresh(context)
         }
     }
@@ -159,6 +159,7 @@ fun SearchScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
+                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { innerPadding ->

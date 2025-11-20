@@ -5,12 +5,10 @@ import com.github.zly2006.zhihu.data.SearchResult
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.net.URLEncoder
 
 /**
  * Unit test for search functionality
