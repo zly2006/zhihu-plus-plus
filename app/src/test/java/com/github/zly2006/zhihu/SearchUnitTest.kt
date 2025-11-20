@@ -5,6 +5,7 @@ import com.github.zly2006.zhihu.data.SearchResult
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.JsonElement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -19,10 +20,11 @@ class SearchUnitTest {
     /**
      * Test parsing real Zhihu search API response
      * This test uses actual JSON data returned by the Zhihu search API
+     * The JSON is first converted from snake_case to camelCase before parsing
      */
     @Test
     fun testRealZhihuSearchResponse() {
-        // Real JSON response from Zhihu search API
+        // Real JSON response from Zhihu search API (in snake_case format)
         val realApiResponse =
             """
 {
@@ -2173,14 +2175,15 @@ class SearchUnitTest {
 }
             """.trimIndent()
 
-        // Parse the response
-        val json = Json { ignoreUnknownKeys = true }.decodeFromString<JsonObject>(realApiResponse)
+        // Parse the response - First convert from snake_case to camelCase as the actual API does
+        val jsonElement = Json { ignoreUnknownKeys = true }.parseToJsonElement(realApiResponse)
+        val convertedJson = AccountData.snake_case2camelCase(jsonElement) as JsonObject
 
         // Verify response structure
-        assertTrue("Response should contain 'data' field", "data" in json)
-        assertTrue("Response should contain 'paging' field", "paging" in json)
+        assertTrue("Response should contain 'data' field", "data" in convertedJson)
+        assertTrue("Response should contain 'paging' field", "paging" in convertedJson)
 
-        val dataArray = json["data"]?.jsonArray
+        val dataArray = convertedJson["data"]?.jsonArray
         assertNotNull("Data array should not be null", dataArray)
         assertTrue("Should have search results", dataArray != null && dataArray.size > 0)
         println("Got ${dataArray?.size} search results from real API response")
@@ -2237,7 +2240,7 @@ class SearchUnitTest {
         }
 
         // Verify paging information
-        val pagingObj = json["paging"]
+        val pagingObj = convertedJson["paging"]
         assertNotNull("Paging should not be null", pagingObj)
         println("Paging information present in response")
 
