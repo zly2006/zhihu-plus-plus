@@ -25,10 +25,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,6 +81,7 @@ fun FeedCard(
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
     var isDragging by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val enableSwipeReaction = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", false)
@@ -190,12 +195,9 @@ fun FeedCard(
                     if (item.avatarSrc != null && item.authorName != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.combinedClickable(
-                                onClick = { /* Click on author - could navigate to author page */ },
-                                onLongClick = {
-                                    onBlockUser?.invoke(item)
-                                },
-                            ),
+                            modifier = Modifier.clickable {
+                                // Click on author - could navigate to author page
+                            },
                         ) {
                             item.avatarSrc.let {
                                 AsyncImage(
@@ -229,12 +231,43 @@ fun FeedCard(
                 )
 
                 if (item.details.isNotEmpty()) {
-                    Text(
-                        text = item.details,
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = item.details,
+                            fontSize = 12.sp,
+                            lineHeight = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(24.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "更多选项",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("屏蔽用户") },
+                                    onClick = {
+                                        showMenu = false
+                                        onBlockUser?.invoke(item)
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
