@@ -237,9 +237,13 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 PeopleScreen(person, activity::navigate)
             }
             composable<Blocklist> {
-                BlocklistSettingsScreen(innerPadding) {
-                    navController.popBackStack()
-                }
+                BlocklistSettingsScreen(
+                    innerPadding = innerPadding,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigate = activity::navigate,
+                )
             }
         }
     }

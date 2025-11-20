@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -60,6 +61,7 @@ import kotlinx.coroutines.launch
 fun BlocklistSettingsScreen(
     innerPadding: PaddingValues,
     onNavigateBack: () -> Unit,
+    onNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -233,6 +235,15 @@ fun BlocklistSettingsScreen(
                             }
                         }
                     },
+                    onNavigateToUser = { user ->
+                        onNavigate(
+                            com.github.zly2006.zhihu.Person(
+                                id = user.userId,
+                                urlToken = user.urlToken ?: "",
+                                name = user.userName,
+                            ),
+                        )
+                    },
                 )
             }
         }
@@ -361,6 +372,7 @@ fun BlockedUsersList(
     users: List<BlockedUser>,
     onDeleteUser: (BlockedUser) -> Unit,
     onClearAll: () -> Unit,
+    onNavigateToUser: (BlockedUser) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -425,6 +437,9 @@ fun BlockedUsersList(
                                     tint = MaterialTheme.colorScheme.error,
                                 )
                             }
+                        },
+                        modifier = Modifier.clickable {
+                            onNavigateToUser(user)
                         },
                     )
                 }
