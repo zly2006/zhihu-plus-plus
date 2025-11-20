@@ -4,12 +4,16 @@ import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -21,8 +25,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -30,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -77,34 +83,79 @@ fun SearchScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { searchText = it },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("搜索内容") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(
-                            onSearch = {
-                                keyboardController?.hide()
-                                if (searchText.isNotBlank()) {
-                                    onNavigate(
-                                        com.github.zly2006.zhihu
-                                            .Search(query = searchText),
-                                    )
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                BasicTextField(
+                                    value = searchText,
+                                    onValueChange = { searchText = it },
+                                    modifier = Modifier
+                                        .weight(1f),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = {
+                                            keyboardController?.hide()
+                                            if (searchText.isNotBlank()) {
+                                                onNavigate(
+                                                    com.github.zly2006.zhihu
+                                                        .Search(query = searchText),
+                                                )
+                                            }
+                                        },
+                                    ),
+                                    decorationBox = { innerTextField ->
+                                        if (searchText.isEmpty()) {
+                                            Text(
+                                                text = "搜索内容",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                            )
+                                        }
+                                        innerTextField()
+                                    },
+                                )
+                                if (searchText.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { searchText = "" },
+                                        modifier = Modifier.size(20.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "清除",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    }
                                 }
-                            },
-                        ),
-                        trailingIcon = {
-                            if (searchText.isNotEmpty()) {
-                                IconButton(onClick = { searchText = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "清除")
-                                }
-                            } else {
-                                Icon(Icons.Default.Search, contentDescription = "搜索")
                             }
-                        },
-                    )
+                        }
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
