@@ -200,7 +200,7 @@ fun HomeScreen(
                                 userToBlock = Pair(author.id, author.name)
                                 showBlockUserDialog = true
                             } ?: run {
-                                Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
                             }
                         },
                     ) {
