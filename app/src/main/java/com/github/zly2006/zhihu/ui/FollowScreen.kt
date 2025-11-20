@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -41,6 +42,8 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 class FollowScreenData : ViewModel() {
@@ -126,11 +129,37 @@ fun FollowDynamicScreen(
             },
             footer = ProgressIndicatorFooter,
         ) { item ->
-            FeedCard(item, onLike = {
-                Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-            }, onDislike = {
-                Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-            }) {
+            FeedCard(
+                item,
+                onLike = {
+                    Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                },
+                onDislike = {
+                    Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                },
+                onBlockUser = { feedItem ->
+                    feedItem.feed?.target?.author?.let { author ->
+                        GlobalScope.launch {
+                            try {
+                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager.getInstance(context)
+                                blocklistManager.addBlockedUser(
+                                    userId = author.id,
+                                    userName = author.name,
+                                    urlToken = author.urlToken,
+                                    avatarUrl = author.avatarUrl,
+                                )
+                                viewModel.refresh(context)
+                                Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } ?: run {
+                        Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                    }
+                },
+            ) {
                 if (navDestination != null) {
                     onNavigate(navDestination)
                 } else {
@@ -190,7 +219,31 @@ fun FollowRecommendScreen(
             onLoadMore = { viewModel.loadMore(context) },
             footer = ProgressIndicatorFooter,
         ) { item ->
-            FeedCard(item) {
+            FeedCard(
+                item,
+                onBlockUser = { feedItem ->
+                    feedItem.feed?.target?.author?.let { author ->
+                        GlobalScope.launch {
+                            try {
+                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager.getInstance(context)
+                                blocklistManager.addBlockedUser(
+                                    userId = author.id,
+                                    userName = author.name,
+                                    urlToken = author.urlToken,
+                                    avatarUrl = author.avatarUrl,
+                                )
+                                viewModel.refresh(context)
+                                Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } ?: run {
+                        Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                    }
+                },
+            ) {
                 if (navDestination != null) {
                     onNavigate(navDestination)
                 } else {

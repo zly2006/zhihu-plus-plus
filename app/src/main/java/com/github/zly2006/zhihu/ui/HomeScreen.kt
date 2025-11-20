@@ -42,6 +42,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -179,11 +180,38 @@ fun HomeScreen(
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
                 ) { item ->
-                    FeedCard(item, onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-                    }, onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-                    }) {
+                    FeedCard(
+                        item,
+                        onLike = {
+                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        },
+                        onDislike = {
+                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        },
+                        onBlockUser = { feedItem ->
+                            feedItem.feed?.target?.author?.let { author ->
+                                GlobalScope.launch {
+                                    try {
+                                        val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager.getInstance(context)
+                                        blocklistManager.addBlockedUser(
+                                            userId = author.id,
+                                            userName = author.name,
+                                            urlToken = author.urlToken,
+                                            avatarUrl = author.avatarUrl,
+                                        )
+                                        // 刷新列表以应用过滤
+                                        viewModel.refresh(context)
+                                        Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } ?: run {
+                                Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    ) {
                         feed?.let {
                             DataHolder.putFeed(feed)
                             GlobalScope.launch {

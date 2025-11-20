@@ -10,6 +10,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,7 @@ fun FeedCard(
     horizontalPadding: Dp = 16.dp,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -188,6 +190,12 @@ fun FeedCard(
                     if (item.avatarSrc != null && item.authorName != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.combinedClickable(
+                                onClick = { /* Click on author - could navigate to author page */ },
+                                onLongClick = {
+                                    onBlockUser?.invoke(item)
+                                },
+                            ),
                         ) {
                             item.avatarSrc.let {
                                 AsyncImage(
