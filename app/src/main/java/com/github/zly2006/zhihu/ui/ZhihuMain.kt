@@ -46,6 +46,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.Blocklist
 import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.Follow
@@ -234,6 +235,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             composable<Person> {
                 val person: Person = it.toRoute()
                 PeopleScreen(person, activity::navigate)
+            }
+            composable<Blocklist> {
+                BlocklistSettingsScreen(
+                    innerPadding = innerPadding,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigate = activity::navigate,
+                )
             }
         }
     }

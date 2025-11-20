@@ -21,6 +21,22 @@ object ContentFilterExtensions {
     }
 
     /**
+     * 检查是否启用了关键词屏蔽功能
+     */
+    fun isKeywordBlockingEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean("enableKeywordBlocking", true)
+    }
+
+    /**
+     * 检查是否启用了用户屏蔽功能
+     */
+    fun isUserBlockingEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean("enableUserBlocking", true)
+    }
+
+    /**
      * 在内容显示时记录展示次数
      * 建议在RecyclerView的onBindViewHolder或Compose的LaunchedEffect中调用
      */
@@ -57,36 +73,75 @@ object ContentFilterExtensions {
     /**
      * 过滤内容列表，移除应该被过滤的内容
      * 适用于在获取推荐内容后进行过滤
+     * 会应用视图计数过滤、关键词屏蔽和用户屏蔽
      */
     suspend fun filterContentList(
         context: Context,
         contentList: List<Feed>,
     ): List<Feed> {
-        if (!isContentFilterEnabled(context)) return contentList
-
         return withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager.getInstance(context)
-                val targetInfoList = contentList.map { feed ->
-                    when (val target = feed.target) {
-                        is Feed.AnswerTarget -> Pair(ContentType.ANSWER, target.id.toString())
-                        is Feed.ArticleTarget -> Pair(ContentType.ARTICLE, target.id.toString())
-                        is Feed.QuestionTarget -> Pair(ContentType.QUESTION, target.id.toString())
-                        else -> Pair("unknown", feed.hashCode().toString())
-                    }
-                }
-                val filteredTargetInfo = filterManager.filterContentList(targetInfoList)
-                val filteredTargetSet = filteredTargetInfo.toSet()
+                var filteredList = contentList
 
-                contentList.filter { feed ->
-                    val targetInfo = when (val target = feed.target) {
-                        is Feed.AnswerTarget -> Pair(ContentType.ANSWER, target.id.toString())
-                        is Feed.ArticleTarget -> Pair(ContentType.ARTICLE, target.id.toString())
-                        is Feed.QuestionTarget -> Pair(ContentType.QUESTION, target.id.toString())
-                        else -> Pair("unknown", feed.hashCode().toString())
+                // 1. 应用智能内容过滤（基于展示次数）
+                if (isContentFilterEnabled(context)) {
+                    val filterManager = ContentFilterManager.getInstance(context)
+                    val targetInfoList = filteredList.map { feed ->
+                        when (val target = feed.target) {
+                            is Feed.AnswerTarget -> Pair(ContentType.ANSWER, target.id.toString())
+                            is Feed.ArticleTarget -> Pair(ContentType.ARTICLE, target.id.toString())
+                            is Feed.QuestionTarget -> Pair(ContentType.QUESTION, target.id.toString())
+                            else -> Pair("unknown", feed.hashCode().toString())
+                        }
                     }
-                    targetInfo in filteredTargetSet
+                    val filteredTargetInfo = filterManager.filterContentList(targetInfoList)
+                    val filteredTargetSet = filteredTargetInfo.toSet()
+
+                    filteredList = filteredList.filter { feed ->
+                        val targetInfo = when (val target = feed.target) {
+                            is Feed.AnswerTarget -> Pair(ContentType.ANSWER, target.id.toString())
+                            is Feed.ArticleTarget -> Pair(ContentType.ARTICLE, target.id.toString())
+                            is Feed.QuestionTarget -> Pair(ContentType.QUESTION, target.id.toString())
+                            else -> Pair("unknown", feed.hashCode().toString())
+                        }
+                        targetInfo in filteredTargetSet
+                    }
                 }
+
+                // 2. 应用关键词屏蔽
+                if (isKeywordBlockingEnabled(context)) {
+                    val blocklistManager = BlocklistManager.getInstance(context)
+                    filteredList = filteredList.filter { feed ->
+                        val target = feed.target ?: return@filter true
+                        val title = target.title
+                        val excerpt = target.excerpt
+                        val content = when (target) {
+                            is Feed.AnswerTarget -> target.content
+                            is Feed.ArticleTarget -> target.content
+                            else -> ""
+                        }
+
+                        // 检查标题、摘要和内容是否包含屏蔽关键词
+                        val containsKeyword = blocklistManager.containsBlockedKeyword(title) ||
+                            blocklistManager.containsBlockedKeyword(excerpt) ||
+                            blocklistManager.containsBlockedKeyword(content)
+
+                        !containsKeyword
+                    }
+                }
+
+                // 3. 应用用户屏蔽
+                if (isUserBlockingEnabled(context)) {
+                    val blocklistManager = BlocklistManager.getInstance(context)
+                    filteredList = filteredList.filter { feed ->
+                        val target = feed.target ?: return@filter true
+                        val author = target.author
+                        val authorId = author?.id
+                        !blocklistManager.isUserBlocked(authorId)
+                    }
+                }
+
+                filteredList
             } catch (e: Exception) {
                 e.printStackTrace()
                 contentList // 出错时返回原列表

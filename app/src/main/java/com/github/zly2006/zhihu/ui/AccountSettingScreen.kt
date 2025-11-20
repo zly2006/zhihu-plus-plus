@@ -540,6 +540,42 @@ fun AccountSettingScreen(
                 enabled = enableContentFilter.value, // 只有启用内容过滤时才能设置此选项
             )
 
+            val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
+            SwitchSettingItem(
+                title = "启用关键词屏蔽",
+                description = "屏蔽包含特定关键词的内容",
+                checked = enableKeywordBlocking.value,
+                onCheckedChange = {
+                    enableKeywordBlocking.value = it
+                    preferences.edit { putBoolean("enableKeywordBlocking", it) }
+                },
+            )
+
+            val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
+            SwitchSettingItem(
+                title = "启用用户屏蔽",
+                description = "屏蔽特定用户发布的内容",
+                checked = enableUserBlocking.value,
+                onCheckedChange = {
+                    enableUserBlocking.value = it
+                    preferences.edit { putBoolean("enableUserBlocking", it) }
+                },
+            )
+
+            // 管理屏蔽列表按钮
+            Button(
+                onClick = {
+                    onNavigate(com.github.zly2006.zhihu.Blocklist)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            ) {
+                Text("管理屏蔽列表")
+            }
+
             // 显示过滤统计信息
             var filterStats by remember { mutableStateOf<FilterStats?>(null) }
             LaunchedEffect(Unit) {

@@ -6,12 +6,16 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ContentViewRecord::class],
-    version = 1,
+    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun contentFilterDao(): ContentFilterDao
+
+    abstract fun blockedKeywordDao(): BlockedKeywordDao
+
+    abstract fun blockedUserDao(): BlockedUserDao
 
     companion object {
         @Volatile

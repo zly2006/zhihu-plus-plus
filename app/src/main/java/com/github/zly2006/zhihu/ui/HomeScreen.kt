@@ -30,7 +30,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -42,6 +45,8 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -56,7 +61,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import kotlin.getValue
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -123,6 +127,10 @@ fun HomeScreen(
         }
     }
 
+    // 屏蔽用户确认对话框
+    var showBlockUserDialog by remember { mutableStateOf(false) }
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair of userId and userName
+
     Scaffold(
         topBar = {
             Surface(
@@ -179,11 +187,23 @@ fun HomeScreen(
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
                 ) { item ->
-                    FeedCard(item, onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-                    }, onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-                    }) {
+                    FeedCard(
+                        item,
+                        onLike = {
+                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        },
+                        onDislike = {
+                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        },
+                        onBlockUser = { feedItem ->
+                            feedItem.feed?.target?.author?.let { author ->
+                                userToBlock = Pair(author.id, author.name)
+                                showBlockUserDialog = true
+                            } ?: run {
+                                Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    ) {
                         feed?.let {
                             DataHolder.putFeed(feed)
                             GlobalScope.launch {
@@ -225,4 +245,21 @@ fun HomeScreen(
             }
         }
     }
+
+    // 屏蔽用户确认对话框
+    BlockUserConfirmDialog(
+        showDialog = showBlockUserDialog,
+        userToBlock = userToBlock,
+        displayItems = viewModel.displayItems,
+        context = context,
+        onDismiss = {
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+        onConfirm = {
+            viewModel.refresh(context)
+            showBlockUserDialog = false
+            userToBlock = null
+        },
+    )
 }

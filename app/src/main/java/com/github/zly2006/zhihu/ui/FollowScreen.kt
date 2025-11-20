@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -34,6 +36,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -115,41 +119,76 @@ fun FollowDynamicScreen(
         }
     }
 
-    FeedPullToRefresh(viewModel) {
-        PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            topContent = {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
+    // 屏蔽用户确认对话框
+    var showBlockUserDialog by remember { mutableStateOf(false) }
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    Column {
+        FeedPullToRefresh(viewModel) {
+            PaginatedList(
+                items = viewModel.displayItems,
+                onLoadMore = { viewModel.loadMore(context) },
+                topContent = {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                },
+                footer = ProgressIndicatorFooter,
+            ) { item ->
+                FeedCard(
+                    item,
+                    onLike = {
+                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onDislike = {
+                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onBlockUser = { feedItem ->
+                        feedItem.feed?.target?.author?.let { author ->
+                            userToBlock = Pair(author.id, author.name)
+                            showBlockUserDialog = true
+                        } ?: run {
+                            Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
+                    if (navDestination != null) {
+                        onNavigate(navDestination)
+                    } else {
+                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(item, onLike = {
-                Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-            }, onDislike = {
-                Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-            }) {
-                if (navDestination != null) {
-                    onNavigate(navDestination)
+            }
+
+            DraggableRefreshButton(
+                onClick = {
+                    viewModel.refresh(context)
+                },
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 } else {
-                    Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
 
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
+        // 屏蔽用户确认对话框
+        BlockUserConfirmDialog(
+            showDialog = showBlockUserDialog,
+            userToBlock = userToBlock,
+            displayItems = viewModel.displayItems,
+            context = context,
+            onDismiss = {
+                showBlockUserDialog = false
+                userToBlock = null
             },
-        ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(36.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-            }
-        }
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+        )
     }
 }
 
@@ -172,43 +211,76 @@ fun FollowRecommendScreen(
         }
     }
 
-    FeedPullToRefresh(viewModel) {
-        PaginatedList(
-            items = viewModel.displayItems,
-            topContent = {
-                item {
-                    Text(
-                        "提示：此 API 已不再在知乎官网使用，未来有可能被移除。",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                    )
+    // 屏蔽用户确认对话框
+    var showBlockUserDialog by remember { mutableStateOf(false) }
+    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    Column {
+        FeedPullToRefresh(viewModel) {
+            PaginatedList(
+                items = viewModel.displayItems,
+                topContent = {
+                    item {
+                        Text(
+                            "提示：此 API 已不再在知乎官网使用，未来有可能被移除。",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                },
+                onLoadMore = { viewModel.loadMore(context) },
+                footer = ProgressIndicatorFooter,
+            ) { item ->
+                FeedCard(
+                    item,
+                    onBlockUser = { feedItem ->
+                        feedItem.feed?.target?.author?.let { author ->
+                            userToBlock = Pair(author.id, author.name)
+                            showBlockUserDialog = true
+                        } ?: run {
+                            Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
+                    if (navDestination != null) {
+                        onNavigate(navDestination)
+                    } else {
+                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            },
-            onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(item) {
-                if (navDestination != null) {
-                    onNavigate(navDestination)
+            }
+
+            DraggableRefreshButton(
+                onClick = {
+                    viewModel.refresh(context)
+                },
+            ) {
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 } else {
-                    Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
 
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
+        // 屏蔽用户确认对话框
+        BlockUserConfirmDialog(
+            showDialog = showBlockUserDialog,
+            userToBlock = userToBlock,
+            displayItems = viewModel.displayItems,
+            context = context,
+            onDismiss = {
+                showBlockUserDialog = false
+                userToBlock = null
             },
-        ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(36.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-            }
-        }
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+        )
     }
 }

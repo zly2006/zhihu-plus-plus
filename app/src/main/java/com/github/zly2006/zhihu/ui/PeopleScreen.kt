@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -116,6 +117,7 @@ class PersonViewModel(
     var articleCount by mutableIntStateOf(0)
     var isFollowing by mutableStateOf(false)
     var isBlocking by mutableStateOf(false)
+    var isBlockedInRecommendations by mutableStateOf(false)
 
     // 只实现已有数据类型的 ViewModel
     val answersFeedModel = PeopleAnswersViewModel(person)
@@ -171,6 +173,24 @@ class PersonViewModel(
         }
     }
 
+    suspend fun toggleRecommendationBlock(context: Context) {
+        val blocklistManager = BlocklistManager.getInstance(context)
+        if (isBlockedInRecommendations) {
+            // Remove from blocklist
+            blocklistManager.removeBlockedUser(person.id)
+            isBlockedInRecommendations = false
+        } else {
+            // Add to blocklist
+            blocklistManager.addBlockedUser(
+                userId = person.id,
+                userName = name,
+                urlToken = person.urlToken,
+                avatarUrl = avatar,
+            )
+            isBlockedInRecommendations = true
+        }
+    }
+
     suspend fun load(context: Context) {
         context as MainActivity
         val jojo = context.httpClient
@@ -197,6 +217,11 @@ class PersonViewModel(
         if (person.urlToken != null) {
             this.person.urlToken = person.urlToken
         }
+
+        // Check if user is blocked in recommendations
+        val blocklistManager = BlocklistManager.getInstance(context)
+        this.isBlockedInRecommendations = blocklistManager.isUserBlocked(person.id)
+
         context.postHistory(
             Person(
                 id = person.id,
@@ -516,6 +541,23 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
                 }
             }) {
                 Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
+            }
+            OutlinedButton(onClick = {
+                coroutineScope.launch {
+                    try {
+                        viewModel.toggleRecommendationBlock(context)
+                        Toast
+                            .makeText(
+                                context,
+                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }) {
+                Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
             }
         }
     }
