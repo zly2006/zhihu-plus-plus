@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -179,68 +180,21 @@ fun FollowDynamicScreen(
     }
 
         // 屏蔽用户确认对话框
-        if (showBlockUserDialog && userToBlock != null) {
-            AlertDialog(
-                onDismissRequest = {
-                    showBlockUserDialog = false
-                    userToBlock = null
-                },
-                title = { Text("屏蔽用户") },
-                text = {
-                    Column {
-                        Text("确定要屏蔽用户 \"${userToBlock?.second}\" 吗？")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "屏蔽后，该用户的内容将不会在推荐流中显示。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            userToBlock?.let { (userId, userName) ->
-                                GlobalScope.launch {
-                                    try {
-                                        val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager.getInstance(context)
-                                        viewModel.displayItems.find { item ->
-                                            item.feed?.target?.author?.id == userId
-                                        }?.feed?.target?.author?.let { author ->
-                                            blocklistManager.addBlockedUser(
-                                                userId = author.id,
-                                                userName = author.name,
-                                                urlToken = author.urlToken,
-                                                avatarUrl = author.avatarUrl,
-                                            )
-                                            viewModel.refresh(context)
-                                            Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                            showBlockUserDialog = false
-                            userToBlock = null
-                        },
-                    ) {
-                        Text("确定屏蔽")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            showBlockUserDialog = false
-                            userToBlock = null
-                        },
-                    ) {
-                        Text("取消")
-                    }
-                },
-            )
-        }
+        BlockUserConfirmDialog(
+            showDialog = showBlockUserDialog,
+            userToBlock = userToBlock,
+            displayItems = viewModel.displayItems,
+            context = context,
+            onDismiss = {
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+        )
     }
 }
 
@@ -319,67 +273,20 @@ fun FollowRecommendScreen(
     }
 
         // 屏蔽用户确认对话框
-        if (showBlockUserDialog && userToBlock != null) {
-            AlertDialog(
-                onDismissRequest = {
-                    showBlockUserDialog = false
-                    userToBlock = null
-                },
-                title = { Text("屏蔽用户") },
-                text = {
-                    Column {
-                        Text("确定要屏蔽用户 \"${userToBlock?.second}\" 吗？")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "屏蔽后，该用户的内容将不会在推荐流中显示。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            userToBlock?.let { (userId, userName) ->
-                                GlobalScope.launch {
-                                    try {
-                                        val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager.getInstance(context)
-                                        viewModel.displayItems.find { item ->
-                                            item.feed?.target?.author?.id == userId
-                                        }?.feed?.target?.author?.let { author ->
-                                            blocklistManager.addBlockedUser(
-                                                userId = author.id,
-                                                userName = author.name,
-                                                urlToken = author.urlToken,
-                                                avatarUrl = author.avatarUrl,
-                                            )
-                                            viewModel.refresh(context)
-                                            Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                        Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            }
-                            showBlockUserDialog = false
-                            userToBlock = null
-                        },
-                    ) {
-                        Text("确定屏蔽")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            showBlockUserDialog = false
-                            userToBlock = null
-                        },
-                    ) {
-                        Text("取消")
-                    }
-                },
-            )
-        }
+        BlockUserConfirmDialog(
+            showDialog = showBlockUserDialog,
+            userToBlock = userToBlock,
+            displayItems = viewModel.displayItems,
+            context = context,
+            onDismiss = {
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockUserDialog = false
+                userToBlock = null
+            },
+        )
     }
 }
