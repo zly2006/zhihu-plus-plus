@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
+import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -603,7 +604,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            @Deprecated("Deprecated in Java")
+                            @Suppress("OVERRIDE_DEPRECATION")
                             override fun onError(p0: String?) { }
 
                             override fun onError(utteranceId: String?, errorCode: Int) {

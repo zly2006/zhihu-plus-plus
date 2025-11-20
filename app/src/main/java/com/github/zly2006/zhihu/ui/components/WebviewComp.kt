@@ -24,7 +24,6 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.ComponentDialog
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,7 +42,8 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
-import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -144,12 +144,7 @@ class CustomWebView : WebView {
                         val videoUrl = getHighestQualityVideoUrl(httpClient, dataLensId, contentId!!)
                         if (videoUrl != null) {
                             GlobalScope.launch(Dispatchers.Main) {
-                                // 重定向到视频URL
-                                val intent = CustomTabsIntent
-                                    .Builder()
-                                    .setToolbarColor(0xff66CCFF.toInt())
-                                    .build()
-                                intent.launchUrl(context, videoUrl.toUri())
+                                luoTianYiUrlLauncher(context, videoUrl.toUri())
                             }
                         } else {
                             GlobalScope.launch(Dispatchers.Main) {
@@ -435,11 +430,7 @@ fun WebviewComp(
                                 true
                             }
                             menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                CustomTabsIntent
-                                    .Builder()
-                                    .setToolbarColor(0xff66CCFF.toInt())
-                                    .build()
-                                    .launchUrl(context, url.toUri())
+                                luoTianYiUrlLauncher(context, url.toUri())
                                 true
                             }
                             menu.add("保存图片").setOnMenuItemClickListener {
@@ -637,8 +628,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
             if (request.url.host == "link.zhihu.com") {
                 Url(request.url.toString()).parameters["target"]?.let {
-                    val intent = CustomTabsIntent.Builder().setToolbarColor(0xff66CCFF.toInt()).build()
-                    intent.launchUrl(context, it.toUri())
+                    luoTianYiUrlLauncher(context, it.toUri())
                     return true
                 }
             } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {

@@ -1,6 +1,11 @@
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsIntent
+import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import io.ktor.client.request.HttpRequestBuilder
@@ -28,7 +33,7 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
         null
     }
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
-        header("x-zse-93", MainActivity.ZSE93)
+        header("x-zse-93", MainActivity.Companion.ZSE93)
         header(
             "x-zse-96",
             (context as? MainActivity)?.signRequest96(url, body),
@@ -72,4 +77,16 @@ fun telemetry(context: Context, usage: String) {
             }
         }
     }
+}
+
+fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
+    val intent = CustomTabsIntent
+        .Builder()
+        .setDefaultColorSchemeParams(
+            CustomTabColorSchemeParams
+                .Builder()
+                .setToolbarColor(0xff_66CCFF.toInt())
+                .build(),
+        ).build()
+    intent.launchUrl(context, uri)
 }

@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.signFetchRequest
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import io.ktor.client.HttpClient

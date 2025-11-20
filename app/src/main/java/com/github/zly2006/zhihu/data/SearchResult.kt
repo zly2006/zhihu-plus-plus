@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.data
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -78,6 +79,7 @@ object SearchResultSerializer : KSerializer<SearchResult> {
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     override fun deserialize(decoder: Decoder): SearchResult {
         require(decoder is JsonDecoder)
 

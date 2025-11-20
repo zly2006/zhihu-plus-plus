@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu
 
 import android.net.Uri
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerialName

@@ -54,7 +54,7 @@ fun DraggableRefreshButton(
     fun adjustFabPosition() {
         with(density) {
             offsetX = offsetX.coerceIn(0f, configuration.screenWidthDp.dp.toPx() - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 160.dp.toPx())
+            offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 200.dp.toPx())
         }
     }
 

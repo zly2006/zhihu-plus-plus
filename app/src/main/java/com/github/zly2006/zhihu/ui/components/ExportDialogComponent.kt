@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -52,7 +51,6 @@ fun ExportDialogComponent(
     viewModel: ArticleViewModel,
 ) {
     val context = LocalContext.current
-    val activity = context as? androidx.activity.ComponentActivity
 
     // 权限请求
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -99,7 +97,7 @@ fun ExportDialogComponent(
                         onClick = {
                             if (!isExporting) {
                                 isExporting = true
-                                GlobalScope.launch {
+                                coroutineScope.launch {
                                     viewModel.exportToPdf(context) { success ->
                                         isExporting = false
                                         if (success) {
@@ -142,7 +140,7 @@ fun ExportDialogComponent(
                         onClick = {
                             if (!isExporting) {
                                 isExporting = true
-                                GlobalScope.launch {
+                                coroutineScope.launch {
                                     viewModel.exportToImage(context) { success ->
                                         isExporting = false
                                         if (success) {
@@ -215,7 +213,7 @@ fun ExportDialogComponent(
                         onClick = {
                             if (!isExporting) {
                                 isExporting = true
-                                GlobalScope.launch {
+                                coroutineScope.launch {
                                     viewModel.exportToImageWithComments(context, commentCount) { success ->
                                         isExporting = false
                                         if (success) {
