@@ -12,7 +12,9 @@ import androidx.room.RoomDatabase
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun contentFilterDao(): ContentFilterDao
+
     abstract fun blockedKeywordDao(): BlockedKeywordDao
+
     abstract fun blockedUserDao(): BlockedUserDao
 
     companion object {

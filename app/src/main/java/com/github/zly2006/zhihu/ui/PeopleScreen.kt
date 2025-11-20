@@ -217,11 +217,11 @@ class PersonViewModel(
         if (person.urlToken != null) {
             this.person.urlToken = person.urlToken
         }
-        
+
         // Check if user is blocked in recommendations
         val blocklistManager = BlocklistManager.getInstance(context)
         this.isBlockedInRecommendations = blocklistManager.isUserBlocked(person.id)
-        
+
         context.postHistory(
             Person(
                 id = person.id,
@@ -546,11 +546,12 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
                 coroutineScope.launch {
                     try {
                         viewModel.toggleRecommendationBlock(context)
-                        Toast.makeText(
-                            context,
-                            if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        Toast
+                            .makeText(
+                                context,
+                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
+                                Toast.LENGTH_SHORT,
+                            ).show()
                     } catch (e: Exception) {
                         Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }

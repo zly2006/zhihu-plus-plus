@@ -14,16 +14,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,8 +45,6 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 class FollowScreenData : ViewModel() {
@@ -131,53 +125,53 @@ fun FollowDynamicScreen(
 
     Column {
         FeedPullToRefresh(viewModel) {
-        PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            topContent = {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(
-                item,
-                onLike = {
-                    Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-                },
-                onDislike = {
-                    Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-                },
-                onBlockUser = { feedItem ->
-                    feedItem.feed?.target?.author?.let { author ->
-                        userToBlock = Pair(author.id, author.name)
-                        showBlockUserDialog = true
-                    } ?: run {
-                        Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+            PaginatedList(
+                items = viewModel.displayItems,
+                onLoadMore = { viewModel.loadMore(context) },
+                topContent = {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 },
+                footer = ProgressIndicatorFooter,
+            ) { item ->
+                FeedCard(
+                    item,
+                    onLike = {
+                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onDislike = {
+                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onBlockUser = { feedItem ->
+                        feedItem.feed?.target?.author?.let { author ->
+                            userToBlock = Pair(author.id, author.name)
+                            showBlockUserDialog = true
+                        } ?: run {
+                            Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
+                    if (navDestination != null) {
+                        onNavigate(navDestination)
+                    } else {
+                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            DraggableRefreshButton(
+                onClick = {
+                    viewModel.refresh(context)
+                },
             ) {
-                if (navDestination != null) {
-                    onNavigate(navDestination)
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 } else {
-                    Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
-
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
-            },
-        ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(36.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-            }
-        }
-    }
 
         // 屏蔽用户确认对话框
         BlockUserConfirmDialog(
@@ -232,45 +226,45 @@ fun FollowRecommendScreen(
                             modifier = Modifier.fillMaxWidth(),
                             textAlign = TextAlign.Center,
                         )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            },
-            onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(
-                item,
-                onBlockUser = { feedItem ->
-                    feedItem.feed?.target?.author?.let { author ->
-                        userToBlock = Pair(author.id, author.name)
-                        showBlockUserDialog = true
-                    } ?: run {
-                        Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 },
+                onLoadMore = { viewModel.loadMore(context) },
+                footer = ProgressIndicatorFooter,
+            ) { item ->
+                FeedCard(
+                    item,
+                    onBlockUser = { feedItem ->
+                        feedItem.feed?.target?.author?.let { author ->
+                            userToBlock = Pair(author.id, author.name)
+                            showBlockUserDialog = true
+                        } ?: run {
+                            Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
+                    if (navDestination != null) {
+                        onNavigate(navDestination)
+                    } else {
+                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            DraggableRefreshButton(
+                onClick = {
+                    viewModel.refresh(context)
+                },
             ) {
-                if (navDestination != null) {
-                    onNavigate(navDestination)
+                if (viewModel.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
                 } else {
-                    Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
                 }
             }
         }
-
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
-            },
-        ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(36.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-            }
-        }
-    }
 
         // 屏蔽用户确认对话框
         BlockUserConfirmDialog(

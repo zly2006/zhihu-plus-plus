@@ -11,20 +11,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-/**
- * 屏蔽用户确认对话框
- * 可复用的组件，用于在不同页面显示用户屏蔽确认对话框
- */
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun BlockUserConfirmDialog(
     showDialog: Boolean,
@@ -34,6 +28,7 @@ fun BlockUserConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     if (showDialog && userToBlock != null) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -53,21 +48,28 @@ fun BlockUserConfirmDialog(
                 Button(
                     onClick = {
                         userToBlock.let { (userId, userName) ->
-                            GlobalScope.launch {
+                            coroutineScope.launch {
                                 try {
                                     val blocklistManager = BlocklistManager.getInstance(context)
-                                    displayItems.find { item ->
-                                        item.feed?.target?.author?.id == userId
-                                    }?.feed?.target?.author?.let { author ->
-                                        blocklistManager.addBlockedUser(
-                                            userId = author.id,
-                                            userName = author.name,
-                                            urlToken = author.urlToken,
-                                            avatarUrl = author.avatarUrl,
-                                        )
-                                        onConfirm()
-                                        Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
-                                    }
+                                    displayItems
+                                        .find { item ->
+                                            item.feed
+                                                ?.target
+                                                ?.author
+                                                ?.id == userId
+                                        }?.feed
+                                        ?.target
+                                        ?.author
+                                        ?.let { author ->
+                                            blocklistManager.addBlockedUser(
+                                                userId = author.id,
+                                                userName = author.name,
+                                                urlToken = author.urlToken,
+                                                avatarUrl = author.avatarUrl,
+                                            )
+                                            onConfirm()
+                                            Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                                        }
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                     Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
