@@ -29,7 +29,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.github.zly2006.zhihu"
+        applicationId = "com.github.zly2006.zhplus"
         minSdk = 28
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
