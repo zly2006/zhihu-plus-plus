@@ -8,7 +8,12 @@ import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Refresh
@@ -110,66 +115,108 @@ fun HomeScreen(
         }
     }
 
-    FeedPullToRefresh(viewModel) {
-        PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            footer = ProgressIndicatorFooter,
-        ) { item ->
-            FeedCard(item, onLike = {
-                Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-            }, onDislike = {
-                Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-            }) {
-                feed?.let {
-                    DataHolder.putFeed(feed)
-                    GlobalScope.launch {
-                        (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
+    androidx.compose.material3.Scaffold(
+        topBar = {
+            androidx.compose.material3.Surface(
+                shadowElevation = 4.dp,
+            ) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = androidx.compose.foundation.shape
+                            .RoundedCornerShape(24.dp),
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.surfaceVariant,
+                        onClick = {
+                            onNavigate(
+                                com.github.zly2006.zhihu
+                                    .Search(query = ""),
+                            )
+                        },
+                    ) {
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "搜索",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            androidx.compose.foundation.layout
+                                .Spacer(modifier = Modifier.width(12.dp))
+                            androidx.compose.material3.Text(
+                                text = "搜索内容",
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                     }
                 }
-                if (navDestination != null) {
-                    onNavigate(navDestination)
+            }
+        },
+    ) { innerPadding ->
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.padding(innerPadding),
+        ) {
+            FeedPullToRefresh(viewModel) {
+                PaginatedList(
+                    items = viewModel.displayItems,
+                    onLoadMore = { viewModel.loadMore(context) },
+                    footer = ProgressIndicatorFooter,
+                ) { item ->
+                    FeedCard(item, onLike = {
+                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                    }, onDislike = {
+                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                    }) {
+                        feed?.let {
+                            DataHolder.putFeed(feed)
+                            GlobalScope.launch {
+                                (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
+                            }
+                        }
+                        if (navDestination != null) {
+                            onNavigate(navDestination)
+                        }
+                    }
+                }
+
+                if (BuildConfig.DEBUG) {
+                    DraggableRefreshButton(
+                        onClick = {
+                            val data = Json.encodeToString(viewModel.debugData)
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            val clip = ClipData.newPlainText("data", data)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                        },
+                        preferenceName = "copyAll",
+                    ) {
+                        Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                    }
+                }
+
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                 }
             }
-        }
-
-        if (BuildConfig.DEBUG) {
-            DraggableRefreshButton(
-                onClick = {
-                    val data = Json.encodeToString(viewModel.debugData)
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = ClipData.newPlainText("data", data)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                },
-                preferenceName = "copyAll",
-            ) {
-                Icon(Icons.Default.CopyAll, contentDescription = "复制")
-            }
-        }
-
-        DraggableRefreshButton(
-            onClick = {
-                viewModel.refresh(context)
-            },
-        ) {
-            if (viewModel.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-            } else {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-            }
-        }
-
-        DraggableRefreshButton(
-            onClick = {
-                onNavigate(
-                    com.github.zly2006.zhihu
-                        .Search(query = ""),
-                )
-            },
-            preferenceName = "searchButton",
-        ) {
-            Icon(Icons.Default.Search, contentDescription = "搜索")
         }
     }
 }

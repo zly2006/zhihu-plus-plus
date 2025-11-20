@@ -27,6 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -48,14 +51,21 @@ fun SearchScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
-    val viewModel: SearchViewModel by context.viewModels()
+    val viewModel: SearchViewModel by context.viewModels {
+        object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return SearchViewModel(search.query) as T
+            }
+        }
+    }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var searchText by mutableStateOf(search.query)
 
-    // Initialize search query from navigation parameter
+    // Load search results when query is not empty
     LaunchedEffect(search.query) {
-        if (search.query.isNotEmpty() && viewModel.searchQuery != search.query) {
-            viewModel.updateSearchQuery(search.query)
-            viewModel.performSearch(context)
+        if (search.query.isNotEmpty()) {
+            viewModel.refresh(context)
         }
     }
 
@@ -70,8 +80,8 @@ fun SearchScreen(
             TopAppBar(
                 title = {
                     OutlinedTextField(
-                        value = viewModel.searchQuery,
-                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        value = searchText,
+                        onValueChange = { searchText = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("搜索内容") },
                         singleLine = true,
@@ -79,12 +89,17 @@ fun SearchScreen(
                         keyboardActions = KeyboardActions(
                             onSearch = {
                                 keyboardController?.hide()
-                                viewModel.performSearch(context)
+                                if (searchText.isNotBlank()) {
+                                    onNavigate(
+                                        com.github.zly2006.zhihu
+                                            .Search(query = searchText),
+                                    )
+                                }
                             },
                         ),
                         trailingIcon = {
-                            if (viewModel.searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                            if (searchText.isNotEmpty()) {
+                                IconButton(onClick = { searchText = "" }) {
                                     Icon(Icons.Default.Clear, contentDescription = "清除")
                                 }
                             } else {
@@ -137,7 +152,7 @@ fun SearchScreen(
 
                     DraggableRefreshButton(
                         onClick = {
-                            viewModel.performSearch(context)
+                            viewModel.refresh(context)
                         },
                     ) {
                         if (viewModel.isLoading) {
