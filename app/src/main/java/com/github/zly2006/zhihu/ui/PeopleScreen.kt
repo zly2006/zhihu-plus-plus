@@ -155,7 +155,7 @@ class PersonViewModel(
         if (isBlocking) {
             // unblock
             val response = client
-                .delete("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/blacks") {
                     signFetchRequest(context)
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
@@ -163,7 +163,7 @@ class PersonViewModel(
         } else {
             // block
             val response = client
-                .post("https://www.zhihu.com/api/v4/members/${person.id}/blacks") {
+                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/blacks") {
                     signFetchRequest(context)
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
