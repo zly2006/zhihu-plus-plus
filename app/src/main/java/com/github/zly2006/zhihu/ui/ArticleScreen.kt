@@ -514,7 +514,15 @@ fun ArticleScreen(
                         lineHeight = 32.sp,
                         modifier = Modifier
                             .padding(bottom = 8.dp)
-                            .clickable { onNavigate(Question(viewModel.questionId, viewModel.title)) },
+                            .let {
+                                if (article.type == ArticleType.Answer) {
+                                    it.clickable {
+                                        onNavigate(Question(viewModel.questionId, viewModel.title))
+                                    }
+                                } else {
+                                    it
+                                }
+                            },
                     )
                 }
             }
