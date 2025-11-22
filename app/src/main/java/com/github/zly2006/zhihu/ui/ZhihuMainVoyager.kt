@@ -70,7 +70,7 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TabNavigationItem(tab: Tab) {
+private fun androidx.compose.foundation.layout.RowScope.TabNavigationItem(tab: Tab) {
     val tabNavigator = LocalTabNavigator.current
     NavigationBarItem(
         selected = tabNavigator.current == tab,
@@ -90,7 +90,9 @@ private fun TabNavigationItem(tab: Tab) {
             indicatorColor = Color.Transparent,
         ),
         icon = {
-            Icon(tab.options.icon!!, contentDescription = tab.options.title)
+            tab.options.icon?.let { icon ->
+                Icon(icon, contentDescription = tab.options.title)
+            }
         },
     )
 }
@@ -99,11 +101,14 @@ private fun TabNavigationItem(tab: Tab) {
 object HomeTab : Tab {
     override val options: TabOptions
         @Composable
-        get() = TabOptions(
-            index = 0u,
-            title = "主页",
-            icon = Icons.Filled.Home,
-        )
+        get() {
+            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.Home)
+            return TabOptions(
+                index = 0u,
+                title = "主页",
+                icon = icon,
+            )
+        }
 
     @Composable
     override fun Content() {
@@ -116,11 +121,14 @@ object HomeTab : Tab {
 object FollowTab : Tab {
     override val options: TabOptions
         @Composable
-        get() = TabOptions(
-            index = 1u,
-            title = "关注",
-            icon = Icons.Filled.PersonAddAlt1,
-        )
+        get() {
+            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.PersonAddAlt1)
+            return TabOptions(
+                index = 1u,
+                title = "关注",
+                icon = icon,
+            )
+        }
 
     @Composable
     override fun Content() {
@@ -133,11 +141,14 @@ object FollowTab : Tab {
 object HistoryTab : Tab {
     override val options: TabOptions
         @Composable
-        get() = TabOptions(
-            index = 2u,
-            title = "历史",
-            icon = Icons.Filled.History,
-        )
+        get() {
+            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.History)
+            return TabOptions(
+                index = 2u,
+                title = "历史",
+                icon = icon,
+            )
+        }
 
     @Composable
     override fun Content() {
@@ -150,11 +161,14 @@ object HistoryTab : Tab {
 object AccountTab : Tab {
     override val options: TabOptions
         @Composable
-        get() = TabOptions(
-            index = 3u,
-            title = "账号",
-            icon = Icons.Filled.ManageAccounts,
-        )
+        get() {
+            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.ManageAccounts)
+            return TabOptions(
+                index = 3u,
+                title = "账号",
+                icon = icon,
+            )
+        }
 
     @Composable
     override fun Content() {

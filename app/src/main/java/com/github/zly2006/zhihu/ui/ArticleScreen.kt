@@ -85,8 +85,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
+
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -421,8 +420,6 @@ fun ArticleScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
-        ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -529,8 +526,8 @@ fun ArticleScreen(
         },
         bottomBar = {
             Column {
-                if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
-                    Row(
+                // Show bottom bar for all articles
+                Row(
                         modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
@@ -681,7 +678,6 @@ fun ArticleScreen(
                             }
                         }
                     }
-                }
                 Spacer(modifier = Modifier.height(16.dp))
             }
         },
@@ -849,16 +845,9 @@ fun ArticleScreen(
                 navigatingToNextAnswer = true
                 viewModel.viewModelScope.launch {
                     val dest = viewModel.nextAnswerFuture.await()
-                    val activity = context as? MainActivity ?: return@launch
                     val target = dest.target!!
                     if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
+                        // Navigate to the next answer
                         onNavigate(target.navDestination)
                     }
                 }
@@ -936,7 +925,6 @@ fun ArticleScreenPreview() {
                     "",
                 ),
                 null,
-                null,
             )
         },
     ) {}
@@ -966,7 +954,6 @@ fun ArticleActionsMenuPreview() {
                             "知乎用户",
                             "",
                         ),
-                        null,
                         null,
                     )
                 },

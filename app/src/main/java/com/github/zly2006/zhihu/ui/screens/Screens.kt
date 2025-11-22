@@ -68,7 +68,7 @@ data class ArticleScreenVoyager(val article: Article) : Screen {
         val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
         if (activity != null) {
             val articleViewModel = viewModel<ArticleViewModel> {
-                ArticleViewModel(article, activity.httpClient, null)
+                ArticleViewModel(article, activity.httpClient)
             }
             ArticleScreen(article, articleViewModel) { destination ->
                 navigator.push(destination.toScreen())

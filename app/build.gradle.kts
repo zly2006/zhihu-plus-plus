@@ -137,7 +137,7 @@ dependencies {
     implementation("cafe.adriel.voyager:voyager-navigator:$voyager")
     implementation("cafe.adriel.voyager:voyager-screenmodel:$voyager")
     implementation("cafe.adriel.voyager:voyager-transitions:$voyager")
-    implementation("cafe.adriel.voyager:voyager-androidx:$voyager")
+    implementation("cafe.adriel.voyager:voyager-tab-navigator:$voyager")
     
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.activity:activity-compose:1.10.1")
