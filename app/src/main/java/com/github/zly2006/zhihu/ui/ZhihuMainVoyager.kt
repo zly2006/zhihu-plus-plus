@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,6 +30,8 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -57,6 +61,8 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
 
         val currentScreen = navigator.lastItem
         val isTopLevel = isTopLevelScreen(currentScreen)
+        val lastSize = remember { mutableIntStateOf(navigator.size) }
+        val isPop = navigator.size < lastSize.intValue
 
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
@@ -76,42 +82,73 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
             AnimatedContent(
                 targetState = navigator.lastItem,
                 transitionSpec = {
-                    val previousScreen = navigator.items.getOrNull(navigator.size - 2)
+                    val previousScreen = if (isPop) {
+                        // When popping, initialState is the screen we're leaving
+                        initialState
+                    } else {
+                        // When pushing, look at previous screen in stack
+                        navigator.items.getOrNull(navigator.size - 2)
+                    }
                     val fromIndex = getScreenIndex(previousScreen)
                     val toIndex = getScreenIndex(targetState)
 
-                    // If both are top-level screens, use slide animation
+                    // Determine animation based on navigation type
                     if (fromIndex != -1 && toIndex != -1) {
+                        // Both are top-level screens - use horizontal slide
                         val offset = if (toIndex > fromIndex) 1 else -1
-                        (
-                            slideInHorizontally(
-                                animationSpec = tween(300),
-                                initialOffsetX = { it * offset },
-                            ) + fadeIn(
-                                animationSpec = tween(300),
+                        if (isPop) {
+                            // Pop animation - reverse direction
+                            (
+                                slideInHorizontally(
+                                    animationSpec = tween(300),
+                                    initialOffsetX = { -it * offset },
+                                ) + fadeIn(
+                                    animationSpec = tween(300),
+                                )
+                            ) togetherWith (
+                                slideOutHorizontally(
+                                    animationSpec = tween(300),
+                                    targetOffsetX = { it * offset },
+                                ) + fadeOut(
+                                    animationSpec = tween(300),
+                                )
                             )
-                        ) togetherWith (
-                            slideOutHorizontally(
-                                animationSpec = tween(300),
-                                targetOffsetX = { it * -offset },
-                            ) + fadeOut(
-                                animationSpec = tween(300),
+                        } else {
+                            // Push animation - normal direction
+                            (
+                                slideInHorizontally(
+                                    animationSpec = tween(300),
+                                    initialOffsetX = { it * offset },
+                                ) + fadeIn(
+                                    animationSpec = tween(300),
+                                )
+                            ) togetherWith (
+                                slideOutHorizontally(
+                                    animationSpec = tween(300),
+                                    targetOffsetX = { it * -offset },
+                                ) + fadeOut(
+                                    animationSpec = tween(300),
+                                )
                             )
+                        }
+                    } else if (isPop) {
+                        // Popping a non-top-level screen - slide out to right
+                        EnterTransition.None togetherWith slideOutHorizontally(
+                            animationSpec = tween(300),
+                            targetOffsetX = { it },
                         )
                     } else {
-                        // For non-top-level screens, use default slide from right
+                        // Pushing a non-top-level screen - slide in from right
                         slideInHorizontally(
                             animationSpec = tween(300),
                             initialOffsetX = { it },
-                        ) togetherWith slideOutHorizontally(
-                            animationSpec = tween(300),
-                            targetOffsetX = { -it / 4 },
-                        )
+                        ) togetherWith ExitTransition.None
                     }
                 },
                 modifier = Modifier.padding(innerPadding),
                 label = "screen_transition",
             ) { screen ->
+                lastSize.intValue = navigator.size
                 screen.Content()
             }
         }
