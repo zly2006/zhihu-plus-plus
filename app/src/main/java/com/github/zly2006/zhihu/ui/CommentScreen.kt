@@ -422,15 +422,23 @@ fun CommentScreen(
                             modifier = Modifier.size(24.dp),
                             enabled = !isSending && commentInput.isNotBlank(),
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.Send,
-                                contentDescription = "发送评论",
-                                tint = if (!isSending && commentInput.isNotBlank()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                },
-                            )
+                            if (isSending) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.Send,
+                                    contentDescription = "发送评论",
+                                    tint = if (commentInput.isNotBlank()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    },
+                                )
+                            }
                         }
                     }
                 }
