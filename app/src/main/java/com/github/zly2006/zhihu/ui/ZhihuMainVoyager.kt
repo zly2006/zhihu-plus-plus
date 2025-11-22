@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -62,6 +63,7 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
         val currentScreen = navigator.lastItem
         val isTopLevel = isTopLevelScreen(currentScreen)
         val lastSize = remember { mutableIntStateOf(navigator.size) }
+        val lastScreen = remember { androidx.compose.runtime.mutableStateOf<Screen>(HomeScreenVoyager) }
         val isPop = navigator.size < lastSize.intValue
 
         Scaffold(
@@ -86,8 +88,15 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
                         // When popping, initialState is the screen we're leaving
                         initialState
                     } else {
-                        // When pushing, look at previous screen in stack
-                        navigator.items.getOrNull(navigator.size - 2)
+                        // When pushing or replacing, use the last remembered screen
+                        // (navigator stack might have been replaced with replaceAll)
+                        if (navigator.size == 1 && isTopLevelScreen(targetState)) {
+                            // Tab switching - use last remembered screen
+                            lastScreen.value
+                        } else {
+                            // Normal push - look at previous screen in stack
+                            navigator.items.getOrNull(navigator.size - 2)
+                        }
                     }
                     val fromIndex = getScreenIndex(previousScreen)
                     val toIndex = getScreenIndex(targetState)
@@ -95,20 +104,22 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
                     // Determine animation based on navigation type
                     if (fromIndex != -1 && toIndex != -1) {
                         // Both are top-level screens - use horizontal slide
-                        val offset = if (toIndex > fromIndex) 1 else -1
+                        // When going right (toIndex > fromIndex), slide in from right (+1)
+                        // When going left (toIndex < fromIndex), slide in from left (-1)
+                        val slideDirection = if (toIndex > fromIndex) 1 else -1
                         if (isPop) {
                             // Pop animation - reverse direction
                             (
                                 slideInHorizontally(
                                     animationSpec = tween(300),
-                                    initialOffsetX = { -it * offset },
+                                    initialOffsetX = { -it * slideDirection },
                                 ) + fadeIn(
                                     animationSpec = tween(300),
                                 )
                             ) togetherWith (
                                 slideOutHorizontally(
                                     animationSpec = tween(300),
-                                    targetOffsetX = { it * offset },
+                                    targetOffsetX = { it * slideDirection },
                                 ) + fadeOut(
                                     animationSpec = tween(300),
                                 )
@@ -118,14 +129,14 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
                             (
                                 slideInHorizontally(
                                     animationSpec = tween(300),
-                                    initialOffsetX = { it * offset },
+                                    initialOffsetX = { it * slideDirection },
                                 ) + fadeIn(
                                     animationSpec = tween(300),
                                 )
                             ) togetherWith (
                                 slideOutHorizontally(
                                     animationSpec = tween(300),
-                                    targetOffsetX = { it * -offset },
+                                    targetOffsetX = { -it * slideDirection },
                                 ) + fadeOut(
                                     animationSpec = tween(300),
                                 )
@@ -149,6 +160,7 @@ fun ZhihuMainVoyager(modifier: Modifier = Modifier) {
                 label = "screen_transition",
             ) { screen ->
                 lastSize.intValue = navigator.size
+                lastScreen.value = screen
                 screen.Content()
             }
         }
