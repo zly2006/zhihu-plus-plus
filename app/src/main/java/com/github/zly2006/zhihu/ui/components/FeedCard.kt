@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -183,7 +184,7 @@ fun FeedCard(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = item.title,
+                                text = parseHtmlTextWithTheme(item.title),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
@@ -220,7 +221,7 @@ fun FeedCard(
                 }
 
                 Text(
-                    text = item.summary ?: "",
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
                     fontSize = 14.sp,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
