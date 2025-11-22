@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +56,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -222,97 +225,100 @@ fun CommentScreen(
                             @Composable
                             fun Comment(
                                 commentItem: CommentModel,
+                                modifier: Modifier = Modifier,
                                 onChildCommentClick: (CommentModel) -> Unit,
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
                                 var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
                                 var isLikeLoading by remember { mutableStateOf(false) }
 
-                                CommentItem(
-                                    comment = commentItem,
-                                    useWebview = useWebview,
-                                    pinWebview = pinWebview,
-                                    isLiked = isLiked,
-                                    likeCount = likeCount,
-                                    isLikeLoading = isLikeLoading,
-                                    toggleLike = {
-                                        viewModel.toggleLikeComment(
-                                            httpClient = httpClient,
-                                            commentData = commentItem.item,
-                                            context = context,
-                                        ) {
-                                            val newLikeState = !isLiked
-                                            isLiked = newLikeState
-                                            likeCount += if (newLikeState) 1 else -1
-                                            commentItem.item.liked = newLikeState
-                                            commentItem.item.likeCount = likeCount
-                                        }
-                                    },
-                                    onNavigate = onNavigate,
-                                    onChildCommentClick = onChildCommentClick,
-                                )
+                                Column(modifier = modifier) {
+                                    CommentItem(
+                                        comment = commentItem,
+                                        useWebview = useWebview,
+                                        pinWebview = pinWebview,
+                                        isLiked = isLiked,
+                                        likeCount = likeCount,
+                                        isLikeLoading = isLikeLoading,
+                                        toggleLike = {
+                                            viewModel.toggleLikeComment(
+                                                httpClient = httpClient,
+                                                commentData = commentItem.item,
+                                                context = context,
+                                            ) {
+                                                val newLikeState = !isLiked
+                                                isLiked = newLikeState
+                                                likeCount += if (newLikeState) 1 else -1
+                                                commentItem.item.liked = newLikeState
+                                                commentItem.item.likeCount = likeCount
+                                            }
+                                        },
+                                        onNavigate = onNavigate,
+                                        onChildCommentClick = onChildCommentClick,
+                                    )
 
-                                // 在根评论区时 子评论
-                                if (activeCommentItem == null && commentItem.item.childCommentCount > 0) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 40.dp, top = 8.dp),
-                                    ) {
-                                        if (commentItem.item.childComments.isNotEmpty()) {
-                                            commentItem.item.childComments.forEach { childComment ->
-                                                var liked by remember { mutableStateOf(childComment.liked) }
-                                                var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
-                                                val childCommentItem = CommentModel(
-                                                    item = childComment,
-                                                    clickTarget = null, // 子评论不需要点击跳转
+                                    // 在根评论区时 子评论
+                                    if (activeCommentItem == null && commentItem.item.childCommentCount > 0) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 40.dp, top = 8.dp),
+                                        ) {
+                                            if (commentItem.item.childComments.isNotEmpty()) {
+                                                commentItem.item.childComments.forEach { childComment ->
+                                                    var liked by remember { mutableStateOf(childComment.liked) }
+                                                    var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
+                                                    val childCommentItem = CommentModel(
+                                                        item = childComment,
+                                                        clickTarget = null, // 子评论不需要点击跳转
+                                                    )
+                                                    CommentItem(
+                                                        comment = childCommentItem,
+                                                        isLiked = liked,
+                                                        likeCount = likeCount,
+                                                        toggleLike = {
+                                                            viewModel.toggleLikeComment(
+                                                                childCommentItem.item,
+                                                                httpClient,
+                                                                context,
+                                                            ) {
+                                                                val newLikeState = !liked
+                                                                liked = newLikeState
+                                                                likeCount += if (newLikeState) 1 else -1
+                                                                childCommentItem.item.liked = newLikeState
+                                                                childCommentItem.item.likeCount = likeCount
+                                                            }
+                                                        },
+                                                        useWebview = useWebview,
+                                                        pinWebview = pinWebview,
+                                                        onNavigate = onNavigate,
+                                                        onChildCommentClick = onChildCommentClick,
+                                                    )
+                                                }
+                                            }
+                                            Button(
+                                                onClick = { onChildCommentClick(commentItem) },
+                                                modifier = Modifier
+                                                    .height(28.dp),
+                                                shape = RoundedCornerShape(50),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                ),
+                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Outlined.Comment,
+                                                    contentDescription = "查看子评论",
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.surfaceTint,
                                                 )
-                                                CommentItem(
-                                                    comment = childCommentItem,
-                                                    isLiked = liked,
-                                                    likeCount = likeCount,
-                                                    toggleLike = {
-                                                        viewModel.toggleLikeComment(
-                                                            childCommentItem.item,
-                                                            httpClient,
-                                                            context,
-                                                        ) {
-                                                            val newLikeState = !liked
-                                                            liked = newLikeState
-                                                            likeCount += if (newLikeState) 1 else -1
-                                                            childCommentItem.item.liked = newLikeState
-                                                            childCommentItem.item.likeCount = likeCount
-                                                        }
-                                                    },
-                                                    useWebview = useWebview,
-                                                    pinWebview = pinWebview,
-                                                    onNavigate = onNavigate,
-                                                    onChildCommentClick = onChildCommentClick,
+                                                Text(
+                                                    "查看 ${commentItem.item.childCommentCount} 条子评论",
+                                                    fontSize = 12.sp,
+                                                    modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
                                                 )
                                             }
-                                        }
-                                        Button(
-                                            onClick = { onChildCommentClick(commentItem) },
-                                            modifier = Modifier
-                                                .height(28.dp),
-                                            shape = RoundedCornerShape(50),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.Comment,
-                                                contentDescription = "查看子评论",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.surfaceTint,
-                                            )
-                                            Text(
-                                                "查看 ${commentItem.item.childCommentCount} 条子评论",
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
-                                            )
                                         }
                                     }
                                 }
@@ -324,16 +330,40 @@ fun CommentScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
                                 if (activeCommentItem != null) {
-                                    item(0) {
-                                        Column {
+                                    item(
+                                        key = "active_${activeCommentItem.item.id}",
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                placementSpec = spring(
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                ),
+                                            ),
+                                        ) {
                                             Comment(activeCommentItem) { }
                                             HorizontalDivider()
                                         }
                                     }
                                 }
 
-                                items(viewModel.allData) { commentItem ->
-                                    Comment(viewModel.createCommentItem(commentItem, article = rootContent)) { comment ->
+                                items(
+                                    items = viewModel.allData,
+                                    key = { it.id },
+                                ) { commentItem ->
+                                    Comment(
+                                        viewModel.createCommentItem(commentItem, article = rootContent),
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            placementSpec = spring(
+                                                stiffness = Spring.StiffnessMediumLow,
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            ),
+                                        ),
+                                    ) { comment ->
                                         if (comment.clickTarget != null) {
                                             onChildCommentClick(comment)
                                         }
@@ -341,7 +371,7 @@ fun CommentScreen(
                                 }
 
                                 if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
-                                    item {
+                                    item(key = "loading_indicator") {
                                         Box(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),
                                             contentAlignment = Alignment.Center,
