@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,6 +85,7 @@ import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -128,6 +131,10 @@ fun CommentScreen(
             RootCommentViewModel(content)
         }
     }
+    val rootContent = when (val content = content()) {
+        is CommentHolder -> content.article
+        else -> content
+    }
 
     val listState = rememberLazyListState()
 
@@ -158,6 +165,7 @@ fun CommentScreen(
             viewModel.loadMore(context)
         }
     }
+    val coroutineScope = rememberCoroutineScope()
 
     // 提交评论函数
     fun submitComment() {
@@ -167,6 +175,12 @@ fun CommentScreen(
         viewModel.submitComment(content(), commentInput, httpClient, context) {
             commentInput = ""
             isSending = false
+        }
+        coroutineScope.launch {
+            listState.animateScrollToItem(
+                0,
+                0,
+            )
         }
     }
 
@@ -187,19 +201,19 @@ fun CommentScreen(
                 CommentTopText(content())
                 Box(modifier = Modifier.weight(1f)) {
                     when {
-                        viewModel.isLoading && viewModel.comments.isEmpty() -> {
+                        viewModel.isLoading && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator()
                             }
                         }
 
-                        viewModel.errorMessage != null && viewModel.comments.isEmpty() -> {
+                        viewModel.errorMessage != null && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             }
                         }
 
-                        viewModel.comments.isEmpty() -> {
+                        viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("暂无评论")
                             }
@@ -319,15 +333,15 @@ fun CommentScreen(
                                     }
                                 }
 
-                                items(viewModel.comments) { commentItem ->
-                                    Comment(commentItem) { comment ->
+                                items(viewModel.allData) { commentItem ->
+                                    Comment(viewModel.createCommentItem(commentItem, article = rootContent)) { comment ->
                                         if (comment.clickTarget != null) {
                                             onChildCommentClick(comment)
                                         }
                                     }
                                 }
 
-                                if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
+                                if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
                                     item {
                                         Box(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -350,19 +364,14 @@ fun CommentScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp)
+                            .heightIn(min = 40.dp, max = 140.dp)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val state = remember { TextFieldState() }
                         BasicTextField(
                             value = commentInput,
                             onValueChange = { commentInput = it },
-                            modifier = Modifier.weight(1f).height(36.dp),
-//                            placeholder = { Text("写下你的评论...") },
-//                            singleLine = false,
-//                            maxLines = 3,
-//                            colors = TextFieldDefaults.colors(),
+                            modifier = Modifier.weight(1f),
                             decorationBox = { inner ->
                                 Box {
                                     if (commentInput.isEmpty()) {
@@ -376,11 +385,13 @@ fun CommentScreen(
                             },
                             textStyle = TextStyle.Default.copy(
                                 fontSize = 16.sp,
+                                lineHeight = 18.sp,
                             ),
                         )
 
                         IconButton(
                             onClick = { submitComment() },
+                            modifier = Modifier.size(24.dp),
                             enabled = !isSending && commentInput.isNotBlank(),
                         ) {
                             Icon(
