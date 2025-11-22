@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -44,10 +45,8 @@ fun ZhihuTheme(
     // Read dynamic color preference from SharedPreferences if not explicitly provided
     val useDynamicColor = remember(dynamicColor) {
         dynamicColor ?: context
-            .getSharedPreferences(
-                "com.github.zly2006.zhihu_preferences",
-                Context.MODE_PRIVATE,
-            ).getBoolean("enableDynamicColor", true)
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .getBoolean("enableDynamicColor", true)
     }
 
     val colorScheme = when {
