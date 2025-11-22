@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -469,10 +468,11 @@ private fun CommentItem(
     toggleLike: () -> Unit = {},
     onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentModel) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val commentData = comment.item
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -762,8 +762,8 @@ private fun CommentItemPreview() {
         useWebview = true,
         pinWebview = true,
         onNavigate = { },
-    ) {
-    }
+        onChildCommentClick = { },
+    )
 }
 
 @Composable
@@ -886,6 +886,6 @@ private fun NestedCommentPreview() {
         useWebview = true,
         pinWebview = true,
         onNavigate = { },
-    ) {
-    }
+        onChildCommentClick = { },
+    )
 }
