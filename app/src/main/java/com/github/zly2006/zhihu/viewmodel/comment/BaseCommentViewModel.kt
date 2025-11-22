@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import android.content.Context
+import android.text.TextUtils
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.reflect.typeOf
 
 abstract class BaseCommentViewModel(
@@ -61,10 +64,18 @@ abstract class BaseCommentViewModel(
 
         viewModelScope.launch {
             try {
+                // Escape HTML special characters to prevent HTML injection
+                val escapedText = TextUtils.htmlEncode(commentText)
+
+                // Use buildJsonObject to properly escape JSON special characters
+                val requestBody = buildJsonObject {
+                    put("content", "<p>$escapedText</p>")
+                }
+
                 val response = httpClient.post(submitCommentUrl) {
                     signFetchRequest(context)
                     contentType(ContentType.Application.Json)
-                    setBody("""{"content":"<p>$commentText</p>"}""")
+                    setBody(requestBody)
                 }
 
                 if (response.status.isSuccess()) {
