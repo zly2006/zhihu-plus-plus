@@ -445,6 +445,31 @@ fun AccountSettingScreen(
                 }
             }
 
+            Text(
+                "外观设置",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+
+            val enableDynamicColor = remember { mutableStateOf(preferences.getBoolean("enableDynamicColor", true)) }
+            SwitchSettingItem(
+                title = "Material Design 动态取色",
+                description = "根据系统壁纸自动生成应用配色方案（仅支持 Android 12 及以上版本）",
+                checked = enableDynamicColor.value,
+                onCheckedChange = { checked ->
+                    enableDynamicColor.value = checked
+                    preferences.edit {
+                        putBoolean("enableDynamicColor", checked)
+                    }
+                    Toast
+                        .makeText(
+                            context,
+                            if (checked) "已启用动态取色，重启应用后生效" else "已关闭动态取色，重启应用后生效",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                },
+            )
+
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",

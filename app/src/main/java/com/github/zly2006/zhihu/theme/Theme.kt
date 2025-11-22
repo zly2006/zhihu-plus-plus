@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.theme
 
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,6 +9,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -35,12 +37,21 @@ private val LightColorScheme = lightColorScheme(
 fun ZhihuTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean? = null,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    // Read dynamic color preference from SharedPreferences if not explicitly provided
+    val useDynamicColor = remember(dynamicColor) {
+        dynamicColor ?: context
+            .getSharedPreferences(
+                "com.github.zly2006.zhihu_preferences",
+                Context.MODE_PRIVATE,
+            ).getBoolean("enableDynamicColor", true)
+    }
+
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
