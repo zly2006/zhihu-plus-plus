@@ -277,9 +277,9 @@ fun CommentScreen(
                                                         likeCount = likeCount,
                                                         toggleLike = {
                                                             viewModel.toggleLikeComment(
-                                                                childCommentItem.item,
-                                                                httpClient,
-                                                                context,
+                                                                commentData = childCommentItem.item,
+                                                                httpClient = httpClient,
+                                                                context = context,
                                                             ) {
                                                                 val newLikeState = !liked
                                                                 liked = newLikeState
