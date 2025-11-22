@@ -79,7 +79,6 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.util.LinkMovementMethod
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel

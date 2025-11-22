@@ -53,7 +53,6 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
