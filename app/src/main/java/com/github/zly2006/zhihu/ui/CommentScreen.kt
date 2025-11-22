@@ -174,12 +174,12 @@ fun CommentScreen(
         viewModel.submitComment(content(), commentInput, httpClient, context) {
             commentInput = ""
             isSending = false
-        }
-        coroutineScope.launch {
-            listState.animateScrollToItem(
-                0,
-                0,
-            )
+            coroutineScope.launch {
+                listState.animateScrollToItem(
+                    0,
+                    0,
+                )
+            }
         }
     }
 
