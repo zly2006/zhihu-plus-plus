@@ -104,6 +104,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 }
 
 val ktor = "3.2.2"
+val voyager = "1.1.0-beta03"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
@@ -126,18 +127,24 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.2")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2")
-    //noinspection GradleDependency
-    implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
+    
+    // KMP-compatible Lifecycle (androidx.lifecycle already has KMP support since 2.8.0)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
+    
+    // Voyager - KMP Navigation library
+    implementation("cafe.adriel.voyager:voyager-navigator:$voyager")
+    implementation("cafe.adriel.voyager:voyager-screenmodel:$voyager")
+    implementation("cafe.adriel.voyager:voyager-transitions:$voyager")
+    implementation("cafe.adriel.voyager:voyager-androidx:$voyager")
+    
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation(platform("androidx.compose:compose-bom:2025.07.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material:material-icons-extended")
-    //noinspection GradleDependency
-    implementation("androidx.navigation:navigation-compose:2.9.2")
     //noinspection GradleDependency
     implementation("androidx.compose.animation:animation:1.8.2")
     //noinspection GradleDependency
@@ -146,7 +153,6 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.room:room-common-jvm:2.7.2")
     implementation("androidx.room:room-runtime-android:2.7.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
     annotationProcessor("androidx.room:room-compiler:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")

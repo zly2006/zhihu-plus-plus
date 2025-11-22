@@ -20,8 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
+import cafe.adriel.voyager.navigator.Navigator
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -31,7 +30,8 @@ import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.ZhihuMainVoyager
+import com.github.zly2006.zhihu.ui.screens.toScreen
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
     var ttsEngine: TtsEngine = TtsEngine.Uninitialized // 默认使用Pico TTS引擎
     private var isTtsInitialized = false
 
-    lateinit var navController: NavHostController
+    var navigator: Navigator? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,9 +145,8 @@ class MainActivity : ComponentActivity() {
         webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
         setContent {
-            navController = rememberNavController()
             ZhihuTheme {
-                ZhihuMain(navController = navController)
+                ZhihuMainVoyager()
             }
         }
         if (savedInstanceState == null) {
@@ -349,15 +348,7 @@ class MainActivity : ComponentActivity() {
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         history.add(route)
-        navController.navigate(route) {
-            if (popup) {
-                launchSingleTop = true
-                popUpTo(Home) {
-                    // clear the back stack and viewModels
-                    saveState = true
-                }
-            }
-        }
+        navigator?.push(route.toScreen())
     }
 
     @OptIn(ExperimentalStdlibApi::class)
