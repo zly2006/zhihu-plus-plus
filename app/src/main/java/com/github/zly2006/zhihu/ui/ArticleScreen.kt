@@ -527,6 +527,8 @@ fun ArticleScreen(
         bottomBar = {
             Column {
                 // Show bottom bar for all articles
+                // Note: Original code had conditional logic based on navigation state,
+                // but with Voyager navigation we simplify to always show the bar
                 Row(
                         modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -848,6 +850,8 @@ fun ArticleScreen(
                     val target = dest.target!!
                     if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
                         // Navigate to the next answer
+                        // Note: With Voyager, navigation stack is managed differently
+                        // Original code checked and popped back stack, but Voyager handles this automatically
                         onNavigate(target.navDestination)
                     }
                 }

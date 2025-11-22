@@ -348,7 +348,12 @@ class MainActivity : ComponentActivity() {
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         history.add(route)
-        navigator?.push(route.toScreen())
+        if (popup) {
+            // For popup navigation, replace current screen instead of pushing
+            navigator?.replace(route.toScreen())
+        } else {
+            navigator?.push(route.toScreen())
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class)

@@ -180,6 +180,16 @@ fun NavDestination.toScreen(): Screen = when (this) {
     is Article -> ArticleScreenVoyager(this)
     is Question -> QuestionScreenVoyager(this)
     is Person -> PersonScreenVoyager(this)
-    is Video -> HomeScreenVoyager // fallback to home for unsupported types
-    is CommentHolder -> HomeScreenVoyager // fallback to home for unsupported types
+    is Video -> {
+        // TODO: Implement Video screen support for KMP
+        // For now, fallback to home to avoid crashes
+        android.util.Log.w("Screens", "Video screen not yet implemented, navigating to home")
+        HomeScreenVoyager
+    }
+    is CommentHolder -> {
+        // TODO: Implement CommentHolder screen support for KMP
+        // CommentHolder might need special handling as it wraps another destination
+        android.util.Log.w("Screens", "CommentHolder screen not yet implemented, navigating to article")
+        article.toScreen()
+    }
 }
