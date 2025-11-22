@@ -363,7 +363,7 @@ fun AccountSettingScreen(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
             ) {
                 Column(
@@ -372,7 +372,7 @@ fun AccountSettingScreen(
                     Text(
                         "语音朗读引擎信息",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -383,7 +383,7 @@ fun AccountSettingScreen(
                         Text(
                             "当前引擎",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             when (mainActivity?.ttsEngine) {
@@ -404,7 +404,7 @@ fun AccountSettingScreen(
                         Text(
                             "引擎状态",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             if (mainActivity?.isSpeaking() == true) {
@@ -430,7 +430,7 @@ fun AccountSettingScreen(
                         Text(
                             "引擎列表",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",

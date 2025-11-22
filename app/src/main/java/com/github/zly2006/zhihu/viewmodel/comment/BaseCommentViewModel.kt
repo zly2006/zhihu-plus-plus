@@ -1,17 +1,20 @@
 package com.github.zly2006.zhihu.viewmodel.comment
 
 import android.content.Context
+import android.text.TextUtils
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -22,12 +25,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.reflect.typeOf
 
 abstract class BaseCommentViewModel(
     val article: NavDestination,
 ) : PaginationViewModel<DataHolder.Comment>(typeOf<DataHolder.Comment>()) {
-    val comments get() = allData.map { createCommentItem(it, article) }
+    abstract val submitCommentUrl: String
     protected val commentsMap = mutableMapOf<String, CommentItem>()
 
     override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
@@ -58,17 +64,24 @@ abstract class BaseCommentViewModel(
 
         viewModelScope.launch {
             try {
-                val url = initialUrl
+                // Escape HTML special characters to prevent HTML injection
+                val escapedText = TextUtils.htmlEncode(commentText)
 
-                val response = httpClient.post(url) {
+                // Use buildJsonObject to properly escape JSON special characters
+                val requestBody = buildJsonObject {
+                    put("content", "<p>$escapedText</p>")
+                }
+
+                val response = httpClient.post(submitCommentUrl) {
                     signFetchRequest(context)
                     contentType(ContentType.Application.Json)
-                    setBody("""{"content":"$commentText"}""")
+                    setBody(requestBody)
                 }
 
                 if (response.status.isSuccess()) {
-                    // 评论成功后刷新评论列表
-                    refresh(context)
+                    // 评论成功后，把它添加到第一个。
+                    val model = AccountData.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
+                    allData.add(0, model)
                     onSuccess()
                 } else {
                     errorMessage = "评论发送失败: ${response.status}"

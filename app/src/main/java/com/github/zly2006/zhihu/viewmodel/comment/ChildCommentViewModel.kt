@@ -11,6 +11,8 @@ import com.github.zly2006.zhihu.viewmodel.CommentItem
 class ChildCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
+    override val submitCommentUrl: String
+        get() = TODO("Not yet implemented")
     override val initialUrl: String = when (content) {
         is CommentHolder -> {
             "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"

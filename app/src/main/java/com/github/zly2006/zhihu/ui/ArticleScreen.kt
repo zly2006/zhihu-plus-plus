@@ -102,7 +102,6 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
@@ -515,7 +514,15 @@ fun ArticleScreen(
                         lineHeight = 32.sp,
                         modifier = Modifier
                             .padding(bottom = 8.dp)
-                            .clickable { onNavigate(Question(viewModel.questionId, viewModel.title)) },
+                            .let {
+                                if (article.type == ArticleType.Answer) {
+                                    it.clickable {
+                                        onNavigate(Question(viewModel.questionId, viewModel.title))
+                                    }
+                                } else {
+                                    it
+                                }
+                            },
                     )
                 }
             }

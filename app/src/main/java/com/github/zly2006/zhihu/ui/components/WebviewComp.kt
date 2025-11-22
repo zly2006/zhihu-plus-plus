@@ -382,6 +382,46 @@ class CustomWebView : WebView {
         Log.e("VideoDownload", "Error getting video URL: ${e.message}")
         null
     }
+
+    fun loadZhihu(
+        url: String,
+        document: Document,
+        additionalStyle: String = "",
+    ) {
+        if (this.document?.html() == document.html()) {
+            // same content
+            return
+        }
+        loadDataWithBaseURL(
+            url,
+            """
+            <head>
+            <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
+            <viewport content="width=device-width, initial-scale=1.0">
+            </viewport>
+            <style>
+            ${
+                // This is a workaround for the issue where the system font family name is not available in the WebView.
+                // https://github.com/zly2006/zhihu-plus-plus/issues/9
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}"
+                } else {
+                    ""
+                }
+            }
+            ${additionalStyle.replace("\n", "")}
+            </style>
+            </head>
+            <body>
+            ${document.body().html()}
+            </body>
+            """.trimIndent(),
+            "text/html",
+            "utf-8",
+            null,
+        )
+        this.document = document
+    }
 }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -491,46 +531,11 @@ fun WebviewComp(
                 }
             }
         },
+        update = {
+            onLoad(it)
+        },
         modifier = modifier,
     )
-}
-
-fun WebView.loadZhihu(
-    url: String,
-    document: Document,
-    additionalStyle: String = "",
-) {
-    loadDataWithBaseURL(
-        url,
-        """
-            <head>
-            <link rel="stylesheet" href="https://zhihu-plus.internal/assets/stylesheet.css">
-            <viewport content="width=device-width, initial-scale=1.0">
-            </viewport>
-            <style>
-            ${
-            // This is a workaround for the issue where the system font family name is not available in the WebView.
-            // https://github.com/zly2006/zhihu-plus-plus/issues/9
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}"
-            } else {
-                ""
-            }
-        }
-            ${additionalStyle.replace("\n", "")}
-            </style>
-            </head>
-            <body>
-            ${document.body().html()}
-            </body>
-        """.trimIndent(),
-        "text/html",
-        "utf-8",
-        null,
-    )
-    if (this is CustomWebView) {
-        this.document = document
-    }
 }
 
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {

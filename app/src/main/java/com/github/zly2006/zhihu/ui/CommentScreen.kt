@@ -7,6 +7,8 @@ import android.text.Html
 import android.text.util.Linkify
 import android.util.TypedValue
 import android.widget.TextView
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +31,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -52,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,12 +80,12 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.ui.components.loadZhihu
 import com.github.zly2006.zhihu.util.LinkMovementMethod
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -128,6 +131,10 @@ fun CommentScreen(
             RootCommentViewModel(content)
         }
     }
+    val rootContent = when (val content = content()) {
+        is CommentHolder -> content.article
+        else -> content
+    }
 
     val listState = rememberLazyListState()
 
@@ -158,6 +165,7 @@ fun CommentScreen(
             viewModel.loadMore(context)
         }
     }
+    val coroutineScope = rememberCoroutineScope()
 
     // 提交评论函数
     fun submitComment() {
@@ -167,6 +175,12 @@ fun CommentScreen(
         viewModel.submitComment(content(), commentInput, httpClient, context) {
             commentInput = ""
             isSending = false
+            coroutineScope.launch {
+                listState.animateScrollToItem(
+                    0,
+                    0,
+                )
+            }
         }
     }
 
@@ -187,19 +201,19 @@ fun CommentScreen(
                 CommentTopText(content())
                 Box(modifier = Modifier.weight(1f)) {
                     when {
-                        viewModel.isLoading && viewModel.comments.isEmpty() -> {
+                        viewModel.isLoading && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator()
                             }
                         }
 
-                        viewModel.errorMessage != null && viewModel.comments.isEmpty() -> {
+                        viewModel.errorMessage != null && viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(viewModel.errorMessage!!, color = MaterialTheme.colorScheme.error)
                             }
                         }
 
-                        viewModel.comments.isEmpty() -> {
+                        viewModel.allData.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("暂无评论")
                             }
@@ -209,97 +223,100 @@ fun CommentScreen(
                             @Composable
                             fun Comment(
                                 commentItem: CommentModel,
+                                modifier: Modifier = Modifier,
                                 onChildCommentClick: (CommentModel) -> Unit,
                             ) {
                                 var isLiked by remember { mutableStateOf(commentItem.item.liked) }
                                 var likeCount by remember { mutableIntStateOf(commentItem.item.likeCount) }
                                 var isLikeLoading by remember { mutableStateOf(false) }
 
-                                CommentItem(
-                                    comment = commentItem,
-                                    useWebview = useWebview,
-                                    pinWebview = pinWebview,
-                                    isLiked = isLiked,
-                                    likeCount = likeCount,
-                                    isLikeLoading = isLikeLoading,
-                                    toggleLike = {
-                                        viewModel.toggleLikeComment(
-                                            httpClient = httpClient,
-                                            commentData = commentItem.item,
-                                            context = context,
-                                        ) {
-                                            val newLikeState = !isLiked
-                                            isLiked = newLikeState
-                                            likeCount += if (newLikeState) 1 else -1
-                                            commentItem.item.liked = newLikeState
-                                            commentItem.item.likeCount = likeCount
-                                        }
-                                    },
-                                    onNavigate = onNavigate,
-                                    onChildCommentClick = onChildCommentClick,
-                                )
+                                Column(modifier = modifier) {
+                                    CommentItem(
+                                        comment = commentItem,
+                                        useWebview = useWebview,
+                                        pinWebview = pinWebview,
+                                        isLiked = isLiked,
+                                        likeCount = likeCount,
+                                        isLikeLoading = isLikeLoading,
+                                        toggleLike = {
+                                            viewModel.toggleLikeComment(
+                                                httpClient = httpClient,
+                                                commentData = commentItem.item,
+                                                context = context,
+                                            ) {
+                                                val newLikeState = !isLiked
+                                                isLiked = newLikeState
+                                                likeCount += if (newLikeState) 1 else -1
+                                                commentItem.item.liked = newLikeState
+                                                commentItem.item.likeCount = likeCount
+                                            }
+                                        },
+                                        onNavigate = onNavigate,
+                                        onChildCommentClick = onChildCommentClick,
+                                    )
 
-                                // 在根评论区时 子评论
-                                if (activeCommentItem == null && commentItem.item.childCommentCount > 0) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 40.dp, top = 8.dp),
-                                    ) {
-                                        if (commentItem.item.childComments.isNotEmpty()) {
-                                            commentItem.item.childComments.forEach { childComment ->
-                                                var liked by remember { mutableStateOf(childComment.liked) }
-                                                var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
-                                                val childCommentItem = CommentModel(
-                                                    item = childComment,
-                                                    clickTarget = null, // 子评论不需要点击跳转
+                                    // 在根评论区时 子评论
+                                    if (activeCommentItem == null && commentItem.item.childCommentCount > 0) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 40.dp, top = 8.dp),
+                                        ) {
+                                            if (commentItem.item.childComments.isNotEmpty()) {
+                                                commentItem.item.childComments.forEach { childComment ->
+                                                    var liked by remember { mutableStateOf(childComment.liked) }
+                                                    var likeCount by remember { mutableIntStateOf(childComment.likeCount) }
+                                                    val childCommentItem = CommentModel(
+                                                        item = childComment,
+                                                        clickTarget = null, // 子评论不需要点击跳转
+                                                    )
+                                                    CommentItem(
+                                                        comment = childCommentItem,
+                                                        isLiked = liked,
+                                                        likeCount = likeCount,
+                                                        toggleLike = {
+                                                            viewModel.toggleLikeComment(
+                                                                commentData = childCommentItem.item,
+                                                                httpClient = httpClient,
+                                                                context = context,
+                                                            ) {
+                                                                val newLikeState = !liked
+                                                                liked = newLikeState
+                                                                likeCount += if (newLikeState) 1 else -1
+                                                                childCommentItem.item.liked = newLikeState
+                                                                childCommentItem.item.likeCount = likeCount
+                                                            }
+                                                        },
+                                                        useWebview = useWebview,
+                                                        pinWebview = pinWebview,
+                                                        onNavigate = onNavigate,
+                                                        onChildCommentClick = onChildCommentClick,
+                                                    )
+                                                }
+                                            }
+                                            Button(
+                                                onClick = { onChildCommentClick(commentItem) },
+                                                modifier = Modifier
+                                                    .height(28.dp),
+                                                shape = RoundedCornerShape(50),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                ),
+                                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Outlined.Comment,
+                                                    contentDescription = "查看子评论",
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.surfaceTint,
                                                 )
-                                                CommentItem(
-                                                    comment = childCommentItem,
-                                                    isLiked = liked,
-                                                    likeCount = likeCount,
-                                                    toggleLike = {
-                                                        viewModel.toggleLikeComment(
-                                                            childCommentItem.item,
-                                                            httpClient,
-                                                            context,
-                                                        ) {
-                                                            val newLikeState = !liked
-                                                            liked = newLikeState
-                                                            likeCount += if (newLikeState) 1 else -1
-                                                            childCommentItem.item.liked = newLikeState
-                                                            childCommentItem.item.likeCount = likeCount
-                                                        }
-                                                    },
-                                                    useWebview = useWebview,
-                                                    pinWebview = pinWebview,
-                                                    onNavigate = onNavigate,
-                                                    onChildCommentClick = onChildCommentClick,
+                                                Text(
+                                                    "查看 ${commentItem.item.childCommentCount} 条子评论",
+                                                    fontSize = 12.sp,
+                                                    modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
                                                 )
                                             }
-                                        }
-                                        Button(
-                                            onClick = { onChildCommentClick(commentItem) },
-                                            modifier = Modifier
-                                                .height(28.dp),
-                                            shape = RoundedCornerShape(50),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Outlined.Comment,
-                                                contentDescription = "查看子评论",
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.surfaceTint,
-                                            )
-                                            Text(
-                                                "查看 ${commentItem.item.childCommentCount} 条子评论",
-                                                fontSize = 12.sp,
-                                                modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
-                                            )
                                         }
                                     }
                                 }
@@ -311,24 +328,48 @@ fun CommentScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
                                 if (activeCommentItem != null) {
-                                    item(0) {
-                                        Column {
+                                    item(
+                                        key = "active_${activeCommentItem.item.id}",
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                placementSpec = spring(
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                ),
+                                            ),
+                                        ) {
                                             Comment(activeCommentItem) { }
                                             HorizontalDivider()
                                         }
                                     }
                                 }
 
-                                items(viewModel.comments) { commentItem ->
-                                    Comment(commentItem) { comment ->
+                                items(
+                                    items = viewModel.allData,
+                                    key = { it.id },
+                                ) { commentItem ->
+                                    Comment(
+                                        viewModel.createCommentItem(commentItem, article = rootContent),
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                            placementSpec = spring(
+                                                stiffness = Spring.StiffnessMediumLow,
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            ),
+                                        ),
+                                    ) { comment ->
                                         if (comment.clickTarget != null) {
                                             onChildCommentClick(comment)
                                         }
                                     }
                                 }
 
-                                if (viewModel.isLoading && viewModel.comments.isNotEmpty()) {
-                                    item {
+                                if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
+                                    item(key = "loading_indicator") {
                                         Box(
                                             modifier = Modifier.fillMaxWidth().padding(8.dp),
                                             contentAlignment = Alignment.Center,
@@ -350,19 +391,14 @@ fun CommentScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp)
+                            .heightIn(min = 40.dp, max = 140.dp)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val state = remember { TextFieldState() }
                         BasicTextField(
                             value = commentInput,
                             onValueChange = { commentInput = it },
-                            modifier = Modifier.weight(1f).height(36.dp),
-//                            placeholder = { Text("写下你的评论...") },
-//                            singleLine = false,
-//                            maxLines = 3,
-//                            colors = TextFieldDefaults.colors(),
+                            modifier = Modifier.weight(1f),
                             decorationBox = { inner ->
                                 Box {
                                     if (commentInput.isEmpty()) {
@@ -376,22 +412,32 @@ fun CommentScreen(
                             },
                             textStyle = TextStyle.Default.copy(
                                 fontSize = 16.sp,
+                                lineHeight = 18.sp,
                             ),
                         )
 
                         IconButton(
                             onClick = { submitComment() },
+                            modifier = Modifier.size(24.dp),
                             enabled = !isSending && commentInput.isNotBlank(),
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.Send,
-                                contentDescription = "发送评论",
-                                tint = if (!isSending && commentInput.isNotBlank()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                },
-                            )
+                            if (isSending) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                Icon(
+                                    Icons.AutoMirrored.Outlined.Send,
+                                    contentDescription = "发送评论",
+                                    tint = if (commentInput.isNotBlank()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -429,10 +475,11 @@ private fun CommentItem(
     toggleLike: () -> Unit = {},
     onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentModel) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val commentData = comment.item
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         // 作者信息
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -722,8 +769,8 @@ private fun CommentItemPreview() {
         useWebview = true,
         pinWebview = true,
         onNavigate = { },
-    ) {
-    }
+        onChildCommentClick = { },
+    )
 }
 
 @Composable
@@ -846,6 +893,6 @@ private fun NestedCommentPreview() {
         useWebview = true,
         pinWebview = true,
         onNavigate = { },
-    ) {
-    }
+        onChildCommentClick = { },
+    )
 }

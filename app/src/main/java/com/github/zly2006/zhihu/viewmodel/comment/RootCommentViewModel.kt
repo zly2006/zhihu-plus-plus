@@ -11,6 +11,21 @@ import com.github.zly2006.zhihu.viewmodel.CommentItem
 class RootCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
+    override val submitCommentUrl = when (content) {
+        is Article -> {
+            when (content.type) {
+                ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/comment"
+                ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/comment"
+            }
+        }
+
+        is Question -> {
+            "https://www.zhihu.com/api/v4/comment_v5/questions/${content.questionId}/comment"
+        }
+
+        else -> ""
+    }
+
     override val initialUrl = when (content) {
         is Article -> {
             when (content.type) {
