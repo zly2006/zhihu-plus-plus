@@ -22,11 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
@@ -90,7 +88,7 @@ class ArticleViewModel(
     var ipInfo by mutableStateOf<String?>(null)
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
-    // scroll fix  
+    // scroll fix
     var rememberedScrollY = MutableLiveData<Int>(0)
     var rememberedScrollYSync = true
 

@@ -127,18 +127,18 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("com.google.android.material:material:1.12.0")
-    
+
     // KMP-compatible Lifecycle (androidx.lifecycle already has KMP support since 2.8.0)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
-    
+
     // Voyager - KMP Navigation library
     implementation("cafe.adriel.voyager:voyager-navigator:$voyager")
     implementation("cafe.adriel.voyager:voyager-screenmodel:$voyager")
     implementation("cafe.adriel.voyager:voyager-transitions:$voyager")
     implementation("cafe.adriel.voyager:voyager-tab-navigator:$voyager")
-    
+
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation(platform("androidx.compose:compose-bom:2025.07.00"))

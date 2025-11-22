@@ -51,7 +51,9 @@ data object HomeScreenVoyager : Screen {
     }
 }
 
-data class QuestionScreenVoyager(val question: Question) : Screen {
+data class QuestionScreenVoyager(
+    val question: Question,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -61,7 +63,9 @@ data class QuestionScreenVoyager(val question: Question) : Screen {
     }
 }
 
-data class ArticleScreenVoyager(val article: Article) : Screen {
+data class ArticleScreenVoyager(
+    val article: Article,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -107,7 +111,9 @@ data object AccountScreenVoyager : Screen {
     }
 }
 
-data class SearchScreenVoyager(val search: Search) : Screen {
+data class SearchScreenVoyager(
+    val search: Search,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -122,7 +128,9 @@ data class SearchScreenVoyager(val search: Search) : Screen {
     }
 }
 
-data class CollectionsScreenVoyager(val userToken: String) : Screen {
+data class CollectionsScreenVoyager(
+    val userToken: String,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -132,7 +140,9 @@ data class CollectionsScreenVoyager(val userToken: String) : Screen {
     }
 }
 
-data class CollectionContentScreenVoyager(val collectionId: String) : Screen {
+data class CollectionContentScreenVoyager(
+    val collectionId: String,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
@@ -142,7 +152,9 @@ data class CollectionContentScreenVoyager(val collectionId: String) : Screen {
     }
 }
 
-data class PersonScreenVoyager(val person: Person) : Screen {
+data class PersonScreenVoyager(
+    val person: Person,
+) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow

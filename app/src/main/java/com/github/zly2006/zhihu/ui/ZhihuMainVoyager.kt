@@ -1,10 +1,8 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
@@ -21,12 +19,9 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +32,6 @@ import cafe.adriel.voyager.navigator.tab.Tab
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import cafe.adriel.voyager.navigator.tab.TabOptions
 import cafe.adriel.voyager.transitions.SlideTransition
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.ui.screens.AccountScreenVoyager
 import com.github.zly2006.zhihu.ui.screens.FollowScreenVoyager
 import com.github.zly2006.zhihu.ui.screens.HistoryScreenVoyager
@@ -102,7 +96,8 @@ object HomeTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.Home)
+            val icon = androidx.compose.ui.graphics.vector
+                .rememberVectorPainter(Icons.Filled.Home)
             return TabOptions(
                 index = 0u,
                 title = "主页",
@@ -122,7 +117,8 @@ object FollowTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.PersonAddAlt1)
+            val icon = androidx.compose.ui.graphics.vector
+                .rememberVectorPainter(Icons.Filled.PersonAddAlt1)
             return TabOptions(
                 index = 1u,
                 title = "关注",
@@ -142,7 +138,8 @@ object HistoryTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.History)
+            val icon = androidx.compose.ui.graphics.vector
+                .rememberVectorPainter(Icons.Filled.History)
             return TabOptions(
                 index = 2u,
                 title = "历史",
@@ -162,7 +159,8 @@ object AccountTab : Tab {
     override val options: TabOptions
         @Composable
         get() {
-            val icon = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Filled.ManageAccounts)
+            val icon = androidx.compose.ui.graphics.vector
+                .rememberVectorPainter(Icons.Filled.ManageAccounts)
             return TabOptions(
                 index = 3u,
                 title = "账号",
