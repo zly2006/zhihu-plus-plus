@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -687,13 +689,13 @@ private fun CollectionListItem(
             .fillMaxWidth()
             .clickable {
                 // TODO: Navigate to collection detail
-                Toast.makeText(
-                    context,
-                    "收藏夹详情功能开发中",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+                Toast
+                    .makeText(
+                        context,
+                        "收藏夹详情功能开发中",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = collection.title,
@@ -719,13 +721,13 @@ private fun QuestionListItem(
             .fillMaxWidth()
             .clickable {
                 // TODO: Navigate to question detail
-                Toast.makeText(
-                    context,
-                    "问题详情功能开发中",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+                Toast
+                    .makeText(
+                        context,
+                        "问题详情功能开发中",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = question.title,
@@ -751,13 +753,13 @@ private fun PinListItem(
             .fillMaxWidth()
             .clickable {
                 // TODO: Navigate to pin detail
-                Toast.makeText(
-                    context,
-                    "想法详情功能开发中",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+                Toast
+                    .makeText(
+                        context,
+                        "想法详情功能开发中",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = pin.excerpt,
@@ -785,13 +787,13 @@ private fun ColumnListItem(
             .fillMaxWidth()
             .clickable {
                 // TODO: Navigate to column detail
-                Toast.makeText(
-                    context,
-                    "专栏详情功能开发中",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+                Toast
+                    .makeText(
+                        context,
+                        "专栏详情功能开发中",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -919,12 +921,13 @@ private fun SortBar(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(8.dp),
             colors = if (currentSort == "voteups") {
-                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
-                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                ButtonDefaults
+                    .outlinedButtonColors()
             },
         ) {
             Text("按热度")
@@ -934,12 +937,13 @@ private fun SortBar(
             modifier = Modifier.weight(1f),
             shape = RoundedCornerShape(8.dp),
             colors = if (currentSort == "created") {
-                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
-                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+                ButtonDefaults
+                    .outlinedButtonColors()
             },
         ) {
             Text("按时间")
@@ -951,7 +955,7 @@ private fun SortBar(
 @Composable
 private fun UserInfoHeader(
     viewModel: PersonViewModel,
-    pagerState: androidx.compose.foundation.pager.PagerState,
+    pagerState: PagerState,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
