@@ -694,6 +694,64 @@ object DataHolder {
         val hasApplyingColumn: Boolean = false,
     )
 
+    @Serializable
+    data class Collection(
+        val id: String,
+        val isFavorited: Boolean = false,
+        val type: String = "collection",
+        val title: String = "",
+        val isPublic: Boolean = false,
+        val url: String = "",
+        val description: String = "",
+        val followerCount: Int = 0,
+        val answerCount: Int = 0,
+        val itemCount: Int = 0,
+        val likeCount: Int = 0,
+        val viewCount: Int = 0,
+        val commentCount: Int = 0,
+        val isFollowing: Boolean = false,
+        val isLiking: Boolean = false,
+        val createdTime: Long = 0L,
+        val updatedTime: Long = 0L,
+        val creator: JsonElement? = null,
+        val isDefault: Boolean = false,
+    )
+
+    @Serializable
+    data class Pin(
+        val id: String,
+        val type: String = "pin",
+        val url: String = "",
+        val author: Author,
+        val content: List<JsonElement> = emptyList(),
+        val excerpt: String = "",
+        val excerptTitle: String = "",
+        val contentHtml: String = "",
+        val likeCount: Int = 0,
+        val commentCount: Int = 0,
+        val created: Long = 0L,
+        val updated: Long = 0L,
+        val isLiking: Boolean = false,
+        val reaction: JsonElement? = null,
+    )
+
+    @Serializable
+    data class Column(
+        val id: String,
+        val type: String = "column",
+        val url: String = "",
+        val title: String = "",
+        val description: String = "",
+        val intro: String = "",
+        val avatarUrl: String = "",
+        val articlesCount: Int = 0,
+        val followerCount: Int = 0,
+        val isFollowing: Boolean = false,
+        val created: Long = 0L,
+        val updated: Long = 0L,
+        val author: JsonElement? = null,
+    )
+
     @OptIn(DelicateCoroutinesApi::class)
     fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
         GlobalScope.launch {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -76,28 +77,46 @@ import kotlin.reflect.typeOf
 
 class PeopleAnswersViewModel(
     val person: Person,
-    val sort: String = "voteups",
 ) : PaginationViewModel<DataHolder.Answer>(
         typeOf<DataHolder.Answer>(),
     ) {
+    var sortBy by mutableStateOf("voteups")
+        private set
+
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sort"
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sortBy"
 
     override val include: String
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp"
+
+    fun changeSortBy(newSort: String, context: Context) {
+        if (sortBy != newSort) {
+            sortBy = newSort
+            refresh(context)
+        }
+    }
 }
 
 class PeopleArticlesViewModel(
     val person: Person,
-    val sort: String = "created",
 ) : PaginationViewModel<DataHolder.Article>(
         typeOf<DataHolder.Article>(),
     ) {
+    var sortBy by mutableStateOf("created")
+        private set
+
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sort"
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sortBy"
 
     override val include: String
         get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
+
+    fun changeSortBy(newSort: String, context: Context) {
+        if (sortBy != newSort) {
+            sortBy = newSort
+            refresh(context)
+        }
+    }
 }
 
 class PeopleActivitiesViewModel(
@@ -132,6 +151,54 @@ class PeopleFollowingViewModel(
         get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
 }
 
+class PeopleCollectionsViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.Collection>(
+        typeOf<DataHolder.Collection>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/favlists"
+
+    override val include: String
+        get() = "data[*].updated_time,answer_count,follower_count,creator"
+}
+
+class PeopleQuestionsViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.Question>(
+        typeOf<DataHolder.Question>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/questions"
+
+    override val include: String
+        get() = "data[*].created,answer_count,follower_count,author"
+}
+
+class PeoplePinsViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.Pin>(
+        typeOf<DataHolder.Pin>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/moments"
+
+    override val include: String
+        get() = "data[*].like_count,comment_count,created,updated,content"
+}
+
+class PeopleColumnsViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.Column>(
+        typeOf<DataHolder.Column>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/columns"
+
+    override val include: String
+        get() = "data[*].articles_count,followers,author"
+}
+
 class PersonViewModel(
     val person: Person,
 ) : ViewModel() {
@@ -150,16 +217,20 @@ class PersonViewModel(
     val answersFeedModel = PeopleAnswersViewModel(person)
     val articlesFeedModel = PeopleArticlesViewModel(person)
     val activitiesFeedModel = PeopleActivitiesViewModel(person)
+    val collectionsFeedModel = PeopleCollectionsViewModel(person)
+    val questionsFeedModel = PeopleQuestionsViewModel(person)
+    val pinsFeedModel = PeoplePinsViewModel(person)
+    val columnsFeedModel = PeopleColumnsViewModel(person)
     val followersFeedModel = PeopleFollowersViewModel(person)
     val followingFeedModel = PeopleFollowingViewModel(person)
     val subFeedModels = arrayOf(
         answersFeedModel,
         articlesFeedModel,
         activitiesFeedModel,
-        null, // 收藏
-        null, // 提问
-        null, // 想法
-        null, // 专栏
+        collectionsFeedModel,
+        questionsFeedModel,
+        pinsFeedModel,
+        columnsFeedModel,
         followersFeedModel,
         followingFeedModel,
     )
@@ -415,58 +486,80 @@ fun PeopleScreen(
                 when (page) {
                     0 -> {
                         // 回答
-                        PaginatedList(
-                            items = viewModel.answersFeedModel.allData,
-                            onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
-                            isEnd = { viewModel.answersFeedModel.isEnd },
-                            footer = ProgressIndicatorFooter,
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
                         ) {
-                            FeedCard(
-                                BaseFeedViewModel.FeedDisplayItem(
-                                    title = it.question.title,
-                                    summary = it.excerpt,
-                                    details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                    feed = null,
-                                ),
-                                horizontalPadding = 4.dp,
+                            SortBar(
+                                currentSort = viewModel.answersFeedModel.sortBy,
+                                onSortChange = { newSort ->
+                                    viewModel.answersFeedModel.changeSortBy(newSort, context)
+                                },
+                            )
+                            PaginatedList(
+                                items = viewModel.answersFeedModel.allData,
+                                onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
+                                isEnd = { viewModel.answersFeedModel.isEnd },
+                                footer = ProgressIndicatorFooter,
+                                modifier = Modifier.fillMaxSize(),
                             ) {
-                                onNavigate(
-                                    Article(
-                                        type = ArticleType.Answer,
-                                        id = it.id,
+                                FeedCard(
+                                    BaseFeedViewModel.FeedDisplayItem(
                                         title = it.question.title,
-                                        excerpt = it.excerpt,
+                                        summary = it.excerpt,
+                                        details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                        feed = null,
                                     ),
-                                )
+                                    horizontalPadding = 4.dp,
+                                ) {
+                                    onNavigate(
+                                        Article(
+                                            type = ArticleType.Answer,
+                                            id = it.id,
+                                            title = it.question.title,
+                                            excerpt = it.excerpt,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
 
                     1 -> {
                         // 文章
-                        PaginatedList(
-                            items = viewModel.articlesFeedModel.allData,
-                            onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
-                            isEnd = { viewModel.articlesFeedModel.isEnd },
-                            footer = ProgressIndicatorFooter,
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
                         ) {
-                            FeedCard(
-                                BaseFeedViewModel.FeedDisplayItem(
-                                    title = it.title,
-                                    summary = it.excerpt,
-                                    details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
-                                    feed = null,
-                                ),
-                                horizontalPadding = 4.dp,
+                            SortBar(
+                                currentSort = viewModel.articlesFeedModel.sortBy,
+                                onSortChange = { newSort ->
+                                    viewModel.articlesFeedModel.changeSortBy(newSort, context)
+                                },
+                            )
+                            PaginatedList(
+                                items = viewModel.articlesFeedModel.allData,
+                                onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
+                                isEnd = { viewModel.articlesFeedModel.isEnd },
+                                footer = ProgressIndicatorFooter,
+                                modifier = Modifier.fillMaxSize(),
                             ) {
-                                onNavigate(
-                                    Article(
-                                        type = ArticleType.Article,
-                                        id = it.id,
+                                FeedCard(
+                                    BaseFeedViewModel.FeedDisplayItem(
                                         title = it.title,
-                                        excerpt = it.excerpt,
+                                        summary = it.excerpt,
+                                        details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                        feed = null,
                                     ),
-                                )
+                                    horizontalPadding = 4.dp,
+                                ) {
+                                    onNavigate(
+                                        Article(
+                                            type = ArticleType.Article,
+                                            id = it.id,
+                                            title = it.title,
+                                            excerpt = it.excerpt,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
@@ -485,6 +578,66 @@ fun PeopleScreen(
                             ) {
                                 it.navDestination?.let(onNavigate)
                             }
+                        }
+                    }
+
+                    3 -> {
+                        // 收藏
+                        PaginatedList(
+                            items = viewModel.collectionsFeedModel.allData,
+                            onLoadMore = { viewModel.collectionsFeedModel.loadMore(context) },
+                            isEnd = { viewModel.collectionsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { collection ->
+                            CollectionListItem(
+                                collection = collection,
+                                onNavigate = onNavigate,
+                            )
+                        }
+                    }
+
+                    4 -> {
+                        // 提问
+                        PaginatedList(
+                            items = viewModel.questionsFeedModel.allData,
+                            onLoadMore = { viewModel.questionsFeedModel.loadMore(context) },
+                            isEnd = { viewModel.questionsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { question ->
+                            QuestionListItem(
+                                question = question,
+                                onNavigate = onNavigate,
+                            )
+                        }
+                    }
+
+                    5 -> {
+                        // 想法
+                        PaginatedList(
+                            items = viewModel.pinsFeedModel.allData,
+                            onLoadMore = { viewModel.pinsFeedModel.loadMore(context) },
+                            isEnd = { viewModel.pinsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { pin ->
+                            PinListItem(
+                                pin = pin,
+                                onNavigate = onNavigate,
+                            )
+                        }
+                    }
+
+                    6 -> {
+                        // 专栏
+                        PaginatedList(
+                            items = viewModel.columnsFeedModel.allData,
+                            onLoadMore = { viewModel.columnsFeedModel.loadMore(context) },
+                            isEnd = { viewModel.columnsFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { column ->
+                            ColumnListItem(
+                                column = column,
+                                onNavigate = onNavigate,
+                            )
                         }
                     }
 
@@ -517,20 +670,151 @@ fun PeopleScreen(
                             )
                         }
                     }
-
-                    else -> {
-                        // 其他页面显示占位符内容
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                        ) {
-                            Text(
-                                text = "「${titles[page]}」功能正在开发中...",
-                                modifier = Modifier.padding(top = 16.dp),
-                            )
-                        }
-                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CollectionListItem(
+    collection: DataHolder.Collection,
+    onNavigate: (NavDestination) -> Unit,
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // TODO: Navigate to collection detail
+                Toast.makeText(
+                    context,
+                    "收藏夹详情功能开发中",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+    ) {
+        Text(
+            text = collection.title,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "${collection.answerCount} 内容 · ${collection.followerCount} 关注",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun QuestionListItem(
+    question: DataHolder.Question,
+    onNavigate: (NavDestination) -> Unit,
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // TODO: Navigate to question detail
+                Toast.makeText(
+                    context,
+                    "问题详情功能开发中",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+    ) {
+        Text(
+            text = question.title,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "${question.answerCount} 回答 · ${question.followerCount} 关注",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun PinListItem(
+    pin: DataHolder.Pin,
+    onNavigate: (NavDestination) -> Unit,
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // TODO: Navigate to pin detail
+                Toast.makeText(
+                    context,
+                    "想法详情功能开发中",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+    ) {
+        Text(
+            text = pin.excerpt,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = "${pin.likeCount} 赞 · ${pin.commentCount} 评论",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun ColumnListItem(
+    column: DataHolder.Column,
+    onNavigate: (NavDestination) -> Unit,
+) {
+    val context = LocalContext.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // TODO: Navigate to column detail
+                Toast.makeText(
+                    context,
+                    "专栏详情功能开发中",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = column.title,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (column.description.isNotEmpty()) {
+                Text(
+                    text = column.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Text(
+                text = "${column.articlesCount} 文章 · ${column.followerCount} 关注",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -616,6 +900,50 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}) {
     ) {
         Text(text = value.toString(), style = MaterialTheme.typography.titleMedium)
         Text(text = label, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun SortBar(
+    currentSort: String,
+    onSortChange: (String) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = { onSortChange("voteups") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(8.dp),
+            colors = if (currentSort == "voteups") {
+                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            } else {
+                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+            },
+        ) {
+            Text("按热度")
+        }
+        OutlinedButton(
+            onClick = { onSortChange("created") },
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(8.dp),
+            colors = if (currentSort == "created") {
+                androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            } else {
+                androidx.compose.material3.ButtonDefaults.outlinedButtonColors()
+            },
+        ) {
+            Text("按时间")
+        }
     }
 }
 
