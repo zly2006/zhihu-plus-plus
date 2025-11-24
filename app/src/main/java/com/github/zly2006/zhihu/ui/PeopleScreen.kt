@@ -189,13 +189,13 @@ class PeoplePinsViewModel(
         get() = "data[*].like_count,comment_count,created,updated,content"
 }
 
-class PeopleColumnsViewModel(
+class PeopleColumnContributionsViewModel(
     val person: Person,
 ) : PaginationViewModel<DataHolder.Column>(
         typeOf<DataHolder.Column>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/columns"
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/column-contributions"
 
     override val include: String
         get() = "data[*].articles_count,followers,author"
@@ -222,7 +222,7 @@ class PersonViewModel(
     val collectionsFeedModel = PeopleCollectionsViewModel(person)
     val questionsFeedModel = PeopleQuestionsViewModel(person)
     val pinsFeedModel = PeoplePinsViewModel(person)
-    val columnsFeedModel = PeopleColumnsViewModel(person)
+    val columnsFeedModel = PeopleColumnContributionsViewModel(person)
     val followersFeedModel = PeopleFollowersViewModel(person)
     val followingFeedModel = PeopleFollowingViewModel(person)
     val subFeedModels = arrayOf(
@@ -896,8 +896,8 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .clickable(onClick = onClick)
             .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
     ) {
         Text(text = value.toString(), style = MaterialTheme.typography.titleMedium)
@@ -926,8 +926,7 @@ private fun SortBar(
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
-                ButtonDefaults
-                    .outlinedButtonColors()
+                ButtonDefaults.outlinedButtonColors()
             },
         ) {
             Text("按热度")
@@ -942,8 +941,7 @@ private fun SortBar(
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             } else {
-                ButtonDefaults
-                    .outlinedButtonColors()
+                ButtonDefaults.outlinedButtonColors()
             },
         ) {
             Text("按时间")
