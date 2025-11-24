@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -106,6 +108,30 @@ class PeopleActivitiesViewModel(
         get() = "https://www.zhihu.com/api/v3/moments/${person.userTokenOrId}/activities"
 }
 
+class PeopleFollowersViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.People>(
+        typeOf<DataHolder.People>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
+
+    override val include: String
+        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
+}
+
+class PeopleFollowingViewModel(
+    val person: Person,
+) : PaginationViewModel<DataHolder.People>(
+        typeOf<DataHolder.People>(),
+    ) {
+    override val initialUrl: String
+        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followees"
+
+    override val include: String
+        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
+}
+
 class PersonViewModel(
     val person: Person,
 ) : ViewModel() {
@@ -124,10 +150,18 @@ class PersonViewModel(
     val answersFeedModel = PeopleAnswersViewModel(person)
     val articlesFeedModel = PeopleArticlesViewModel(person)
     val activitiesFeedModel = PeopleActivitiesViewModel(person)
+    val followersFeedModel = PeopleFollowersViewModel(person)
+    val followingFeedModel = PeopleFollowingViewModel(person)
     val subFeedModels = arrayOf(
         answersFeedModel,
         articlesFeedModel,
         activitiesFeedModel,
+        null, // 收藏
+        null, // 提问
+        null, // 想法
+        null, // 专栏
+        followersFeedModel,
+        followingFeedModel,
     )
 
     suspend fun toggleFollow(context: Context) {
@@ -293,6 +327,8 @@ fun PeopleScreen(
         "提问",
         "想法",
         "专栏",
+        "粉丝",
+        "关注",
     )
 
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -332,8 +368,9 @@ fun PeopleScreen(
             TopAppBar(
                 title = {
                     UserInfoHeader(
-                        viewModel,
-                        modifier = Modifier.fillMaxWidth(),
+                        viewModel = viewModel,
+                        pagerState = pagerState,
+                        modifier = Modifier.padding(horizontal = 8.dp),
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors().copy(
@@ -451,6 +488,36 @@ fun PeopleScreen(
                         }
                     }
 
+                    7 -> {
+                        // 粉丝
+                        PaginatedList(
+                            items = viewModel.followersFeedModel.allData,
+                            onLoadMore = { viewModel.followersFeedModel.loadMore(context) },
+                            isEnd = { viewModel.followersFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { people ->
+                            PeopleListItem(
+                                people = people,
+                                onNavigate = onNavigate,
+                            )
+                        }
+                    }
+
+                    8 -> {
+                        // 关注
+                        PaginatedList(
+                            items = viewModel.followingFeedModel.allData,
+                            onLoadMore = { viewModel.followingFeedModel.loadMore(context) },
+                            isEnd = { viewModel.followingFeedModel.isEnd },
+                            footer = ProgressIndicatorFooter,
+                        ) { people ->
+                            PeopleListItem(
+                                people = people,
+                                onNavigate = onNavigate,
+                            )
+                        }
+                    }
+
                     else -> {
                         // 其他页面显示占位符内容
                         Column(
@@ -469,15 +536,96 @@ fun PeopleScreen(
 }
 
 @Composable
-private fun StatItem(label: String, value: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun PeopleListItem(
+    people: DataHolder.People,
+    onNavigate: (NavDestination) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = people.avatarUrl,
+            contentDescription = "用户头像",
+            modifier = Modifier
+                .padding(end = 12.dp)
+                .size(48.dp)
+                .clip(CircleShape),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = people.name,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (people.headline.isNotEmpty()) {
+                Text(
+                    text = people.headline,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text(
+                    text = "${people.answerCount} 回答",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${people.articlesCount} 文章",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${people.followerCount} 粉丝",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        OutlinedButton(
+            onClick = {
+                onNavigate(
+                    Person(
+                        id = people.id,
+                        name = people.name,
+                        urlToken = people.urlToken ?: "",
+                    ),
+                )
+            },
+        ) {
+            Text("查看")
+        }
+    }
+}
+
+@Composable
+private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .clip(RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp),
+    ) {
         Text(text = value.toString(), style = MaterialTheme.typography.titleMedium)
         Text(text = label, style = MaterialTheme.typography.labelMedium)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modifier) {
+private fun UserInfoHeader(
+    viewModel: PersonViewModel,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    modifier: Modifier = Modifier,
+) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     Column(
@@ -512,10 +660,26 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            StatItem("回答", viewModel.answerCount)
-            StatItem("文章", viewModel.articleCount)
-            StatItem("粉丝", viewModel.followerCount)
-            StatItem("关注", viewModel.followingCount)
+            StatItem("回答", viewModel.answerCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(0)
+                }
+            })
+            StatItem("文章", viewModel.articleCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(1)
+                }
+            })
+            StatItem("粉丝", viewModel.followerCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(7)
+                }
+            })
+            StatItem("关注", viewModel.followingCount, onClick = {
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(8)
+                }
+            })
         }
         Row(
             modifier = Modifier
