@@ -685,6 +685,7 @@ object DataHolder {
         val isFollowed: Boolean = false,
         val isBlocking: Boolean = false,
         val followerCount: Int = 0,
+        val followingCount: Int = 0,
         val answerCount: Int = 0,
         val articlesCount: Int = 0,
         val availableMedalsCount: Int = 0,

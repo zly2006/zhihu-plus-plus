@@ -113,6 +113,7 @@ class PersonViewModel(
     var name by mutableStateOf(person.name)
     var headline by mutableStateOf("")
     var followerCount by mutableIntStateOf(0)
+    var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
     var articleCount by mutableIntStateOf(0)
     var isFollowing by mutableStateOf(false)
@@ -199,7 +200,7 @@ class PersonViewModel(
                     parameters.append(
                         "include",
                         // todo question_count pins_count
-                        "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,articles_count,question_count,pins_count",
+                        "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
                     )
                 }
                 signFetchRequest(context)
@@ -210,6 +211,7 @@ class PersonViewModel(
         this.name = person.name
         this.headline = person.headline
         this.followerCount = person.followerCount
+        this.followingCount = person.followingCount
         this.answerCount = person.answerCount
         this.articleCount = person.articlesCount
         this.isFollowing = person.isFollowing
@@ -512,7 +514,8 @@ private fun UserInfoHeader(viewModel: PersonViewModel, modifier: Modifier = Modi
         ) {
             StatItem("回答", viewModel.answerCount)
             StatItem("文章", viewModel.articleCount)
-            StatItem("关注者", viewModel.followerCount)
+            StatItem("粉丝", viewModel.followerCount)
+            StatItem("关注", viewModel.followingCount)
         }
         Row(
             modifier = Modifier

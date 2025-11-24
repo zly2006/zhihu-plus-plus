@@ -301,7 +301,7 @@ fun CommentScreen(
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    contentColor = MaterialTheme.colorScheme.onSurface,
                                                 ),
                                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                             ) {
