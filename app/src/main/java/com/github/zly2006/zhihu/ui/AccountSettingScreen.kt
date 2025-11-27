@@ -327,6 +327,7 @@ fun AccountSettingScreen(
                         coroutineScope.launch {
                             val httpClient = AccountData.httpClient(context)
                             ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshTokenFromCookie(httpClient), httpClient)
+                            Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
                         }
                     },
                 ) {

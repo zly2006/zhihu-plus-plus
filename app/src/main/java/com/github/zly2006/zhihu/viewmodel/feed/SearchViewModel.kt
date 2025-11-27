@@ -5,8 +5,6 @@ import android.util.Log
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.SearchResult
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.request.get
-import io.ktor.http.parameters
 import kotlinx.serialization.json.jsonArray
 import java.net.URLEncoder
 

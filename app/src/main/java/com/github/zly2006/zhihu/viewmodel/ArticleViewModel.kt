@@ -36,13 +36,9 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
-import com.github.zly2006.zhihu.ui.Reaction
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -57,6 +53,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -336,7 +333,7 @@ class ArticleViewModel(
     fun createNewCollection(context: Context, title: String, description: String = "", isPublic: Boolean = false) {
         if (httpClient == null) return
         viewModelScope.launch {
-            httpClient.post("https://www.zhihu.com/api/v4/collections") {
+            AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -360,17 +357,16 @@ class ArticleViewModel(
                     ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
                 }
 
-                val response = httpClient
-                    .post(endpoint) {
-                        when (article.type) {
-                            ArticleType.Answer -> setBody(mapOf("type" to newState.key))
-                            ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
-                        }
-                        contentType(ContentType.Application.Json)
-                    }.body<Reaction>()
+                val response = AccountData.fetchPost(context, endpoint) {
+                    when (article.type) {
+                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                    }
+                    contentType(ContentType.Application.Json)
+                }
 
                 voteUpState = newState
-                voteUpCount = response.voteup_count
+                voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
                 Toast.makeText(context, "点赞失败: ${e.message}", Toast.LENGTH_SHORT).show()

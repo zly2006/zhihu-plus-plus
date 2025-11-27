@@ -13,7 +13,6 @@ import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
