@@ -130,13 +130,15 @@ object AccountData {
         }
         if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
             // 大概率是，包括 MainActivity 等。
-            context.lifecycle.addObserver(object : DefaultLifecycleObserver {
-                override fun onDestroy(owner: LifecycleOwner) {
-                    httpClient.close()
-                    AccountData.httpClient = null
-                }
-            })
-            this.httpClient = httpClient
+            context.mainExecutor.execute {
+                context.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                    override fun onDestroy(owner: LifecycleOwner) {
+                        httpClient.close()
+                        AccountData.httpClient = null
+                    }
+                })
+                this.httpClient = httpClient
+            }
         }
         return httpClient
     }

@@ -88,8 +88,7 @@ class ArticleViewModel(
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     // scroll fix
-    var rememberedScrollY = navBackStackEntry?.savedStateHandle?.getLiveData<Int>("scrollY", initialValue = 0)
-        ?: MutableLiveData<Int>(0)
+    var rememberedScrollY = MutableLiveData<Int>(0)
     var rememberedScrollYSync = true
 
     init {
