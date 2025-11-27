@@ -219,7 +219,7 @@ object AccountData {
             // 10s 内只刷新一次，避免死循环
             return response.raiseForStatus().body()
         }
-        val refreshToken = ZhihuCredentialRefresher.fetchRefreshTokenFromCookie(client)
+        val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
         ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
         lastRefreshCookie = System.currentTimeMillis()
         val retryResponse = client.request(url) {

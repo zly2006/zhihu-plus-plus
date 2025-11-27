@@ -12,10 +12,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.Url
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import javax.crypto.Mac
@@ -496,7 +492,7 @@ private object XZSE96V3 {
 
         // 补齐 3 的倍数
         val paddingCount = (3 - combined.size % 3) % 3
-        for (i in 0 until paddingCount) combined.add(0)
+        repeat(paddingCount) { combined.add(0) }
 
         val result = StringBuilder()
         var shiftCounter = 0
@@ -562,49 +558,7 @@ object ZhihuCredentialRefresher {
         )
     }
 
-    /**
-     * 发送 POST 请求
-     */
-    private fun postRequest(
-        urlStr: String,
-        data: ByteArray?, // Encrypted body or form data bytes
-        cookies: Map<String, String>,
-        headers: Map<String, String>,
-    ): String {
-        val url = URL(urlStr)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.doOutput = true
-        conn.doInput = true
-        conn.connectTimeout = 10000
-        conn.readTimeout = 10000
-
-        // 设置 Cookie
-        if (cookies.isNotEmpty()) {
-            val cookieStr = cookies.entries.joinToString("; ") { "${it.key}=${it.value}" }
-            conn.setRequestProperty("Cookie", cookieStr)
-        }
-
-        // 设置 Header
-        headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
-
-        // 发送数据
-        if (data != null) {
-            conn.outputStream.use { os ->
-                os.write(data)
-                os.flush()
-            }
-        }
-
-        val code = conn.responseCode
-        val stream = if (code >= 400) conn.errorStream else conn.inputStream
-        return BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { it.readText() }
-    }
-
-    /**
-     * 从 Cookie 获取 Refresh Token (模拟 fetch_refresh_token_from_cookie)
-     */
-    suspend fun fetchRefreshTokenFromCookie(httpClient: HttpClient): String {
+    suspend fun fetchRefreshToken(httpClient: HttpClient): String {
         val jojo = httpClient
             .post("https://www.zhihu.com/api/account/prod/token/refresh") {
                 header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
