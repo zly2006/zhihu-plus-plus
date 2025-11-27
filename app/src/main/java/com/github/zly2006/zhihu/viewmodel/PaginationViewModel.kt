@@ -105,14 +105,12 @@ abstract class PaginationViewModel<T : Any>(
     protected open suspend fun fetchFeeds(context: Context) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val httpClient = httpClient(context)
-            val response = httpClient
-                .get(url) {
+            val response = AccountData.fetchGet(context, url) {
                     url {
                         parameters.append("include", include)
                     }
                     signFetchRequest(context)
-                }.raiseForStatus()
+                }
 
             val json = response.body<JsonObject>()
             val jsonArray = json["data"]!!.jsonArray
@@ -140,26 +138,6 @@ abstract class PaginationViewModel<T : Any>(
             )
             if ("paging" in json) {
                 lastPaging = AccountData.decodeJson(json["paging"]!!)
-            }
-            if (false) {
-                context.mainExecutor.execute {
-                    AlertDialog
-                        .Builder(context)
-                        .setTitle("OK")
-                        .setNeutralButton("复制curl") { _, _ ->
-                            val curl = dumpCurlRequest(response)
-                            context
-                                .getSystemService(Context.CLIPBOARD_SERVICE)
-                                .let { it as android.content.ClipboardManager }
-                                .setPrimaryClip(
-                                    ClipData.newPlainText(
-                                        "curl",
-                                        curl,
-                                    ),
-                                )
-                            Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        }.show()
-                }
             }
         } catch (e: Exception) {
             if (e is HttpStatusException && BuildConfig.DEBUG) {

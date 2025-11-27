@@ -470,7 +470,7 @@ fun ArticleScreen(
 
     LaunchedEffect(article.id) {
         viewModel.loadArticle(context)
-        viewModel.loadCollections()
+        viewModel.loadCollections(context)
     }
 
     Scaffold(

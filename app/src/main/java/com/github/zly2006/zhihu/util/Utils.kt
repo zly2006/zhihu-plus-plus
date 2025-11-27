@@ -33,7 +33,7 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
         null
     }
     withContext(context.mainExecutor.asCoroutineDispatcher()) {
-        header("x-zse-93", MainActivity.Companion.ZSE93)
+        header("x-zse-93", MainActivity.ZSE93)
         header(
             "x-zse-96",
             (context as? MainActivity)?.signRequest96(url, body),

@@ -186,11 +186,10 @@ class ArticleViewModel(
                                             } else {
                                                 "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
                                             }
-                                        val response =
-                                            httpClient.get(url) {
+                                        val jojo =
+                                            AccountData.fetchGet(context, url) {
                                                 signFetchRequest(context)
                                             }
-                                        val jojo = response.body<JsonObject>()
                                         if ("data" !in jojo) {
                                             Log.e("ArticleViewModel", "No data found in response: $jojo")
                                             context.mainExecutor.execute {
@@ -285,7 +284,7 @@ class ArticleViewModel(
                 }
 
                 if (response.status.isSuccess()) {
-                    loadCollections()
+                    loadCollections(context)
                     Toast.makeText(context, if (remove) "取消收藏成功" else "收藏成功", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
@@ -299,7 +298,7 @@ class ArticleViewModel(
 
     private val collectionOrder = mutableListOf<String>()
 
-    fun loadCollections() {
+    fun loadCollections(context: Context) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -309,29 +308,25 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
-                    val collectionsResponse = httpClient.get(collectionsUrl)
-
-                    if (collectionsResponse.status.isSuccess()) {
-                        val jojo = collectionsResponse.body<JsonObject>()
-                        val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
-                        collections.clear()
-                        collections.addAll(
-                            collectionsData.data
-                                .sortedWith { a, b ->
-                                    val indexA = collectionOrder.indexOf(a.id)
-                                    val indexB = collectionOrder.indexOf(b.id)
-                                    when {
-                                        indexA == -1 && indexB == -1 -> 0
-                                        // 把新的放前面
-                                        indexA == -1 -> -1
-                                        indexB == -1 -> 1
-                                        else -> indexA.compareTo(indexB)
-                                    }
-                                },
-                        )
-                        collectionOrder.clear()
-                        collectionOrder.addAll(collections.map { it.id })
-                    }
+                    val jojo = AccountData.fetchGet(context, collectionsUrl)
+                    val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
+                    collections.clear()
+                    collections.addAll(
+                        collectionsData.data
+                            .sortedWith { a, b ->
+                                val indexA = collectionOrder.indexOf(a.id)
+                                val indexB = collectionOrder.indexOf(b.id)
+                                when {
+                                    indexA == -1 && indexB == -1 -> 0
+                                    // 把新的放前面
+                                    indexA == -1 -> -1
+                                    indexB == -1 -> 1
+                                    else -> indexA.compareTo(indexB)
+                                }
+                            },
+                    )
+                    collectionOrder.clear()
+                    collectionOrder.addAll(collections.map { it.id })
                 } catch (e: Exception) {
                     Log.e("ArticleViewModel", "Failed to load collections", e)
                 }
@@ -353,7 +348,7 @@ class ArticleViewModel(
                 )
                 signFetchRequest(context)
             }
-            loadCollections()
+            loadCollections(context)
         }
     }
 

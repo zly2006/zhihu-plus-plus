@@ -8,6 +8,7 @@ import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.http.parameters
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.net.URLEncoder
@@ -27,17 +28,13 @@ class SearchViewModel(
     override suspend fun fetchFeeds(context: Context) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val httpClient = httpClient(context)
-            val response = httpClient
-                .get(url) {
-                    url {
-                        parameters.append("include", include)
-                    }
-                    signFetchRequest(context)
-                }.raiseForStatus()
-
-            val json = response.body<JsonObject>()
-            val jsonArray = json["data"]!!.jsonArray
+            val jojo = AccountData.fetchGet(context, url) {
+                url {
+                    parameters.append("include", include)
+                }
+                signFetchRequest(context)
+            }
+            val jsonArray = jojo["data"]!!.jsonArray
 
             // Parse search results and convert to Feed objects
             val feeds = jsonArray.mapNotNull { element ->
@@ -53,8 +50,8 @@ class SearchViewModel(
             processResponse(context, feeds, jsonArray)
 
             // Handle pagination
-            if ("paging" in json) {
-                lastPaging = AccountData.decodeJson(json["paging"]!!)
+            if ("paging" in jojo) {
+                lastPaging = AccountData.decodeJson(jojo["paging"]!!)
             }
         } catch (e: Exception) {
             Log.e("SearchViewModel", "Failed to fetch search results", e)

@@ -181,7 +181,7 @@ fun CollectionDialogComponent(
                             collection = collection,
                             onToggle = {
                                 viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
-                                viewModel.loadCollections()
+                                viewModel.loadCollections(context)
                             },
                         )
                     }

@@ -70,6 +70,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.parameters
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -301,8 +302,7 @@ class PersonViewModel(
 
     suspend fun load(context: Context) {
         context as MainActivity
-        val jojo = context.httpClient
-            .get("https://www.zhihu.com/api/v4/members/${person.id}") {
+        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/members/${person.id}") {
                 url {
                     parameters.append(
                         "include",
@@ -311,8 +311,7 @@ class PersonViewModel(
                     )
                 }
                 signFetchRequest(context)
-            }.raiseForStatus()
-            .body<JsonObject>()
+            }
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl
         this.name = person.name

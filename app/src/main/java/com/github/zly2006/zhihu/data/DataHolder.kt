@@ -521,7 +521,6 @@ object DataHolder {
 
     @SuppressLint("SetJavaScriptEnabled")
     private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
-//        httpClient.plugin(HttpCookies)
         val response = httpClient.get(url)
         if ("https://www.zhihu.com/404" == response.call.request.url
                 .toString() &&

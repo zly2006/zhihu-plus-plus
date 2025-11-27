@@ -4,6 +4,11 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import com.github.zly2006.zhihu.ui.raiseForStatus
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
@@ -11,13 +16,18 @@ import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.request
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.future.future
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -103,17 +113,35 @@ object AccountData {
         }
     }
 
-    fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient = HttpClient {
-        install(HttpCache)
-        install(HttpCookies) {
-            storage = cookieStorage(context, cookies)
+    private var httpClient: HttpClient? = null
+
+    fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
+        if (httpClient != null && cookies == null) {
+            return httpClient!!
         }
-        install(ContentNegotiation) {
-            json(json)
+        val httpClient = HttpClient {
+            install(HttpCache)
+            install(HttpCookies) {
+                storage = cookieStorage(context, cookies)
+            }
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(UserAgent) {
+                agent = data.userAgent
+            }
         }
-        install(UserAgent) {
-            agent = data.userAgent
+        if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
+            // 大概率是，包括 MainActivity 等。
+            context.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                override fun onDestroy(owner: LifecycleOwner) {
+                    httpClient.close()
+                    AccountData.httpClient = null
+                }
+            })
+            this.httpClient = httpClient
         }
+        return httpClient
     }
 
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
@@ -180,5 +208,36 @@ object AccountData {
             }
         }
         else -> json
+    }
+
+    private var lastRefreshCookie = 0L
+
+    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject {
+        val client = this.httpClient ?: httpClient(context)
+        val response = client.request(url) {
+            block()
+        }
+        if (response.status != HttpStatusCode.Unauthorized) return response.raiseForStatus().body()
+        if (System.currentTimeMillis() - lastRefreshCookie < 10_000) {
+            // 10s 内只刷新一次，避免死循环
+            return response.raiseForStatus().body()
+        }
+        val refreshToken = ZhihuCredentialRefresher.fetchRefreshTokenFromCookie(client)
+        ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+        lastRefreshCookie = System.currentTimeMillis()
+        val retryResponse = client.request(url) {
+            block()
+        }
+        return retryResponse.raiseForStatus().body()
+    }
+
+    suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
+        block()
+        method = HttpMethod.Get
+    }
+
+    suspend fun fetchPost(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
+        block()
+        method = HttpMethod.Post
     }
 }

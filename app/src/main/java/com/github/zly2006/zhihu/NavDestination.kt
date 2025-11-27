@@ -9,6 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 sealed interface NavDestination
@@ -196,24 +197,20 @@ fun resolveContent(uri: Uri): NavDestination? {
 suspend fun checkForAd(destination: NavDestination, context: MainActivity): Boolean {
     val appViewUrl = when (destination) {
         is Article -> when (destination.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles//${destination.id}?include=content"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}?include=content"
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content"
         }
         else -> return false
     }
-    val httpClient = AccountData.httpClient(context)
-    val response = httpClient.get(appViewUrl) {
-        signFetchRequest(context)
-    }
-    val html = response.bodyAsText()
-    println(html)
-    val isAd = "xg.zhihu.com" in html // 广告
-    var isPayWall = "本内容版权为知乎及版权方所有，侵权必究" in html // 盐选
     runCatching {
-        val jojo = Json.decodeFromString<JsonObject>(html)
-        if ("paid_info" in jojo) {
-            isPayWall = true
+        val jojo = AccountData.fetchGet(context, appViewUrl) {
+            signFetchRequest(context)
         }
+        val content = jojo["content"]?.jsonPrimitive?.content
+
+        val isAd = content != null && "xg.zhihu.com" in content // 广告
+        val isPayWall = "paid_info" in jojo // 盐选
+        return isAd || isPayWall
     }
-    return isAd || isPayWall
+    return false
 }
