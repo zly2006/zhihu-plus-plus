@@ -303,15 +303,15 @@ class PersonViewModel(
     suspend fun load(context: Context) {
         context as MainActivity
         val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/members/${person.id}") {
-                url {
-                    parameters.append(
-                        "include",
-                        // todo question_count pins_count
-                        "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
-                    )
-                }
-                signFetchRequest(context)
+            url {
+                parameters.append(
+                    "include",
+                    // todo question_count pins_count
+                    "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
+                )
             }
+            signFetchRequest(context)
+        }
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl
         this.name = person.name

@@ -3,12 +3,8 @@ package com.github.zly2006.zhihu
 import android.net.Uri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable

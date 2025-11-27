@@ -17,8 +17,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.ui.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.dumpCurlRequest
-import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -105,14 +103,13 @@ abstract class PaginationViewModel<T : Any>(
     protected open suspend fun fetchFeeds(context: Context) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val response = AccountData.fetchGet(context, url) {
-                    url {
-                        parameters.append("include", include)
-                    }
-                    signFetchRequest(context)
+            val json = AccountData.fetchGet(context, url) {
+                url {
+                    parameters.append("include", include)
                 }
+                signFetchRequest(context)
+            }
 
-            val json = response.body<JsonObject>()
             val jsonArray = json["data"]!!.jsonArray
             processResponse(
                 context,

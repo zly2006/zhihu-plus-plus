@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.HttpClient
@@ -18,7 +17,6 @@ import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
-import io.ktor.client.request.post
 import io.ktor.client.request.request
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
@@ -27,7 +25,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.future.future
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -117,7 +114,7 @@ object AccountData {
 
     fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
         if (httpClient != null && cookies == null) {
-            return httpClient!!
+//            return httpClient!!
         }
         val httpClient = HttpClient {
             install(HttpCache)

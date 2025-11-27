@@ -4,12 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.SearchResult
-import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.parameters
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.net.URLEncoder
 

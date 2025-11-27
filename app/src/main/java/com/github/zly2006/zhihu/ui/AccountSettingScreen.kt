@@ -79,16 +79,14 @@ import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
@@ -106,11 +104,9 @@ fun AccountSettingScreen(
         val data = AccountData.data
         if (data.login) {
             try {
-                val httpClient = (context as MainActivity).httpClient
-                val response = httpClient
-                    .get("https://www.zhihu.com/api/v4/me") {
-                        signFetchRequest(context)
-                    }.body<JsonObject>()
+                val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+                    signFetchRequest(context)
+                }
                 val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
                 AccountData.saveData(
                     context,
@@ -325,6 +321,16 @@ fun AccountSettingScreen(
                     },
                 ) {
                     Text("重新fetch数据测试")
+                }
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            val httpClient = AccountData.httpClient(context)
+                            ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshTokenFromCookie(httpClient), httpClient)
+                        }
+                    },
+                ) {
+                    Text("刷新 Cookie 测试")
                 }
                 Button(
                     onClick = {
