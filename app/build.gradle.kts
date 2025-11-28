@@ -94,7 +94,16 @@ android {
 
     packaging {
         resources {
-            excludes += "META-INF/DEPENDENCIES"
+            excludes +=
+                listOf(
+                    "META-INF/DEPENDENCIES",
+                    "META-INF/*.version",
+                    "META-INF/proguard/*",
+                    "**.kotlin_module",
+                    "kotlin-tooling-metadata.json",
+                    "DebugProbesKt.bin",
+                    "META-INF/*.kotlin_module",
+                )
         }
     }
 }
