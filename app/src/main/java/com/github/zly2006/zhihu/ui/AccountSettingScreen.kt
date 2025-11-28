@@ -463,25 +463,25 @@ fun AccountSettingScreen(
                 },
             )
 
-            val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview", true)) }
+            val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview1", false)) }
             SwitchSettingItem(
                 title = "使用 WebView 显示评论",
                 description = "使用 WebView 显示评论，可以显示图片和富文本链接",
                 checked = useWebview.value,
                 onCheckedChange = {
                     useWebview.value = it
-                    preferences.edit { putBoolean("commentsUseWebview", it) }
+                    preferences.edit { putBoolean("commentsUseWebview1", it) }
                 },
             )
 
-            val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview", false)) }
+            val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview1", false)) }
             SwitchSettingItem(
                 title = "评论区 WebView 对象常驻",
                 description = "直到关闭评论界面，否则 WebView 对象不会被销毁，这可以使滚动动画更流畅，但会占用更多内存，若您的设备性能较差，建议关闭",
                 checked = pinWebview.value,
                 onCheckedChange = {
                     pinWebview.value = it
-                    preferences.edit { putBoolean("commentsPinWebview", it) }
+                    preferences.edit { putBoolean("commentsPinWebview1", it) }
                 },
             )
 

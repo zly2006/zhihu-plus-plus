@@ -294,8 +294,8 @@ fun CommentScreen(
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
-    val useWebview = remember { preferences.getBoolean("commentsUseWebview", true) }
-    val pinWebview = remember { preferences.getBoolean("commentsPinWebview", false) }
+    val useWebview = remember { preferences.getBoolean("commentsUseWebview1", false) }
+    val pinWebview = remember { preferences.getBoolean("commentsPinWebview1", false) }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (val content = content()) {
