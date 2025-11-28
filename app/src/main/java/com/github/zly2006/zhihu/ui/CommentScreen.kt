@@ -125,6 +125,53 @@ private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
 val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 /**
+ * 上下文菜单项数据类
+ */
+data class ContextMenuItem(
+    val label: String,
+    val onClick: () -> Unit,
+)
+
+/**
+ * 上下文菜单数据提供者
+ * 模拟 Compose Desktop 的 ContextMenuDataProvider API
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ContextMenuDataProvider(
+    items: () -> List<ContextMenuItem>,
+    content: @Composable () -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        Box(
+            modifier = Modifier.combinedClickable(
+                onClick = {},
+                onLongClick = { showMenu = true },
+            ),
+        ) {
+            content()
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            items().forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(item.label) },
+                    onClick = {
+                        showMenu = false
+                        item.onClick()
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
  * 在对话框中显示图片
  */
 @Composable
@@ -215,8 +262,8 @@ private suspend fun saveImageToGallery(
 
 /**
  * 可点击的图片组件，支持点击查看和长按显示菜单
+ * 使用 ContextMenuDataProvider API
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ClickableImageWithMenu(
     imageUrl: String,
@@ -225,56 +272,41 @@ private fun ClickableImageWithMenu(
     contentDescription: String = "图片",
 ) {
     var showImageDialog by remember { mutableStateOf(false) }
-    var showContextMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     Box {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = contentDescription,
-            modifier = modifier
-                .combinedClickable(
-                    onClick = { showImageDialog = true },
-                    onLongClick = { showContextMenu = true },
-                ),
-        )
-
-        DropdownMenu(
-            expanded = showContextMenu,
-            onDismissRequest = { showContextMenu = false },
+        ContextMenuDataProvider(
+            items = {
+                listOf(
+                    ContextMenuItem("查看图片") {
+                        showImageDialog = true
+                    },
+                    ContextMenuItem("在浏览器中打开") {
+                        luoTianYiUrlLauncher(context, imageUrl.toUri())
+                    },
+                    ContextMenuItem("保存图片") {
+                        coroutineScope.launch {
+                            saveImageToGallery(context, httpClient, imageUrl)
+                        }
+                    },
+                )
+            },
         ) {
-            DropdownMenuItem(
-                text = { Text("查看图片") },
-                onClick = {
-                    showImageDialog = true
-                    showContextMenu = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("在浏览器中打开") },
-                onClick = {
-                    luoTianYiUrlLauncher(context, imageUrl.toUri())
-                    showContextMenu = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("保存图片") },
-                onClick = {
-                    coroutineScope.launch {
-                        saveImageToGallery(context, httpClient, imageUrl)
-                    }
-                    showContextMenu = false
-                },
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = contentDescription,
+                modifier = modifier
+                    .clickable { showImageDialog = true },
             )
         }
-    }
 
-    if (showImageDialog) {
-        ImageViewerDialog(
-            imageUrl = imageUrl,
-            onDismiss = { showImageDialog = false },
-        )
+        if (showImageDialog) {
+            ImageViewerDialog(
+                imageUrl = imageUrl,
+                onDismiss = { showImageDialog = false },
+            )
+        }
     }
 }
 

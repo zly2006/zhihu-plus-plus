@@ -103,7 +103,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")
 }
 
-val ktor = "3.2.2"
+val ktor = "3.3.3"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
@@ -115,11 +115,11 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
-    implementation("io.coil-kt.coil3:coil-compose:3.0.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.2.0")
     implementation("io.coil-kt.coil3:coil-gif:3.3.0")
 
-    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.jsoup:jsoup:1.21.2")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
     // ZXing for QR code scanning
@@ -127,13 +127,13 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.2")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     //noinspection GradleDependency
     implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.activity:activity-compose:1.10.1")
-    implementation(platform("androidx.compose:compose-bom:2025.07.00"))
+    implementation(platform("androidx.compose:compose-bom:2025.11.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material:material-icons-extended")
@@ -145,12 +145,12 @@ dependencies {
     implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.room:room-common-jvm:2.7.2")
-    implementation("androidx.room:room-runtime-android:2.7.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.09.00"))
-    annotationProcessor("androidx.room:room-compiler:2.7.2")
-    ksp("androidx.room:room-compiler:2.7.2")
+    implementation("androidx.room:room-common-jvm:2.8.4")
+    implementation("androidx.room:room-runtime-android:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.11.01"))
+    annotationProcessor("androidx.room:room-compiler:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
