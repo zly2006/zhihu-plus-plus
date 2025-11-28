@@ -1064,8 +1064,8 @@ private fun CommentItemPreview() {
     )
     CommentItem(
         comment,
-        useWebview = true,
-        pinWebview = true,
+        useWebview = false,
+        pinWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },
@@ -1189,8 +1189,8 @@ private fun NestedCommentPreview() {
     )
     CommentItem(
         comment,
-        useWebview = true,
-        pinWebview = true,
+        useWebview = false,
+        pinWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },

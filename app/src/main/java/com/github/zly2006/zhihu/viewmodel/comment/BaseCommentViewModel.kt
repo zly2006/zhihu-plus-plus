@@ -109,10 +109,14 @@ abstract class BaseCommentViewModel(
             try {
                 val response = if (newLikeState) {
                     // 点赞
-                    httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like")
+                    httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
+                        signFetchRequest(context)
+                    }
                 } else {
                     // 取消点赞
-                    httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like")
+                    httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
+                        signFetchRequest(context)
+                    }
                 }
 
                 if (response.status.isSuccess()) {
