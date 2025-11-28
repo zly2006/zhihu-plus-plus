@@ -2,13 +2,21 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +48,8 @@ import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,6 +85,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -86,10 +98,13 @@ import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readRawBytes
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -108,6 +123,160 @@ typealias CommentModel = com.github.zly2006.zhihu.viewmodel.CommentItem
 private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
 val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+
+/**
+ * 在对话框中显示图片
+ */
+@Composable
+private fun ImageViewerDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "查看图片",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+        }
+    }
+}
+
+/**
+ * 保存图片到相册的工具函数
+ */
+private suspend fun saveImageToGallery(
+    context: Context,
+    httpClient: HttpClient,
+    imageUrl: String,
+) {
+    try {
+        val response = httpClient.get(imageUrl)
+        val bytes = response.readRawBytes()
+        val fileName = imageUrl.toUri().lastPathSegment ?: "downloaded_image.jpg"
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        }
+
+        val resolver = context.contentResolver
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val imageUri = resolver.insert(collection, contentValues)
+        if (imageUri != null) {
+            resolver.openOutputStream(imageUri).use { os ->
+                os?.write(bytes)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                resolver.update(imageUri, contentValues, null, null)
+            }
+
+            Toast
+                .makeText(
+                    context,
+                    "图片已保存到相册",
+                    Toast.LENGTH_SHORT,
+                ).show()
+        }
+    } catch (e: Exception) {
+        Toast
+            .makeText(
+                context,
+                "保存失败: ${e.message}",
+                Toast.LENGTH_SHORT,
+            ).show()
+    }
+}
+
+/**
+ * 可点击的图片组件，支持点击查看和长按显示菜单
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ClickableImageWithMenu(
+    imageUrl: String,
+    httpClient: HttpClient,
+    modifier: Modifier = Modifier,
+    contentDescription: String = "图片",
+) {
+    var showImageDialog by remember { mutableStateOf(false) }
+    var showContextMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    Box {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = contentDescription,
+            modifier = modifier
+                .combinedClickable(
+                    onClick = { showImageDialog = true },
+                    onLongClick = { showContextMenu = true },
+                ),
+        )
+
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("查看图片") },
+                onClick = {
+                    showImageDialog = true
+                    showContextMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("在浏览器中打开") },
+                onClick = {
+                    luoTianYiUrlLauncher(context, imageUrl.toUri())
+                    showContextMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("保存图片") },
+                onClick = {
+                    coroutineScope.launch {
+                        saveImageToGallery(context, httpClient, imageUrl)
+                    }
+                    showContextMenu = false
+                },
+            )
+        }
+    }
+
+    if (showImageDialog) {
+        ImageViewerDialog(
+            imageUrl = imageUrl,
+            onDismiss = { showImageDialog = false },
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -243,6 +412,7 @@ fun CommentScreen(
                                         comment = commentItem,
                                         useWebview = useWebview,
                                         pinWebview = pinWebview,
+                                        httpClient = httpClient,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
                                         isLikeLoading = isLikeLoading,
@@ -280,6 +450,9 @@ fun CommentScreen(
                                                     )
                                                     CommentItem(
                                                         comment = childCommentItem,
+                                                        useWebview = useWebview,
+                                                        pinWebview = pinWebview,
+                                                        httpClient = httpClient,
                                                         isLiked = liked,
                                                         likeCount = likeCount,
                                                         toggleLike = {
@@ -295,8 +468,6 @@ fun CommentScreen(
                                                                 childCommentItem.item.likeCount = likeCount
                                                             }
                                                         },
-                                                        useWebview = useWebview,
-                                                        pinWebview = pinWebview,
                                                         onNavigate = onNavigate,
                                                         onChildCommentClick = onChildCommentClick,
                                                     )
@@ -571,11 +742,13 @@ fun AnnotatedString.Builder.dfs(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommentItem(
     comment: CommentModel,
     useWebview: Boolean,
     pinWebview: Boolean,
+    httpClient: HttpClient,
     isLiked: Boolean = false,
     likeCount: Int = 0,
     isLikeLoading: Boolean = false,
@@ -711,13 +884,14 @@ private fun CommentItem(
                             )
                         }
                         if (commentImg != null) {
-                            AsyncImage(
-                                model = commentImg,
-                                contentDescription = "评论图片",
+                            ClickableImageWithMenu(
+                                imageUrl = commentImg,
+                                httpClient = httpClient,
                                 modifier = Modifier
                                     .padding(top = 8.dp)
                                     .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
                                     .clip(RoundedCornerShape(12.dp)),
+                                contentDescription = "评论图片",
                             )
                         }
                     }
@@ -892,6 +1066,7 @@ private fun CommentItemPreview() {
         comment,
         useWebview = true,
         pinWebview = true,
+        httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },
     )
@@ -905,8 +1080,7 @@ fun AuthorTag(authorTag: String) {
                 width = 0.5.dp,
                 color = Color.Gray,
                 shape = RoundedCornerShape(3.dp),
-            )
-            .padding(horizontal = 3.dp),
+            ).padding(horizontal = 3.dp),
     ) {
         Text(
             text = authorTag,
@@ -1017,6 +1191,7 @@ private fun NestedCommentPreview() {
         comment,
         useWebview = true,
         pinWebview = true,
+        httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },
     )

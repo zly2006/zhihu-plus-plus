@@ -79,6 +79,9 @@ fun telemetry(context: Context, usage: String) {
     }
 }
 
+/**
+ * 洛天依主题浏览器打开
+ */
 fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
     val intent = CustomTabsIntent
         .Builder()
