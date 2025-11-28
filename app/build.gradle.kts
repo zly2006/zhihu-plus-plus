@@ -38,6 +38,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    androidResources {
+        @Suppress("UnstableApiUsage")
+        localeFilters += listOf("en", "zh")
+    }
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true
