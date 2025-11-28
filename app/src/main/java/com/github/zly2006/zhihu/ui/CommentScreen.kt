@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
@@ -84,6 +85,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
@@ -474,7 +476,12 @@ fun CommentTopText(content: NavDestination? = null) {
     )
 }
 
-fun AnnotatedString.Builder.dfs(node: Node, onNavigate: (NavDestination) -> Unit, context: Context) {
+fun AnnotatedString.Builder.dfs(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+    emojisUsed: MutableSet<String>? = null,
+) {
     when (node) {
         is Element -> {
             when (node.tagName()) {
@@ -504,16 +511,58 @@ fun AnnotatedString.Builder.dfs(node: Node, onNavigate: (NavDestination) -> Unit
                 }
 
                 else -> {
-                    node.childNodes().forEach { dfs(it, onNavigate, context) }
+                    node.childNodes().forEach { dfs(it, onNavigate, context, emojisUsed) }
                 }
             }
         }
 
         is TextNode -> {
-            val parts = node.text().split(
-                Regex("(\\[emotion:[^]]+])"),
-            )
-            append(node.text())
+            var buffer = StringBuilder()
+            var emojiBuffer = StringBuilder()
+            var isEmoji = false
+            for (ch in node.text()) {
+                if (ch == '[') {
+                    if (buffer.isNotEmpty()) {
+                        append(buffer.toString())
+                        buffer = StringBuilder()
+                    }
+                    isEmoji = true
+                    emojiBuffer.append(ch)
+                } else if (ch == ']') {
+                    if (isEmoji) {
+                        emojiBuffer.append(ch)
+                        val placeholder = emojiBuffer.toString()
+                        val emojiPath = EmojiManager.getEmojiPath(placeholder)
+                        if (emojiPath != null) {
+                            // 使用emoji文件名作为key
+                            val emojiFileName = emojiPath.substringAfterLast('/')
+                            val emojiKey = "emoji_$emojiFileName"
+                            appendInlineContent(emojiKey, placeholder)
+                            emojisUsed?.add(emojiKey)
+                        } else {
+                            append(placeholder)
+                        }
+                        emojiBuffer = StringBuilder()
+                        isEmoji = false
+                    } else {
+                        buffer.append(ch)
+                    }
+                } else {
+                    if (isEmoji) {
+                        emojiBuffer.append(ch)
+                    } else {
+                        buffer.append(ch)
+                    }
+                }
+            }
+            // 处理剩余的buffer内容
+            if (buffer.isNotEmpty()) {
+                append(buffer.toString())
+            }
+            // 如果还有未完成的emoji buffer（没有找到结束的']'），也添加进去
+            if (isEmoji && emojiBuffer.isNotEmpty()) {
+                append(emojiBuffer.toString())
+            }
         }
 
         else -> {
@@ -634,19 +683,32 @@ private fun CommentItem(
                         document.selectFirst("a.comment_img")?.attr("href")
                             ?: document.selectFirst("a.comment_sticker")?.attr("href")
                     val context = LocalContext.current
-                    val string = remember {
+
+                    // 收集所有使用的emoji
+                    val emojisUsed = remember { mutableSetOf<String>() }
+                    val string = remember(commentData.content) {
+                        emojisUsed.clear()
                         AnnotatedString
                             .Builder()
                             .apply {
                                 val stripped = document.body().clone()
                                 stripped.select("a.comment_img").forEach { it.remove() }
                                 stripped.select("a.comment_sticker").forEach { it.remove() }
-                                dfs(stripped, onNavigate, context)
+                                dfs(stripped, onNavigate, context, emojisUsed)
                             }.toAnnotatedString()
                     }
+
+                    // 创建inlineContent映射
+                    val inlineContent = remember(emojisUsed.size) {
+                        EmojiManager.createInlineContentMap(emojisUsed)
+                    }
+
                     Column {
                         SelectionContainer {
-                            Text(string)
+                            Text(
+                                text = string,
+                                inlineContent = inlineContent,
+                            )
                         }
                         if (commentImg != null) {
                             AsyncImage(

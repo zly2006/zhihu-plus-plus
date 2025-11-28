@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.data
 
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable

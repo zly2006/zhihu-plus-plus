@@ -138,6 +138,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 初始化emoji管理器
+        lifecycleScope.launch {
+            try {
+                com.github.zly2006.zhihu.util.EmojiManager
+                    .initialize(this@MainActivity)
+                Log.i(TAG, "Emoji manager initialized")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize emoji manager", e)
+            }
+        }
+
         webview = WebView(this)
         Log.i(TAG, "Webview created")
         webview.setupUpWebviewClient()

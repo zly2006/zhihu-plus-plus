@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
