@@ -5,9 +5,6 @@
     <uses-feature
             android:name="android.hardware.camera"
             android:required="false"/>
-    <uses-feature
-        android:name="android.hardware.type.watch"
-        android:required="false"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
@@ -29,7 +26,8 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/Theme.Zhihu"
-            tools:targetApi="31">
+            android:enableOnBackInvokedCallback="true"
+            tools:targetApi="33">
         <activity
                 android:name=".CaptureActivity"
                 android:exported="false"
@@ -37,6 +35,7 @@
                 android:theme="@style/Theme.Zhihu"
                 android:screenOrientation="portrait"
                 android:stateNotNeeded="true"
+                android:enableOnBackInvokedCallback="true"
                 tools:ignore="DiscouragedApi,LockedOrientationActivity"/>
         <activity
                 android:name=".MainActivity"
