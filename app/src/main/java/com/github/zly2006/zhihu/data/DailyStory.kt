@@ -15,10 +15,6 @@ data class DailyStory(
     val title: String,
     val url: String,
     val hint: String,
-    @SerialName("ga_prefix")
-    val gaPrefix: String,
     val images: List<String>,
     val type: Int,
-    @SerialName("image_hue")
-    val imageHue: String? = null,
 )

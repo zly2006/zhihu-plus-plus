@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -43,28 +44,38 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DailyStoriesResponse
 import com.github.zly2006.zhihu.data.DailyStory
+import com.github.zly2006.zhihu.resolveContent
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
+import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// Data class to hold stories grouped by date
+data class DailySection(
+    val date: String,
+    val stories: List<DailyStory>,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,12 +83,15 @@ fun DailyScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
-    var stories by remember { mutableStateOf<List<DailyStory>>(emptyList()) }
+    var sections by remember { mutableStateOf<List<DailySection>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var isLoadingMore by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var dateString by remember { mutableStateOf("") }
+    var currentViewingDate by remember { mutableStateOf("") }
+    var nextDate by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
     val json = remember {
         Json {
@@ -86,12 +100,13 @@ fun DailyScreen(
         }
     }
 
-    suspend fun loadStories() {
+    suspend fun loadLatestStories() {
         try {
             val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/latest")
             val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
-            stories = data.stories
-            dateString = formatDate(data.date)
+            sections = listOf(DailySection(data.date, data.stories))
+            nextDate = data.date
+            currentViewingDate = formatDate(data.date)
             error = null
         } catch (e: Exception) {
             error = "加载失败: ${e.message}"
@@ -102,8 +117,53 @@ fun DailyScreen(
         }
     }
 
+    suspend fun loadMoreStories() {
+        if (isLoadingMore || nextDate == null) return
+        isLoadingMore = true
+        try {
+            val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$nextDate")
+            val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
+            sections = sections + DailySection(data.date, data.stories)
+            nextDate = data.date
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isLoadingMore = false
+        }
+    }
+
+    // Update current viewing date based on scroll position
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                var itemCount = 0
+                for (section in sections) {
+                    // +1 for the date header
+                    if (index < itemCount + 1 + section.stories.size) {
+                        currentViewingDate = formatDate(section.date)
+                        break
+                    }
+                    itemCount += 1 + section.stories.size
+                }
+            }
+    }
+
+    // Load more when approaching the end
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisibleItem to totalItems
+        }.collect { (lastVisibleItem, totalItems) ->
+            if (lastVisibleItem >= totalItems - 3 && !isLoadingMore && !isLoading) {
+                loadMoreStories()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
-        loadStories()
+        loadLatestStories()
     }
 
     Scaffold(
@@ -117,9 +177,9 @@ fun DailyScreen(
                                 fontWeight = FontWeight.Bold,
                             ),
                         )
-                        if (dateString.isNotEmpty()) {
+                        if (currentViewingDate.isNotEmpty()) {
                             Text(
-                                dateString,
+                                currentViewingDate,
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 ),
@@ -132,7 +192,8 @@ fun DailyScreen(
                         onClick = {
                             scope.launch {
                                 isRefreshing = true
-                                loadStories()
+                                loadLatestStories()
+                                listState.scrollToItem(0)
                             }
                         },
                     ) {
@@ -146,6 +207,7 @@ fun DailyScreen(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
+                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { paddingValues ->
@@ -154,7 +216,8 @@ fun DailyScreen(
             onRefresh = {
                 scope.launch {
                     isRefreshing = true
-                    loadStories()
+                    loadLatestStories()
+                    listState.scrollToItem(0)
                 }
             },
             modifier = Modifier
@@ -181,6 +244,7 @@ fun DailyScreen(
                         }
                     }
                 }
+
                 error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -192,7 +256,8 @@ fun DailyScreen(
                         )
                     }
                 }
-                stories.isEmpty() -> {
+
+                sections.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -204,23 +269,93 @@ fun DailyScreen(
                         )
                     }
                 }
+
                 else -> {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        items(stories, key = { it.id }) { story ->
-                            DailyStoryCard(
-                                story = story,
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(story.url))
-                                    context.startActivity(intent)
-                                },
-                            )
+                        sections.forEach { section ->
+                            // Date header
+                            item(key = "header_${section.date}") {
+                                DateHeader(date = formatDate(section.date))
+                            }
+                            // Stories for this date
+                            items(section.stories, key = { "story_${it.id}" }) { story ->
+                                DailyStoryCard(
+                                    story = story,
+                                    onClick = {
+                                        scope.launch {
+                                            val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")
+                                            val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
+                                            val url = body.selectFirst("a")?.attr("href")
+                                            val destination = url?.let { resolveContent(url.toUri()) }
+                                            if (destination != null) {
+                                                onNavigate(destination)
+                                            } else {
+                                                val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
+                                                context.startActivity(intent)
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
+
+                        // Loading indicator at the bottom
+                        if (isLoadingMore) {
+                            item(key = "loading_more") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun DateHeader(date: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
+            )
+            Text(
+                text = date,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                ),
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(1.dp)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
+            )
         }
     }
 }
@@ -235,84 +370,63 @@ fun DailyStoryCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // 图片区域
+            // 左侧图片区域
             if (story.images.isNotEmpty()) {
-                Box(
+                AsyncImage(
+                    model = story.images.first(),
+                    contentDescription = story.title,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f),
-                ) {
-                    AsyncImage(
-                        model = story.images.first(),
-                        contentDescription = story.title,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-
-                    // 渐变遮罩，让标题更清晰
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color.Black.copy(alpha = 0.7f),
-                                    ),
-                                    startY = 200f,
-                                ),
-                            ),
-                    )
-
-                    // 标题叠加在图片上
-                    Text(
-                        text = story.title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.White,
-                        ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(16.dp),
-                    )
-                }
+                        .weight(0.3f, fill = true)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
             }
 
-            // 底部信息栏
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            // 右侧内容区域
+            Column(
+                modifier = Modifier.weight(0.7f),
+                verticalArrangement = Arrangement.SpaceBetween,
             ) {
+                // 标题
+                Text(
+                    text = story.title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                    ),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                // 底部信息
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.AccessTime,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = story.hint,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                        ),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
                 }

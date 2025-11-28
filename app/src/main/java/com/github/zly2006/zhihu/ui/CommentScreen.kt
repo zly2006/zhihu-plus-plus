@@ -2,11 +2,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import android.content.Context.MODE_PRIVATE
-import android.text.Html
-import android.text.util.Linkify
-import android.util.TypedValue
-import android.widget.TextView
+import android.content.Intent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
@@ -24,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +30,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -43,7 +43,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,27 +59,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.util.LinkMovementMethod
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
@@ -90,6 +93,9 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
+import org.jsoup.nodes.Node
+import org.jsoup.nodes.TextNode
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -371,7 +377,9 @@ fun CommentScreen(
                                 if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
                                     item(key = "loading_indicator") {
                                         Box(
-                                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(8.dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -458,10 +466,60 @@ fun CommentTopText(content: NavDestination? = null) {
         style = Typography.bodyMedium.copy(
             fontWeight = FontWeight.Bold,
         ),
-        modifier = Modifier.fillMaxWidth().height(26.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(26.dp),
         textAlign = TextAlign.Center,
         fontSize = 18.sp,
     )
+}
+
+fun AnnotatedString.Builder.dfs(node: Node, onNavigate: (NavDestination) -> Unit, context: Context) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "br" -> {
+                    append("\n")
+                }
+
+                "a" -> {
+                    val href = node.attr("href")
+                    val linkText = node.text()
+                    withLink(
+                        LinkAnnotation.Clickable(
+                            href,
+                            TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
+                        ) {
+                            resolveContent(href.toUri())?.let(onNavigate)
+                                ?: context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        href.toUri(),
+                                    ),
+                                )
+                        },
+                    ) {
+                        append(linkText)
+                    }
+                }
+
+                else -> {
+                    node.childNodes().forEach { dfs(it, onNavigate, context) }
+                }
+            }
+        }
+
+        is TextNode -> {
+            val parts = node.text().split(
+                Regex("(\\[emotion:[^]]+])"),
+            )
+            append(node.text())
+        }
+
+        else -> {
+            append(node.outerHtml())
+        }
+    }
 }
 
 @Composable
@@ -571,32 +629,36 @@ private fun CommentItem(
                         )
                     }
                 } else {
-                    // 评论内容
+                    val document = Jsoup.parse(commentData.content)
+                    val commentImg =
+                        document.selectFirst("a.comment_img")?.attr("href")
+                            ?: document.selectFirst("a.comment_sticker")?.attr("href")
                     val context = LocalContext.current
-                    val contentColor = LocalContentColor.current
-                    AndroidView({
-                        TextView(context).apply {
-                            autoLinkMask = Linkify.EMAIL_ADDRESSES or Linkify.WEB_URLS
-                            text = Html
-                                .fromHtml(
-                                    Jsoup
-                                        .parse(commentData.content)
-                                        .processCommentImages()
-                                        .body()
-                                        .html(),
-                                    Html.FROM_HTML_MODE_COMPACT,
-                                ).let {
-                                    it
-                                }
-                            if (text.endsWith("\n")) {
-                                text = text.subSequence(0, text.length - 1)
-                            }
-                            setTextIsSelectable(true)
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-                            setTextColor(contentColor.toArgb())
-                            movementMethod = LinkMovementMethod.getInstance()
+                    val string = remember {
+                        AnnotatedString
+                            .Builder()
+                            .apply {
+                                val stripped = document.body().clone()
+                                stripped.select("a.comment_img").forEach { it.remove() }
+                                stripped.select("a.comment_sticker").forEach { it.remove() }
+                                dfs(stripped, onNavigate, context)
+                            }.toAnnotatedString()
+                    }
+                    Column {
+                        SelectionContainer {
+                            Text(string)
                         }
-                    })
+                        if (commentImg != null) {
+                            AsyncImage(
+                                model = commentImg,
+                                contentDescription = "评论图片",
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -781,7 +843,8 @@ fun AuthorTag(authorTag: String) {
                 width = 0.5.dp,
                 color = Color.Gray,
                 shape = RoundedCornerShape(3.dp),
-            ).padding(horizontal = 3.dp),
+            )
+            .padding(horizontal = 3.dp),
     ) {
         Text(
             text = authorTag,
