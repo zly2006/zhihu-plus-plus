@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -51,6 +52,7 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.Blocklist
 import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.Collections
+import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.History
 import com.github.zly2006.zhihu.Home
@@ -73,8 +75,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
         route.hasRoute<Home>() -> 0
         route.hasRoute<Follow>() -> 1
-        route.hasRoute<History>() -> 2
-        route.hasRoute<Account>() -> 3
+        route.hasRoute<Daily>() -> 2
+        route.hasRoute<History>() -> 3
+        route.hasRoute<Account>() -> 4
         else -> -1
     }
 
@@ -166,6 +169,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         }
                         Item(Home, "主页", Icons.Filled.Home)
                         Item(Follow, "关注", Icons.Filled.PersonAddAlt1)
+                        Item(Daily, "日报", Icons.Filled.Newspaper)
                         Item(History, "历史", Icons.Filled.History)
                         Item(Account, "账号", Icons.Filled.ManageAccounts)
                     }
@@ -215,6 +219,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             composable<Follow> {
                 FollowScreen(activity::navigate)
             }
+            composable<Daily> {
+                DailyScreen(activity::navigate)
+            }
             composable<History> {
                 HistoryScreen(activity::navigate)
             }
@@ -254,6 +261,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
     navEntry.hasRoute(Follow::class) ||
+    navEntry.hasRoute(Daily::class) ||
     navEntry.hasRoute(History::class) ||
     navEntry.hasRoute(Account::class)
 
