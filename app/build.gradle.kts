@@ -106,17 +106,17 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 val ktor = "3.3.3"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("io.ktor:ktor-client-core-jvm:$ktor")
-    implementation("io.ktor:ktor-client-apache5:$ktor")
+    implementation("io.ktor:ktor-client-android:$ktor")
     implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktor")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.2.0")
+    implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.3.0")
     implementation("io.coil-kt.coil3:coil-gif:3.3.0")
 
     implementation("org.jsoup:jsoup:1.21.2")
@@ -125,14 +125,14 @@ dependencies {
     // ZXing for QR code scanning
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
-    implementation("androidx.core:core-ktx:1.16.0")
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0")
     //noinspection GradleDependency
     implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
     implementation("androidx.webkit:webkit:1.14.0")
-    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.activity:activity-compose:1.12.0")
     implementation(platform("androidx.compose:compose-bom:2025.11.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
