@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -103,6 +104,7 @@ import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import kotlinx.coroutines.delay
@@ -182,6 +184,7 @@ fun ArticleActionsMenu(
     onDismissRequest: () -> Unit,
     onExportRequest: () -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     AnimatedVisibility(
         visible = showMenu,
         enter = fadeIn(animationSpec = tween(300)),
@@ -399,6 +402,42 @@ fun ArticleActionsMenu(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    coroutineScope.launch {
+                                        OpenInBrowser.openUrlInBrowser(context, article)
+                                        onDismissRequest()
+                                        Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Filled.DesktopWindows,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "在浏览器中打开",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
