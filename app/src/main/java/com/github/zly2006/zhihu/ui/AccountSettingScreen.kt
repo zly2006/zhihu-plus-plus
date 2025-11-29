@@ -313,43 +313,135 @@ fun AccountSettingScreen(
         AnimatedVisibility(
             visible = isDeveloper,
         ) {
-            FlowRow {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            if (AccountData.verifyLogin(
-                                    context,
-                                    data.cookies,
-                                )
-                            ) {
-                                Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+            Column {
+                FlowRow {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                if (AccountData.verifyLogin(
+                                        context,
+                                        data.cookies,
+                                    )
+                                ) {
+                                    Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+                                }
                             }
-                        }
-                    },
-                ) {
-                    Text("重新fetch数据测试")
+                        },
+                    ) {
+                        Text("重新fetch数据测试")
+                    }
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                val httpClient = AccountData.httpClient(context)
+                                ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshToken(httpClient), httpClient)
+                                Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    ) {
+                        Text("刷新 Cookie 测试")
+                    }
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                throw Exception("测试异常")
+                            }
+                        },
+                    ) {
+                        Text("抛出异常测试")
+                    }
                 }
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            val httpClient = AccountData.httpClient(context)
-                            ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshToken(httpClient), httpClient)
-                            Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+
+                ProcessTextAppList()
+                // TTS引擎信息显示
+                val mainActivity = context as? MainActivity
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
                 ) {
-                    Text("刷新 Cookie 测试")
-                }
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            throw Exception("测试异常")
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                    ) {
+                        Text(
+                            "语音朗读引擎信息",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "当前引擎",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                when (mainActivity?.ttsEngine) {
+                                    MainActivity.TtsEngine.Pico -> "Pico TTS"
+                                    MainActivity.TtsEngine.Google -> "Google TTS"
+                                    MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
+                                    else -> "未初始化"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
                         }
-                    },
-                ) {
-                    Text("抛出异常测试")
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "引擎状态",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                if (mainActivity?.isSpeaking() == true) {
+                                    "正在朗读"
+                                } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
+                                    "就绪"
+                                } else {
+                                    "未就绪"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
+                                    mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.error
+                                },
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                "引擎列表",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
+                                    mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.error
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -370,96 +462,6 @@ fun AccountSettingScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(data.username)
-            }
-
-            ProcessTextAppList()
-            // TTS引擎信息显示
-            val mainActivity = context as? MainActivity
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                ) {
-                    Text(
-                        "语音朗读引擎信息",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "当前引擎",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            when (mainActivity?.ttsEngine) {
-                                MainActivity.TtsEngine.Pico -> "Pico TTS"
-                                MainActivity.TtsEngine.Google -> "Google TTS"
-                                MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
-                                else -> "未初始化"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎状态",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            if (mainActivity?.isSpeaking() == true) {
-                                "正在朗读"
-                            } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
-                                "就绪"
-                            } else {
-                                "未就绪"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            "引擎列表",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = when {
-                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
-                                else -> MaterialTheme.colorScheme.error
-                            },
-                        )
-                    }
-                }
             }
 
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
@@ -1090,7 +1092,7 @@ data class ProcessTextAppInfo(
 
 @Composable
 fun ProcessTextAppList(
-    textToProcess: String = "Hello World" // 这里是你要传给翻译软件的文本
+    textToProcess: String = "Hello World",
 ) {
     val context = LocalContext.current
     // 使用 state 保存查询到的应用列表
@@ -1105,10 +1107,9 @@ fun ProcessTextAppList(
     if (appList.isEmpty()) {
         Text("未检测到支持文本处理的应用 (如 Google 翻译)", modifier = Modifier.padding(16.dp))
     } else {
-        LazyColumn(modifier = Modifier.height(100.dp)) {
-            items(appList) { app ->
+        Column {
+            appList.forEach { app ->
                 ProcessTextAppItem(app = app) {
-                    // 点击时的逻辑：启动该应用处理文本
                     launchProcessTextApp(context, app, textToProcess)
                 }
             }
