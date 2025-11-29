@@ -103,6 +103,8 @@ android {
                 listOf(
                     "META-INF/DEPENDENCIES",
                     "META-INF/*.version",
+                    "META-INF/**/LICENSE",
+                    "META-INF/**/LICENSE.txt",
                     "META-INF/proguard/*",
                     "**.kotlin_module",
                     "kotlin-tooling-metadata.json",
