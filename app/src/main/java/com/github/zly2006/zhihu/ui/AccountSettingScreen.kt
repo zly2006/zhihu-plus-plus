@@ -1,12 +1,15 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -23,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -64,6 +70,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
@@ -85,8 +92,10 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
 @Composable
@@ -363,6 +372,7 @@ fun AccountSettingScreen(
                 Text(data.username)
             }
 
+            ProcessTextAppList()
             // TTS引擎信息显示
             val mainActivity = context as? MainActivity
             Card(
@@ -1067,4 +1077,123 @@ fun AccountSettingScreenPreview() {
         innerPadding = PaddingValues(16.dp),
         onNavigate = { },
     )
+}
+
+
+// 1. 定义一个简单的数据类来保存 App 信息
+data class ProcessTextAppInfo(
+    val label: String,
+    val icon: Drawable,
+    val packageName: String,
+    val activityName: String
+)
+
+@Composable
+fun ProcessTextAppList(
+    textToProcess: String = "Hello World" // 这里是你要传给翻译软件的文本
+) {
+    val context = LocalContext.current
+    // 使用 state 保存查询到的应用列表
+    var appList by remember { mutableStateOf<List<ProcessTextAppInfo>>(emptyList()) }
+
+    // 2. 在 LaunchedEffect 中异步查询，避免阻塞 UI 线程
+    LaunchedEffect(Unit) {
+        appList = getProcessTextApps(context)
+    }
+
+    // 3. UI 展示
+    if (appList.isEmpty()) {
+        Text("未检测到支持文本处理的应用 (如 Google 翻译)", modifier = Modifier.padding(16.dp))
+    } else {
+        LazyColumn(modifier = Modifier.height(100.dp)) {
+            items(appList) { app ->
+                ProcessTextAppItem(app = app) {
+                    // 点击时的逻辑：启动该应用处理文本
+                    launchProcessTextApp(context, app, textToProcess)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProcessTextAppItem(
+    app: ProcessTextAppInfo,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 显示 App 图标 (将 Drawable 转为 ImageBitmap)
+        Image(
+            bitmap = app.icon.toBitmap().asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp),
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = app.label,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+// --- 核心工具方法 ---
+
+/**
+ * 查询系统中所有支持 PROCESS_TEXT 的应用
+ */
+suspend fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> {
+    return withContext(Dispatchers.IO) {
+        val pm = context.packageManager
+
+        // 创建用于查询的 Intent
+        val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
+            type = "text/plain"
+        }
+
+        // 查询 Activity
+        val resolveInfos = pm.queryIntentActivities(intent, 0)
+
+        // 转换为我们的数据模型
+        resolveInfos.map { resolveInfo ->
+            val activityInfo = resolveInfo.activityInfo
+            // 获取显示的名称 (如 "Translate" 或 "Google 翻译")
+            val label = resolveInfo.loadLabel(pm).toString()
+            // 获取图标
+            val icon = resolveInfo.loadIcon(pm)
+
+            ProcessTextAppInfo(
+                label = label,
+                icon = icon,
+                packageName = activityInfo.packageName,
+                activityName = activityInfo.name,
+            )
+        }
+    }
+}
+
+/**
+ * 启动选定的 App 来处理文本
+ */
+fun launchProcessTextApp(context: Context, app: ProcessTextAppInfo, text: String) {
+    val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
+        type = "text/plain"
+        // 关键：将文本放入 Intent
+        putExtra(Intent.EXTRA_PROCESS_TEXT, text)
+        // 关键：指定明确的 ComponentName，这样就不会弹出选择框，而是直接启动该 App
+        component = ComponentName(app.packageName, app.activityName)
+        // 部分应用需要在新任务栈启动
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }

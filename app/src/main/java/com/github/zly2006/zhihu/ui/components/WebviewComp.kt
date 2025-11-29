@@ -14,6 +14,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.AttributeSet
 import android.util.Log
+import android.view.ActionMode
+import android.view.Menu
+import android.view.MenuItem
 import android.view.ViewGroup
 import android.view.Window
 import android.webkit.ConsoleMessage
@@ -68,6 +71,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import androidx.core.view.size
+import com.github.zly2006.zhihu.util.blacklist
 
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
@@ -421,6 +426,39 @@ class CustomWebView : WebView {
             null,
         )
         this.document = document
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback): ActionMode? =
+        super.startActionMode(CustomActionModeCallback(callback))
+
+    class CustomActionModeCallback(
+        private val originalCallback: ActionMode.Callback,
+    ) : ActionMode.Callback {
+        override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+            val result = originalCallback.onPrepareActionMode(mode, menu)
+
+            menu?.let {
+                val size = it.size
+                for (i in size - 1 downTo 0) {
+                    val item = it.getItem(i)
+                    val packageName = item.intent?.component?.packageName ?: return@let
+                    // 过滤黑名单
+                    if (blacklist.any { it in packageName }) {
+                        item.isVisible = false
+                    }
+                }
+            }
+            return result
+        }
+
+        override fun onCreateActionMode(p0: ActionMode?, p1: Menu?) =
+            originalCallback.onCreateActionMode(p0, p1)
+
+        override fun onActionItemClicked(p0: ActionMode?, p1: MenuItem?) =
+            originalCallback.onActionItemClicked(p0, p1)
+
+        override fun onDestroyActionMode(p0: ActionMode?) =
+            originalCallback.onDestroyActionMode(p0)
     }
 }
 
