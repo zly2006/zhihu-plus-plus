@@ -39,6 +39,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.contextmenu.data.TextContextMenuComponent
+import androidx.compose.foundation.text.contextmenu.data.TextContextMenuItem
+import androidx.compose.foundation.text.contextmenu.modifier.filterTextContextMenuComponents
+import androidx.compose.foundation.text.contextmenu.provider.LocalTextContextMenuToolbarProvider
+import androidx.compose.foundation.text.contextmenu.provider.TextContextMenuDataProvider
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
@@ -72,12 +77,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withLink
@@ -98,6 +105,7 @@ import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -854,6 +862,7 @@ private fun CommentItem(
                     val document = Jsoup.parse(commentData.content)
                     val commentImg =
                         document.selectFirst("a.comment_img")?.attr("href")
+                            ?: document.selectFirst("a.comment_gif")?.attr("href")
                             ?: document.selectFirst("a.comment_sticker")?.attr("href")
                     val context = LocalContext.current
 
@@ -861,14 +870,13 @@ private fun CommentItem(
                     val emojisUsed = remember { mutableSetOf<String>() }
                     val string = remember(commentData.content) {
                         emojisUsed.clear()
-                        AnnotatedString
-                            .Builder()
-                            .apply {
-                                val stripped = document.body().clone()
-                                stripped.select("a.comment_img").forEach { it.remove() }
-                                stripped.select("a.comment_sticker").forEach { it.remove() }
-                                dfs(stripped, onNavigate, context, emojisUsed)
-                            }.toAnnotatedString()
+                        buildAnnotatedString {
+                            val stripped = document.body().clone()
+                            stripped.select("a.comment_img").forEach { it.remove() }
+                            stripped.select("a.comment_gif").forEach { it.remove() }
+                            stripped.select("a.comment_sticker").forEach { it.remove() }
+                            dfs(stripped, onNavigate, context, emojisUsed)
+                        }
                     }
 
                     // 创建inlineContent映射
@@ -877,7 +885,9 @@ private fun CommentItem(
                     }
 
                     Column {
-                        SelectionContainer {
+                        SelectionContainer(
+                            modifier = Modifier.fuckHonorService(),
+                        ) {
                             Text(
                                 text = string,
                                 inlineContent = inlineContent,
@@ -1080,7 +1090,8 @@ fun AuthorTag(authorTag: String) {
                 width = 0.5.dp,
                 color = Color.Gray,
                 shape = RoundedCornerShape(3.dp),
-            ).padding(horizontal = 3.dp),
+            )
+            .padding(horizontal = 3.dp),
     ) {
         Text(
             text = authorTag,
