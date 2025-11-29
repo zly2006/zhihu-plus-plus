@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -17,7 +18,7 @@ import android.util.Log
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
-import android.view.ViewGroup
+import android.view.View
 import android.view.Window
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
+import androidx.core.view.size
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
@@ -45,6 +47,7 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.util.blacklist
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
@@ -71,8 +74,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import androidx.core.view.size
-import com.github.zly2006.zhihu.util.blacklist
 
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
@@ -332,8 +333,8 @@ class CustomWebView : WebView {
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
                 window?.setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    LayoutParams.MATCH_PARENT,
+                    LayoutParams.MATCH_PARENT,
                 )
             }
         }
@@ -431,9 +432,18 @@ class CustomWebView : WebView {
     override fun startActionMode(callback: ActionMode.Callback): ActionMode? =
         super.startActionMode(CustomActionModeCallback(callback))
 
+    override fun startActionMode(callback: ActionMode.Callback, type: Int): ActionMode? =
+        super.startActionMode(CustomActionModeCallback(callback), type)
+
+    override fun startActionModeForChild(originalView: View, callback: ActionMode.Callback): ActionMode? =
+        super.startActionModeForChild(originalView, CustomActionModeCallback(callback))
+
+    override fun startActionModeForChild(originalView: View, callback: ActionMode.Callback, type: Int): ActionMode? =
+        super.startActionModeForChild(originalView, CustomActionModeCallback(callback), type)
+
     class CustomActionModeCallback(
         private val originalCallback: ActionMode.Callback,
-    ) : ActionMode.Callback {
+    ) : ActionMode.Callback2() {
         override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
             val result = originalCallback.onPrepareActionMode(mode, menu)
 
@@ -459,6 +469,14 @@ class CustomWebView : WebView {
 
         override fun onDestroyActionMode(p0: ActionMode?) =
             originalCallback.onDestroyActionMode(p0)
+
+        override fun onGetContentRect(mode: ActionMode?, view: View?, outRect: Rect?) {
+            if (originalCallback is ActionMode.Callback2) {
+                originalCallback.onGetContentRect(mode, view, outRect)
+            } else {
+                super.onGetContentRect(mode, view, outRect)
+            }
+        }
     }
 }
 

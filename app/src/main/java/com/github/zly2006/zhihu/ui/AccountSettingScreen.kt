@@ -26,8 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -1081,13 +1079,12 @@ fun AccountSettingScreenPreview() {
     )
 }
 
-
 // 1. 定义一个简单的数据类来保存 App 信息
 data class ProcessTextAppInfo(
     val label: String,
     val icon: Drawable,
     val packageName: String,
-    val activityName: String
+    val activityName: String,
 )
 
 @Composable
@@ -1120,7 +1117,7 @@ fun ProcessTextAppList(
 @Composable
 fun ProcessTextAppItem(
     app: ProcessTextAppInfo,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -1148,33 +1145,31 @@ fun ProcessTextAppItem(
 /**
  * 查询系统中所有支持 PROCESS_TEXT 的应用
  */
-suspend fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> {
-    return withContext(Dispatchers.IO) {
-        val pm = context.packageManager
+suspend fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> = withContext(Dispatchers.IO) {
+    val pm = context.packageManager
 
-        // 创建用于查询的 Intent
-        val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
-            type = "text/plain"
-        }
+    // 创建用于查询的 Intent
+    val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
+        type = "text/plain"
+    }
 
-        // 查询 Activity
-        val resolveInfos = pm.queryIntentActivities(intent, 0)
+    // 查询 Activity
+    val resolveInfos = pm.queryIntentActivities(intent, 0)
 
-        // 转换为我们的数据模型
-        resolveInfos.map { resolveInfo ->
-            val activityInfo = resolveInfo.activityInfo
-            // 获取显示的名称 (如 "Translate" 或 "Google 翻译")
-            val label = resolveInfo.loadLabel(pm).toString()
-            // 获取图标
-            val icon = resolveInfo.loadIcon(pm)
+    // 转换为我们的数据模型
+    resolveInfos.map { resolveInfo ->
+        val activityInfo = resolveInfo.activityInfo
+        // 获取显示的名称 (如 "Translate" 或 "Google 翻译")
+        val label = resolveInfo.loadLabel(pm).toString()
+        // 获取图标
+        val icon = resolveInfo.loadIcon(pm)
 
-            ProcessTextAppInfo(
-                label = label,
-                icon = icon,
-                packageName = activityInfo.packageName,
-                activityName = activityInfo.name,
-            )
-        }
+        ProcessTextAppInfo(
+            label = label,
+            icon = icon,
+            packageName = activityInfo.packageName,
+            activityName = activityInfo.name,
+        )
     }
 }
 
