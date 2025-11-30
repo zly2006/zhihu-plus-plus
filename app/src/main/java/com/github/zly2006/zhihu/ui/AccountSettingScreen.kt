@@ -495,6 +495,17 @@ fun AccountSettingScreen(
                 },
             )
 
+            val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
+            SwitchSettingItem(
+                title = "使用 WebView 显示文章",
+                description = "使用 WebView 显示文章内容，关闭后将使用原生 Compose 渲染，可以更好地支持文本选择和复制，但可能缺少部分格式支持",
+                checked = articleUseWebview.value,
+                onCheckedChange = {
+                    articleUseWebview.value = it
+                    preferences.edit { putBoolean("articleUseWebview", it) }
+                },
+            )
+
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
                 title = "WebView 硬件加速",
