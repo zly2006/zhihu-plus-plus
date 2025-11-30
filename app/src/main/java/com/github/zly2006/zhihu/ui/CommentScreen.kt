@@ -5,7 +5,6 @@ package com.github.zly2006.zhihu.ui
 import android.content.ContentValues
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
-import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -38,7 +37,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
@@ -73,15 +71,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -95,10 +88,10 @@ import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.util.EmojiManager
+import com.github.zly2006.zhihu.util.createEmojiInlineContent
+import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
@@ -112,9 +105,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -649,95 +639,7 @@ fun CommentTopText(content: NavDestination? = null) {
     )
 }
 
-fun AnnotatedString.Builder.dfs(
-    node: Node,
-    onNavigate: (NavDestination) -> Unit,
-    context: Context,
-    emojisUsed: MutableSet<String>? = null,
-) {
-    when (node) {
-        is Element -> {
-            when (node.tagName()) {
-                "br" -> {
-                    append("\n")
-                }
-
-                "a" -> {
-                    val href = node.attr("href")
-                    val linkText = node.text()
-                    withLink(
-                        LinkAnnotation.Clickable(
-                            href,
-                            TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
-                        ) {
-                            resolveContent(href.toUri())?.let(onNavigate)
-                                ?: luoTianYiUrlLauncher(context, href.toUri())
-                        },
-                    ) {
-                        append(linkText)
-                    }
-                }
-
-                else -> {
-                    node.childNodes().forEach { dfs(it, onNavigate, context, emojisUsed) }
-                }
-            }
-        }
-
-        is TextNode -> {
-            var buffer = StringBuilder()
-            var emojiBuffer = StringBuilder()
-            var isEmoji = false
-            for (ch in node.text()) {
-                if (ch == '[') {
-                    if (buffer.isNotEmpty()) {
-                        append(buffer.toString())
-                        buffer = StringBuilder()
-                    }
-                    isEmoji = true
-                    emojiBuffer.append(ch)
-                } else if (ch == ']') {
-                    if (isEmoji) {
-                        emojiBuffer.append(ch)
-                        val placeholder = emojiBuffer.toString()
-                        val emojiPath = EmojiManager.getEmojiPath(placeholder)
-                        if (emojiPath != null) {
-                            // 使用emoji文件名作为key
-                            val emojiFileName = emojiPath.substringAfterLast('/')
-                            val emojiKey = "emoji_$emojiFileName"
-                            appendInlineContent(emojiKey, placeholder)
-                            emojisUsed?.add(emojiKey)
-                        } else {
-                            append(placeholder)
-                        }
-                        emojiBuffer = StringBuilder()
-                        isEmoji = false
-                    } else {
-                        buffer.append(ch)
-                    }
-                } else {
-                    if (isEmoji) {
-                        emojiBuffer.append(ch)
-                    } else {
-                        buffer.append(ch)
-                    }
-                }
-            }
-            // 处理剩余的buffer内容
-            if (buffer.isNotEmpty()) {
-                append(buffer.toString())
-            }
-            // 如果还有未完成的emoji buffer（没有找到结束的']'），也添加进去
-            if (isEmoji && emojiBuffer.isNotEmpty()) {
-                append(emojiBuffer.toString())
-            }
-        }
-
-        else -> {
-            append(node.outerHtml())
-        }
-    }
-}
+// DFS function moved to ContentRenderingUtils.kt as dfsSimple()
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -864,13 +766,13 @@ private fun CommentItem(
                             stripped.select("a.comment_img").forEach { it.remove() }
                             stripped.select("a.comment_gif").forEach { it.remove() }
                             stripped.select("a.comment_sticker").forEach { it.remove() }
-                            dfs(stripped, onNavigate, context, emojisUsed)
+                            dfsSimple(stripped, onNavigate, context, emojisUsed)
                         }
                     }
 
                     // 创建inlineContent映射
                     val inlineContent = remember(emojisUsed.size) {
-                        EmojiManager.createInlineContentMap(emojisUsed)
+                        createEmojiInlineContent(emojisUsed)
                     }
 
                     Column {
