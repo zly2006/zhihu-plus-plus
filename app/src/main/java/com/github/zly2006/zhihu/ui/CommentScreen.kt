@@ -671,12 +671,7 @@ fun AnnotatedString.Builder.dfs(
                             TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
                         ) {
                             resolveContent(href.toUri())?.let(onNavigate)
-                                ?: context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        href.toUri(),
-                                    ),
-                                )
+                                ?: luoTianYiUrlLauncher(context, href.toUri())
                         },
                     ) {
                         append(linkText)

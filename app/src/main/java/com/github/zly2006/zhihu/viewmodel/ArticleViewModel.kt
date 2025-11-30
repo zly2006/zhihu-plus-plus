@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
@@ -861,5 +863,170 @@ class ArticleViewModel(
         }
 
         return lines
+    }
+
+    // 转换为Markdown格式
+    fun convertToMarkdown(): String {
+        val sb = StringBuilder()
+
+        // 标题
+        sb.append("# $title\n\n")
+
+        // 作者信息
+        sb.append("**作者**: $authorName\n\n")
+        if (authorBio.isNotEmpty()) {
+            sb.append("**简介**: $authorBio\n\n")
+        }
+
+        // 分隔线
+        sb.append("---\n\n")
+
+        // 内容 - 使用 Jsoup 解析 HTML 并转换为 Markdown
+        val document = Jsoup.parse(content)
+        sb.append(htmlToMarkdown(document.body()))
+
+        return sb.toString()
+    }
+
+    // HTML 转 Markdown 的递归函数
+    private fun htmlToMarkdown(element: org.jsoup.nodes.Element): String {
+        val sb = StringBuilder()
+
+        for (node in element.childNodes()) {
+            when (node) {
+                is org.jsoup.nodes.Element -> {
+                    when (node.tagName().lowercase()) {
+                        "h1" -> sb.append("# ${node.text()}\n\n")
+                        "h2" -> sb.append("## ${node.text()}\n\n")
+                        "h3" -> sb.append("### ${node.text()}\n\n")
+                        "h4" -> sb.append("#### ${node.text()}\n\n")
+                        "h5" -> sb.append("##### ${node.text()}\n\n")
+                        "h6" -> sb.append("###### ${node.text()}\n\n")
+                        "p" -> sb.append("${htmlToMarkdown(node)}\n\n")
+                        "br" -> sb.append("\n")
+                        "strong", "b" -> sb.append("**${node.text()}**")
+                        "em", "i" -> sb.append("*${node.text()}*")
+                        "u" -> sb.append("_${node.text()}_")
+                        "code" -> sb.append("`${node.text()}`")
+                        "pre" -> sb.append("```\n${node.text()}\n```\n\n")
+                        "blockquote" -> {
+                            val lines = htmlToMarkdown(node).trim().split("\n")
+                            for (line in lines) {
+                                sb.append("> $line\n")
+                            }
+                            sb.append("\n")
+                        }
+                        "ul", "ol" -> {
+                            val items = node.select("li")
+                            items.forEachIndexed { index, item ->
+                                val prefix = if (node.tagName() == "ul") "- " else "${index + 1}. "
+                                sb.append("$prefix${htmlToMarkdown(item).trim()}\n")
+                            }
+                            sb.append("\n")
+                        }
+                        "li" -> sb.append(htmlToMarkdown(node))
+                        "a" -> {
+                            val href = node.attr("href")
+                            val text = node.text()
+                            if (href.isNotEmpty()) {
+                                sb.append("[$text]($href)")
+                            } else {
+                                sb.append(text)
+                            }
+                        }
+                        "img" -> {
+                            val src = node.attr("src").ifEmpty { node.attr("data-actualsrc") }
+                            val alt = node.attr("alt").ifEmpty { "image" }
+                            if (src.isNotEmpty()) {
+                                sb.append("![$alt]($src)\n\n")
+                            }
+                        }
+                        "figure" -> {
+                            // 知乎的图片通常在 figure 标签中
+                            val img = node.selectFirst("img")
+                            if (img != null) {
+                                val src = img.attr("src").ifEmpty { img.attr("data-actualsrc") }
+                                val alt = img.attr("alt").ifEmpty { "image" }
+                                if (src.isNotEmpty()) {
+                                    sb.append("![$alt]($src)\n\n")
+                                }
+                            } else {
+                                sb.append(htmlToMarkdown(node))
+                            }
+                        }
+                        "hr" -> sb.append("---\n\n")
+                        "table" -> {
+                            // 简单的表格处理
+                            val rows = node.select("tr")
+                            if (rows.isNotEmpty()) {
+                                // 表头
+                                val headerCells = rows[0].select("th, td")
+                                if (headerCells.isNotEmpty()) {
+                                    sb.append("| ")
+                                    headerCells.forEach { cell ->
+                                        sb.append("${cell.text()} | ")
+                                    }
+                                    sb.append("\n")
+                                    // 分隔线
+                                    sb.append("| ")
+                                    headerCells.forEach { _ ->
+                                        sb.append("--- | ")
+                                    }
+                                    sb.append("\n")
+                                }
+                                // 表格内容
+                                for (i in 1 until rows.size) {
+                                    val cells = rows[i].select("td")
+                                    if (cells.isNotEmpty()) {
+                                        sb.append("| ")
+                                        cells.forEach { cell ->
+                                            sb.append("${cell.text()} | ")
+                                        }
+                                        sb.append("\n")
+                                    }
+                                }
+                                sb.append("\n")
+                            }
+                        }
+                        "div", "span" -> {
+                            // 检查是否是知乎的特殊标签
+                            val className = node.attr("class")
+                            if (className.contains("highlight")) {
+                                // 代码块
+                                val code = node.selectFirst("code")
+                                if (code != null) {
+                                    sb.append("```\n${code.text()}\n```\n\n")
+                                } else {
+                                    sb.append(htmlToMarkdown(node))
+                                }
+                            } else {
+                                sb.append(htmlToMarkdown(node))
+                            }
+                        }
+                        else -> sb.append(htmlToMarkdown(node))
+                    }
+                }
+                is org.jsoup.nodes.TextNode -> {
+                    val text = node.text()
+                    if (text.isNotBlank()) {
+                        sb.append(text)
+                    }
+                }
+            }
+        }
+
+        return sb.toString()
+    }
+
+    // 导出到剪贴板
+    fun exportToClipboard(context: Context) {
+        val markdown = convertToMarkdown()
+
+        // 将Markdown文本复制到剪贴板
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Zhihu Article", markdown)
+        clipboard.setPrimaryClip(clip)
+
+        Toast.makeText(context, "文章已复制到剪贴板", Toast.LENGTH_SHORT).show()
     }
 }
