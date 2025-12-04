@@ -104,7 +104,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                         }
                         val task = coroutineScope {
                             launch {
-                                if (!checkForAd(routeDest, context as MainActivity)) {
+                                if (!checkForAd(routeDest, context as MainActivity) && displayItems.none { it.navDestination == routeDest }) {
                                     displayItems.add(
                                         FeedDisplayItem(
                                             navDestination = routeDest,

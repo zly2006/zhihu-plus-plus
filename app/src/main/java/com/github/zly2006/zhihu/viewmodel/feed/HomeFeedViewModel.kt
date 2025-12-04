@@ -63,7 +63,7 @@ class HomeFeedViewModel :
                 .map { feed ->
                     coroutineScope {
                         launch {
-                            if (feed.target?.navDestination != null && !checkForAd(feed.target!!.navDestination!!, context as MainActivity)) {
+                            if (feed.target?.navDestination != null && !checkForAd(feed.target!!.navDestination!!, context as MainActivity) && displayItems.none { it.navDestination == feed.target?.navDestination }) {
                                 displayItems.add(createDisplayItem(feed))
                             }
                         }
