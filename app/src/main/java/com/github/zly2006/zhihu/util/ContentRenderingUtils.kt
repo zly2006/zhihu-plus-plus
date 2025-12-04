@@ -1,6 +1,9 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import android.os.Build
+import android.provider.MediaStore
+import android.provider.MediaStore.MediaColumns
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.InlineTextContent
@@ -14,6 +17,8 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
@@ -27,6 +32,63 @@ import io.ktor.client.statement.readRawBytes
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
+
+/**
+ * 内容块类型，用于Column渲染
+ */
+sealed class ContentBlock {
+    /** 文本块，包含富文本和emoji */
+    data class TextBlock(
+        val text: AnnotatedString,
+        // 行内公式或emoji等组件使用的key集合
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 图片块 */
+    data class ImageBlock(
+        val url: String,
+        val isGif: Boolean = false,
+    ) : ContentBlock()
+
+    /** 公式块 */
+    data class FormulaBlock(
+        val imageUrl: String,
+        val formula: String,
+    ) : ContentBlock()
+
+    /** 标题块 */
+    data class HeaderBlock(
+        val text: AnnotatedString,
+        val level: Int,
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 列表块 */
+    data class ListBlock(
+        val items: List<ListItem>,
+        val isOrdered: Boolean,
+    ) : ContentBlock() {
+        data class ListItem(
+            val text: AnnotatedString,
+            val componentUsed: Set<String> = emptySet(),
+        )
+    }
+
+    /** 引用块 */
+    data class QuoteBlock(
+        val text: AnnotatedString,
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 代码块 */
+    data class CodeBlock(
+        val code: String,
+        val language: String = "",
+    ) : ContentBlock()
+
+    /** 分割线 */
+    data object DividerBlock : ContentBlock()
+}
 
 /**
  * 处理文本节点中的emoji，提取emoji占位符并添加到AnnotatedString
@@ -137,168 +199,6 @@ fun AnnotatedString.Builder.dfsSimple(
 }
 
 /**
- * 通用的HTML节点DFS处理函数（完整版）
- * 用于文章的富文本处理，支持段落、标题、列表等
- */
-fun AnnotatedString.Builder.dfsRichText(
-    node: Node,
-    onNavigate: (NavDestination) -> Unit,
-    context: Context,
-    componentUsed: MutableSet<String>? = null,
-) {
-    when (node) {
-        is Element -> {
-            when (node.tagName()) {
-                "br" -> {
-                    append("\n")
-                }
-
-                "p" -> {
-                    append("\n") // 段前空行
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                    append("\n") // 段后空行
-                }
-
-                "noscript" -> {
-                    // 处理noscript标签，提取真实图片
-                    // 检查下一个兄弟节点
-                    node.nextSibling()?.let { actualImg ->
-                        if (actualImg.nodeName() == "img" && actualImg is Element) {
-                            // 优先使用 data-actualsrc
-                            if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                                dfsRichText(actualImg, onNavigate, context, componentUsed)
-                                return@let
-                            }
-                        }
-                    }
-
-                    // 检查noscript内部的img标签
-                    if (node.childrenSize() > 0) {
-                        val imgNode = node.child(0)
-                        if (imgNode.tagName() == "img") {
-                            // 处理GIF：使用data-thumbnail
-                            if (imgNode.attr("class").contains("content_image") &&
-                                imgNode.attr("data-thumbnail").isNotEmpty()
-                            ) {
-                                imgNode.attr("src", imgNode.attr("data-thumbnail"))
-                            }
-                            // 如果src为空，尝试使用data-default-watermark-src
-                            if (imgNode.attr("src").isEmpty() &&
-                                imgNode.attr("data-default-watermark-src").isNotEmpty()
-                            ) {
-                                imgNode.attr("src", imgNode.attr("data-default-watermark-src"))
-                            }
-                            // 递归处理提取出的img节点
-                            dfsRichText(imgNode, onNavigate, context, componentUsed)
-                        }
-                    }
-                }
-
-                "img" -> {
-                    // 提取图片URL
-                    val src = node.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
-                        "https://pic1.zhimg.com/$it"
-                    } ?: node.attr("data-original").takeIf { it.isNotBlank() }
-                        ?: node.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
-                        ?: node.attr("data-actualsrc").takeIf { it.isNotBlank() }
-                        ?: node.attr("data-thumbnail").takeIf { it.isNotBlank() }
-                        ?: node.attr("src").takeIf { it.isNotBlank() }
-
-                    if (src != null) {
-                        val isFormula = node.hasAttr("data-formula")
-                        val componentKey = if (isFormula) {
-                            "formula_${src.hashCode()}"
-                        } else {
-                            "image_${src.hashCode()}"
-                        }
-                        append("\n") // 图片前换行
-                        appendInlineContent(componentKey, src)
-                        componentUsed?.add(componentKey)
-                        append("\n") // 图片后换行
-                    }
-                }
-
-                "a" -> {
-                    val href = node.attr("href")
-                    val linkText = node.text()
-                    if (linkText.isNotEmpty()) {
-                        withLink(
-                            LinkAnnotation.Clickable(
-                                href,
-                                TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
-                            ) {
-                                resolveContent(href.toUri())?.let(onNavigate)
-                                    ?: luoTianYiUrlLauncher(context, href.toUri())
-                            },
-                        ) {
-                            append(linkText)
-                        }
-                    }
-                }
-
-                "b", "strong" -> {
-                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                    pop()
-                }
-
-                "i", "em" -> {
-                    pushStyle(SpanStyle(fontWeight = FontWeight.Light))
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                    pop()
-                }
-
-                "h1", "h2", "h3", "h4", "h5", "h6" -> {
-                    val size = when (node.tagName()) {
-                        "h1" -> 2.0f
-                        "h2" -> 1.5f
-                        "h3" -> 1.3f
-                        "h4" -> 1.2f
-                        "h5" -> 1.1f
-                        else -> 1.0f
-                    }
-                    append("\n") // 标题前空行
-                    pushStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = (16 * size).sp))
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                    pop()
-                    append("\n") // 标题后空行
-                }
-
-                "ul", "ol" -> {
-                    append("\n") // 列表前空行
-                    node.children().forEach { li ->
-                        append("• ")
-                        li.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                        append("\n")
-                    }
-                    append("\n") // 列表后空行
-                }
-
-                "blockquote" -> {
-                    append("\n") // 引用前空行
-                    pushStyle(SpanStyle(color = Color.Gray))
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                    pop()
-                    append("\n") // 引用后空行
-                }
-
-                else -> {
-                    node.childNodes().forEach { dfsRichText(it, onNavigate, context, componentUsed) }
-                }
-            }
-        }
-
-        is TextNode -> {
-            processTextWithEmoji(node.text(), componentUsed)
-        }
-
-        else -> {
-            append(node.outerHtml())
-        }
-    }
-}
-
-/**
  * 创建emoji的inline content映射
  */
 fun createEmojiInlineContent(emojiKeys: Set<String>): Map<String, InlineTextContent> {
@@ -341,20 +241,20 @@ suspend fun saveImageToGallery(
         val fileName = imageUrl.toUri().lastPathSegment ?: "downloaded_image.jpg"
 
         val contentValues = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES)
-                put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+            put(MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaColumns.MIME_TYPE, "image/jpeg")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES)
+                put(MediaColumns.IS_PENDING, 1)
             }
         }
 
         val resolver = context.contentResolver
-        val collection = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            android.provider.MediaStore.Images.Media
-                .getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media
+                .getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         } else {
-            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
 
         val imageUri = resolver.insert(collection, contentValues)
@@ -363,9 +263,9 @@ suspend fun saveImageToGallery(
                 os?.write(bytes)
             }
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 contentValues.clear()
-                contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                contentValues.put(MediaColumns.IS_PENDING, 0)
                 resolver.update(imageUri, contentValues, null, null)
             }
 
@@ -383,6 +283,227 @@ suspend fun saveImageToGallery(
                 "保存失败: ${e.message}",
                 Toast.LENGTH_SHORT,
             ).show()
+    }
+}
+
+/**
+ * 解析HTML为ContentBlock列表的包装函数
+ */
+fun parseHtmlToContentBlocks(
+    nodes: List<Node>,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+): List<ContentBlock> {
+    val blocks = mutableListOf<ContentBlock>()
+
+    nodes.forEach { node ->
+        parseArticleContentBlocks(node, onNavigate, context, blocks)
+    }
+
+    return blocks
+}
+
+/**
+ * 解析HTML节点为ContentBlock列表，用于Column渲染
+ * 每个<p>标签解析成一个独立的TextBlock
+ */
+private fun parseArticleContentBlocks(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+    blocks: MutableList<ContentBlock>,
+) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "noscript" -> { }
+
+                "img" -> {
+                    // 提取图片URL
+                    val src = node.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
+                        "https://pic1.zhimg.com/$it"
+                    } ?: node.attr("data-original").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-actualsrc").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-thumbnail").takeIf { it.isNotBlank() }
+                        ?: node.attr("src").takeIf { it.isNotBlank() }
+
+                    if (src != null) {
+                        if (node.hasAttr("data-formula")) {
+                            // 公式
+                            blocks.add(ContentBlock.FormulaBlock(src, node.attr("data-formula")))
+                        } else {
+                            // 普通图片或GIF
+                            val isGif = node.attr("class").contains("content_image")
+                            blocks.add(ContentBlock.ImageBlock(src, isGif))
+                        }
+                    }
+                }
+
+                "p" -> {
+                    // 每个<p>标签作为一个独立的TextBlock
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.TextBlock(text, componentUsed))
+                    }
+                }
+
+                "h1", "h2", "h3", "h4", "h5", "h6" -> {
+                    val level = node.tagName().substring(1).toIntOrNull() ?: 1
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.HeaderBlock(text, level, componentUsed))
+                    }
+                }
+
+                "ul", "ol" -> {
+                    val isOrdered = node.tagName() == "ol"
+                    val listItems = mutableListOf<ContentBlock.ListBlock.ListItem>()
+                    
+                    node.children().forEach { li ->
+                        if (li.tagName() == "li") {
+                            val componentUsed = mutableSetOf<String>()
+                            val text = buildAnnotatedString {
+                                li.childNodes().forEach { child ->
+                                    buildParagraphText(child, onNavigate, context, this, componentUsed)
+                                }
+                            }
+                            if (text.isNotEmpty()) {
+                                listItems.add(ContentBlock.ListBlock.ListItem(text, componentUsed))
+                            }
+                        }
+                    }
+                    
+                    if (listItems.isNotEmpty()) {
+                        blocks.add(ContentBlock.ListBlock(listItems, isOrdered))
+                    }
+                }
+
+                "blockquote" -> {
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.QuoteBlock(text, componentUsed))
+                    }
+                }
+                
+                "pre" -> {
+                    val codeNode = node.getElementsByTag("code").firstOrNull() ?: node
+                    val language = codeNode.attr("class")
+                        .split(" ")
+                        .find { it.startsWith("language-") }
+                        ?.removePrefix("language-") ?: ""
+                    val code = codeNode.wholeText() // Use wholeText to preserve newlines
+                    if (code.isNotBlank()) {
+                        blocks.add(ContentBlock.CodeBlock(code, language))
+                    }
+                }
+                
+                "hr" -> {
+                    blocks.add(ContentBlock.DividerBlock)
+                }
+
+                else -> {
+                    // 递归处理其他元素
+                    node.childNodes().forEach {
+                        parseArticleContentBlocks(it, onNavigate, context, blocks)
+                    }
+                }
+            }
+        }
+
+        else -> {
+            // 其他节点类型递归处理
+        }
+    }
+}
+
+/**
+ * 构建段落内的文本内容（用于单个TextBlock内部）
+ */
+private fun buildParagraphText(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+    builder: AnnotatedString.Builder,
+    componentUsed: MutableSet<String>? = null,
+) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "br" -> {
+                    builder.append("\n")
+                }
+
+                "a" -> {
+                    val href = node.attr("href")
+                    val linkText = node.text()
+                    if (linkText.isNotEmpty()) {
+                        builder.withLink(
+                            LinkAnnotation.Clickable(
+                                href,
+                                TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
+                            ) {
+                                resolveContent(href.toUri())?.let(onNavigate)
+                                    ?: luoTianYiUrlLauncher(context, href.toUri())
+                            },
+                        ) {
+                            append(linkText)
+                        }
+                    }
+                }
+
+                "b", "strong" -> {
+                    builder.pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                    builder.pop()
+                }
+
+                "i", "em" -> {
+                    builder.pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                    builder.pop()
+                }
+
+                "img" -> {
+                    // 段落内的图片忽略或显示占位符
+                    builder.append("[图片]")
+                }
+
+                else -> {
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                }
+            }
+        }
+
+        is TextNode -> {
+            // 处理emoji
+            builder.processTextWithEmoji(node.text(), componentUsed)
+        }
+
+        else -> {
+            builder.append(node.outerHtml())
+        }
     }
 }
 

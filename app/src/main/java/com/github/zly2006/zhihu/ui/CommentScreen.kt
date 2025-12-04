@@ -94,6 +94,7 @@ import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
@@ -144,64 +145,6 @@ private fun ImageViewerDialog(
                 contentScale = ContentScale.Fit,
             )
         }
-    }
-}
-
-/**
- * 保存图片到相册的工具函数
- */
-private suspend fun saveImageToGallery(
-    context: Context,
-    httpClient: HttpClient,
-    imageUrl: String,
-) {
-    try {
-        val response = httpClient.get(imageUrl)
-        val bytes = response.readRawBytes()
-        val fileName = imageUrl.toUri().lastPathSegment ?: "downloaded_image.jpg"
-
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                put(MediaStore.MediaColumns.IS_PENDING, 1)
-            }
-        }
-
-        val resolver = context.contentResolver
-        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        } else {
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-        }
-
-        val imageUri = resolver.insert(collection, contentValues)
-        if (imageUri != null) {
-            resolver.openOutputStream(imageUri).use { os ->
-                os?.write(bytes)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                resolver.update(imageUri, contentValues, null, null)
-            }
-
-            Toast
-                .makeText(
-                    context,
-                    "图片已保存到相册",
-                    Toast.LENGTH_SHORT,
-                ).show()
-        }
-    } catch (e: Exception) {
-        Toast
-            .makeText(
-                context,
-                "保存失败: ${e.message}",
-                Toast.LENGTH_SHORT,
-            ).show()
     }
 }
 
