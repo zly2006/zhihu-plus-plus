@@ -23,6 +23,8 @@ import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -165,10 +167,11 @@ abstract class PaginationViewModel<T : Any>(
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     open fun loadMore(context: Context) {
         if (isLoading || isEnd) return // 使用新的isEnd getter
         isLoading = true
-        viewModelScope.launch {
+        GlobalScope.launch {
             try {
                 fetchFeeds(context)
             } catch (e: Exception) {

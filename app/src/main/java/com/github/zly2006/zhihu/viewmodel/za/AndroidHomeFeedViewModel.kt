@@ -89,7 +89,12 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                         val footerText =
                             footerLine.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
                         val lineAuthor =
-                            children.first { it["style"]?.jsonPrimitive?.content == "LineAuthor_default" }["elements"]!!.jsonArray.map { it.jsonObject }
+                            children
+                                .first {
+                                    it["style"]?.jsonPrimitive?.content == "LineAuthor_default"
+                                }["elements"]!!
+                                .jsonArray
+                                .map { it.jsonObject }
                         val avatar =
                             lineAuthor
                                 .first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!

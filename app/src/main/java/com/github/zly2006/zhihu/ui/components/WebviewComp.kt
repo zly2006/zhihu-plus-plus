@@ -317,7 +317,9 @@ class CustomWebView : WebView {
             header("x-xsrftoken", AccountData.data.cookies["_xsrf"])
             header("x-app-za", "OS=webplayer")
             header("x-referer", "")
-            setBody("""{"content_id":"$contentId","content_type_str":"answer","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""")
+            setBody(
+                """{"content_id":"$contentId","content_type_str":"answer","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
+            )
             signFetchRequest(context)
         }
 

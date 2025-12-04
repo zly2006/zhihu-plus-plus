@@ -561,7 +561,6 @@ object ZhihuCredentialRefresher {
     suspend fun fetchRefreshToken(httpClient: HttpClient): String {
         val jojo = httpClient
             .post("https://www.zhihu.com/api/account/prod/token/refresh") {
-                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
                 header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
                 header("Origin", "https://www.zhihu.com")
                 header("Referer", "https://www.zhihu.com/signin")
@@ -592,7 +591,6 @@ object ZhihuCredentialRefresher {
 
         val jojo = httpClient
             .post("https://www.zhihu.com/api/v3/oauth/sign_in") {
-                header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
                 header("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
                 header("Origin", "https://www.zhihu.com")
                 header("Referer", "https://www.zhihu.com/signin")
