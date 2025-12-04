@@ -52,6 +52,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
@@ -220,9 +221,8 @@ fun HomeScreen(
                     DraggableRefreshButton(
                         onClick = {
                             val data = Json.encodeToString(viewModel.debugData)
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val clip = ClipData.newPlainText("data", data)
-                            clipboard.setPrimaryClip(clip)
+                            context.clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
                         },
                         preferenceName = "copyAll",

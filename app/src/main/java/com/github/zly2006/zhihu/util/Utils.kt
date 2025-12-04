@@ -101,3 +101,6 @@ fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
         ).build()
     intent.launchUrl(context, uri)
 }
+
+val Context.clipboardManager
+    get() = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager

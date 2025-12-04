@@ -3,7 +3,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
@@ -106,6 +105,7 @@ import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import kotlinx.coroutines.delay
@@ -374,14 +374,16 @@ fun ArticleActionsMenu(
                             text = "复制链接",
                             onClick = {
                                 onDismissRequest()
-                                val clipboard =
-                                    (context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                                 val text = when (article.type) {
-                                    ArticleType.Answer -> "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                    ArticleType.Article -> "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                    ArticleType.Answer -> {
+                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                                    }
+                                    ArticleType.Article -> {
+                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                    }
                                 }
                                 (context as? MainActivity)?.sharedData?.clipboardDestination = article
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("Link", text))
+                                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
                         )

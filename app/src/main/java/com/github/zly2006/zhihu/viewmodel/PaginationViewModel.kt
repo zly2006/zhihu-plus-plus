@@ -10,19 +10,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.ui.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -136,6 +137,7 @@ abstract class PaginationViewModel<T : Any>(
                 lastPaging = AccountData.decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
+            if (e is java.util.concurrent.CancellationException) throw e
             if (e is HttpStatusException && BuildConfig.DEBUG) {
                 Log.e(this::class.simpleName, "Response: ${e.bodyText}", e)
                 context.mainExecutor.execute {
@@ -145,9 +147,7 @@ abstract class PaginationViewModel<T : Any>(
                         .setMessage(e.bodyText)
                         .setNeutralButton("复制curl") { _, _ ->
                             val curl = e.dumpedCurlRequest
-                            context
-                                .getSystemService(Context.CLIPBOARD_SERVICE)
-                                .let { it as android.content.ClipboardManager }
+                            context.clipboardManager
                                 .setPrimaryClip(
                                     ClipData.newPlainText(
                                         "curl",

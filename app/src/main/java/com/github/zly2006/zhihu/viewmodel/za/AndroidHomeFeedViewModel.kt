@@ -26,6 +26,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -61,6 +62,14 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
         }
     }
 
+    /**
+     * Find the first JsonObject in the list where the value associated with [key] matches [value].
+     */
+    @Suppress("NOTHING_TO_INLINE")
+    private inline fun List<JsonObject>.joStrMatch(key: String, value: String): JsonObject =
+        this.firstOrNull { it[key]?.jsonPrimitive?.content == value }
+            ?: throw IllegalStateException("No matching JsonObject found for $key = $value: $this")
+
     public override suspend fun fetchFeeds(context: Context) {
         try {
             val response = httpClient(context).get(initialUrl)
@@ -80,28 +89,22 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                                 .substringAfter("route_url=")
                         val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@mapNotNull null
                         val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@mapNotNull null
-                        val title =
-                            children.first { it["id"]?.jsonPrimitive?.content?.endsWith("Text") == true }["text"]!!.jsonPrimitive.content
-                        val summary =
-                            children.first { it["id"]?.jsonPrimitive?.content == "text_pin_summary" }["text"]!!.jsonPrimitive.content
-                        val footerLine =
-                            children.first { it["id"]?.jsonPrimitive?.content == "feed_footer" }["elements"]!!.jsonArray.map { it.jsonObject }
-                        val footerText =
-                            footerLine.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
+                        val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
+                        val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
+                        val footerLine = children.joStrMatch("style", "LineFooterReaction_feed_v3")["elements"]!!.jsonArray.map { it.jsonObject }
+                        val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
+                        val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
+                        val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
+                        val footerText = "$voteUp 赞同 · $comment 评论 · $collect 收藏"
                         val lineAuthor =
                             children
                                 .first {
-                                    it["style"]?.jsonPrimitive?.content == "LineAuthor_default"
+                                    it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine")
                                 }["elements"]!!
                                 .jsonArray
                                 .map { it.jsonObject }
-                        val avatar =
-                            lineAuthor
-                                .first { it["style"]?.jsonPrimitive?.content == "Avatar_default" }["image"]!!
-                                .jsonObject["url"]!!
-                                .jsonPrimitive.content
-                        val authorName =
-                            lineAuthor.first { it["type"]?.jsonPrimitive?.content == "Text" }["text"]!!.jsonPrimitive.content
+                        val avatar = lineAuthor.joStrMatch("style", "Avatar_default")["image"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                        val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
                         if (routeDest is Article) {
                             routeDest.authorName = authorName
                             routeDest.title = title
@@ -129,6 +132,9 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
             }
         } catch (e: Exception) {
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)
+            context.mainExecutor.execute {
+
+            }
             throw e
         } finally {
             isLoading = false

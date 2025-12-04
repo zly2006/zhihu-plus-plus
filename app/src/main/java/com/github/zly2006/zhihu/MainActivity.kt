@@ -3,7 +3,7 @@
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
-import android.content.ClipboardManager
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
@@ -177,9 +178,8 @@ class MainActivity : ComponentActivity() {
                                 setPositiveButton("OK") { _, _ ->
                                 }
                                 setNeutralButton("Copy") { _, _ ->
-                                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = android.content.ClipData.newPlainText("error", "$stack")
-                                    clipboard.setPrimaryClip(clip)
+                                    val clip = ClipData.newPlainText("error", "$stack")
+                                    clipboardManager.setPrimaryClip(clip)
                                 }
                             }.create()
                             .show()
@@ -339,8 +339,7 @@ class MainActivity : ComponentActivity() {
                 }
             } else {
                 // read clipboard
-                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = clipboard.primaryClip
+                val clip = clipboardManager.primaryClip
                 if (clip != null && clip.itemCount > 0) {
                     val text = clip.getItemAt(0).text
                     if (text != null) {

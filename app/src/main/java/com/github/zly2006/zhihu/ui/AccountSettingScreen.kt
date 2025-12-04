@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -85,6 +84,7 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
@@ -165,10 +165,8 @@ fun AccountSettingScreen(
                 onLongClick = {
                     // Copy version number
                     val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
-
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = android.content.ClipData.newPlainText("version", versionInfo)
-                    clipboard.setPrimaryClip(clip)
+                    context.clipboardManager.setPrimaryClip(clip)
                     Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
                 },
                 onClick = {

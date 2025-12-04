@@ -3,8 +3,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +52,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
@@ -180,14 +179,12 @@ fun QuestionScreen(
 
                             Button(
                                 onClick = {
-                                    val clipboard =
-                                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     val clip = ClipData.newPlainText(
                                         "Link",
                                         "https://www.zhihu.com/question/${question.questionId}" +
                                             "\n【${question.title}】",
                                     )
-                                    clipboard.setPrimaryClip(clip)
+                                    context.clipboardManager.setPrimaryClip(clip)
                                     (context as? MainActivity)?.sharedData?.clipboardDestination = question
                                     Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                                 },

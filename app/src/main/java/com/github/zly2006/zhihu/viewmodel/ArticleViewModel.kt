@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.viewmodel
 
 import android.app.Activity
 import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
@@ -14,6 +13,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -39,6 +40,7 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.put
@@ -489,7 +491,7 @@ class ArticleViewModel(
             try {
                 withContext(Dispatchers.Main) {
                     // 在主线程中创建和配置WebView
-                    val webView = android.webkit.WebView(context).apply {
+                    val webView = WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.useWideViewPort = true
@@ -512,7 +514,7 @@ class ArticleViewModel(
                     }
                     webView.postDelayed(timeoutRunnable, 10000) // 10秒超时
                     webView.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
+                        override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             if (!isLoaded) {
                                 //   = true
@@ -541,7 +543,7 @@ class ArticleViewModel(
                             }
                         }
 
-                        override fun onReceivedError(view: android.webkit.WebView?, request: android.webkit.WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
                             super.onReceivedError(view, request, error)
                             if (!isLoaded) {
                                 isLoaded = true
@@ -581,7 +583,7 @@ class ArticleViewModel(
             try {
                 withContext(Dispatchers.Main) {
                     // 在主线程中创建和配置WebView
-                    val webView = android.webkit.WebView(context).apply {
+                    val webView = WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.useWideViewPort = true
@@ -604,7 +606,7 @@ class ArticleViewModel(
                     }
                     webView.postDelayed(timeoutRunnable, 15000) // 15秒超时，给更多时间加载评论
                     webView.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
+                        override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
                             if (!isLoaded) {
                                 isLoaded = true
@@ -618,7 +620,7 @@ class ArticleViewModel(
                             }
                         }
 
-                        override fun onReceivedError(view: android.webkit.WebView?, request: android.webkit.WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
                             super.onReceivedError(view, request, error)
                             if (!isLoaded) {
                                 isLoaded = true
@@ -775,7 +777,7 @@ class ArticleViewModel(
     }
 
     // 捕获WebView内容为图片
-    private suspend fun captureWebViewToImage(webView: android.webkit.WebView, context: Context, onComplete: (Boolean) -> Unit, suffix: String = "") {
+    private suspend fun captureWebViewToImage(webView: WebView, context: Context, onComplete: (Boolean) -> Unit, suffix: String = "") {
         try {
             // 获取WebView的实际内容高度
             val contentHeight = (webView.contentHeight * webView.scale).toInt()
@@ -1023,9 +1025,8 @@ class ArticleViewModel(
         val markdown = convertToMarkdown()
 
         // 将Markdown文本复制到剪贴板
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("Zhihu Article", markdown)
-        clipboard.setPrimaryClip(clip)
+        context.clipboardManager.setPrimaryClip(clip)
 
         Toast.makeText(context, "文章已复制到剪贴板", Toast.LENGTH_SHORT).show()
     }
