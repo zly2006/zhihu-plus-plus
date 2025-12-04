@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.net.toUri
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -13,6 +14,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.Url
 import io.ktor.http.contentType
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -83,6 +85,12 @@ fun telemetry(context: Context, usage: String) {
  * 洛天依主题浏览器打开
  */
 fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
+    if (uri.host == "link.zhihu.com") {
+        Url(uri.toString()).parameters["target"]?.let {
+            luoTianYiUrlLauncher(context, it.toUri())
+            return
+        }
+    }
     val intent = CustomTabsIntent
         .Builder()
         .setDefaultColorSchemeParams(
