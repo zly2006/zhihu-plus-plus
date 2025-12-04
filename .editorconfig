@@ -2,6 +2,6 @@
 ktlint_function_naming_ignore_when_annotated_with = Composable
 # ktlint_standard_no-wildcard-imports = disabled
 max_line_length = 150
-# ktlint_standard_max-line-length = disabled
+ktlint_standard_max-line-length = disabled
 ktlint_standard_multiline-expression-wrapping = disabled
 ktlint_standard_function-signature = disabled
