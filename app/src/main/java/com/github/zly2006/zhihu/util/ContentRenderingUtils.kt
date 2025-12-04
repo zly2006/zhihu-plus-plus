@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.resolveContent
@@ -369,7 +368,7 @@ private fun parseArticleContentBlocks(
                 "ul", "ol" -> {
                     val isOrdered = node.tagName() == "ol"
                     val listItems = mutableListOf<ContentBlock.ListBlock.ListItem>()
-                    
+
                     node.children().forEach { li ->
                         if (li.tagName() == "li") {
                             val componentUsed = mutableSetOf<String>()
@@ -383,7 +382,7 @@ private fun parseArticleContentBlocks(
                             }
                         }
                     }
-                    
+
                     if (listItems.isNotEmpty()) {
                         blocks.add(ContentBlock.ListBlock(listItems, isOrdered))
                     }
@@ -400,10 +399,11 @@ private fun parseArticleContentBlocks(
                         blocks.add(ContentBlock.QuoteBlock(text, componentUsed))
                     }
                 }
-                
+
                 "pre" -> {
                     val codeNode = node.getElementsByTag("code").firstOrNull() ?: node
-                    val language = codeNode.attr("class")
+                    val language = codeNode
+                        .attr("class")
                         .split(" ")
                         .find { it.startsWith("language-") }
                         ?.removePrefix("language-") ?: ""
@@ -412,7 +412,7 @@ private fun parseArticleContentBlocks(
                         blocks.add(ContentBlock.CodeBlock(code, language))
                     }
                 }
-                
+
                 "hr" -> {
                     blocks.add(ContentBlock.DividerBlock)
                 }
@@ -506,4 +506,3 @@ private fun buildParagraphText(
         }
     }
 }
-
