@@ -6,7 +6,6 @@ import android.content.Context.MODE_PRIVATE
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -73,8 +72,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -94,7 +91,6 @@ import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -112,37 +108,6 @@ private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
 val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 /**
- * 在对话框中显示图片
- */
-@Composable
-private fun ImageViewerDialog(
-    imageUrl: String,
-    onDismiss: () -> Unit,
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-        ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .clickable(onClick = onDismiss),
-            contentAlignment = Alignment.Center,
-        ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "查看图片",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
-        }
-    }
-}
-
-/**
  * 可点击的图片组件，支持点击查看和长按显示菜单
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -153,7 +118,6 @@ private fun ClickableImageWithMenu(
     modifier: Modifier = Modifier,
     contentDescription: String = "图片",
 ) {
-    var showImageDialog by remember { mutableStateOf(false) }
     var showContextMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -164,7 +128,7 @@ private fun ClickableImageWithMenu(
             contentDescription = contentDescription,
             modifier = modifier
                 .combinedClickable(
-                    onClick = { showImageDialog = true },
+                    onClick = { OpenImageDislog(context, httpClient, imageUrl).show() },
                     onLongClick = { showContextMenu = true },
                 ),
         )
@@ -177,6 +141,7 @@ private fun ClickableImageWithMenu(
                 text = { Text("查看图片") },
                 onClick = {
                     OpenImageDislog(context, httpClient, imageUrl).show()
+                    showContextMenu = false
                 },
             )
             DropdownMenuItem(
@@ -196,13 +161,6 @@ private fun ClickableImageWithMenu(
                 },
             )
         }
-    }
-
-    if (showImageDialog) {
-        ImageViewerDialog(
-            imageUrl = imageUrl,
-            onDismiss = { showImageDialog = false },
-        )
     }
 }
 
