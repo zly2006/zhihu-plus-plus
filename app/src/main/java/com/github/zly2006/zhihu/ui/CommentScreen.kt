@@ -83,6 +83,7 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
+import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
@@ -175,8 +176,7 @@ private fun ClickableImageWithMenu(
             DropdownMenuItem(
                 text = { Text("查看图片") },
                 onClick = {
-                    showImageDialog = true
-                    showContextMenu = false
+                    OpenImageDislog(context, httpClient, imageUrl).show()
                 },
             )
             DropdownMenuItem(

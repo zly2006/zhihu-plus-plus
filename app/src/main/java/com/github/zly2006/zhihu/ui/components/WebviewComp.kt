@@ -19,6 +19,7 @@ import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
@@ -303,42 +304,7 @@ class CustomWebView : WebView {
     }
 
     fun openImage(httpClient: HttpClient, url: String) {
-        val dialog = object : ComponentDialog(context) {
-            init {
-                requestWindowFeature(Window.FEATURE_NO_TITLE)
-                setContentView(
-                    PhotoView(context).apply {
-                        GlobalScope.launch {
-                            httpClient
-                                .get(url)
-                                .bodyAsChannel()
-                                .toInputStream()
-                                .buffered()
-                                .use {
-                                    val bitmap = BitmapFactory.decodeStream(it)
-                                    context.mainExecutor.execute {
-                                        setImageBitmap(bitmap)
-                                    }
-                                }
-                        }
-                        setImageURI(url.toUri())
-                        setBackgroundColor(Color.BLACK)
-                        setOnClickListener { dismiss() }
-                    },
-                )
-                window?.setBackgroundDrawable(Color.BLACK.toDrawable())
-                setCanceledOnTouchOutside(true)
-            }
-
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                window?.setLayout(
-                    LayoutParams.MATCH_PARENT,
-                    LayoutParams.MATCH_PARENT,
-                )
-            }
-        }
-        dialog.show()
+        OpenImageDislog(context, httpClient, url).show()
     }
 
     /**
@@ -477,6 +443,46 @@ class CustomWebView : WebView {
                 super.onGetContentRect(mode, view, outRect)
             }
         }
+    }
+}
+
+class OpenImageDislog(
+    context: Context,
+    private val httpClient: HttpClient,
+    private val url: String,
+) : ComponentDialog(context) {
+    init {
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        setContentView(
+            PhotoView(context).apply {
+                GlobalScope.launch {
+                    httpClient
+                        .get(url)
+                        .bodyAsChannel()
+                        .toInputStream()
+                        .buffered()
+                        .use {
+                            val bitmap = BitmapFactory.decodeStream(it)
+                            context.mainExecutor.execute {
+                                setImageBitmap(bitmap)
+                            }
+                        }
+                }
+                setImageURI(url.toUri())
+                setBackgroundColor(Color.BLACK)
+                setOnClickListener { dismiss() }
+            },
+        )
+        window?.setBackgroundDrawable(Color.BLACK.toDrawable())
+        setCanceledOnTouchOutside(true)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
     }
 }
 
