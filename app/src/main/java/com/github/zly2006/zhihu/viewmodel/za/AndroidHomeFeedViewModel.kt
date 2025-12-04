@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.viewmodel.za
 
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.MainActivity
@@ -103,7 +104,10 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                                 }["elements"]!!
                                 .jsonArray
                                 .map { it.jsonObject }
-                        val avatar = lineAuthor.joStrMatch("style", "Avatar_default")["image"]!!.jsonObject["url"]!!.jsonPrimitive.content
+                        val avatar = lineAuthor
+                            .joStrMatch("style", "Avatar_default")["image"]!!
+                            .jsonObject["url"]!!
+                            .jsonPrimitive.content
                         val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
                         if (routeDest is Article) {
                             routeDest.authorName = authorName
@@ -133,7 +137,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
         } catch (e: Exception) {
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)
             context.mainExecutor.execute {
-
+                Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
             throw e
         } finally {
