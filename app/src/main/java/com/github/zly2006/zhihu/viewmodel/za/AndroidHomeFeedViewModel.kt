@@ -92,15 +92,22 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                         val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@mapNotNull null
                         val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
                         val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
-                        val footerLine = children.joStrMatch("style", "LineFooterReaction_feed_v3")["elements"]!!.jsonArray.map { it.jsonObject }
-                        val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
-                        val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
-                        val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
-                        val footerText = "$voteUp 赞同 · $comment 评论 · $collect 收藏"
+                        val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@mapNotNull null
+                        val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
+                            val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
+                            val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
+                            val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
+                            val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
+                            "$voteUp 赞同 · $comment 评论 · $collect 收藏"
+                        } else {
+                            val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
+                            footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
+                        }
                         val lineAuthor =
                             children
                                 .first {
-                                    it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine")
+                                    it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
+                                        it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
                                 }["elements"]!!
                                 .jsonArray
                                 .map { it.jsonObject }
