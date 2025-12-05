@@ -1,5 +1,7 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
+[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://github.com/zly2006/zhihu-plus-plus/releases)
+
 <img src="misc/zhihu_shit.png" width="100" height="100" />
 
 > [!TIP]
@@ -11,8 +13,6 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 我相信，这点绵薄之力可以帮助广大用户从大公司的手中夺回本该属于我们的权利——选择自己的生活，不被算法奴役的权利。
 
 **Update 2025/3/15**：更新，兼容最新版知乎签名算法。
-
-[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
 
 [交流群](https://qm.qq.com/q/Rz6KFswFoK) 群号：619307382
 

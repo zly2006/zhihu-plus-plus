@@ -156,6 +156,8 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             Release ${{ github.ref_name }}
+            如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
+            只有 3 MB 的大小，请放心下载和安装。
           files: |
             app/build/upload/zhihu++.apk
             app/build/upload/mapping.zip
