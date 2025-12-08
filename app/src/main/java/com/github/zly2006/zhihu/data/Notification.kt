@@ -131,6 +131,28 @@ sealed interface NotificationTarget {
         override val content: String
             get() = headline
     }
+
+    @Serializable
+    @SerialName("answer")
+    data class Answer(
+        val url: String,
+        val id: String,
+        val excerpt: String,
+        val question: Question,
+    ) : NotificationTarget {
+        override val content: String
+            get() = excerpt
+
+        override val title: String
+            get() = question.title
+
+        @Serializable
+        class Question(
+            val id: String,
+            val title: String,
+            val url: String,
+        )
+    }
 }
 
 @Serializable

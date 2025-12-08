@@ -48,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.NotificationSettings
@@ -164,6 +166,16 @@ fun NotificationScreen(
 
                                 is NotificationTarget.People -> {
                                     onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
+                                }
+
+                                is NotificationTarget.Answer -> {
+                                    onNavigate(
+                                        Article(
+                                            title = notification.target.title,
+                                            type = ArticleType.Answer,
+                                            id = notification.target.id.toLong(),
+                                        ),
+                                    )
                                 }
 
                                 null -> { }
