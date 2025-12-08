@@ -8,7 +8,6 @@ import com.github.zly2006.zhihu.data.NotificationItem
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
 class NotificationViewModel :
@@ -20,6 +19,14 @@ class NotificationViewModel :
     // 未读消息数量
     var unreadCount: Int by mutableIntStateOf(0)
         private set
+
+    @Suppress("HttpUrlsUsage")
+    override suspend fun fetchFeeds(context: Context) {
+        super.fetchFeeds(context)
+        if (lastPaging?.next?.startsWith("http://") == true) {
+            lastPaging = lastPaging!!.copy(next = lastPaging!!.next.replace("http://", "https://"))
+        }
+    }
 
     /**
      * 标记消息为已读

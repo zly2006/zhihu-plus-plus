@@ -58,7 +58,7 @@ abstract class PaginationViewModel<T : Any>(
     open val include = "data[*].content,excerpt,headline"
 
     @Serializable
-    class Paging(
+    data class Paging(
         val page: Int = -1,
         val isEnd: Boolean,
         val next: String,
