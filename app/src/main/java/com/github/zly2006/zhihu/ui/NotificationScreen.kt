@@ -22,7 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,13 +56,16 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.NotificationSettings
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -75,6 +79,7 @@ fun NotificationScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
@@ -116,9 +121,14 @@ fun NotificationScreen(
                         }
                     }
                     IconButton(onClick = {
-                        viewModel.refresh(context)
+                        coroutineScope.launch {
+                            AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
+                                signFetchRequest(context)
+                            }
+                            Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
+                        }
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                     }
                     IconButton(onClick = {
                         onNavigate(NotificationSettings)
