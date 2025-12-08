@@ -78,7 +78,7 @@ sealed interface Feed {
         override val excerpt: String? = null,
         val reshipmentSettings: String = "",
         val content: String = "",
-        val relationship: Relationship,
+        val relationship: Relationship? = null,
         val isLabeled: Boolean = false,
         val visitedCount: Int = 0,
         val thumbnails: List<String> = emptyList(),

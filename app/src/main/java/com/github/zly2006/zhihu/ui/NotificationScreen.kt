@@ -50,8 +50,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.NotificationItem
+import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -66,7 +68,8 @@ import java.util.Locale
 @Composable
 fun NotificationScreen(
     viewModel: NotificationViewModel,
-    onBack: () -> Unit = {},
+    onBack: () -> Unit,
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -129,11 +132,17 @@ fun NotificationScreen(
                     onClick = {
                         viewModel.markAsRead(context, notification.id)
                         // 处理点击事件 - 跳转到对应内容
-                        notification.target?.url?.let { url ->
-                            val intent = Intent(context, WebviewActivity::class.java).apply {
-                                data = url.toUri()
+                        when (notification.target) {
+                            is NotificationTarget.Comment -> {
+                                Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
+                                notification.target.target?.navDestination?.let {
+                                    onNavigate(it)
+                                } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                             }
-                            context.startActivity(intent)
+                            is NotificationTarget.Question -> {
+
+                            }
+                            null -> { }
                         }
                     },
                 )
@@ -292,6 +301,10 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
             }
         }
         append(" ")
+    }
+
+    if (notification.mergeCount > 1 && content.actors.size != notification.mergeCount) {
+        append(" 等${notification.mergeCount}人")
     }
 
     // 显示动作

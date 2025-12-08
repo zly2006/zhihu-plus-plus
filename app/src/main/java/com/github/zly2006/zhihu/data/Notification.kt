@@ -1,19 +1,39 @@
 package com.github.zly2006.zhihu.data
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.nullable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+
+class TrySerializer<T: Any>(
+    val serializer: KSerializer<T>,
+): KSerializer<T?> {
+    override val descriptor: SerialDescriptor
+        get() = serializer.nullable.descriptor
+
+    override fun serialize(encoder: Encoder, value: T?) {
+        // do nothing
+    }
+
+    override fun deserialize(decoder: Decoder): T? {
+        return try {
+            serializer.deserialize(decoder)
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
 
 @Serializable
 data class NotificationItem(
     val id: String,
     val type: String,
-    @SerialName("attach_info")
     val attachInfo: String? = null,
-    @SerialName("is_read")
     val isRead: Boolean = false,
-    @SerialName("create_time")
     val createTime: Long = 0,
-    @SerialName("merge_count")
     val mergeCount: Int = 1,
     val content: NotificationContent,
     val target: NotificationTarget? = null,
@@ -49,19 +69,35 @@ data class NotificationExtend(
 )
 
 @Serializable
-data class NotificationTarget(
-    val id: String? = null,
-    val type: String? = null,
-    val url: String? = null,
-    val title: String? = null,
-    val content: String? = null,
-    @SerialName("created_time")
-    val createdTime: Long? = null,
-    @SerialName("updated_time")
-    val updatedTime: Long? = null,
-    val question: NotificationQuestion? = null,
-    val author: NotificationAuthor? = null,
-)
+sealed interface NotificationTarget {
+    val title: String?
+    val content: String?
+
+    @Serializable
+    @SerialName("comment")
+    class Comment(
+        val url: String,
+        override val content: String, // html
+        val id: String,
+        val createTime: Long = 0,
+        val target: Feed.Target?,
+    ) : NotificationTarget {
+        override val title: String?
+            get() = null
+    }
+
+    @Serializable
+    @SerialName("question")
+    class Question(
+        val url: String,
+        override val title: String, // html
+        val id: String,
+        val createTime: Long = 0,
+    ) : NotificationTarget {
+        override val content: String?
+            get() = null
+    }
+}
 
 @Serializable
 data class NotificationQuestion(

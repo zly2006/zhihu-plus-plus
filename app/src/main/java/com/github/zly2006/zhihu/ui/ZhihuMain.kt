@@ -261,7 +261,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 val viewModel = viewModel<NotificationViewModel>()
                 NotificationScreen(viewModel, onBack = {
                     navController.popBackStack()
-                })
+                }, onNavigate = activity::navigate)
             }
         }
     }
