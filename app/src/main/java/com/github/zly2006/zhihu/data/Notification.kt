@@ -114,6 +114,23 @@ sealed interface NotificationTarget {
         override val content: String?
             get() = null
     }
+
+    @Serializable
+    @SerialName("people")
+    data class People(
+        val subscribeAt: Long,
+        val url: String,
+        val id: String,
+        val name: String,
+        val headline: String,
+        val avatarUrl: String? = null,
+        val urlToken: String,
+    ) : NotificationTarget {
+        override val title: String
+            get() = name
+        override val content: String
+            get() = headline
+    }
 }
 
 @Serializable

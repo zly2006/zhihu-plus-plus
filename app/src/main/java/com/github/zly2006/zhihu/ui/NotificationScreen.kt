@@ -51,6 +51,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.NotificationSettings
+import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.data.NotificationTarget
@@ -149,7 +150,8 @@ fun NotificationScreen(
                             viewModel.markAsRead(context, notification.id)
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
-                                is NotificationTarget.Comment -> {
+                                is NotificationTarget.
+                                Comment -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
                                         onNavigate(it)
@@ -158,6 +160,10 @@ fun NotificationScreen(
 
                                 is NotificationTarget.Question -> {
                                     onNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                }
+
+                                is NotificationTarget.People -> {
+                                    onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                 }
 
                                 null -> { }
