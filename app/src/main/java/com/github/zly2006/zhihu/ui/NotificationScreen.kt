@@ -125,25 +125,29 @@ fun NotificationScreen(
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
             ) { notification ->
-                NotificationItemView(
-                    notification = notification,
-                    onClick = {
-                        viewModel.markAsRead(context, notification.id)
-                        // 处理点击事件 - 跳转到对应内容
-                        when (notification.target) {
-                            is NotificationTarget.Comment -> {
-                                Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
-                                notification.target.target?.navDestination?.let {
-                                    onNavigate(it)
-                                } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
+                if (notification.content.verb != "邀请你回答问题") {
+                    NotificationItemView(
+                        notification = notification,
+                        onClick = {
+                            viewModel.markAsRead(context, notification.id)
+                            // 处理点击事件 - 跳转到对应内容
+                            when (notification.target) {
+                                is NotificationTarget.Comment -> {
+                                    Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
+                                    notification.target.target?.navDestination?.let {
+                                        onNavigate(it)
+                                    } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
+                                }
+
+                                is NotificationTarget.Question -> {
+                                    onNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                }
+
+                                null -> { }
                             }
-                            is NotificationTarget.Question -> {
-                                onNavigate(Question(notification.target.id.toLong(), notification.target.title))
-                            }
-                            null -> { }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
             if (BuildConfig.DEBUG) {
                 DraggableRefreshButton(
@@ -206,11 +210,11 @@ fun NotificationItemView(
                         Spacer(modifier = Modifier.width(12.dp))
                     }
 
-                    // 时间
+                    // 通知内容
                     Text(
-                        text = formatTime(notification.createTime),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = buildNotificationText(notification),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
 
@@ -226,13 +230,6 @@ fun NotificationItemView(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-
-            // 通知内容
-            Text(
-                text = buildNotificationText(notification),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             // 目标内容预览
             notification.target?.let { target ->
@@ -267,6 +264,15 @@ fun NotificationItemView(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 时间
+            Text(
+                text = formatTime(notification.createTime),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
