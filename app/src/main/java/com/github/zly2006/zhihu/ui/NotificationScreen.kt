@@ -152,8 +152,9 @@ fun NotificationScreen(
                             viewModel.markAsRead(context, notification.id)
                             // 处理点击事件 - 跳转到对应内容
                             when (notification.target) {
-                                is NotificationTarget.
-                                Comment -> {
+                                is NotificationTarget
+                                    .Comment,
+                                -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
                                         onNavigate(it)
@@ -174,6 +175,17 @@ fun NotificationScreen(
                                             title = notification.target.title,
                                             type = ArticleType.Answer,
                                             id = notification.target.id.toLong(),
+                                            excerpt = notification.target.excerpt,
+                                        ),
+                                    )
+                                }
+                                is NotificationTarget.Article -> {
+                                    onNavigate(
+                                        Article(
+                                            title = notification.target.title,
+                                            type = ArticleType.Article,
+                                            id = notification.target.id.toLong(),
+                                            excerpt = notification.target.excerpt,
                                         ),
                                     )
                                 }

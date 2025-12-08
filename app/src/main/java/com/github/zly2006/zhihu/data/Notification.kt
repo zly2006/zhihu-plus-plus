@@ -118,7 +118,6 @@ sealed interface NotificationTarget {
     @Serializable
     @SerialName("people")
     data class People(
-        val subscribeAt: Long,
         val url: String,
         val id: String,
         val name: String,
@@ -153,75 +152,17 @@ sealed interface NotificationTarget {
             val url: String,
         )
     }
+
+    @Serializable
+    @SerialName("article")
+    data class Article(
+        val url: String,
+        val id: String,
+        val excerpt: String,
+        val question: Question,
+        override val title: String,
+    ) : NotificationTarget {
+        override val content: String
+            get() = excerpt
+    }
 }
-
-@Serializable
-data class NotificationQuestion(
-    val id: String,
-    val type: String,
-    val url: String,
-    val title: String,
-    @SerialName("question_type")
-    val questionType: String? = null,
-    val created: Long? = null,
-    @SerialName("updated_time")
-    val updatedTime: Long? = null,
-)
-
-@Serializable
-data class NotificationAuthor(
-    val name: String,
-    val type: String,
-    val url: String,
-    val id: String,
-    @SerialName("url_token")
-    val urlToken: String,
-    @SerialName("avatar_url")
-    val avatarUrl: String? = null,
-    @SerialName("avatar_url_template")
-    val avatarUrlTemplate: String? = null,
-    val headline: String? = null,
-    val gender: Int = -1,
-    @SerialName("user_type")
-    val userType: String? = null,
-    @SerialName("is_org")
-    val isOrg: Boolean = false,
-    @SerialName("is_advertiser")
-    val isAdvertiser: Boolean = false,
-    val badge: List<String> = emptyList(),
-    @SerialName("vip_info")
-    val vipInfo: VipInfo? = null,
-    val member: NotificationMember? = null,
-    val role: String? = null,
-)
-
-@Serializable
-data class NotificationMember(
-    val name: String,
-    val type: String,
-    val url: String,
-    val id: String,
-    @SerialName("url_token")
-    val urlToken: String = "",
-    @SerialName("avatar_url")
-    val avatarUrl: String? = null,
-    @SerialName("avatar_url_template")
-    val avatarUrlTemplate: String? = null,
-    val headline: String? = null,
-    val gender: Int = -1,
-    @SerialName("user_type")
-    val userType: String? = null,
-    @SerialName("is_org")
-    val isOrg: Boolean = false,
-    @SerialName("is_advertiser")
-    val isAdvertiser: Boolean = false,
-    val badge: List<String> = emptyList(),
-    @SerialName("vip_info")
-    val vipInfo: VipInfo? = null,
-)
-
-@Serializable
-data class VipInfo(
-    @SerialName("is_vip")
-    val isVip: Boolean = false,
-)
