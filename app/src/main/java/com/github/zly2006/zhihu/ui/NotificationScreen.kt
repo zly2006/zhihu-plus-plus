@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -122,7 +123,7 @@ fun NotificationScreen(
                     }
                     IconButton(onClick = {
                         coroutineScope.launch {
-                            AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
+                            AccountData.httpClient(context).post("https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
                                 signFetchRequest(context)
                             }
                             Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
