@@ -40,8 +40,9 @@ enum class NotificationType(
     val regex: Regex,
 ) {
     LIKE_ANSWER("喜欢了你的回答", true, Regex("喜欢了你的回答")),
-    LIKE_COMMENT("喜欢了你的评论", true, Regex("喜欢了你.*的评论")),
-    INVITE_ANSWER("邀请你回答问题", false, Regex("邀请你回答问题"))
+    LIKE_COMMENT("喜欢了你的评论", true, Regex("喜欢了.*你的评论")),
+    REPLY_COMMENT("回复了你的评论", true, Regex("回复了.*你的评论")),
+    INVITE_ANSWER("邀请你回答问题", false, Regex("\\s?(邀请你回答问题|的提问等你来答|邀请你回答)")),
 }
 
 object NotificationPreferences {
@@ -51,7 +52,7 @@ object NotificationPreferences {
 
     fun getSystemNotificationEnabled(context: Context, type: NotificationType): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean("${KEY_SYSTEM_NOTIFICATION}${type.name}", type.defaultValue)
+        return prefs.getBoolean("${KEY_SYSTEM_NOTIFICATION}${type.name}", false)
     }
 
     fun setSystemNotificationEnabled(context: Context, type: NotificationType, enabled: Boolean) {
@@ -69,9 +70,7 @@ object NotificationPreferences {
         prefs.edit().putBoolean("${KEY_DISPLAY_IN_APP}${type.name}", enabled).apply()
     }
 
-    fun matchNotificationType(verb: String): NotificationType? {
-        return NotificationType.entries.find { it.regex.matches(verb) }
-    }
+    fun matchNotificationType(verb: String): NotificationType? = NotificationType.entries.find { it.regex.matches(verb) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
