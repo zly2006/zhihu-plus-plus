@@ -3,14 +3,15 @@ package com.github.zly2006.zhihu.data
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-class TrySerializer<T: Any>(
+class TrySerializer<T : Any>(
     val serializer: KSerializer<T>,
-): KSerializer<T?> {
+) : KSerializer<T?> {
     override val descriptor: SerialDescriptor
         get() = serializer.nullable.descriptor
 
@@ -18,12 +19,10 @@ class TrySerializer<T: Any>(
         // do nothing
     }
 
-    override fun deserialize(decoder: Decoder): T? {
-        return try {
-            serializer.deserialize(decoder)
-        } catch (_: Exception) {
-            null
-        }
+    override fun deserialize(decoder: Decoder): T? = try {
+        serializer.deserialize(decoder)
+    } catch (_: Exception) {
+        null
     }
 }
 
@@ -39,9 +38,27 @@ data class NotificationItem(
     val target: NotificationTarget? = null,
 )
 
+object NotificationActorsSerializer : KSerializer<List<NotificationActor>> {
+    override val descriptor: SerialDescriptor
+        get() = ListSerializer(NotificationActor.serializer()).descriptor
+
+    override fun serialize(
+        encoder: Encoder,
+        value: List<NotificationActor>,
+    ) {
+    }
+
+    override fun deserialize(decoder: Decoder): List<NotificationActor> = try {
+        ListSerializer(NotificationActor.serializer()).deserialize(decoder)
+    } catch (_: Exception) {
+        listOf(NotificationActor.serializer().deserialize(decoder))
+    }
+}
+
 @Serializable
 data class NotificationContent(
     val verb: String,
+    @Serializable(with = NotificationActorsSerializer::class)
     val actors: List<NotificationActor> = emptyList(),
     val target: NotificationLink? = null,
     val extend: NotificationExtend? = null,

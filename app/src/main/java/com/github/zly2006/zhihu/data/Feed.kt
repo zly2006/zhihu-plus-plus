@@ -140,8 +140,8 @@ sealed interface Feed {
         val id: Long,
         override val url: String,
         override val author: Person,
-        val voteupCount: Int,
-        val commentCount: Int,
+        val voteupCount: Int = 0,
+        val commentCount: Int = 0,
         override val title: String,
         override val excerpt: String = "",
         /**
