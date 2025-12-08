@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -137,6 +138,7 @@ fun NotificationScreen(
                                 } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                             }
                             is NotificationTarget.Question -> {
+                                onNavigate(Question(notification.target.id.toLong(), notification.target.title))
                             }
                             null -> { }
                         }
@@ -264,16 +266,6 @@ fun NotificationItemView(
                         }
                     }
                 }
-            }
-
-            // 合并计数
-            if (notification.mergeCount > 1) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "还有 ${notification.mergeCount - 1} 条类似通知",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
             }
         }
     }
