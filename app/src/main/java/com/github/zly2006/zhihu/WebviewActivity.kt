@@ -34,11 +34,20 @@ class WebviewActivity : ComponentActivity() {
             ) {
                 WebviewComp(
                     onLoad = { webView ->
-                        webView.setupUpWebviewClient() // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
+                        webView.setupUpWebviewClient {
+                            val js = intent.extras?.getString("javascript")
+                            if (js != null) {
+                                webView.evaluateJavascript(js, null)
+                            }
+                        } // 覆盖掉原有的 WebViewClient，因为我们需要全屏显示
                         setupCookies(webView)
                         @SuppressLint("SetJavaScriptEnabled")
                         webView.settings.javaScriptEnabled = true
                         webView.loadUrl(url)
+                        val js = intent.extras?.getString("javascript")
+                        if (js != null) {
+                            webView.evaluateJavascript(js, null)
+                        }
                     },
                 )
             }

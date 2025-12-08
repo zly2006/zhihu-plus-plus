@@ -58,11 +58,13 @@ import com.github.zly2006.zhihu.History
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlin.reflect.KClass
 
 @SuppressLint("RestrictedApi")
@@ -254,6 +256,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     },
                     onNavigate = activity::navigate,
                 )
+            }
+            composable<Notification> {
+                val viewModel = viewModel<NotificationViewModel>()
+                NotificationScreen(viewModel, onBack = {
+                    navController.popBackStack()
+                })
             }
         }
     }

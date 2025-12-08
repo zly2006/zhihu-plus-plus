@@ -29,6 +29,9 @@ data object Blocklist : NavDestination
 data object Daily : NavDestination
 
 @Serializable
+data object Notification : NavDestination
+
+@Serializable
 data class Search(
     val query: String = "",
 ) : NavDestination
