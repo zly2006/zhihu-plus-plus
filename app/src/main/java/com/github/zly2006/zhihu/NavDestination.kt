@@ -32,6 +32,9 @@ data object Daily : NavDestination
 data object Notification : NavDestination
 
 @Serializable
+data object NotificationSettings : NavDestination
+
+@Serializable
 data class Search(
     val query: String = "",
 ) : NavDestination

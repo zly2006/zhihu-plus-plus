@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
+import com.github.zly2006.zhihu.NotificationSettings
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
@@ -259,9 +260,20 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
             composable<Notification> {
                 val viewModel = viewModel<NotificationViewModel>()
-                NotificationScreen(viewModel, onBack = {
-                    navController.popBackStack()
-                }, onNavigate = activity::navigate)
+                NotificationScreen(
+                    viewModel = viewModel,
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigate = activity::navigate,
+                )
+            }
+            composable<NotificationSettings> {
+                NotificationSettingsScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                )
             }
         }
     }
