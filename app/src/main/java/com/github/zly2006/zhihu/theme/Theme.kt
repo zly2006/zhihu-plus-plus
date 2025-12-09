@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.materialkolor.dynamicColorScheme
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -48,12 +49,12 @@ fun ZhihuTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         !useDynamicColor -> {
-            val customColor = Color(customColorInt)
-            if (darkTheme) {
-                darkColorScheme(primary = customColor)
-            } else {
-                lightColorScheme(primary = customColor)
-            }
+            val seedColor = Color(customColorInt)
+            dynamicColorScheme(
+                seedColor = seedColor,
+                isDark = darkTheme,
+                isAmoled = false,
+            )
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme

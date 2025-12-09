@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.github.ajalt.colormath.model.RGB
 import kotlin.math.roundToInt
 
 @Composable
@@ -39,15 +38,9 @@ fun ColorPickerDialog(
     onDismiss: () -> Unit,
     onColorSelected: (Color) -> Unit,
 ) {
-    val rgb = RGB(
-        initialColor.red,
-        initialColor.green,
-        initialColor.blue,
-    )
-
-    var red by remember { mutableFloatStateOf(rgb.r) }
-    var green by remember { mutableFloatStateOf(rgb.g) }
-    var blue by remember { mutableFloatStateOf(rgb.b) }
+    var red by remember { mutableFloatStateOf(initialColor.red) }
+    var green by remember { mutableFloatStateOf(initialColor.green) }
+    var blue by remember { mutableFloatStateOf(initialColor.blue) }
 
     val currentColor = Color(red, green, blue)
 
