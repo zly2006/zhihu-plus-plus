@@ -10,9 +10,11 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -59,7 +61,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -79,6 +83,7 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -536,6 +541,75 @@ fun AccountSettingScreen(
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
                 },
             )
+
+            Text(
+                "主题设置",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+
+            val useDynamicColor = remember { mutableStateOf(preferences.getBoolean("useDynamicColor", true)) }
+            SwitchSettingItem(
+                title = "使用 Material You 动态取色",
+                description = "根据系统壁纸自动提取主题色（Android 12+ 可用），关闭后使用自定义主题色",
+                checked = useDynamicColor.value,
+                onCheckedChange = {
+                    useDynamicColor.value = it
+                    preferences.edit { putBoolean("useDynamicColor", it) }
+                    Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色，重启应用后生效", Toast.LENGTH_SHORT).show()
+                },
+            )
+
+            var showColorPicker by remember { mutableStateOf(false) }
+            val defaultColorInt = 0xFF2196F3.toInt()
+            val savedColorInt = preferences.getInt("customThemeColor", defaultColorInt)
+            var customColor by remember { mutableStateOf(Color(savedColorInt)) }
+
+            AnimatedVisibility(visible = !useDynamicColor.value) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showColorPicker = true }
+                            .padding(vertical = 12.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "自定义主题色",
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                            Text(
+                                "点击选择您喜欢的主题颜色",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(customColor)
+                                .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                        )
+                    }
+
+                    if (showColorPicker) {
+                        ColorPickerDialog(
+                            title = "选择主题色",
+                            initialColor = customColor,
+                            onDismiss = { showColorPicker = false },
+                            onColorSelected = { color ->
+                                customColor = color
+                                preferences.edit { putInt("customThemeColor", color.toArgb()) }
+                                Toast.makeText(context, "主题色已保存，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                showColorPicker = false
+                            },
+                        )
+                    }
+                }
+            }
 
             Text(
                 "内容过滤设置",
