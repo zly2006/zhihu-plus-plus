@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdgeCompat()
         history = HistoryStorage(this)
         AccountData.loadData(this)
+        com.github.zly2006.zhihu.theme.ThemeManager.initialize(this)
 
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {

@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.theme
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -40,18 +41,14 @@ fun ZhihuTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
-    val useDynamicColor = preferences.getBoolean("useDynamicColor", true)
-    val customColorInt = preferences.getInt("customThemeColor", 0xFF2196F3.toInt())
-
+    val useDynamicColor = ThemeManager.getUseDynamicColor()
     val colorScheme = when {
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         !useDynamicColor -> {
-            val seedColor = Color(customColorInt)
             dynamicColorScheme(
-                seedColor = seedColor,
+                seedColor = ThemeManager.getCustomColor(),
                 isDark = darkTheme,
                 isAmoled = false,
             )

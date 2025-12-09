@@ -83,6 +83,7 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
@@ -548,24 +549,21 @@ fun AccountSettingScreen(
                 modifier = Modifier.padding(top = 16.dp),
             )
 
-            val useDynamicColor = remember { mutableStateOf(preferences.getBoolean("useDynamicColor", true)) }
+            val useDynamicColor = ThemeManager.getUseDynamicColor()
             SwitchSettingItem(
                 title = "使用 Material You 动态取色",
                 description = "根据系统壁纸自动提取主题色（Android 12+ 可用），关闭后使用自定义主题色",
-                checked = useDynamicColor.value,
+                checked = useDynamicColor,
                 onCheckedChange = {
-                    useDynamicColor.value = it
-                    preferences.edit { putBoolean("useDynamicColor", it) }
-                    Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色，重启应用后生效", Toast.LENGTH_SHORT).show()
+                    ThemeManager.setUseDynamicColor(context, it)
+                    Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
                 },
             )
 
             var showColorPicker by remember { mutableStateOf(false) }
-            val defaultColorInt = 0xFF2196F3.toInt()
-            val savedColorInt = preferences.getInt("customThemeColor", defaultColorInt)
-            var customColor by remember { mutableStateOf(Color(savedColorInt)) }
+            val customColor = ThemeManager.getCustomColor()
 
-            AnimatedVisibility(visible = !useDynamicColor.value) {
+            AnimatedVisibility(visible = !useDynamicColor) {
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -601,9 +599,8 @@ fun AccountSettingScreen(
                             initialColor = customColor,
                             onDismiss = { showColorPicker = false },
                             onColorSelected = { color ->
-                                customColor = color
-                                preferences.edit { putInt("customThemeColor", color.toArgb()) }
-                                Toast.makeText(context, "主题色已保存，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                ThemeManager.setCustomColor(context, color)
+                                Toast.makeText(context, "主题色已保存", Toast.LENGTH_SHORT).show()
                                 showColorPicker = false
                             },
                         )
