@@ -30,6 +30,7 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdgeCompat()
         history = HistoryStorage(this)
         AccountData.loadData(this)
-        com.github.zly2006.zhihu.theme.ThemeManager.initialize(this)
+        ThemeManager.initialize(this)
 
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
