@@ -54,7 +54,7 @@ class HomeFeedViewModel :
         allData.addAll(data)
         debugData.addAll(rawData)
 
-        GlobalScope.launch {
+        GlobalScope.launch(Dispatchers.Main) {
             val filteredData = applyContentFilter(context, data)
             recordContentDisplays(context, filteredData)
 
@@ -62,7 +62,7 @@ class HomeFeedViewModel :
                 .flatten()
                 .map { feed ->
                     coroutineScope {
-                        launch {
+                        launch(Dispatchers.Main) {
                             if (feed.target?.navDestination != null &&
                                 !checkForAd(feed.target!!.navDestination!!, context as MainActivity) &&
                                 displayItems.none { it.navDestination == feed.target?.navDestination }

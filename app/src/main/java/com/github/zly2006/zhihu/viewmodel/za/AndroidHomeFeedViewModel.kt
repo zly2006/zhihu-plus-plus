@@ -23,6 +23,7 @@ import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -122,7 +123,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                             routeDest.avatarSrc = avatar
                         }
                         val task = coroutineScope {
-                            launch {
+                            launch(Dispatchers.Main) {
                                 if (!checkForAd(routeDest, context as MainActivity) && displayItems.none { it.navDestination == routeDest }) {
                                     displayItems.add(
                                         FeedDisplayItem(
