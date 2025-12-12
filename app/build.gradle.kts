@@ -9,7 +9,7 @@ plugins {
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
     id("kotlin-parcelize")
-    id("org.ajoberstar.grgit") version "5.2.2"
+    id("org.ajoberstar.grgit") version "5.3.3"
     id("com.google.devtools.ksp")
     id("org.jlleitschuh.gradle.ktlint")
 }
@@ -151,8 +151,8 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
     implementation("androidx.webkit:webkit:1.14.0")
-    implementation("androidx.activity:activity-compose:1.12.0")
-    implementation(platform("androidx.compose:compose-bom:2025.11.01"))
+    implementation("androidx.activity:activity-compose:1.12.1")
+    implementation(platform("androidx.compose:compose-bom:2025.12.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material:material-icons-extended")
@@ -167,7 +167,6 @@ dependencies {
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.11.01"))
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
     debugImplementation("androidx.compose.ui:ui-tooling")
