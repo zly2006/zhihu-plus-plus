@@ -104,10 +104,14 @@ fun HomeScreen(
     // 通知 ViewModel
     var unreadCount by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-            signFetchRequest(context)
+        try {
+            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+                signFetchRequest(context)
+            }
+            unreadCount = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 99
+        } catch (_: Exception) {
+            // 忽略错误
         }
-        unreadCount = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 99
     }
 
     // 初始加载
