@@ -223,6 +223,16 @@ class HomeFeedViewModel :
                                                             )
                                                         }
 
+                                                        is Feed.ArticleTarget -> {
+                                                            add(
+                                                                buildJsonArray {
+                                                                    add("article")
+                                                                    add(target.id.toString())
+                                                                    add("touch")
+                                                                },
+                                                            )
+                                                        }
+
                                                         else -> {}
                                                     }
                                                 }
