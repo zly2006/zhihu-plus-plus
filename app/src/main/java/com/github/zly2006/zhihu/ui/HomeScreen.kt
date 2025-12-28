@@ -63,10 +63,16 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.header
+import io.ktor.client.request.setBody
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -239,6 +245,46 @@ fun HomeScreen(
                         feed?.let {
                             DataHolder.putFeed(feed)
                             GlobalScope.launch {
+                                AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
+                                    header("x-requested-with", "fetch")
+                                    signFetchRequest(context)
+                                    setBody(
+                                        MultiPartFormDataContent(
+                                            formData {
+                                                append(
+                                                    "items",
+                                                    buildJsonArray {
+                                                        item.feed?.let { feed ->
+                                                            when (val target = feed.target) {
+                                                                is Feed.AnswerTarget -> {
+                                                                    add(
+                                                                        buildJsonArray {
+                                                                            add("answer")
+                                                                            add(target.id.toString())
+                                                                            add("touch")
+                                                                        },
+                                                                    )
+                                                                }
+
+                                                                is Feed.ArticleTarget -> {
+                                                                    add(
+                                                                        buildJsonArray {
+                                                                            add("article")
+                                                                            add(target.id.toString())
+                                                                            add("touch")
+                                                                        },
+                                                                    )
+                                                                }
+
+                                                                else -> {}
+                                                            }
+                                                        }
+                                                    }.toString(),
+                                                )
+                                            },
+                                        ),
+                                    )
+                                }
                                 (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
                             }
                         }
