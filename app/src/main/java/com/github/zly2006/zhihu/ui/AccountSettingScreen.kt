@@ -6,6 +6,8 @@ import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Build
+import android.os.PowerManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -310,6 +312,9 @@ fun AccountSettingScreen(
             }
         }
         Text(networkStatus)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && context.getSystemService(PowerManager::class.java).isPowerSaveMode) {
+            Text("省电模式：已开启")
+        }
         AnimatedVisibility(
             visible = isDeveloper,
         ) {
