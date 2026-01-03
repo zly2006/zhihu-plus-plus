@@ -8,6 +8,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
@@ -89,6 +90,7 @@ import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -312,8 +314,18 @@ fun AccountSettingScreen(
             }
         }
         Text(networkStatus)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && context.getSystemService(PowerManager::class.java).isPowerSaveMode) {
-            Text("省电模式：已开启")
+        when (PowerSaveModeCompat.getPowerSaveMode(context)) {
+            PowerSaveModeCompat.POWER_SAVE -> {
+                Text("省电模式：已开启")
+            }
+
+            PowerSaveModeCompat.HUAWEI_POWER_SAVE -> {
+                Text("省电模式：华为傻逼模式已开启")
+            }
+
+            else -> {
+                // Do nothing
+            }
         }
         AnimatedVisibility(
             visible = isDeveloper,
