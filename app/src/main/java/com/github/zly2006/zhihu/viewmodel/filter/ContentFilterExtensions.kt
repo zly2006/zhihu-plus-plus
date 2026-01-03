@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 import android.content.Context
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,6 +27,22 @@ object ContentFilterExtensions {
     fun isKeywordBlockingEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         return preferences.getBoolean("enableKeywordBlocking", true)
+    }
+
+    /**
+     * 检查是否启用了NLP语义屏蔽功能
+     */
+    fun isNLPBlockingEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean("enableNLPBlocking", true)
+    }
+
+    /**
+     * 获取NLP相似度阈值
+     */
+    fun getNLPSimilarityThreshold(context: Context): Double {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getFloat("nlpSimilarityThreshold", 0.3f).toDouble()
     }
 
     /**
@@ -128,6 +145,68 @@ object ContentFilterExtensions {
 
                         !containsKeyword
                     }
+                }
+
+                // 2.5. 应用NLP语义屏蔽（带标题加权）
+                if (isNLPBlockingEnabled(context)) {
+                    val nlpRepository = BlockedKeywordRepository(context)
+                    val threshold = getNLPSimilarityThreshold(context)
+
+                    val finalFilteredList = mutableListOf<Feed>()
+                    
+                    for (feed in filteredList) {
+                        val target = feed.target ?: run {
+                            finalFilteredList.add(feed)
+                            continue
+                        }
+                        
+                        val title = target.title
+                        val excerpt = target.excerpt
+                        val content = when (target) {
+                            is Feed.AnswerTarget -> target.content
+                            is Feed.ArticleTarget -> target.content
+                            else -> null
+                        }
+
+                        // 使用加权方法检查（标题权重更高）
+                        val (shouldBlock, matchedKeywords) = nlpRepository.checkNLPBlockingWithWeight(
+                            title = title,
+                            excerpt = excerpt,
+                            content = content,
+                            threshold = threshold
+                        )
+
+                        if (shouldBlock) {
+                            // 记录被屏蔽的内容
+                            val contentId = when (target) {
+                                is Feed.AnswerTarget -> target.id.toString()
+                                is Feed.ArticleTarget -> target.id.toString()
+                                is Feed.QuestionTarget -> target.id.toString()
+                                else -> feed.hashCode().toString()
+                            }
+                            
+                            val contentType = when (target) {
+                                is Feed.AnswerTarget -> ContentType.ANSWER
+                                is Feed.ArticleTarget -> ContentType.ARTICLE
+                                is Feed.QuestionTarget -> ContentType.QUESTION
+                                else -> "unknown"
+                            }
+                            
+                            nlpRepository.recordBlockedContent(
+                                contentId = contentId,
+                                contentType = contentType,
+                                title = title,
+                                excerpt = excerpt ?: "",
+                                authorName = target.author?.name,
+                                authorId = target.author?.id,
+                                matchedKeywords = matchedKeywords
+                            )
+                        } else {
+                            finalFilteredList.add(feed)
+                        }
+                    }
+                    
+                    filteredList = finalFilteredList
                 }
 
                 // 3. 应用用户屏蔽

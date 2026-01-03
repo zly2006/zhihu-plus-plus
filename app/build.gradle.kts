@@ -178,6 +178,9 @@ dependencies {
         exclude(group = "com.android.support")
     }
 
+    // HanLP for Chinese NLP
+    implementation("com.hankcs:hanlp:portable-1.8.4")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-cio:$ktor")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor")

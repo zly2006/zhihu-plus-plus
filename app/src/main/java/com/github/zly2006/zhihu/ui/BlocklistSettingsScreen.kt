@@ -67,7 +67,7 @@ fun BlocklistSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("屏蔽关键词", "屏蔽用户")
+    val tabs = listOf("屏蔽关键词", "NLP智能屏蔽", "屏蔽用户")
 
     var blockedKeywords by remember { mutableStateOf<List<BlockedKeyword>>(emptyList()) }
     var blockedUsers by remember { mutableStateOf<List<BlockedUser>>(emptyList()) }
@@ -81,7 +81,9 @@ fun BlocklistSettingsScreen(
         coroutineScope.launch {
             try {
                 val blocklistManager = BlocklistManager.getInstance(context)
+                // 只获取精确匹配的关键词
                 blockedKeywords = blocklistManager.getAllBlockedKeywords()
+                    .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
                 blockedUsers = blocklistManager.getAllBlockedUsers()
                 stats = blocklistManager.getBlocklistStats()
             } catch (e: Exception) {
@@ -97,15 +99,18 @@ fun BlocklistSettingsScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    when (selectedTab) {
-                        0 -> showAddKeywordDialog = true
-                        1 -> showAddUserDialog = true
-                    }
-                },
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "添加")
+            // 只在传统关键词和用户屏蔽标签页显示添加按钮
+            if (selectedTab == 0 || selectedTab == 2) {
+                FloatingActionButton(
+                    onClick = {
+                        when (selectedTab) {
+                            0 -> showAddKeywordDialog = true
+                            2 -> showAddUserDialog = true
+                        }
+                    },
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "添加")
+                }
             }
         },
     ) { scaffoldPadding ->
@@ -207,7 +212,11 @@ fun BlocklistSettingsScreen(
                         }
                     },
                 )
-                1 -> BlockedUsersList(
+                1 -> NLPKeywordManagementScreen(
+                    innerPadding = PaddingValues(0.dp),
+                    onNavigateBack = onNavigateBack,
+                )
+                2 -> BlockedUsersList(
                     users = blockedUsers,
                     onDeleteUser = { user ->
                         coroutineScope.launch {
@@ -327,13 +336,13 @@ fun BlockedKeywordsList(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "暂无屏蔽关键词",
+                    "暂无精确匹配关键词",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "点击右下角的 + 按钮添加",
+                    "点击右下角的 + 按钮添加传统关键词屏蔽",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -349,6 +358,8 @@ fun BlockedKeywordsList(
                             if (keyword.isRegex) options.add("正则表达式")
                             if (options.isNotEmpty()) {
                                 Text(options.joinToString(" · "))
+                            } else {
+                                Text("精确匹配")
                             }
                         },
                         trailingContent = {
