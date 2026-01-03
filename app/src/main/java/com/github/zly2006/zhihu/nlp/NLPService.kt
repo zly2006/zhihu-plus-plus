@@ -73,8 +73,6 @@ object NLPService {
     suspend fun calculateSimilarity(text1: String, text2: String): Double = withContext(Dispatchers.Default) {
         if (text1.isBlank() || text2.isBlank()) return@withContext 0.0
 
-        val wordVectorModel = WordVectorModel.load
-
         try {
             // 分词
             val terms1 = segment(text1)
