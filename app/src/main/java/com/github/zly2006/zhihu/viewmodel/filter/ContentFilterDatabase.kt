@@ -16,7 +16,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun blockedKeywordDao(): BlockedKeywordDao
 
     abstract fun blockedUserDao(): BlockedUserDao
-    
+
     abstract fun blockedContentRecordDao(): BlockedContentRecordDao
 
     companion object {

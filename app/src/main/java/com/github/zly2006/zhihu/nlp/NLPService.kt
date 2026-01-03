@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.nlp
 
 import com.hankcs.hanlp.HanLP
-import com.hankcs.hanlp.mining.word2vec.WordVectorModel
 import com.hankcs.hanlp.seg.common.Term
 import com.hankcs.hanlp.summary.TextRankKeyword
 import kotlinx.coroutines.Dispatchers
@@ -98,29 +97,32 @@ object NLPService {
     /**
      * 计算段落文本与短语之间的语义相似度（优化版）
      * 适用于长文本段落与短关键词短语的匹配场景
-     * 
+     *
      * @param paragraphText 段落文本（较长的内容）
      * @param phraseKeywords 短语关键词（空格分隔的多个关键词）
      * @return 相似度分数 (0.0 - 1.0)
      */
     suspend fun calculatePhraseMatchScore(
         paragraphText: String,
-        phraseKeywords: String
+        phraseKeywords: String,
     ): Double = withContext(Dispatchers.Default) {
         if (paragraphText.isBlank() || phraseKeywords.isBlank()) return@withContext 0.0
 
         try {
             // 将短语拆分为独立关键词
-            val keywords = phraseKeywords.split("\\s+".toRegex())
+            val keywords = phraseKeywords
+                .split("\\s+".toRegex())
                 .filter { it.isNotBlank() }
                 .distinct() // 去重
-            HanLP.segment("")
-                .first().word
+            HanLP
+                .segment("")
+                .first()
+                .word
             if (keywords.isEmpty()) return@withContext 0.0
 
             // 提取段落的关键词（提取更多用于匹配）
             val paragraphKeywords = extractKeywords(paragraphText, min(30, paragraphText.length / 10)).toSet()
-            
+
             // 对段落进行分词，获取所有实词
             val paragraphTerms = segment(paragraphText)
             val paragraphWords = paragraphTerms
@@ -131,25 +133,25 @@ object NLPService {
             // 计算每个短语关键词的匹配分数
             var totalScore = 0.0
             var matchCount = 0
-            
+
             for (keyword in keywords) {
                 var keywordScore = 0.0
-                
+
                 // 1. 精确匹配（权重最高）
                 if (paragraphWords.contains(keyword)) {
                     keywordScore = max(keywordScore, 1.0)
                 }
-                
+
                 // 2. 子串匹配（考虑大小写）
                 if (paragraphText.contains(keyword, ignoreCase = true)) {
                     keywordScore = max(keywordScore, 0.85)
                 }
-                
+
                 // 3. 关键词提取匹配
                 if (paragraphKeywords.contains(keyword)) {
                     keywordScore = max(keywordScore, 0.95)
                 }
-                
+
                 // 4. 模糊匹配（词语相似性）
                 for (word in paragraphWords) {
                     if (word.length >= 2 && keyword.length >= 2) {
@@ -159,15 +161,15 @@ object NLPService {
                         }
                     }
                 }
-                
+
                 // 5. 同义词或相关词匹配（基于关键词列表的交集）
-                val keywordRelatedWords = paragraphKeywords.filter { 
+                val keywordRelatedWords = paragraphKeywords.filter {
                     it.contains(keyword) || keyword.contains(it)
                 }
                 if (keywordRelatedWords.isNotEmpty()) {
                     keywordScore = max(keywordScore, 0.7)
                 }
-                
+
                 if (keywordScore > 0) {
                     matchCount++
                     totalScore += keywordScore
@@ -176,10 +178,10 @@ object NLPService {
 
             // 计算最终相似度：考虑匹配到的关键词比例和平均匹配分数
             if (matchCount == 0) return@withContext 0.0
-            
+
             val matchRatio = matchCount.toDouble() / keywords.size
             val avgScore = totalScore / keywords.size
-            
+
             // 综合评分：如果所有关键词都匹配到，给予更高的权重
             when {
                 matchCount == keywords.size -> {
@@ -206,11 +208,11 @@ object NLPService {
      */
     private fun calculateWordSimilarity(word1: String, word2: String): Double {
         if (word1 == word2) return 1.0
-        
+
         // 使用编辑距离计算相似度
         val maxLen = max(word1.length, word2.length)
         if (maxLen == 0) return 1.0
-        
+
         val distance = levenshteinDistance(word1, word2)
         return 1.0 - (distance.toDouble() / maxLen)
     }
@@ -230,9 +232,9 @@ object NLPService {
             for (j in 1..n) {
                 val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
                 dp[i][j] = minOf(
-                    dp[i - 1][j] + 1,      // 删除
-                    dp[i][j - 1] + 1,      // 插入
-                    dp[i - 1][j - 1] + cost // 替换
+                    dp[i - 1][j] + 1, // 删除
+                    dp[i][j - 1] + 1, // 插入
+                    dp[i - 1][j - 1] + cost, // 替换
                 )
             }
         }
@@ -250,7 +252,7 @@ object NLPService {
     suspend fun isBlockedByKeywords(
         text: String,
         blockedWords: List<String>,
-        threshold: Double = 0.3
+        threshold: Double = 0.3,
     ): Boolean = withContext(Dispatchers.Default) {
         if (text.isBlank() || blockedWords.isEmpty()) return@withContext false
 
@@ -284,13 +286,13 @@ object NLPService {
     suspend fun checkBlockedPhrases(
         text: String,
         blockedPhrases: List<String>,
-        threshold: Double = 0.3
+        threshold: Double = 0.3,
     ): List<Pair<String, Double>> = withContext(Dispatchers.Default) {
         if (text.isBlank() || blockedPhrases.isEmpty()) return@withContext emptyList()
 
         try {
             val matches = mutableListOf<Pair<String, Double>>()
-            
+
             for (phrase in blockedPhrases) {
                 val similarity = calculatePhraseMatchScore(text, phrase)
                 if (similarity >= threshold) {
@@ -309,9 +311,7 @@ object NLPService {
     /**
      * 对文本进行分词
      */
-    private fun segment(text: String): List<Term> {
-        return HanLP.segment(text)
-    }
+    private fun segment(text: String): List<Term> = HanLP.segment(text)
 
     /**
      * 判断是否应该保留该词语（过滤停用词和标点）
@@ -319,12 +319,17 @@ object NLPService {
     private fun shouldKeepTerm(term: Term): Boolean {
         val nature = term.nature.toString()
         // 保留名词、动词、形容词等实词
-        return nature.startsWith("n") ||  // 名词
-                nature.startsWith("v") ||  // 动词
-                nature.startsWith("a") ||  // 形容词
-                nature.startsWith("i") ||  // 成语
-                nature.startsWith("j") ||  // 简称
-                nature.startsWith("l")     // 习用语
+        return nature.startsWith("n") ||
+            // 名词
+            nature.startsWith("v") ||
+            // 动词
+            nature.startsWith("a") ||
+            // 形容词
+            nature.startsWith("i") ||
+            // 成语
+            nature.startsWith("j") ||
+            // 简称
+            nature.startsWith("l") // 习用语
     }
 
     /**

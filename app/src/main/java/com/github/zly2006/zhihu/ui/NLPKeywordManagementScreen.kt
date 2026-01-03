@@ -188,7 +188,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
-                    }
+                    },
                 )
                 1 -> BlockedRecordsTab(
                     records = blockedRecords,
@@ -216,7 +216,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
-                    }
+                    },
                 )
             }
         }
@@ -238,7 +238,7 @@ fun NLPKeywordManagementScreen(
                         Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
+            },
         )
     }
 
@@ -246,7 +246,7 @@ fun NLPKeywordManagementScreen(
     if (showEditDialog && keywordToEdit != null) {
         EditPhraseDialog(
             initialPhrase = phraseInput,
-            onDismiss = { 
+            onDismiss = {
                 showEditDialog = false
                 keywordToEdit = null
             },
@@ -264,7 +264,7 @@ fun NLPKeywordManagementScreen(
                         Toast.makeText(context, "更新失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
+            },
         )
     }
 }
@@ -479,11 +479,11 @@ fun NLPPhraseManagementTab(
         } else {
             items(blockedKeywords) { keyword ->
                 ListItem(
-                    headlineContent = { 
+                    headlineContent = {
                         Text(
                             keyword.keyword,
                             fontWeight = FontWeight.Medium,
-                        ) 
+                        )
                     },
                     supportingContent = {
                         Column {
@@ -578,7 +578,7 @@ fun BlockedRecordsTab(
                 BlockedRecordItem(
                     record = record,
                     repository = repository,
-                    onDelete = { onDeleteRecord(record) }
+                    onDelete = { onDeleteRecord(record) },
                 )
             }
         }
@@ -622,7 +622,8 @@ fun BlockedRecordItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                        java.text
+                            .SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                             .format(java.util.Date(record.blockedTime)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -638,7 +639,7 @@ fun BlockedRecordItem(
 
             if (expanded) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                
+
                 // 显示摘要
                 if (!record.excerpt.isNullOrBlank()) {
                     Text(

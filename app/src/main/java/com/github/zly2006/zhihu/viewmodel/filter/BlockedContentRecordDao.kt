@@ -40,14 +40,16 @@ interface BlockedContentRecordDao {
     /**
      * 删除最旧的记录，保持记录数不超过限制
      */
-    @Query("""
+    @Query(
+        """
         DELETE FROM ${BlockedContentRecord.TABLE_NAME} 
         WHERE id IN (
             SELECT id FROM ${BlockedContentRecord.TABLE_NAME} 
             ORDER BY blockedTime ASC 
             LIMIT :deleteCount
         )
-    """)
+    """,
+    )
     suspend fun deleteOldestRecords(deleteCount: Int)
 
     /**

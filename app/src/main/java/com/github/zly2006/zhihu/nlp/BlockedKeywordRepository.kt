@@ -15,7 +15,9 @@ import org.json.JSONObject
  * 屏蔽词管理仓库
  * 负责管理屏蔽词的增删改查和NLP过滤逻辑
  */
-class BlockedKeywordRepository(context: Context) {
+class BlockedKeywordRepository(
+    context: Context,
+) {
     private val database = ContentFilterDatabase.getDatabase(context)
     private val keywordDao = database.blockedKeywordDao()
     private val recordDao = database.blockedContentRecordDao()
@@ -31,8 +33,8 @@ class BlockedKeywordRepository(context: Context) {
      * 获取精确匹配关键词
      */
     suspend fun getExactMatchKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
-        keywordDao.getAllKeywords().filter { 
-            it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH 
+        keywordDao.getAllKeywords().filter {
+            it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH
         }
     }
 
@@ -40,8 +42,8 @@ class BlockedKeywordRepository(context: Context) {
      * 获取NLP语义关键词
      */
     suspend fun getNLPSemanticKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
-        keywordDao.getAllKeywords().filter { 
-            it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC 
+        keywordDao.getAllKeywords().filter {
+            it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC
         }
     }
 
@@ -49,15 +51,15 @@ class BlockedKeywordRepository(context: Context) {
      * 添加屏蔽词
      */
     suspend fun addKeyword(
-        keyword: String, 
-        keywordType: KeywordType = KeywordType.NLP_SEMANTIC
+        keyword: String,
+        keywordType: KeywordType = KeywordType.NLP_SEMANTIC,
     ): Long = withContext(Dispatchers.IO) {
         val blockedKeyword = BlockedKeyword(
             keyword = keyword.trim(),
             keywordType = keywordType.name,
             caseSensitive = false,
             isRegex = false,
-            createdTime = System.currentTimeMillis()
+            createdTime = System.currentTimeMillis(),
         )
         keywordDao.insertKeyword(blockedKeyword)
     }
@@ -68,14 +70,14 @@ class BlockedKeywordRepository(context: Context) {
     suspend fun addExactMatchKeyword(
         keyword: String,
         caseSensitive: Boolean = false,
-        isRegex: Boolean = false
+        isRegex: Boolean = false,
     ): Long = withContext(Dispatchers.IO) {
         val blockedKeyword = BlockedKeyword(
             keyword = keyword.trim(),
             keywordType = KeywordType.EXACT_MATCH.name,
             caseSensitive = caseSensitive,
             isRegex = isRegex,
-            createdTime = System.currentTimeMillis()
+            createdTime = System.currentTimeMillis(),
         )
         keywordDao.insertKeyword(blockedKeyword)
     }
@@ -89,7 +91,7 @@ class BlockedKeywordRepository(context: Context) {
             keywordType = KeywordType.NLP_SEMANTIC.name,
             caseSensitive = false,
             isRegex = false,
-            createdTime = System.currentTimeMillis()
+            createdTime = System.currentTimeMillis(),
         )
         keywordDao.insertKeyword(blockedKeyword)
     }
@@ -142,7 +144,7 @@ class BlockedKeywordRepository(context: Context) {
         title: String,
         excerpt: String?,
         content: String?,
-        threshold: Double = 0.3
+        threshold: Double = 0.3,
     ): Pair<Boolean, List<MatchedKeywordInfo>> {
         if (title.isBlank()) return Pair(false, emptyList())
 
@@ -188,8 +190,8 @@ class BlockedKeywordRepository(context: Context) {
      * @return Pair<是否屏蔽, 匹配的关键词列表>
      */
     suspend fun checkNLPBlocking(
-        text: String, 
-        threshold: Double = 0.3
+        text: String,
+        threshold: Double = 0.3,
     ): Pair<Boolean, List<MatchedKeywordInfo>> {
         if (text.isBlank()) return Pair(false, emptyList())
 
@@ -230,13 +232,13 @@ class BlockedKeywordRepository(context: Context) {
         excerpt: String?,
         authorName: String?,
         authorId: String?,
-        matchedKeywords: List<MatchedKeywordInfo>
+        matchedKeywords: List<MatchedKeywordInfo>,
     ) = withContext(Dispatchers.IO) {
         try {
             // 构建匹配关键词的JSON
             val matchedArray = JSONArray()
             val top3Matches = matchedKeywords.sortedByDescending { it.similarity }.take(3)
-            
+
             for (match in top3Matches) {
                 val obj = JSONObject()
                 obj.put("keyword", match.keyword)
@@ -253,7 +255,7 @@ class BlockedKeywordRepository(context: Context) {
                 authorId = authorId,
                 blockedTime = System.currentTimeMillis(),
                 blockReason = "NLP语义匹配",
-                matchedKeywords = matchedArray.toString()
+                matchedKeywords = matchedArray.toString(),
             )
 
             recordDao.insertRecord(record)
@@ -267,7 +269,7 @@ class BlockedKeywordRepository(context: Context) {
     /**
      * 获取最近被屏蔽的内容记录
      */
-    suspend fun getRecentBlockedRecords(limit: Int = 100): List<BlockedContentRecord> = 
+    suspend fun getRecentBlockedRecords(limit: Int = 100): List<BlockedContentRecord> =
         withContext(Dispatchers.IO) {
             recordDao.getRecentBlockedRecords(limit)
         }
@@ -299,7 +301,7 @@ class BlockedKeywordRepository(context: Context) {
         title: String,
         excerpt: String?,
         content: String?,
-        topN: Int = 10
+        topN: Int = 10,
     ): List<String> {
         // 构建加权文本：标题重复2次以提高权重
         val weightedText = buildString {
@@ -318,10 +320,10 @@ class BlockedKeywordRepository(context: Context) {
                 append(content.take(300))
             }
         }
-        
+
         // 提取关键词并去重
         val extractedKeywords = NLPService.extractKeywords(weightedText, topN * 2)
-        
+
         // 过滤和去重
         return extractedKeywords
             .distinct() // 去重
@@ -335,9 +337,7 @@ class BlockedKeywordRepository(context: Context) {
      * @param topN 返回前N个关键词
      * @return 关键词列表
      */
-    suspend fun extractKeywordsFromFeed(text: String, topN: Int = 5): List<String> {
-        return NLPService.extractKeywords(text, topN)
-    }
+    suspend fun extractKeywordsFromFeed(text: String, topN: Int = 5): List<String> = NLPService.extractKeywords(text, topN)
 
     /**
      * 批量添加屏蔽词
@@ -351,23 +351,21 @@ class BlockedKeywordRepository(context: Context) {
     /**
      * 解析匹配关键词JSON
      */
-    fun parseMatchedKeywords(json: String): List<MatchedKeywordInfo> {
-        return try {
-            val array = JSONArray(json)
-            val result = mutableListOf<MatchedKeywordInfo>()
-            for (i in 0 until array.length()) {
-                val obj = array.getJSONObject(i)
-                result.add(
-                    MatchedKeywordInfo(
-                        keyword = obj.getString("keyword"),
-                        similarity = obj.getDouble("similarity")
-                    )
-                )
-            }
-            result
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+    fun parseMatchedKeywords(json: String): List<MatchedKeywordInfo> = try {
+        val array = JSONArray(json)
+        val result = mutableListOf<MatchedKeywordInfo>()
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            result.add(
+                MatchedKeywordInfo(
+                    keyword = obj.getString("keyword"),
+                    similarity = obj.getDouble("similarity"),
+                ),
+            )
         }
+        result
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
     }
 }

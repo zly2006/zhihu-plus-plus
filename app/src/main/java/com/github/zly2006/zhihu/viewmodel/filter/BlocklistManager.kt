@@ -77,9 +77,10 @@ class BlocklistManager private constructor(
     suspend fun containsBlockedKeyword(text: String?): Boolean = withContext(Dispatchers.IO) {
         if (text.isNullOrBlank()) return@withContext false
 
-        val keywords = keywordDao.getAllKeywords()
+        val keywords = keywordDao
+            .getAllKeywords()
             .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
-        
+
         keywords.any { blockedKeyword ->
             try {
                 when {

@@ -153,13 +153,13 @@ object ContentFilterExtensions {
                     val threshold = getNLPSimilarityThreshold(context)
 
                     val finalFilteredList = mutableListOf<Feed>()
-                    
+
                     for (feed in filteredList) {
                         val target = feed.target ?: run {
                             finalFilteredList.add(feed)
                             continue
                         }
-                        
+
                         val title = target.title
                         val excerpt = target.excerpt
                         val content = when (target) {
@@ -173,7 +173,7 @@ object ContentFilterExtensions {
                             title = title,
                             excerpt = excerpt,
                             content = content,
-                            threshold = threshold
+                            threshold = threshold,
                         )
 
                         if (shouldBlock) {
@@ -184,14 +184,14 @@ object ContentFilterExtensions {
                                 is Feed.QuestionTarget -> target.id.toString()
                                 else -> feed.hashCode().toString()
                             }
-                            
+
                             val contentType = when (target) {
                                 is Feed.AnswerTarget -> ContentType.ANSWER
                                 is Feed.ArticleTarget -> ContentType.ARTICLE
                                 is Feed.QuestionTarget -> ContentType.QUESTION
                                 else -> "unknown"
                             }
-                            
+
                             nlpRepository.recordBlockedContent(
                                 contentId = contentId,
                                 contentType = contentType,
@@ -199,13 +199,13 @@ object ContentFilterExtensions {
                                 excerpt = excerpt ?: "",
                                 authorName = target.author?.name,
                                 authorId = target.author?.id,
-                                matchedKeywords = matchedKeywords
+                                matchedKeywords = matchedKeywords,
                             )
                         } else {
                             finalFilteredList.add(feed)
                         }
                     }
-                    
+
                     filteredList = finalFilteredList
                 }
 

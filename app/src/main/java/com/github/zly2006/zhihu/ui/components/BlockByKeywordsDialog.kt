@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.nlp.KeywordAnalyzer
 import com.github.zly2006.zhihu.nlp.KeywordWithWeight
-import com.github.zly2006.zhihu.nlp.NLPService
 import kotlinx.coroutines.launch
 
 /**
@@ -80,12 +79,12 @@ fun BlockByKeywordsDialog(
                     title = feedTitle,
                     excerpt = feedExcerpt,
                     content = null,
-                    topN = 10
+                    topN = 10,
                 )
 
                 keywordInfoList = keywordsWithWeight
                 extractedKeywords = keywordsWithWeight.take(8).map { it.keyword } // 显示前8个用于选择
-                
+
                 // 默认选中前3个关键词
                 selectedKeywords = extractedKeywords.take(3).toSet()
             } catch (e: Exception) {
@@ -241,19 +240,21 @@ fun BlockByKeywordsDialog(
                                         // 将选中的关键词用空格串联成一个短语
                                         val phrase = selectedKeywords.sorted().joinToString(" ")
                                         repository.addNLPPhrase(phrase)
-                                        Toast.makeText(
-                                            context,
-                                            "已添加NLP屏蔽短语: $phrase",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "已添加NLP屏蔽短语: $phrase",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         onConfirm()
                                     } catch (e: Exception) {
                                         e.printStackTrace()
-                                        Toast.makeText(
-                                            context,
-                                            "添加失败: ${e.message}",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "添加失败: ${e.message}",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                     } finally {
                                         isAdding = false
                                     }

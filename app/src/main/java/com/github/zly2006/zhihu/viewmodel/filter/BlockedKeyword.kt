@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
  * 关键词类型枚举
  */
 enum class KeywordType {
-    EXACT_MATCH,  // 精确匹配（传统关键词）
-    NLP_SEMANTIC  // NLP语义匹配（主题/短语）
+    EXACT_MATCH, // 精确匹配（传统关键词）
+    NLP_SEMANTIC, // NLP语义匹配（主题/短语）
 }
 
 /**
@@ -27,22 +27,18 @@ data class BlockedKeyword(
     companion object {
         const val TABLE_NAME = "blocked_keywords"
     }
-    
+
     // 辅助方法：获取关键词类型枚举
-    fun getKeywordTypeEnum(): KeywordType {
-        return try {
-            KeywordType.valueOf(keywordType)
-        } catch (e: Exception) {
-            KeywordType.EXACT_MATCH
-        }
+    fun getKeywordTypeEnum(): KeywordType = try {
+        KeywordType.valueOf(keywordType)
+    } catch (e: Exception) {
+        KeywordType.EXACT_MATCH
     }
-    
+
     // 辅助方法：获取NLP短语的各个关键词
-    fun getNLPKeywords(): List<String> {
-        return if (getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC) {
-            keyword.split("\\s+".toRegex()).filter { it.isNotBlank() }
-        } else {
-            emptyList()
-        }
+    fun getNLPKeywords(): List<String> = if (getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC) {
+        keyword.split("\\s+".toRegex()).filter { it.isNotBlank() }
+    } else {
+        emptyList()
     }
 }

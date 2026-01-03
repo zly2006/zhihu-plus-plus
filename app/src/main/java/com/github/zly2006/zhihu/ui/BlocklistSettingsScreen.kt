@@ -82,7 +82,8 @@ fun BlocklistSettingsScreen(
             try {
                 val blocklistManager = BlocklistManager.getInstance(context)
                 // 只获取精确匹配的关键词
-                blockedKeywords = blocklistManager.getAllBlockedKeywords()
+                blockedKeywords = blocklistManager
+                    .getAllBlockedKeywords()
                     .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
                 blockedUsers = blocklistManager.getAllBlockedUsers()
                 stats = blocklistManager.getBlocklistStats()
