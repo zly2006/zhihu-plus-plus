@@ -598,6 +598,13 @@ fun WebviewComp(
             onLoad(it)
         },
         modifier = modifier,
+        onRelease = {
+            it.stopLoading()
+            it.webChromeClient = null
+            it.clearHistory()
+            it.clearCache(true)
+            it.destroy()
+        },
     )
 }
 

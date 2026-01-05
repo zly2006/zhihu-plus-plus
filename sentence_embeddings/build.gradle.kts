@@ -4,8 +4,8 @@ import com.vanniktech.maven.publish.SonatypeHost
 // see: https://github.com/mozilla/rust-android-gradle/issues/147#issuecomment-2134688017
 plugins {
     id("org.mozilla.rust-android-gradle.rust-android") version "0.9.6"
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.jetbrains.kotlin.android)
+    id("com.android.library") version "8.12.3"
+    kotlin("android") version "2.2.21"
     id("com.vanniktech.maven.publish") version "0.32.0"
 }
 
@@ -96,7 +96,7 @@ mavenPublishing {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.0")
 }

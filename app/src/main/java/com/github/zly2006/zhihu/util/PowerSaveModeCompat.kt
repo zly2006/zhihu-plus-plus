@@ -26,4 +26,3 @@ enum class PowerSaveModeCompat {
         }
     }
 }
-
