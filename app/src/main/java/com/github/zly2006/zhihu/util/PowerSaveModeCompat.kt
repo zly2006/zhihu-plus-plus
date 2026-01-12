@@ -17,12 +17,12 @@ enum class PowerSaveModeCompat {
     companion object {
         fun getPowerSaveMode(context: Context): PowerSaveModeCompat {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && context.getSystemService(PowerManager::class.java).isPowerSaveMode) {
-                return PowerSaveModeCompat.POWER_SAVE
+                return POWER_SAVE
             }
             if (Settings.System.getInt(context.contentResolver, "SmartModeStatus", 0) == 4) {
-                return PowerSaveModeCompat.HUAWEI_POWER_SAVE
+                return HUAWEI_POWER_SAVE
             }
-            return PowerSaveModeCompat.NORMAL
+            return NORMAL
         }
     }
 }

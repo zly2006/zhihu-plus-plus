@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Zhihu"
 include(":app")
-//include(":sentence_embeddings")
+include(":sentence_embeddings")

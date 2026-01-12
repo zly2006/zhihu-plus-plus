@@ -1,12 +1,6 @@
-import com.vanniktech.maven.publish.SonatypeHost
-
-// The rust-android-gradle plugin has to be declared before the Android/Kotlin plugins
-// see: https://github.com/mozilla/rust-android-gradle/issues/147#issuecomment-2134688017
 plugins {
-    id("org.mozilla.rust-android-gradle.rust-android") version "0.9.6"
     id("com.android.library") version "8.12.3"
     kotlin("android") version "2.2.21"
-    id("com.vanniktech.maven.publish") version "0.32.0"
 }
 
 // Used in GitHub CI to pass the path of the installed Android NDK
@@ -47,52 +41,74 @@ android {
     androidResources {
         noCompress += "onnx"
     }
-}
-
-cargo {
-    module = "../rs-hf-tokenizer"
-    libname = "hftokenizer"
-    prebuiltToolchains = true
-    targets = listOf("arm64")
-    profile = "release"
-    verbose = true
-}
-
-mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-    signAllPublications()
-    coordinates(
-        "io.gitlab.shubham0204",
-        "sentence-embeddings",
-        "v6.1",
-    )
-    pom {
-        name = "Sentence-Embeddings-Android"
-        description =
-            "Embeddings from sentence-transformers in Android! Supports all-MiniLM-L6-V2, bge-small-en, snowflake-arctic, model2vec models and more "
-        inceptionYear = "2024"
-        url = "https://github.com/shubham0204/Sentence-Embeddings-Android"
-        version = "v6.1"
-        licenses {
-            license {
-                name = "The Apache License, Version 2.0"
-                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                distribution = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-            }
-        }
-        developers {
-            developer {
-                id = "shubham0204"
-                name = "Shubham Panchal"
-                url = "https://github.com/shubham0204"
-            }
-        }
-        scm {
-            url = "https://github.com/shubham0204/Sentence-Embeddings-Android"
-            connection = "scm:git:git://github.com/shubham0204/Sentence-Embeddings-Android.git"
-            developerConnection = "scm:git:ssh://git@github.com/shubham0204/Sentence-Embeddings-Android.git"
+    
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
         }
     }
+}
+
+// Rust build configuration
+val rustProjectDir = file("../rs-hf-tokenizer")
+val jniLibsDir = file("src/main/jniLibs")
+
+// Define Android targets
+val androidTargets = mapOf(
+    "aarch64-linux-android" to "arm64-v8a",
+    // targets below are commented out to only build for arm64-v8a
+//    "armv7-linux-androideabi" to "armeabi-v7a",
+//    "i686-linux-android" to "x86",
+//    "x86_64-linux-android" to "x86_64"
+)
+
+// Task to build Rust library using cargo-ndk
+tasks.register<Exec>("buildRustLib") {
+    description = "Build Rust library for Android using cargo-ndk"
+    group = "rust"
+    
+    workingDir = rustProjectDir
+    
+    // Check if cargo-ndk is available
+    commandLine("sh", "-c", """
+        if ! command -v cargo-ndk &> /dev/null; then
+            echo "cargo-ndk not found. Installing..."
+            cargo install cargo-ndk
+        fi
+        
+        # Add Android targets if not already added
+        ${androidTargets.keys.joinToString("\n") { "rustup target add $it 2>/dev/null || true" }}
+        
+        # Build for each target
+        ${androidTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
+            """
+            echo "Building for $androidAbi..."
+            cargo ndk --target $androidAbi --platform 24 build --release
+            mkdir -p ${jniLibsDir.absolutePath}/$androidAbi
+            cp target/$rustTarget/release/libhftokenizer.so ${jniLibsDir.absolutePath}/$androidAbi/
+            """
+        }}
+        
+        echo "Rust build completed successfully!"
+    """.trimIndent())
+}
+
+// Clean Rust build artifacts
+tasks.register<Delete>("cleanRust") {
+    description = "Clean Rust build artifacts"
+    group = "rust"
+    delete(file("$rustProjectDir/target"))
+    delete(jniLibsDir)
+}
+
+// Make clean depend on cleanRust
+tasks.named("clean") {
+    dependsOn("cleanRust")
+}
+
+// Make preBuild depend on buildRustLib
+tasks.matching { it.name.startsWith("preBuild") }.configureEach {
+    dependsOn("buildRustLib")
 }
 
 dependencies {

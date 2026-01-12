@@ -169,6 +169,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
+    implementation(files("../sentence_embeddings-release.aar"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

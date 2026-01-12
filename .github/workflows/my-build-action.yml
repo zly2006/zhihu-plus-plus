@@ -50,10 +50,19 @@ jobs:
           java-version: '17'
           cache: 'gradle'
       - name: Setup rust
-        if: ${{ inputs.minify }}
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           override: true
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk || true
+
+      - name: Add Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add i686-linux-android
+          rustup target add x86_64-linux-android
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
@@ -67,10 +76,16 @@ jobs:
             ./.gradle
             ./**/.gradle
             ./apk-recompress/target
+            ./rs-hf-tokenizer/target
           # dont invalidate cache if only gradle.properties is changed -- they
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      
+      - name: Install Android NDK
+        run: |
+          echo "y" | sdkmanager --install "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> $GITHUB_ENV
       # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
