@@ -289,66 +289,6 @@ class BlockedKeywordRepository(
     }
 
     /**
-     * 从Feed内容中提取关键词（用于用户添加屏蔽词时的建议）
-     * 标题权重更高，会被优先分析
-     * @param title 标题
-     * @param excerpt 摘要
-     * @param content 正文
-     * @param topN 返回前N个关键词
-     * @return 关键词列表（已去重）
-     */
-    suspend fun extractKeywordsFromFeed(
-        title: String,
-        excerpt: String?,
-        content: String?,
-        topN: Int = 10,
-    ): List<String> {
-        // 构建加权文本：标题重复2次以提高权重
-        val weightedText = buildString {
-            // 标题权重最高，重复2次
-            repeat(2) {
-                append(title)
-                append(" ")
-            }
-            // 添加摘要
-            if (!excerpt.isNullOrBlank()) {
-                append(excerpt)
-                append(" ")
-            }
-            // 添加正文前300字
-            if (!content.isNullOrBlank()) {
-                append(content.take(300))
-            }
-        }
-
-        // 提取关键词并去重
-        val extractedKeywords = NLPService.extractKeywords(weightedText, topN * 2)
-
-        // 过滤和去重
-        return extractedKeywords
-            .distinct() // 去重
-            .filter { it.length >= 2 } // 过滤过短的词
-            .take(topN)
-    }
-
-    /**
-     * 从Feed内容中提取关键词（用于用户添加屏蔽词时的建议）
-     * @param text Feed的标题和摘要
-     * @param topN 返回前N个关键词
-     * @return 关键词列表
-     */
-    suspend fun extractKeywordsFromFeed(text: String, topN: Int = 5): List<String> = NLPService.extractKeywords(text, topN)
-
-    /**
-     * 批量添加屏蔽词
-     */
-    suspend fun addKeywords(keywords: List<String>): List<Long> = withContext(Dispatchers.IO) {
-        keywords.map { keyword ->
-            addKeyword(keyword)
-        }
-    }
-
-    /**
      * 解析匹配关键词JSON
      */
     fun parseMatchedKeywords(json: String): List<MatchedKeywordInfo> = try {

@@ -1,9 +1,9 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -29,10 +28,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,16 +39,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
+import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager.ModelState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import kotlin.math.sqrt
-
-private const val MODEL_ASSET_PATH = "multilingual-MiniLM/model.onnx"
-private const val TOKENIZER_ASSET_PATH = "multilingual-MiniLM/tokenizer.json"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,11 +54,11 @@ fun SentenceSimilarityTestScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val modelState by SentenceEmbeddingManager.state.collectAsState()
 
-    var sentenceEmbedding by remember { mutableStateOf<SentenceEmbedding?>(null) }
-    var isModelLoading by remember { mutableStateOf(true) }
-    var modelError by remember { mutableStateOf<String?>(null) }
-    var reloadToken by remember { mutableIntStateOf(0) }
+    LaunchedEffect(context) {
+        SentenceEmbeddingManager.setDefaultContext(context.applicationContext)
+    }
 
     var sentence1 by remember { mutableStateOf("我喜欢研究自然语言处理。") }
     var sentence2 by remember { mutableStateOf("自然语言任务总是让我很兴奋。") }
@@ -72,41 +67,32 @@ fun SentenceSimilarityTestScreen(
     var computeError by remember { mutableStateOf<String?>(null) }
     var isComputing by remember { mutableStateOf(false) }
 
-    LaunchedEffect(reloadToken) {
-        isModelLoading = true
-        modelError = null
-        sentenceEmbedding?.close()
-        sentenceEmbedding = null
-        try {
-            val embedding = SentenceEmbedding()
-            val modelPath = copyAssetToInternalStorage(context, MODEL_ASSET_PATH)
-            val tokenizerBytes = readAssetBytes(context, TOKENIZER_ASSET_PATH)
-            embedding.init(
-                modelFilepath = modelPath,
-                tokenizerBytes = tokenizerBytes,
-                useTokenTypeIds = true,
-                outputTensorName = "last_hidden_state",
-                normalizeEmbeddings = true,
-            )
-            sentenceEmbedding = embedding
-        } catch (e: Exception) {
-            modelError = e.localizedMessage ?: e.toString()
-        } finally {
-            isModelLoading = false
-        }
-    }
+    val isModelReady = modelState is ModelState.Ready
+    val isModelLoading = modelState is ModelState.Loading
+    val modelError = (modelState as? ModelState.Error)?.message
 
-    DisposableEffect(Unit) {
-        onDispose {
-            sentenceEmbedding?.close()
-        }
-    }
-
-    val canCompute = !isModelLoading &&
-        modelError == null &&
+    val canCompute = isModelReady &&
         !isComputing &&
         sentence1.isNotBlank() &&
         sentence2.isNotBlank()
+
+    fun loadModel() {
+        coroutineScope.launch {
+            try {
+                SentenceEmbeddingManager.ensureModel(context)
+                computeError = null
+            } catch (e: Exception) {
+                Log.e("SentenceSimilarityTest", "Failed to load model", e)
+                computeError = e.localizedMessage ?: e.toString()
+            }
+        }
+    }
+
+    fun unloadModel() {
+        coroutineScope.launch {
+            SentenceEmbeddingManager.unload()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -124,19 +110,37 @@ fun SentenceSimilarityTestScreen(
                     }
                 },
                 actions = {
-                    if (isModelLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .height(24.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        Text(
-                            text = if (modelError == null) "MiniLM" else "加载失败",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(end = 16.dp),
-                        )
+                    when (modelState) {
+                        ModelState.Loading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .padding(end = 16.dp)
+                                    .height(24.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                        is ModelState.Error -> {
+                            Text(
+                                text = "加载失败",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(end = 16.dp),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        ModelState.Ready -> {
+                            Text(
+                                text = "MiniLM",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(end = 16.dp),
+                            )
+                        }
+                        ModelState.Uninitialized -> {
+                            Text(
+                                text = "未加载",
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(end = 16.dp),
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -159,126 +163,122 @@ fun SentenceSimilarityTestScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            if (isModelLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                Text("正在加载模型，大约需要几秒钟……", style = MaterialTheme.typography.bodySmall)
-            } else if (modelError != null) {
-                Text(
-                    text = "模型加载失败：$modelError",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Button(onClick = {
-                    reloadToken++
-                }) {
-                    Text("重试加载模型")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val statusText = when (modelState) {
+                    ModelState.Uninitialized -> "当前状态：未加载"
+                    ModelState.Loading -> "当前状态：正在加载模型……"
+                    ModelState.Ready -> "当前状态：模型已就绪"
+                    is ModelState.Error -> "当前状态：加载失败"
                 }
-            } else {
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = sentence1,
-                    onValueChange = { sentence1 = it },
-                    label = { Text("第一句话") },
-                    maxLines = 4,
-                )
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = sentence2,
-                    onValueChange = { sentence2 = it },
-                    label = { Text("第二句话") },
-                    maxLines = 4,
-                )
-
-                Button(
-                    onClick = {
-                        val embedding = sentenceEmbedding ?: return@Button
-                        similarity = null
-                        inferenceTimeMs = null
-                        computeError = null
-                        coroutineScope.launch {
-                            isComputing = true
-                            try {
-                                val start = System.currentTimeMillis()
-                                val (first, second) = withContext(Dispatchers.Default) {
-                                    val firstTask = async { embedding.encode(sentence1) }
-                                    val secondTask = async { embedding.encode(sentence2) }
-                                    Pair(firstTask.await(), secondTask.await())
-                                }
-                                val score = cosineSimilarity(first, second)
-                                similarity = score
-                                inferenceTimeMs = System.currentTimeMillis() - start
-                            } catch (e: Exception) {
-                                Log.e("SentenceSimilarityTest", "Compute similarity failed", e)
-                                computeError = e.localizedMessage ?: e.toString()
-                            } finally {
-                                isComputing = false
-                            }
-                        }
-                    },
-                    enabled = canCompute,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (isComputing) "计算中..." else "计算相似度")
-                }
-
-                if (computeError != null) {
-                    SelectionContainer {
-                        Text(
-                            text = "计算失败：$computeError",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-
-                similarity?.let { score ->
-                    val normalized = ((score + 1f) / 2f).coerceIn(0f, 1f)
-                    Text("余弦相似度：${"%.4f".format(score)}", style = MaterialTheme.typography.titleMedium)
-                    inferenceTimeMs?.let { Text("推理耗时：$it ms", style = MaterialTheme.typography.bodyMedium) }
-                    LinearProgressIndicator(
-                        progress = { normalized },
-                        modifier = Modifier.fillMaxWidth(),
+                Text(statusText, style = MaterialTheme.typography.bodyMedium)
+                if (modelError != null) {
+                    Text(
+                        text = modelError,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TextButton(
-                    onClick = {
-                        val temp = sentence1
-                        sentence1 = sentence2
-                        sentence2 = temp
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Text("交换输入")
+                    Button(
+                        onClick = { loadModel() },
+                        enabled = !isModelReady && !isModelLoading,
+                    ) {
+                        Text(if (isModelLoading) "加载中..." else "加载模型")
+                    }
+                    TextButton(
+                        onClick = { unloadModel() },
+                        enabled = isModelReady && !isComputing,
+                    ) {
+                        Text("卸载模型")
+                    }
                 }
             }
-        }
-    }
-}
 
-private suspend fun copyAssetToInternalStorage(
-    context: Context,
-    assetPath: String,
-): String = withContext(Dispatchers.IO) {
-    val outFile = File(context.filesDir, assetPath)
-    if (!outFile.exists()) {
-        outFile.parentFile?.mkdirs()
-        context.assets.open(assetPath).use { input ->
-            outFile.outputStream().use { output ->
-                input.copyTo(output)
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = sentence1,
+                onValueChange = { sentence1 = it },
+                label = { Text("第一句话") },
+                maxLines = 4,
+            )
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = sentence2,
+                onValueChange = { sentence2 = it },
+                label = { Text("第二句话") },
+                maxLines = 4,
+            )
+
+            Button(
+                onClick = {
+                    similarity = null
+                    inferenceTimeMs = null
+                    computeError = null
+                    coroutineScope.launch {
+                        isComputing = true
+                        try {
+                            val start = System.currentTimeMillis()
+                            val (first, second) = withContext(Dispatchers.Default) {
+                                val firstTask = async { SentenceEmbeddingManager.encode(sentence1, context) }
+                                val secondTask = async { SentenceEmbeddingManager.encode(sentence2, context) }
+                                Pair(firstTask.await(), secondTask.await())
+                            }
+                            val score = cosineSimilarity(first, second)
+                            similarity = score
+                            inferenceTimeMs = System.currentTimeMillis() - start
+                        } catch (e: Exception) {
+                            Log.e("SentenceSimilarityTest", "Compute similarity failed", e)
+                            computeError = e.localizedMessage ?: e.toString()
+                        } finally {
+                            isComputing = false
+                        }
+                    }
+                },
+                enabled = canCompute,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (isComputing) "计算中..." else "计算相似度")
+            }
+
+            computeError?.let { error ->
+                Text(
+                    text = "计算失败：$error",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            similarity?.let { score ->
+                val normalized = ((score + 1f) / 2f).coerceIn(0f, 1f)
+                Text("余弦相似度：${"%.4f".format(score)}", style = MaterialTheme.typography.titleMedium)
+                inferenceTimeMs?.let { Text("推理耗时：$it ms", style = MaterialTheme.typography.bodyMedium) }
+                LinearProgressIndicator(
+                    progress = { normalized },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextButton(
+                onClick = {
+                    val temp = sentence1
+                    sentence1 = sentence2
+                    sentence2 = temp
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("交换输入")
             }
         }
     }
-    outFile.absolutePath
-}
-
-private suspend fun readAssetBytes(
-    context: Context,
-    assetPath: String,
-): ByteArray = withContext(Dispatchers.IO) {
-    context.assets.open(assetPath).use { it.readBytes() }
 }
 
 private fun cosineSimilarity(

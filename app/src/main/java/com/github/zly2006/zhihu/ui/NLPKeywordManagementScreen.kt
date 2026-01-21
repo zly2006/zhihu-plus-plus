@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -50,6 +51,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager.ModelState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +77,13 @@ fun NLPKeywordManagementScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val repository = remember { BlockedKeywordRepository(context) }
+    val modelState by SentenceEmbeddingManager.state.collectAsState()
+
+    var isExtracting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(context) {
+        SentenceEmbeddingManager.setDefaultContext(context.applicationContext)
+    }
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("NLP短语管理", "被屏蔽记录")
@@ -133,6 +143,11 @@ fun NLPKeywordManagementScreen(
                     onSimilarityThresholdChange = { similarityThreshold = it },
                     onExtractKeywords = {
                         coroutineScope.launch {
+                            if (inputText.isBlank()) {
+                                Toast.makeText(context, "请输入文本", Toast.LENGTH_SHORT).show()
+                                return@launch
+                            }
+                            isExtracting = true
                             try {
                                 extractedKeywords = NLPService.extractKeywords(inputText, 10)
                                 if (extractedKeywords.isEmpty()) {
@@ -141,6 +156,8 @@ fun NLPKeywordManagementScreen(
                             } catch (e: Exception) {
                                 e.printStackTrace()
                                 Toast.makeText(context, "提取失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            } finally {
+                                isExtracting = false
                             }
                         }
                     },
@@ -189,6 +206,25 @@ fun NLPKeywordManagementScreen(
                             }
                         }
                     },
+                    modelState = modelState,
+                    onLoadModel = {
+                        coroutineScope.launch {
+                            try {
+                                SentenceEmbeddingManager.ensureModel(context)
+                                Toast.makeText(context, "模型已加载", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "模型加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    onUnloadModel = {
+                        coroutineScope.launch {
+                            SentenceEmbeddingManager.unload()
+                            Toast.makeText(context, "已卸载模型", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    isModelBusy = isExtracting,
                 )
                 1 -> BlockedRecordsTab(
                     records = blockedRecords,
@@ -284,12 +320,68 @@ fun NLPPhraseManagementTab(
     onEditKeyword: (BlockedKeyword) -> Unit,
     onDeleteKeyword: (BlockedKeyword) -> Unit,
     onClearAll: () -> Unit,
+    modelState: ModelState,
+    onLoadModel: () -> Unit,
+    onUnloadModel: () -> Unit,
+    isModelBusy: Boolean,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        item {
+            Card {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "Transformer 模型",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    val statusText = when (modelState) {
+                        ModelState.Uninitialized -> "当前状态：未加载"
+                        ModelState.Loading -> "当前状态：正在加载"
+                        ModelState.Ready -> "当前状态：已就绪"
+                        is ModelState.Error -> "当前状态：加载失败"
+                    }
+                    Text(statusText, style = MaterialTheme.typography.bodyMedium)
+                    if (modelState is ModelState.Error) {
+                        Text(
+                            text = modelState.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    if (isModelBusy) {
+                        Text(
+                            text = "提示：正在进行关键词任务，卸载暂不可用",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Button(
+                            onClick = onLoadModel,
+                            enabled = modelState !is ModelState.Loading && modelState !is ModelState.Ready,
+                        ) {
+                            Text(if (modelState is ModelState.Loading) "加载中..." else "加载模型")
+                        }
+                        TextButton(
+                            onClick = onUnloadModel,
+                            enabled = modelState is ModelState.Ready && !isModelBusy,
+                        ) {
+                            Text("卸载模型")
+                        }
+                    }
+                }
+            }
+        }
+
         // 说明卡片
         item {
             Card(
