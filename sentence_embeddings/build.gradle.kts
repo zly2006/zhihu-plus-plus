@@ -66,7 +66,7 @@ val androidTargets = mapOf(
 tasks.register<Exec>("buildRustLib") {
     description = "Build Rust library for Android using cargo-ndk"
     group = "rust"
-    
+
     workingDir = rustProjectDir
     
     // Check if cargo-ndk is available

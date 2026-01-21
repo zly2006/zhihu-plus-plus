@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -365,6 +366,13 @@ fun AccountSettingScreen(
                         },
                     ) {
                         Text("抛出异常测试")
+                    }
+                    Button(
+                        onClick = {
+                            onNavigate(SentenceSimilarityTest)
+                        },
+                    ) {
+                        Text("句子相似度测试")
                     }
                 }
 

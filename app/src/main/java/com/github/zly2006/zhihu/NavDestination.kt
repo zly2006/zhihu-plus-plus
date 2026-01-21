@@ -35,6 +35,9 @@ data object Notification : NavDestination
 data object NotificationSettings : NavDestination
 
 @Serializable
+data object SentenceSimilarityTest : NavDestination
+
+@Serializable
 data class Search(
     val query: String = "",
 ) : NavDestination
