@@ -50,7 +50,6 @@ class HomeFeedViewModel :
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
-        isPullToRefresh = false
         allData.addAll(data)
         debugData.addAll(rawData)
 

@@ -171,6 +171,9 @@ object AccountData {
         saveData(context, Data())
     }
 
+    /**
+     * 将snake_case的JSON转换为camelCase并解析为对象
+     */
     internal inline fun <reified T> decodeJson(json: JsonElement): T {
         val json = snake_case2camelCase(json)
         try {
