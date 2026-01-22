@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.nlp
 
 import android.content.Context
+import com.github.zly2006.zhihu.BuildConfig
 import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,13 +92,14 @@ object SentenceEmbeddingManager {
         assetPath: String,
     ): String = withContext(Dispatchers.IO) {
         val targetFile = File(context.filesDir, assetPath)
-        if (!targetFile.exists()) {
+        if (!targetFile.exists() || targetFile.lastModified() != BuildConfig.BUILD_TIME) {
             targetFile.parentFile?.mkdirs()
             context.assets.open(assetPath).use { input ->
                 targetFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
+            targetFile.setLastModified(BuildConfig.BUILD_TIME)
         }
         targetFile.absolutePath
     }
