@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.viewmodel
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -31,6 +33,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -140,6 +143,30 @@ abstract class PaginationViewModel<T : Any>(
             if (e is java.util.concurrent.CancellationException) throw e
             if (e is HttpStatusException && BuildConfig.DEBUG) {
                 Log.e(this::class.simpleName, "Response: ${e.bodyText}", e)
+                try {
+                    val jojo = json.parseToJsonElement(e.bodyText)
+                    if (jojo.jsonObject["error"]!!
+                            .jsonObject["code"]!!
+                            .jsonPrimitive.int == 100 &&
+                        jojo.jsonObject["error"]!!
+                            .jsonObject["message"]!!
+                            .jsonPrimitive.content == "ERR_TICKET_NOT_EXIST"
+                    ) {
+                        context.mainExecutor.execute {
+                            AlertDialog
+                                .Builder(context)
+                                .setTitle("登录已过期")
+                                .setMessage("请重新登录以继续使用完整功能。")
+                                .setPositiveButton("重新登录") { _, _ ->
+                                    AccountData.delete(context)
+                                    context.startActivity(Intent(context, LoginActivity::class.java))
+                                }.setNegativeButton("取消", null)
+                                .show()
+                        }
+                        return
+                    }
+                } catch (_: Exception) {
+                }
                 context.mainExecutor.execute {
                     AlertDialog
                         .Builder(context)

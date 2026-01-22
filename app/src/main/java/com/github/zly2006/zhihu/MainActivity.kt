@@ -33,19 +33,24 @@ import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
@@ -132,6 +137,35 @@ class MainActivity : ComponentActivity() {
         history = HistoryStorage(this)
         AccountData.loadData(this)
         ThemeManager.initialize(this)
+
+        val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+        if (preferences.getBoolean("developer", false)) {
+            Toast.makeText(this, "开发者模式：已开启协程调试，可能降低性能", Toast.LENGTH_LONG).show()
+            System.setProperty("kotlinx.coroutines.debug", "on")
+        }
+        val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
+        val now = System.currentTimeMillis()
+        if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {
+            val client = httpClient
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
+                    ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
+                    Log.i(TAG, "Zhihu token refreshed successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to refresh Zhihu token", e)
+                    withContext(Dispatchers.Main) {
+                        Toast
+                            .makeText(
+                                this@MainActivity,
+                                "刷新登录状态失败，如多次看到此提示请重新登录",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                    }
+                }
+            }
+        }
+        preferences.edit().putLong(KEY_LAST_LAUNCH_TIMESTAMP, now).apply()
 
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
@@ -677,6 +711,7 @@ class MainActivity : ComponentActivity() {
 
     @Suppress("unused")
     companion object {
+        private const val KEY_LAST_LAUNCH_TIMESTAMP = "last_main_launch_timestamp"
         const val IOS = "5_2.0"
         const val ANDROID = "4_2.0"
         const val WEB = "3_2.0"

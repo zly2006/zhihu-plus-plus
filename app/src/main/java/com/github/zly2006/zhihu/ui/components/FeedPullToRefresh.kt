@@ -8,10 +8,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,9 +23,14 @@ fun FeedPullToRefresh(
 ) {
     val context = LocalContext.current
     val state = rememberPullToRefreshState()
+    val scope = rememberCoroutineScope()
     PullToRefreshBox(
         isRefreshing = viewModel.isPullToRefresh,
-        onRefresh = { viewModel.pullToRefresh(context) },
+        onRefresh = {
+            scope.launch {
+                viewModel.pullToRefresh(context)
+            }
+        },
         indicator = {
             PullToRefreshDefaults.Indicator(
                 modifier = Modifier.align(Alignment.TopCenter),

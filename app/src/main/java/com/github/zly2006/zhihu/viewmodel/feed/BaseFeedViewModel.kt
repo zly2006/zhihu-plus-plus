@@ -36,7 +36,6 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
-        isPullToRefresh = false
         super.processResponse(context, data, rawData)
         displayItems.addAll(data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
     }
@@ -47,11 +46,22 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         super.refresh(context)
     }
 
-    fun pullToRefresh(context: Context) {
+    suspend fun pullToRefresh(context: Context) {
         isPullToRefresh = true
         displayItems.clear()
         if (isLoading) return
-        refresh(context)
+        errorMessage = null
+        debugData.clear()
+        allData.clear()
+        lastPaging = null // 重置 lastPaging
+        isLoading = true
+        try {
+            fetchFeeds(context)
+        } catch (e: Exception) {
+            errorHandle(e)
+        }
+        isLoading = false
+        isPullToRefresh = false
     }
 
     open fun createDisplayItem(feed: Feed): FeedDisplayItem = when (feed) {
