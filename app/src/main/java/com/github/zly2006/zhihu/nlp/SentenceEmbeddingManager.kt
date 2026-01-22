@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.nlp
 
 import android.content.Context
 import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * 统一管理 Sentence-Transformers 模型的懒加载与状态。
@@ -20,9 +20,14 @@ object SentenceEmbeddingManager {
 
     sealed interface ModelState {
         data object Uninitialized : ModelState
+
         data object Loading : ModelState
+
         data object Ready : ModelState
-        data class Error(val message: String) : ModelState
+
+        data class Error(
+            val message: String,
+        ) : ModelState
     }
 
     private val mutex = Mutex()
