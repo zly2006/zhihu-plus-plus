@@ -52,6 +52,9 @@ android {
 // Rust build configuration
 val rustProjectDir = file("../rs-hf-tokenizer")
 val jniLibsDir = file("src/main/jniLibs")
+val rustSrcDir = rustProjectDir.resolve("src")
+val cargoToml = rustProjectDir.resolve("Cargo.toml")
+val cargoLock = rustProjectDir.resolve("Cargo.lock")
 
 // Define Android targets
 val androidTargets = mapOf(
@@ -63,11 +66,24 @@ val androidTargets = mapOf(
 )
 
 // Task to build Rust library using cargo-ndk
+// Adding explicit inputs/outputs allows Gradle to skip or remote-cache this task when nothing changes
 tasks.register<Exec>("buildRustLib") {
     description = "Build Rust library for Android using cargo-ndk"
     group = "rust"
 
     workingDir = rustProjectDir
+
+    inputs.dir(rustSrcDir)
+    inputs.file(cargoToml)
+    if (cargoLock.exists()) {
+        inputs.file(cargoLock)
+    }
+    inputs.property("androidTargets", androidTargets.toString())
+    inputs.property("ndkVersion", android.ndkVersion)
+
+    // Note: commented out for performance
+    //outputs.dir(rustProjectDir.resolve("target"))
+    outputs.dir(jniLibsDir)
     
     // Check if cargo-ndk is available
     commandLine("sh", "-c", """

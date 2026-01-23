@@ -8,36 +8,6 @@ import kotlinx.coroutines.withContext
  * 提供完整的关键词提取、去重、过滤逻辑
  */
 object KeywordAnalyzer {
-    /**
-     * 从Feed内容中提取关键词，标题权重更高
-     * @param title 标题（必填）
-     * @param excerpt 摘要
-     * @param content 正文内容
-     * @param topN 返回前N个关键词
-     * @return 去重和过滤后的关键词列表
-     */
-    suspend fun extractFromFeed(
-        title: String,
-        excerpt: String? = null,
-        content: String? = null,
-        topN: Int = 10,
-    ): List<String> = withContext(Dispatchers.Default) {
-        if (title.isBlank()) return@withContext emptyList()
-
-        try {
-            // 构建加权文本：标题重复3次以提高权重
-            val weightedText = buildWeightedText(title, excerpt, content)
-
-            // 提取关键词（提取更多用于去重和过滤）
-            val extractedKeywords = NLPService.extractKeywords(weightedText, topN * 3)
-
-            // 去重、过滤和排序
-            return@withContext processKeywords(extractedKeywords, topN)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
-        }
-    }
 
     /**
      * 从Feed内容中提取关键词及权重
@@ -96,18 +66,6 @@ object KeywordAnalyzer {
             append(content.take(500))
         }
     }
-
-    /**
-     * 处理关键词：去重、过滤、排序
-     */
-    private fun processKeywords(keywords: List<String>, topN: Int): List<String> = keywords
-        .asSequence()
-        .distinct() // 去重
-        .filter { it.length >= 2 } // 过滤过短的词（至少2个字符）
-        .filter { !isStopWord(it) } // 过滤停用词
-        .filter { !isNumberOnly(it) } // 过滤纯数字
-        .take(topN)
-        .toList()
 
     /**
      * 处理带权重的关键词：去重、过滤、排序
@@ -216,15 +174,4 @@ object KeywordAnalyzer {
      */
     private fun isNumberOnly(word: String): Boolean = word.all { it.isDigit() }
 
-    /**
-     * 合并多个关键词列表并去重
-     */
-    fun mergeAndDeduplicate(vararg keywordLists: List<String>): List<String> = keywordLists
-        .asSequence()
-        .flatten()
-        .distinct()
-        .filter { it.length >= 2 }
-        .filter { !isStopWord(it) }
-        .filter { !isNumberOnly(it) }
-        .toList()
 }

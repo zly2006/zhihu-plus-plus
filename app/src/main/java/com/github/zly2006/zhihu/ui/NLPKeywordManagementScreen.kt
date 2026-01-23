@@ -422,7 +422,7 @@ fun NLPPhraseManagementTab(
                         value = similarityThreshold,
                         onValueChange = onSimilarityThresholdChange,
                         valueRange = 0.1f..0.9f,
-                        steps = 7,
+                        steps = 15,
                     )
                     Text(
                         "阈值越高，匹配越严格；阈值越低，匹配越宽松",

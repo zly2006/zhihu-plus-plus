@@ -184,45 +184,6 @@ class BlockedKeywordRepository(
     }
 
     /**
-     * 检查文本是否应该被NLP语义屏蔽，并返回匹配详情
-     * @param text 要检查的文本
-     * @param threshold 相似度阈值，默认0.3
-     * @return Pair<是否屏蔽, 匹配的关键词列表>
-     */
-    suspend fun checkNLPBlocking(
-        text: String,
-        threshold: Double = 0.3,
-    ): Pair<Boolean, List<MatchedKeywordInfo>> {
-        if (text.isBlank()) return Pair(false, emptyList())
-
-        val nlpKeywords = getNLPSemanticKeywords()
-        if (nlpKeywords.isEmpty()) return Pair(false, emptyList())
-
-        // 获取所有NLP短语
-        val phrases = nlpKeywords.map { it.keyword }
-
-        // 检查匹配情况
-        val matches = NLPService.checkBlockedPhrases(text, phrases, threshold)
-
-        val matchedInfos = matches.map { (phrase, similarity) ->
-            MatchedKeywordInfo(phrase, similarity)
-        }
-
-        return Pair(matches.isNotEmpty(), matchedInfos)
-    }
-
-    /**
-     * 检查文本是否应该被屏蔽（基于NLP语义相似度）
-     * @param text 要检查的文本
-     * @param threshold 相似度阈值，默认0.3
-     * @return 如果应该被屏蔽则返回true
-     */
-    suspend fun shouldBlockContent(text: String, threshold: Double = 0.3): Boolean {
-        val (shouldBlock, _) = checkNLPBlocking(text, threshold)
-        return shouldBlock
-    }
-
-    /**
      * 记录被NLP屏蔽的内容
      */
     suspend fun recordBlockedContent(

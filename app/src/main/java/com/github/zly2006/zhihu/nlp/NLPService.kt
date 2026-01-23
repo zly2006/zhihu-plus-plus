@@ -25,6 +25,17 @@ object NLPService {
     private const val MMR_LAMBDA = 0.65
     private const val MAX_EMBEDDING_TEXT_LENGTH = 2048
     private const val MIN_KEYWORD_LENGTH = 2
+    private const val MAX_SEGMENT_COUNT = 48
+    private const val MAX_SEGMENT_CHAR_LENGTH = 160
+    private const val SEGMENT_WINDOW_STEP = 90
+    private const val MIN_SEGMENT_CHAR_LENGTH = 4
+    private val SENTENCE_SPLIT_REGEX = "[。！？!?\\n]+".toRegex()
+
+    private data class SegmentedTextContext(
+        val originalText: String,
+        val segments: List<String>,
+        val segmentEmbeddings: List<FloatArray?>,
+    )
 
     /**
      * 从文本中提取关键词
@@ -58,136 +69,87 @@ object NLPService {
         }
     }
 
-    /**
-     * 计算两个文本之间的语义相似度
-     * @param text1 第一个文本
-     * @param text2 第二个文本
-     * @return 相似度分数 (0.0 - 1.0)，越高表示越相似
-     */
-    suspend fun calculateSimilarity(text1: String, text2: String): Double = withContext(Dispatchers.Default) {
-        if (text1.isBlank() || text2.isBlank()) return@withContext 0.0
-
-        val embeddingScore = embedPairSimilarity(text1, text2)
-        embeddingScore ?: legacySimilarity(text1, text2)
-    }
-
-    /**
-     * 计算段落文本与短语之间的语义相似度（优化版）
-     * 适用于长文本段落与短关键词短语的匹配场景
-     *
-     * @param paragraphText 段落文本（较长的内容）
-     * @param phraseKeywords 短语关键词（空格分隔的多个关键词）
-     * @return 相似度分数 (0.0 - 1.0)
-     */
-    suspend fun calculatePhraseMatchScore(
-        paragraphText: String,
+    private suspend fun calculatePhraseMatchScoreForContext(
         phraseKeywords: String,
-    ): Double = withContext(Dispatchers.Default) {
-        if (paragraphText.isBlank() || phraseKeywords.isBlank()) return@withContext 0.0
-
-        val keywords = phraseKeywords
+        segmentedContext: SegmentedTextContext,
+    ): Double {
+        val normalizedPhrase = phraseKeywords.trim()
+        if (normalizedPhrase.isEmpty()) return 0.0
+        val keywords = normalizedPhrase
             .split("\\s+".toRegex())
             .filter { it.isNotBlank() }
-            .distinct()
-        if (keywords.isEmpty()) return@withContext 0.0
 
-        val paragraphEmbedding = encodeTextOrNull(paragraphText)
-        if (paragraphEmbedding != null) {
-            val keywordEmbeddings = keywords.mapNotNull { keyword ->
-                encodeTextOrNull(keyword)?.let { keyword to it }
-            }
-            if (keywordEmbeddings.isNotEmpty()) {
-                val avgScore = keywordEmbeddings
-                    .map { (_, embedding) -> cosineToScore(cosineSimilarity(paragraphEmbedding, embedding)) }
-                    .average()
-                val coverage = keywordEmbeddings.size.toDouble() / keywords.size
-                return@withContext avgScore * 0.7 + coverage * 0.3
-            }
-        }
-
-        legacyPhraseMatchScore(paragraphText, keywords)
-    }
-
-    private suspend fun embedPairSimilarity(text1: String, text2: String): Double? {
-        val embedding1 = encodeTextOrNull(text1)
-        val embedding2 = encodeTextOrNull(text2)
-        if (embedding1 == null || embedding2 == null) return null
-        return cosineToScore(cosineSimilarity(embedding1, embedding2))
-    }
-
-    private fun legacySimilarity(text1: String, text2: String): Double = try {
-        val terms1 = segment(text1)
-        val terms2 = segment(text2)
-        val words1 = terms1.filter { shouldKeepTerm(it) }.map { it.word }.toSet()
-        val words2 = terms2.filter { shouldKeepTerm(it) }.map { it.word }.toSet()
-        if (words1.isEmpty() || words2.isEmpty()) {
-            0.0
-        } else {
-            val intersection = words1.intersect(words2).size
-            val union = words1.union(words2).size
-            intersection.toDouble() / union.toDouble()
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        0.0
-    }
-
-    private fun legacyPhraseMatchScore(
-        paragraphText: String,
-        keywords: List<String>,
-    ): Double = try {
-        val paragraphKeywords = hanlpExtractKeywords(paragraphText, min(30, paragraphText.length / 10)).toSet()
-        val paragraphWords = segment(paragraphText)
-            .filter { shouldKeepTerm(it) }
-            .map { it.word }
-            .toSet()
-
-        var totalScore = 0.0
-        var matchCount = 0
-
-        for (keyword in keywords) {
-            var keywordScore = 0.0
-            if (paragraphWords.contains(keyword)) {
-                keywordScore = max(keywordScore, 1.0)
-            }
-            if (paragraphText.contains(keyword, ignoreCase = true)) {
-                keywordScore = max(keywordScore, 0.85)
-            }
-            if (paragraphKeywords.contains(keyword)) {
-                keywordScore = max(keywordScore, 0.95)
-            }
-            for (word in paragraphWords) {
-                if (word.length >= 2 && keyword.length >= 2) {
-                    if (word.contains(keyword) || keyword.contains(word)) {
-                        val similarity = calculateWordSimilarity(keyword, word)
-                        keywordScore = max(keywordScore, similarity * 0.75)
+        val phraseEmbedding = encodeTextOrNull(normalizedPhrase)
+        if (phraseEmbedding != null) {
+            var hasSegmentEmbedding = false
+            var bestScore = 0.0
+            segmentedContext.segmentEmbeddings.forEach { embedding ->
+                if (embedding != null) {
+                    hasSegmentEmbedding = true
+                    val score = cosineToScore(cosineSimilarity(phraseEmbedding, embedding))
+                    if (score > bestScore) {
+                        bestScore = score
                     }
                 }
             }
-            val keywordRelatedWords = paragraphKeywords.filter { it.contains(keyword) || keyword.contains(it) }
-            if (keywordRelatedWords.isNotEmpty()) {
-                keywordScore = max(keywordScore, 0.7)
-            }
-            if (keywordScore > 0) {
-                matchCount++
-                totalScore += keywordScore
+            if (hasSegmentEmbedding) {
+                return bestScore
             }
         }
 
-        if (matchCount == 0) {
-            0.0
-        } else {
-            val matchRatio = matchCount.toDouble() / keywords.size
-            val avgScore = totalScore / keywords.size
-            when {
-                matchCount == keywords.size -> avgScore * 0.7 + matchRatio * 0.3
-                matchCount >= keywords.size * 0.7 -> avgScore * 0.6 + matchRatio * 0.4
-                else -> avgScore * 0.5 + matchRatio * 0.5
+        return 0.0
+    }
+
+    private suspend fun buildSegmentedContext(text: String): SegmentedTextContext {
+        val normalized = text.trim()
+        val segments = splitTextIntoSegments(normalized).ifEmpty {
+            val fallback = normalized.take(MAX_SEGMENT_CHAR_LENGTH)
+            if (fallback.isNotEmpty()) listOf(fallback) else emptyList()
+        }.take(MAX_SEGMENT_COUNT)
+
+        val embeddings = segments.map { segment ->
+            encodeTextOrNull(segment)
+        }
+
+        return SegmentedTextContext(
+            originalText = normalized,
+            segments = segments,
+            segmentEmbeddings = embeddings,
+        )
+    }
+
+    private fun splitTextIntoSegments(text: String): List<String> {
+        if (text.isBlank()) return emptyList()
+        val rawSentences = SENTENCE_SPLIT_REGEX
+            .split(text)
+            .map { it.trim() }
+            .filter { it.length >= MIN_SEGMENT_CHAR_LENGTH }
+
+        val segments = mutableListOf<String>()
+        for (sentence in rawSentences) {
+            if (sentence.isEmpty()) continue
+            if (sentence.length <= MAX_SEGMENT_CHAR_LENGTH) {
+                segments.add(sentence)
+            } else {
+                var start = 0
+                while (start < sentence.length) {
+                    val end = min(sentence.length, start + MAX_SEGMENT_CHAR_LENGTH)
+                    segments.add(sentence.substring(start, end))
+                    if (segments.size >= MAX_SEGMENT_COUNT) return segments
+                    start += SEGMENT_WINDOW_STEP
+                }
+            }
+            if (segments.size >= MAX_SEGMENT_COUNT) break
+        }
+
+        if (segments.isEmpty()) {
+            val fallback = text.take(MAX_SEGMENT_CHAR_LENGTH)
+            if (fallback.isNotEmpty()) {
+                segments.add(fallback)
             }
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        0.0
+
+        return segments
     }
 
     private fun generateKeywordCandidates(text: String, topN: Int): List<String> {
@@ -290,84 +252,6 @@ object NLPService {
 
     private fun cosineToScore(value: Double): Double = ((value + 1.0) / 2.0).coerceIn(0.0, 1.0)
 
-    private fun hanlpExtractKeywords(text: String, topN: Int): List<String> {
-        if (text.isBlank() || topN <= 0) return emptyList()
-        return HanLP.extractKeyword(text, topN)
-    }
-
-    /**
-     * 计算两个词语之间的相似度
-     */
-    private fun calculateWordSimilarity(word1: String, word2: String): Double {
-        if (word1 == word2) return 1.0
-
-        // 使用编辑距离计算相似度
-        val maxLen = max(word1.length, word2.length)
-        if (maxLen == 0) return 1.0
-
-        val distance = levenshteinDistance(word1, word2)
-        return 1.0 - (distance.toDouble() / maxLen)
-    }
-
-    /**
-     * 计算编辑距离（Levenshtein距离）
-     */
-    private fun levenshteinDistance(s1: String, s2: String): Int {
-        val m = s1.length
-        val n = s2.length
-        val dp = Array(m + 1) { IntArray(n + 1) }
-
-        for (i in 0..m) dp[i][0] = i
-        for (j in 0..n) dp[0][j] = j
-
-        for (i in 1..m) {
-            for (j in 1..n) {
-                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
-                dp[i][j] = minOf(
-                    dp[i - 1][j] + 1, // 删除
-                    dp[i][j - 1] + 1, // 插入
-                    dp[i - 1][j - 1] + cost, // 替换
-                )
-            }
-        }
-
-        return dp[m][n]
-    }
-
-    /**
-     * 检查文本是否与屏蔽词列表中的任何词语相似
-     * @param text 要检查的文本
-     * @param blockedWords 屏蔽词列表
-     * @param threshold 相似度阈值，默认0.3
-     * @return 如果相似度超过阈值则返回true
-     */
-    suspend fun isBlockedByKeywords(
-        text: String,
-        blockedWords: List<String>,
-        threshold: Double = 0.3,
-    ): Boolean = withContext(Dispatchers.Default) {
-        if (text.isBlank() || blockedWords.isEmpty()) return@withContext false
-
-        try {
-            // 提取文本关键词
-            val textKeywords = extractKeywords(text, 10)
-            val textContent = "$text ${textKeywords.joinToString(" ")}"
-
-            // 检查是否与任何屏蔽词相似
-            for (blockedWord in blockedWords) {
-                val similarity = calculateSimilarity(textContent, blockedWord)
-                if (similarity >= threshold) {
-                    return@withContext true
-                }
-            }
-
-            false
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
-    }
-
     /**
      * 检查文本是否与屏蔽短语匹配，并返回匹配详情
      * @param text 要检查的文本
@@ -384,9 +268,10 @@ object NLPService {
 
         try {
             val matches = mutableListOf<Pair<String, Double>>()
+            val segmentedContext = buildSegmentedContext(text)
 
             for (phrase in blockedPhrases) {
-                val similarity = calculatePhraseMatchScore(text, phrase)
+                val similarity = calculatePhraseMatchScoreForContext(phrase, segmentedContext)
                 if (similarity >= threshold) {
                     matches.add(Pair(phrase, similarity))
                 }
