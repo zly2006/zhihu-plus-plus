@@ -12,7 +12,10 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
 
 /**
@@ -275,20 +278,32 @@ object ContentFilterExtensions {
         dest: com.github.zly2006.zhihu.Article,
     ): DataHolder.Content {
         val appViewUrl = when (dest.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count"
         }
 
         return runCatching {
-            val jojo = AccountData.fetchGet(context, appViewUrl) {
+            val jo = AccountData.fetchGet(context, appViewUrl) {
                 signFetchRequest(context)
+            }
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, value.jsonPrimitive.long)
+                    } else {
+                        put(key, value)
+                    }
+                }
             }
             // 解析为对应的Content类型
             when (dest.type) {
-                ArticleType.Answer -> AccountData.json.decodeFromJsonElement<DataHolder.Answer>(jojo)
-                ArticleType.Article -> AccountData.json.decodeFromJsonElement<DataHolder.Article>(jojo)
+                ArticleType.Answer -> AccountData.decodeJson<DataHolder.Answer>(jojo)
+                ArticleType.Article -> AccountData.decodeJson<DataHolder.Article>(jojo)
             }
-        }.getOrElse { DataHolder.DummyContent }
+        }.getOrElse { e ->
+            Log.e("ContentFilterExtensions", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+            DataHolder.DummyContent
+        }
     }
 
     /**
