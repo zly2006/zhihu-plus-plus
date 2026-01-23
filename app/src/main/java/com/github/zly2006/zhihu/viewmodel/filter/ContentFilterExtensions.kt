@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.target
@@ -185,8 +186,8 @@ object ContentFilterExtensions {
                 val (contentType, contentId) = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> {
                         val type = when (dest.type) {
-                            com.github.zly2006.zhihu.ArticleType.Answer -> ContentType.ANSWER
-                            com.github.zly2006.zhihu.ArticleType.Article -> ContentType.ARTICLE
+                            ArticleType.Answer -> ContentType.ANSWER
+                            ArticleType.Article -> ContentType.ARTICLE
                         }
                         Pair(type, dest.id.toString())
                     }
@@ -207,7 +208,11 @@ object ContentFilterExtensions {
                 FilterableContent(
                     title = item.title,
                     summary = item.summary,
-                    content = item.content,
+                    content = when (rawContent) {
+                        is DataHolder.Answer -> rawContent.content
+                        is DataHolder.Article -> rawContent.content
+                        else -> null
+                    } ?: item.content,
                     authorName = item.authorName,
                     authorId = item.feed
                         ?.target
@@ -270,8 +275,8 @@ object ContentFilterExtensions {
         dest: com.github.zly2006.zhihu.Article,
     ): DataHolder.Content {
         val appViewUrl = when (dest.type) {
-            com.github.zly2006.zhihu.ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info"
-            com.github.zly2006.zhihu.ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info"
         }
 
         return runCatching {
@@ -280,8 +285,8 @@ object ContentFilterExtensions {
             }
             // 解析为对应的Content类型
             when (dest.type) {
-                com.github.zly2006.zhihu.ArticleType.Answer -> AccountData.json.decodeFromJsonElement<DataHolder.Answer>(jojo)
-                com.github.zly2006.zhihu.ArticleType.Article -> AccountData.json.decodeFromJsonElement<DataHolder.Article>(jojo)
+                ArticleType.Answer -> AccountData.json.decodeFromJsonElement<DataHolder.Answer>(jojo)
+                ArticleType.Article -> AccountData.json.decodeFromJsonElement<DataHolder.Article>(jojo)
             }
         }.getOrElse { DataHolder.DummyContent }
     }
@@ -292,14 +297,16 @@ object ContentFilterExtensions {
     private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
         is DataHolder.Answer -> {
             val isAd = "xg.zhihu.com" in raw.content
+            val isEdu = "data-edu-card-id" in raw.content
             val isPaid = raw.paidInfo != null
-            isAd || isPaid
+            isAd || isEdu || isPaid
         }
 
         is DataHolder.Article -> {
             val isAd = "xg.zhihu.com" in raw.content
+            val isEdu = "data-edu-card-id" in raw.content
             val isPaid = raw.paidInfo != null
-            isAd || isPaid
+            isAd || isEdu || isPaid
         }
 
         else -> {
