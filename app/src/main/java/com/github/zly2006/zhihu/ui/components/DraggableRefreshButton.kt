@@ -82,10 +82,10 @@ fun DraggableRefreshButton(
                         pressing = true
                         // 震动反馈
                         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+                            (context.getSystemService(VibratorManager::class.java) as VibratorManager).defaultVibrator
                         } else {
                             @Suppress("DEPRECATION")
-                            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                            context.getSystemService(Vibrator::class.java) as Vibrator
                         }
                         vibrator.vibrate(
                             VibrationEffect.createOneShot(

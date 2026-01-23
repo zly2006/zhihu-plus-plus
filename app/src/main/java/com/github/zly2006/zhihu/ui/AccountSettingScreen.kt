@@ -40,12 +40,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,6 +78,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -87,6 +88,7 @@ import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -310,6 +312,19 @@ fun AccountSettingScreen(
             }
         }
         Text(networkStatus)
+        when (PowerSaveModeCompat.getPowerSaveMode(context)) {
+            PowerSaveModeCompat.POWER_SAVE -> {
+                Text("省电模式：已开启")
+            }
+
+            PowerSaveModeCompat.HUAWEI_POWER_SAVE -> {
+                Text("省电模式：华为傻逼模式已开启")
+            }
+
+            else -> {
+                // Do nothing
+            }
+        }
         AnimatedVisibility(
             visible = isDeveloper,
         ) {
@@ -351,6 +366,13 @@ fun AccountSettingScreen(
                         },
                     ) {
                         Text("抛出异常测试")
+                    }
+                    Button(
+                        onClick = {
+                            onNavigate(SentenceSimilarityTest)
+                        },
+                    ) {
+                        Text("句子相似度测试")
                     }
                 }
 
@@ -823,7 +845,7 @@ fun AccountSettingScreen(
                         )
                     },
                     modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth(),
                 )
                 ExposedDropdownMenu(

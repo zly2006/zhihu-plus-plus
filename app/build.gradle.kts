@@ -38,6 +38,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "version"
+    productFlavors {
+        create("full") {
+            dimension = "version"
+            buildConfigField("boolean", "IS_LITE", "false")
+        }
+        create("lite") {
+            dimension = "version"
+            buildConfigField("boolean", "IS_LITE", "true")
+            applicationIdSuffix = ".lite"
+            versionNameSuffix = "-lite"
+        }
+    }
+
     androidResources {
         @Suppress("UnstableApiUsage")
         localeFilters += listOf("en", "zh")
@@ -69,6 +83,7 @@ android {
         val gitHash = grgit.head().abbreviatedId
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         }
         release {
             if (System.getenv("GITHUB_ACTIONS") == null ||
@@ -79,6 +94,7 @@ android {
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             }
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }
@@ -169,6 +185,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
+    "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -177,6 +194,9 @@ dependencies {
     implementation("com.github.chrisbanes:PhotoView:2.0.0") {
         exclude(group = "com.android.support")
     }
+
+    // HanLP for Chinese NLP
+    "fullImplementation"("com.hankcs:hanlp:portable-1.8.4")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-cio:$ktor")

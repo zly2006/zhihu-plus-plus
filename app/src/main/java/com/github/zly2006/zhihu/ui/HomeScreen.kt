@@ -50,6 +50,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -143,6 +144,10 @@ fun HomeScreen(
     // 屏蔽用户确认对话框
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair of userId and userName
+
+    // 按关键词屏蔽对话框
+    var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
+    var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
 
     Scaffold(
         topBar = {
@@ -239,6 +244,14 @@ fun HomeScreen(
                                 showBlockUserDialog = true
                             } ?: run {
                                 Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onBlockByKeywords = { feedItem ->
+                            feedItem.feed?.target?.let { target ->
+                                feedToBlockByKeywords = Pair(target.title, target.excerpt)
+                                showBlockByKeywordsDialog = true
+                            } ?: run {
+                                Toast.makeText(context, "无法获取内容信息", Toast.LENGTH_SHORT).show()
                             }
                         },
                     ) {
@@ -339,4 +352,22 @@ fun HomeScreen(
             userToBlock = null
         },
     )
+
+    // 按关键词屏蔽对话框
+    feedToBlockByKeywords?.let { (title, excerpt) ->
+        BlockByKeywordsDialog(
+            showDialog = showBlockByKeywordsDialog,
+            feedTitle = title,
+            feedExcerpt = excerpt,
+            onDismiss = {
+                showBlockByKeywordsDialog = false
+                feedToBlockByKeywords = null
+            },
+            onConfirm = {
+                viewModel.refresh(context)
+                showBlockByKeywordsDialog = false
+                feedToBlockByKeywords = null
+            },
+        )
+    }
 }

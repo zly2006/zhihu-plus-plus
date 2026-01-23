@@ -11,3 +11,5 @@ Zhihu++源代码使用协议
 9. 本协议可能会随时更新，恕不另行通知。新协议会在新版本发布时生效，您可以选择接受新的协议。如果您不接受，您可以继续使用旧版本，但无法得到新版本的授权；
 10. 本项目不提供任何形式的技术支持，也没有任何隐含的保证。使用本项目的风险由您自己承担，包括但不限于因使用本项目而产生的任何直接或间接的损失；
 11. 如果您使用了 Zhihu++ 的源代码或直接引用 Zhihu++ 的作品，将视为您已接受此协议。
+
+[sentence_embeddings](sentence_embeddings) and [rs-hf-tokenizer](rs-hf-tokenizer) are licensed under Apache License 2.0. See the LICENSE files in the respective directories for more details.

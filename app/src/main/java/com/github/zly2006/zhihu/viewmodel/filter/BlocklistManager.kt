@@ -39,6 +39,7 @@ class BlocklistManager private constructor(
     ): Long = withContext(Dispatchers.IO) {
         val blockedKeyword = BlockedKeyword(
             keyword = keyword.trim(),
+            keywordType = com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH.name,
             caseSensitive = caseSensitive,
             isRegex = isRegex,
         )
@@ -71,12 +72,15 @@ class BlocklistManager private constructor(
     }
 
     /**
-     * 检查文本是否包含屏蔽关键词
+     * 检查文本是否包含屏蔽关键词（仅精确匹配）
      */
     suspend fun containsBlockedKeyword(text: String?): Boolean = withContext(Dispatchers.IO) {
         if (text.isNullOrBlank()) return@withContext false
 
-        val keywords = keywordDao.getAllKeywords()
+        val keywords = keywordDao
+            .getAllKeywords()
+            .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
+
         keywords.any { blockedKeyword ->
             try {
                 when {

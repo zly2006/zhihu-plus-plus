@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: 'true'
       # Set Current Date As Env Variable
       - name: Set current date as env variable
         run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
@@ -47,13 +49,14 @@ jobs:
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew assembleDebug
+          bash ./gradlew assembleFullDebug assembleLiteDebug
         env:
           CI_BUILD_MINIFY: false
       - name: Move files
         run: |
           mkdir -p app/build/upload
-          mv app/build/outputs/apk/debug/app-debug.apk app/build/upload/zhihu++debug.apk
+          mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
+          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

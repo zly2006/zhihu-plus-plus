@@ -1,10 +1,12 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
+import android.net.ConnectivityManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlin.jvm.java
 
 class LocalRecommendationEngine(
     private val context: Context,
@@ -156,7 +158,7 @@ class LocalRecommendationEngine(
      * 检查网络连接是否可用
      */
     private fun isNetworkAvailable(): Boolean = try {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
         val activeNetwork = connectivityManager.activeNetwork
         val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
         networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true

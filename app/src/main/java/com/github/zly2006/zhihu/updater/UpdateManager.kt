@@ -247,10 +247,28 @@ object UpdateManager {
                     }
                 }.body<JsonObject>()
             val assets = response["assets"]?.jsonArray
-            val downloadUrl = assets
-                ?.firstOrNull {
-                    it.jsonObject["content_type"]?.jsonPrimitive?.content == "application/vnd.android.package-archive"
-                }?.jsonObject
+            val isLite = BuildConfig.IS_LITE
+            val apkAssets = assets
+                ?.map { it.jsonObject }
+                ?.filter {
+                    it["content_type"]?.jsonPrimitive?.content == "application/vnd.android.package-archive"
+                } ?: emptyList()
+
+            val selectedAsset = if (isLite) {
+                // Lite version: strictly look for "lite" in filename
+                apkAssets.firstOrNull {
+                    it["name"]?.jsonPrimitive?.content?.contains("lite", ignoreCase = true) == true
+                }
+            } else {
+                // Full version: prefer "full" in filename, fallback to non-lite (legacy)
+                apkAssets.firstOrNull {
+                    it["name"]?.jsonPrimitive?.content?.contains("full", ignoreCase = true) == true
+                } ?: apkAssets.firstOrNull {
+                    it["name"]?.jsonPrimitive?.content?.contains("lite", ignoreCase = true) != true
+                }
+            }
+
+            val downloadUrl = selectedAsset
                 ?.get("browser_download_url")
                 ?.jsonPrimitive
                 ?.content

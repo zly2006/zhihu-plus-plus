@@ -63,6 +63,7 @@ import com.github.zly2006.zhihu.NotificationSettings
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
+import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
@@ -274,6 +275,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         navController.popBackStack()
                     },
                 )
+            }
+            composable<SentenceSimilarityTest> {
+                SentenceSimilarityTestScreen {
+                    navController.popBackStack()
+                }
             }
         }
     }

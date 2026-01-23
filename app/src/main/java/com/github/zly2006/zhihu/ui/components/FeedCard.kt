@@ -73,6 +73,7 @@ fun FeedCard(
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -258,6 +259,13 @@ fun FeedCard(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false },
                             ) {
+                                DropdownMenuItem(
+                                    text = { Text("按关键词屏蔽") },
+                                    onClick = {
+                                        showMenu = false
+                                        onBlockByKeywords?.invoke(item)
+                                    },
+                                )
                                 DropdownMenuItem(
                                     text = { Text("屏蔽用户") },
                                     onClick = {

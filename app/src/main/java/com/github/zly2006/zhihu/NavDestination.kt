@@ -1,11 +1,8 @@
 package com.github.zly2006.zhihu
 
 import android.net.Uri
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 sealed interface NavDestination
@@ -33,6 +30,9 @@ data object Notification : NavDestination
 
 @Serializable
 data object NotificationSettings : NavDestination
+
+@Serializable
+data object SentenceSimilarityTest : NavDestination
 
 @Serializable
 data class Search(
@@ -197,26 +197,4 @@ fun resolveContent(uri: Uri): NavDestination? {
         }
     }
     return null
-}
-
-suspend fun checkForAd(destination: NavDestination, context: MainActivity): Boolean {
-    val appViewUrl = when (destination) {
-        is Article -> when (destination.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${destination.id}?include=content,paid_info"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${destination.id}?include=content,paid_info"
-        }
-
-        else -> return false
-    }
-    runCatching {
-        val jojo = AccountData.fetchGet(context, appViewUrl) {
-            signFetchRequest(context)
-        }
-        val content = jojo["content"]?.jsonPrimitive?.content
-
-        val isAd = content != null && "xg.zhihu.com" in content // 广告
-        val isPayWall = "paid_info" in jojo // 盐选
-        return isAd || isPayWall
-    }
-    return false
 }
