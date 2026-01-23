@@ -73,6 +73,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         "content_filter_database",
                     )
                     .addMigrations(MIGRATION_2_3)
+                    .fallbackToDestructiveMigration(true)
                     .build()
             INSTANCE = instance
             instance
