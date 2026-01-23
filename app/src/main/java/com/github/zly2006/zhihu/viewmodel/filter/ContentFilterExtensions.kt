@@ -316,6 +316,20 @@ object ContentFilterExtensions {
     ): List<FilterableContent> {
         var filteredContents = contents
 
+        // 应用已读屏蔽：如果发布者未被关注，且已经展示过，则过滤
+        if (isContentFilterEnabled(context)) {
+            val filterManager = ContentFilterManager.getInstance(context)
+            val contentPairs = filteredContents.map { it.contentType to it.contentId }
+            val viewedContentIds = filterManager.getAlreadyViewedContentIds(contentPairs)
+
+            filteredContents = filteredContents.filter { content ->
+                val isViewed = ContentViewRecord.generateId(content.contentType, content.contentId) in viewedContentIds
+                // 保留条件：(关注了作者) 或 (未看过)
+                // 过滤条件：(未关注作者) 且 (已看过)
+                content.isFollowing || !isViewed
+            }
+        }
+
         // 应用关键词屏蔽
         if (isKeywordBlockingEnabled(context)) {
             val blocklistManager = BlocklistManager.getInstance(context)

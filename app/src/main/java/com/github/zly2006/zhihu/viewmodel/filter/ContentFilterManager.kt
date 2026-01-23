@@ -66,26 +66,13 @@ class ContentFilterManager private constructor(
     }
 
     /**
-     * 检查内容是否应该被过滤
+     * 批量检查内容是否已被查看过
      */
-    suspend fun shouldFilterContent(targetType: String, targetId: String): Boolean = withContext(Dispatchers.IO) {
-        val recordId = ContentViewRecord.generateId(targetType, targetId)
-        val record = dao.getViewRecord(recordId)
-
-        record?.let {
-            it.viewCount > ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION && !it.hasInteraction
-        } ?: false
-    }
-
-    /**
-     * 批量检查内容是否应该被过滤
-     */
-    suspend fun filterContentList(content: List<Pair<String, String>>): List<Pair<String, String>> = withContext(Dispatchers.IO) {
-        val filteredIds = dao.getFilteredContentIds().toSet()
-        content.filter { (targetType, targetId) ->
-            val recordId = ContentViewRecord.generateId(targetType, targetId)
-            recordId !in filteredIds
+    suspend fun getAlreadyViewedContentIds(content: List<Pair<String, String>>): Set<String> = withContext(Dispatchers.IO) {
+        val idsToCheck = content.map { (targetType, targetId) ->
+            ContentViewRecord.generateId(targetType, targetId)
         }
+        dao.getViewedContentIdsByIds(idsToCheck).toSet()
     }
 
     /**

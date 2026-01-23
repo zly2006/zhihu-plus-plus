@@ -28,6 +28,12 @@ interface ContentFilterDao {
     @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount AND hasInteraction = 0")
     suspend fun getFilteredContentIds(maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<String>
 
+    @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE id IN (:ids) AND viewCount > :maxCount AND hasInteraction = 0")
+    suspend fun getFilteredContentIdsByIds(ids: List<String>, maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<String>
+
+    @Query("SELECT id FROM ${ContentViewRecord.TABLE_NAME} WHERE id IN (:ids)")
+    suspend fun getViewedContentIdsByIds(ids: List<String>): List<String>
+
     @Query("DELETE FROM ${ContentViewRecord.TABLE_NAME} WHERE firstViewTime < :cutoffTime")
     suspend fun cleanupOldRecords(cutoffTime: Long)
 
