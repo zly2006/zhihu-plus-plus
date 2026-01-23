@@ -53,10 +53,12 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                 )
 
                 // Add keywordType column to blocked_keywords table with default value
+                // Using enum constant to ensure type safety
+                val defaultKeywordType = KeywordType.EXACT_MATCH.name
                 db.execSQL(
                     """
                     ALTER TABLE `blocked_keywords` 
-                    ADD COLUMN `keywordType` TEXT NOT NULL DEFAULT '${KeywordType.EXACT_MATCH.name}'
+                    ADD COLUMN `keywordType` TEXT NOT NULL DEFAULT '$defaultKeywordType'
                     """.trimIndent()
                 )
             }
