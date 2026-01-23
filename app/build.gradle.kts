@@ -38,6 +38,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions += "version"
+    productFlavors {
+        create("full") {
+            dimension = "version"
+            buildConfigField("boolean", "IS_LITE", "false")
+        }
+        create("lite") {
+            dimension = "version"
+            buildConfigField("boolean", "IS_LITE", "true")
+            applicationIdSuffix = ".lite"
+            versionNameSuffix = "-lite"
+        }
+    }
+
     androidResources {
         @Suppress("UnstableApiUsage")
         localeFilters += listOf("en", "zh")
@@ -171,7 +185,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
-    implementation(project(":sentence_embeddings"))
+    "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -182,7 +196,7 @@ dependencies {
     }
 
     // HanLP for Chinese NLP
-    implementation("com.hankcs:hanlp:portable-1.8.4")
+    "fullImplementation"("com.hankcs:hanlp:portable-1.8.4")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-cio:$ktor")

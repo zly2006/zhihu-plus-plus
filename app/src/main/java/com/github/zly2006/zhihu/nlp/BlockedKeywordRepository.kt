@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.nlp
 
 import android.content.Context
+import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase

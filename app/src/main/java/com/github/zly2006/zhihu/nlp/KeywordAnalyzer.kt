@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu.nlp
 
+import com.github.zly2006.zhihu.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.nlp.NLPService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -49,7 +49,13 @@ class HFTokenizer(
 
     companion object {
         init {
-            System.loadLibrary("hftokenizer")
+            try {
+                System.loadLibrary("hftokenizer")
+            } catch (e: UnsatisfiedLinkError) {
+                e.printStackTrace()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

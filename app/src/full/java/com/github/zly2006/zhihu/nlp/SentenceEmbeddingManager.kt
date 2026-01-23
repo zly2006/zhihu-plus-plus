@@ -19,18 +19,6 @@ object SentenceEmbeddingManager {
     private const val MODEL_ASSET_PATH = "text2vec-base-chinese/model.onnx"
     private const val TOKENIZER_ASSET_PATH = "text2vec-base-chinese/tokenizer.json"
 
-    sealed interface ModelState {
-        data object Uninitialized : ModelState
-
-        data object Loading : ModelState
-
-        data object Ready : ModelState
-
-        data class Error(
-            val message: String,
-        ) : ModelState
-    }
-
     private val mutex = Mutex()
     private val _state = MutableStateFlow<ModelState>(ModelState.Uninitialized)
     val state: StateFlow<ModelState> = _state.asStateFlow()
