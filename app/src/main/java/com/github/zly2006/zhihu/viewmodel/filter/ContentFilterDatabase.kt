@@ -49,7 +49,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         `blockReason` TEXT NOT NULL,
                         `matchedKeywords` TEXT NOT NULL
                     )
-                    """.trimIndent()
+                    """.trimIndent(),
                 )
 
                 // Add keywordType column to blocked_keywords table with default value
@@ -59,7 +59,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                     """
                     ALTER TABLE `blocked_keywords` 
                     ADD COLUMN `keywordType` TEXT NOT NULL DEFAULT '$defaultKeywordType'
-                    """.trimIndent()
+                    """.trimIndent(),
                 )
             }
         }
@@ -71,8 +71,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         context.applicationContext,
                         ContentFilterDatabase::class.java,
                         "content_filter_database",
-                    )
-                    .addMigrations(MIGRATION_2_3)
+                    ).addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigration(true)
                     .build()
             INSTANCE = instance
