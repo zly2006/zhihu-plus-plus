@@ -52,13 +52,11 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
 
-                // Add keywordType column to blocked_keywords table
-                // SQLite doesn't support adding columns with default values in older versions,
-                // so we add the column and then update all rows
+                // Add keywordType column to blocked_keywords table with default value
                 db.execSQL(
                     """
                     ALTER TABLE `blocked_keywords` 
-                    ADD COLUMN `keywordType` TEXT NOT NULL DEFAULT 'EXACT_MATCH'
+                    ADD COLUMN `keywordType` TEXT NOT NULL DEFAULT '${KeywordType.EXACT_MATCH.name}'
                     """.trimIndent()
                 )
             }
