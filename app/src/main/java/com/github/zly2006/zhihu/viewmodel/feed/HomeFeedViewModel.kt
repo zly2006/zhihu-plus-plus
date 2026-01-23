@@ -2,13 +2,10 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import android.util.Log
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.checkForAd
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -54,19 +51,25 @@ class HomeFeedViewModel :
         debugData.addAll(rawData)
 
         GlobalScope.launch(Dispatchers.Main) {
-            val filteredData = applyContentFilter(context, data)
-            recordContentDisplays(context, filteredData)
-
-            filteredData
+            // 先创建所有的 FeedDisplayItem
+            val displayItemsToFilter = data
                 .flatten()
-                .map { feed ->
+                .filter { feed -> feed.target?.navDestination != null }
+                .map { feed -> createDisplayItem(feed) }
+
+            // 应用内容过滤（包括广告检测）
+            val filteredDisplayItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, displayItemsToFilter)
+
+            // 记录内容展示
+            recordContentDisplays(context, filteredDisplayItems)
+
+            // 添加到显示列表
+            filteredDisplayItems
+                .map { item ->
                     coroutineScope {
                         launch(Dispatchers.Main) {
-                            if (feed.target?.navDestination != null &&
-                                !checkForAd(feed.target!!.navDestination!!, context as MainActivity) &&
-                                displayItems.none { it.navDestination == feed.target?.navDestination }
-                            ) {
-                                displayItems.add(createDisplayItem(feed))
+                            if (displayItems.none { it.navDestination == item.navDestination }) {
+                                displayItems.add(item)
                             }
                         }
                     }
@@ -74,30 +77,27 @@ class HomeFeedViewModel :
         }
     }
 
-    private suspend fun recordContentDisplays(context: Context, feeds: List<Feed>) {
+    private suspend fun recordContentDisplays(context: Context, items: List<FeedDisplayItem>) {
         withContext(Dispatchers.IO) {
             try {
-                feeds.flatten().forEach { feed ->
-                    when (val target = feed.target) {
-                        is Feed.AnswerTarget -> {
+                items.forEach { item ->
+                    when (val dest = item.navDestination) {
+                        is com.github.zly2006.zhihu.Article -> {
+                            val contentType = when (dest.type) {
+                                com.github.zly2006.zhihu.ArticleType.Answer -> ContentType.ANSWER
+                                com.github.zly2006.zhihu.ArticleType.Article -> ContentType.ARTICLE
+                            }
                             ContentFilterExtensions.recordContentDisplay(
                                 context,
-                                ContentType.ANSWER,
-                                target.id.toString(),
+                                contentType,
+                                dest.id.toString(),
                             )
                         }
-                        is Feed.ArticleTarget -> {
-                            ContentFilterExtensions.recordContentDisplay(
-                                context,
-                                ContentType.ARTICLE,
-                                target.id.toString(),
-                            )
-                        }
-                        is Feed.QuestionTarget -> {
+                        is com.github.zly2006.zhihu.Question -> {
                             ContentFilterExtensions.recordContentDisplay(
                                 context,
                                 ContentType.QUESTION,
-                                target.id.toString(),
+                                dest.questionId.toString(),
                             )
                         }
                         else -> {
@@ -148,49 +148,6 @@ class HomeFeedViewModel :
                 Log.e("HomeFeedViewModel", "Failed to record content interaction", e)
             }
         }
-    }
-
-    /**
-     * 应用内容过滤，移除应该被过滤的内容
-     * 根据用户设置决定是否过滤已关注用户的内容
-     */
-    suspend fun applyContentFilter(context: Context, feeds: List<Feed>): List<Feed> = withContext(Dispatchers.IO) {
-        try {
-            // 检查用户是否启用了对已关注用户内容的过滤
-            val shouldFilterFollowed = shouldFilterFollowedUserContent(context)
-
-            if (shouldFilterFollowed) {
-                // 如果启用了对已关注用户的过滤，则对所有内容应用过滤规则
-                ContentFilterExtensions.filterContentList(context, feeds)
-            } else {
-                // 如果关闭了对已关注用户的过滤，则分离处理
-                val (followedUserContent, otherContent) = feeds.partition { feed ->
-                    isFromFollowedUser(feed)
-                }
-
-                // 只对非关注用户的内容应用过滤
-                val filteredOtherContent = ContentFilterExtensions.filterContentList(context, otherContent)
-
-                // 合并已关注用户的内容和过滤后的其他内容
-                followedUserContent + filteredOtherContent
-            }
-        } catch (e: Exception) {
-            Log.e("HomeFeedViewModel", "Failed to apply content filter", e)
-            feeds // 出错时返回原始数据
-        }
-    }
-
-    /**
-     * 判断内容是否来自已关注用户
-     */
-    private fun isFromFollowedUser(feed: Feed): Boolean = feed.target?.author?.isFollowing == true
-
-    /**
-     * 检查是否应该过滤已关注用户的内容
-     */
-    private fun shouldFilterFollowedUserContent(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("filterFollowedUserContent", false)
     }
 
     private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {

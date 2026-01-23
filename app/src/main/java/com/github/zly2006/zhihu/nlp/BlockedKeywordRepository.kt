@@ -144,7 +144,7 @@ class BlockedKeywordRepository(
         title: String,
         excerpt: String?,
         content: String?,
-        threshold: Double = 0.3,
+        threshold: Double = 0.8,
     ): Pair<Boolean, List<MatchedKeywordInfo>> {
         if (title.isBlank()) return Pair(false, emptyList())
 
@@ -156,20 +156,11 @@ class BlockedKeywordRepository(
 
         // 构建加权文本：标题重复3次以提高权重
         val weightedText = buildString {
-            // 标题权重最高，重复3次
-            repeat(3) {
-                append(title)
-                append(" ")
-            }
+            append(title)
             // 添加摘要
             if (!excerpt.isNullOrBlank()) {
                 append(excerpt)
                 append(" ")
-            }
-            // 添加正文（如果有）
-            if (!content.isNullOrBlank()) {
-                // 正文只取前500字，避免过长
-                append(content.take(500))
             }
         }
 

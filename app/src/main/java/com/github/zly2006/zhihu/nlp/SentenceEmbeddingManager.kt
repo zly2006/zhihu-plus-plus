@@ -16,8 +16,8 @@ import java.io.File
  * 统一管理 Sentence-Transformers 模型的懒加载与状态。
  */
 object SentenceEmbeddingManager {
-    private const val MODEL_ASSET_PATH = "multilingual-MiniLM/model.onnx"
-    private const val TOKENIZER_ASSET_PATH = "multilingual-MiniLM/tokenizer.json"
+    private const val MODEL_ASSET_PATH = "text2vec-base-chinese/model.onnx"
+    private const val TOKENIZER_ASSET_PATH = "text2vec-base-chinese/tokenizer.json"
 
     sealed interface ModelState {
         data object Uninitialized : ModelState

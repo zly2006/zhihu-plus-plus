@@ -8,7 +8,6 @@ import kotlinx.coroutines.withContext
  * 提供完整的关键词提取、去重、过滤逻辑
  */
 object KeywordAnalyzer {
-
     /**
      * 从Feed内容中提取关键词及权重
      * @param title 标题（必填）
@@ -173,5 +172,4 @@ object KeywordAnalyzer {
      * 判断是否为纯数字
      */
     private fun isNumberOnly(word: String): Boolean = word.all { it.isDigit() }
-
 }

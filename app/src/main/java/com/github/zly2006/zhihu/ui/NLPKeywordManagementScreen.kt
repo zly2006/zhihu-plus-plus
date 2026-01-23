@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -62,6 +63,7 @@ import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager.ModelState
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.launch
 
 /**
@@ -92,7 +94,7 @@ fun NLPKeywordManagementScreen(
     var blockedRecords by remember { mutableStateOf<List<BlockedContentRecord>>(emptyList()) }
     var extractedKeywords by remember { mutableStateOf<List<String>>(emptyList()) }
     var inputText by remember { mutableStateOf("") }
-    var similarityThreshold by remember { mutableFloatStateOf(0.3f) }
+    var similarityThreshold by remember { mutableFloatStateOf(ContentFilterExtensions.getNLPSimilarityThreshold(context).toFloat()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var keywordToEdit by remember { mutableStateOf<BlockedKeyword?>(null) }
@@ -693,11 +695,12 @@ fun BlockedRecordItem(
     ) {
         Column(
             modifier = Modifier
-                .clickable { expanded = !expanded }
                 .padding(16.dp),
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .clickable { expanded = !expanded }
+                    .fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
@@ -740,10 +743,12 @@ fun BlockedRecordItem(
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        record.excerpt,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    SelectionContainer {
+                        Text(
+                            record.excerpt,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
@@ -761,11 +766,13 @@ fun BlockedRecordItem(
                             .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(
-                            match.keyword,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
+                        SelectionContainer {
+                            Text(
+                                match.keyword,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                         Text(
                             String.format("%.2f%%", match.similarity * 100),
                             style = MaterialTheme.typography.bodyMedium,

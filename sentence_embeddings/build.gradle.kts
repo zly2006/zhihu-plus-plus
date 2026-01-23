@@ -87,6 +87,7 @@ tasks.register<Exec>("buildRustLib") {
     
     // Check if cargo-ndk is available
     commandLine("sh", "-c", """
+        set -e
         if ! command -v cargo-ndk &> /dev/null; then
             echo "cargo-ndk not found. Installing..."
             cargo install cargo-ndk

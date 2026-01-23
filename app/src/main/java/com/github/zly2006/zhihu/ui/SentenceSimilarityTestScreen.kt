@@ -159,7 +159,7 @@ fun SentenceSimilarityTestScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "这个页面基于 Sentence-Transformers multilingual MiniLM 模型，实现与参考 Demo 类似的语义相似度计算，方便在设备上快速验证算法效果。",
+                text = "这个页面基于 text2vec-base-chinese 模型，实现与参考 Demo 类似的语义相似度计算，方便在设备上快速验证算法效果。",
                 style = MaterialTheme.typography.bodyMedium,
             )
 

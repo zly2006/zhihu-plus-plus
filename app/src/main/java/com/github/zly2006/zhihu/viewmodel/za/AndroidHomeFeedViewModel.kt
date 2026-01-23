@@ -5,13 +5,12 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.checkForAd
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
@@ -78,22 +77,26 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
+
+                // 收集所有待显示的项目
+                val itemsToDisplay = mutableListOf<FeedDisplayItem>()
+
                 data
                     .map { it.jsonObject }
-                    .mapNotNull { card ->
+                    .forEach { card ->
                         if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
-                            return@mapNotNull null
+                            return@forEach
                         }
                         val route =
                             card["action"]!!
                                 .jsonObject["parameter"]!!
                                 .jsonPrimitive.content
                                 .substringAfter("route_url=")
-                        val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@mapNotNull null
-                        val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@mapNotNull null
+                        val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
+                        val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
                         val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
                         val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
-                        val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@mapNotNull null
+                        val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@forEach
                         val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
                             val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
                             val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
@@ -122,24 +125,33 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                             routeDest.title = title
                             routeDest.avatarSrc = avatar
                         }
-                        val task = coroutineScope {
+
+                        itemsToDisplay.add(
+                            FeedDisplayItem(
+                                navDestination = routeDest,
+                                avatarSrc = avatar,
+                                authorName = authorName,
+                                summary = summary,
+                                title = title,
+                                details = "$footerText · 手机版推荐",
+                                feed = null,
+                            ),
+                        )
+                    }
+
+                // 应用内容过滤
+                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
+
+                // 将过滤后的内容添加到显示列表
+                filteredItems
+                    .map { item ->
+                        coroutineScope {
                             launch(Dispatchers.Main) {
-                                if (!checkForAd(routeDest, context as MainActivity) && displayItems.none { it.navDestination == routeDest }) {
-                                    displayItems.add(
-                                        FeedDisplayItem(
-                                            navDestination = routeDest,
-                                            avatarSrc = avatar,
-                                            authorName = authorName,
-                                            summary = summary,
-                                            title = title,
-                                            details = "$footerText · 手机版推荐",
-                                            feed = null,
-                                        ),
-                                    )
+                                if (displayItems.none { it.navDestination == item.navDestination }) {
+                                    displayItems.add(item)
                                 }
                             }
                         }
-                        task
                     }.joinAll()
             }
         } catch (e: Exception) {

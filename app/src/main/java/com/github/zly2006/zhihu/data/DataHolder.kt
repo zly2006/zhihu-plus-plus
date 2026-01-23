@@ -35,6 +35,12 @@ object DataHolder {
     )
 
     @Serializable
+    sealed interface Content
+
+    @Serializable
+    object DummyContent : Content
+
+    @Serializable
     data class Author(
         val avatarUrl: String,
         val avatarUrlTemplate: String,
@@ -208,7 +214,8 @@ object DataHolder {
         val ipInfo: String? = null,
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
-    )
+        val paidInfo: JsonObject? = null,
+    ) : Content
 
     @Serializable
     data class Article(
@@ -257,7 +264,8 @@ object DataHolder {
         val ipInfo: String? = null,
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
-    )
+        val paidInfo: JsonObject? = null,
+    ) : Content
 
     @Serializable
     data class RelevantInfo(
@@ -307,7 +315,7 @@ object DataHolder {
         val canVote: Boolean,
         val reactionInstruction: ReactionInstruction,
         val invisibleAuthor: Boolean = false,
-    )
+    ) : Content
 
     @Serializable
     data class Status(
@@ -732,7 +740,7 @@ object DataHolder {
         val updated: Long = 0L,
         val isLiking: Boolean = false,
         val reaction: JsonElement? = null,
-    )
+    ) : Content
 
     @Serializable
     data class Column(
