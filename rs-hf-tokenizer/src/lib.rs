@@ -1,5 +1,5 @@
 use jni::objects::{JByteArray, JClass, JString, ReleaseMode};
-use jni::sys::{jbyteArray, jlong};
+use jni::sys::jlong;
 use jni::JNIEnv;
 use serde::Serialize;
 use serde_json;
