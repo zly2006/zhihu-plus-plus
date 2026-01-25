@@ -85,7 +85,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         route.hasRoute<Home>() -> 0
         route.hasRoute<Follow>() -> 1
         route.hasRoute<Daily>() -> 2
-        route.hasRoute<History>() -> 3
+        route.hasRoute<OnlineHistory>() -> 3
         route.hasRoute<Account>() -> 4
         else -> -1
     }
@@ -318,7 +318,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
     navEntry.hasRoute(Follow::class) ||
     navEntry.hasRoute(Daily::class) ||
-    navEntry.hasRoute(History::class) ||
+    navEntry.hasRoute(OnlineHistory::class) ||
     navEntry.hasRoute(Account::class)
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {

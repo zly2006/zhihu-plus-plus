@@ -139,10 +139,6 @@ class MainActivity : ComponentActivity() {
         ThemeManager.initialize(this)
 
         val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-        if (preferences.getBoolean("developer", false)) {
-            Toast.makeText(this, "开发者模式：已开启协程调试，可能降低性能", Toast.LENGTH_LONG).show()
-            System.setProperty("kotlinx.coroutines.debug", "on")
-        }
         val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
         val now = System.currentTimeMillis()
         if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {

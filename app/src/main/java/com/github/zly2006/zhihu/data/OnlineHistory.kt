@@ -3,21 +3,6 @@ package com.github.zly2006.zhihu.data
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class OnlineHistoryResponse(
-    val paging: Paging,
-    val data: List<OnlineHistoryItem>,
-)
-
-@Serializable
-data class Paging(
-    val isEnd: Boolean,
-    val isStart: Boolean,
-    val next: String?,
-    val previous: String?,
-    val totals: Int,
-)
-
-@Serializable
 data class OnlineHistoryItem(
     val cardType: String,
     val data: OnlineHistoryData,
@@ -47,7 +32,7 @@ data class OnlineHistoryMatrixData(
 data class OnlineHistoryHeader(
     val icon: String,
     val title: String,
-    val action: OnlineHistoryAction,
+    val action: OnlineHistoryAction? = null,
 )
 
 @Serializable

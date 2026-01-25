@@ -90,7 +90,7 @@ data class Article(
 ) : NavDestination {
     override fun hashCode(): Int = id.hashCode()
 
-    override fun equals(other: Any?): Boolean = other is Article && other.id == id
+    override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
 }
 
 @Serializable

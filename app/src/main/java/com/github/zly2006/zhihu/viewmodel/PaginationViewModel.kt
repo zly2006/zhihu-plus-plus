@@ -63,7 +63,10 @@ abstract class PaginationViewModel<T : Any>(
     @Serializable
     data class Paging(
         val page: Int = -1,
-        val isEnd: Boolean,
+        val isEnd: Boolean = false,
+        val isStart: Boolean = false,
+        val previous: String?,
+        val totals: Int = 0,
         val next: String,
         val prev: String? = null,
     )
