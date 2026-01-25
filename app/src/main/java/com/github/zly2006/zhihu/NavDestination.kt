@@ -18,7 +18,22 @@ data object Follow : NavDestination
 data object History : NavDestination
 
 @Serializable
-data object Account : NavDestination
+data object OnlineHistory : NavDestination
+
+@Serializable
+data object Account : NavDestination {
+    @Serializable
+    data object AppearanceSettings : NavDestination
+
+    @Serializable
+    data object ContentFilterSettings : NavDestination
+
+    @Serializable
+    data object SystemAndUpdateSettings : NavDestination
+
+    @Serializable
+    data object DeveloperSettings : NavDestination
+}
 
 @Serializable
 data object Blocklist : NavDestination

@@ -1,27 +1,15 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,24 +19,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,120 +34,66 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
-import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.QRCodeLogin
-import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.PowerSaveModeCompat
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
-import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun AccountSettingScreen(
-    innerPadding: PaddingValues,
+    @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
+    val preferences = remember {
+        context.getSharedPreferences(
+            PREFERENCE_NAME,
+            Context.MODE_PRIVATE,
+        )
+    }
 
-    // 手动设置Cookie弹窗状态
-    var showCookieDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        val data = AccountData.data
-        if (data.login) {
-            try {
-                val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                    signFetchRequest(context)
-                }
-                val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
-                AccountData.saveData(
-                    context,
-                    data.copy(self = self),
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Toast.makeText(context, "获取用户信息失败", Toast.LENGTH_SHORT).show()
-            }
+    var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
+    var clickTimes by remember { mutableIntStateOf(0) }
+    LaunchedEffect(isDeveloper) {
+        preferences.edit {
+            putBoolean("developer", isDeveloper)
         }
     }
+    val data by AccountData.asState()
+
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .verticalScroll(rememberScrollState()),
+//        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        @Composable
-        fun DisplayPadding(padding: PaddingValues) = buildString {
-            append("(")
-            append(padding.calculateTopPadding())
-            append(", ")
-            append(padding.calculateRightPadding(LocalLayoutDirection.current))
-            append(", ")
-            append(padding.calculateBottomPadding())
-            append(", ")
-            append(padding.calculateLeftPadding(LocalLayoutDirection.current))
-            append(", start=")
-            append(padding.calculateStartPadding(LocalLayoutDirection.current))
-            append(")")
-        }
-
-        var clickTimes by remember { mutableIntStateOf(0) }
-        val preferences = remember {
-            context.getSharedPreferences(
-                PREFERENCE_NAME,
-                Context.MODE_PRIVATE,
-            )
-        }
-        var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
-        LaunchedEffect(isDeveloper) {
-            preferences.edit {
-                putBoolean("developer", isDeveloper)
-            }
-        }
         Text(
             "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
             modifier = Modifier.combinedClickable(
                 onLongClick = {
-                    // Copy version number
                     val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
                     val clip = android.content.ClipData.newPlainText("version", versionInfo)
                     context.clipboardManager.setPrimaryClip(clip)
@@ -185,7 +109,25 @@ fun AccountSettingScreen(
                 },
             ),
         )
-        val data by AccountData.asState()
+
+        LaunchedEffect(Unit) {
+            val data = AccountData.data
+            if (data.login) {
+                try {
+                    val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+                        signFetchRequest(context)
+                    }
+                    val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
+                    AccountData.saveData(
+                        context,
+                        data.copy(self = self),
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "获取用户信息失败", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         if (data.login) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -234,7 +176,6 @@ fun AccountSettingScreen(
                     Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
                     Intent(context, WebviewActivity::class.java).let {
                         it.data = qrContent.toUri()
-                        it.clipData
                         context.startActivity(it)
                     }
                 },
@@ -261,699 +202,45 @@ fun AccountSettingScreen(
                 Text("登录")
             }
         }
-        // 为未登录用户也提供手动设置Cookie选项
-        Button(
-            onClick = { showCookieDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
-            ),
-        ) {
-            Text("手动设置Cookie")
-        }
+        Spacer(Modifier.height(8.dp))
 
-        val networkStatus = remember {
-            buildString {
-                val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-                val activeNetwork = connectivityManager.activeNetwork
-                append("网络状态：")
-                if (activeNetwork != null) {
-                    append("已连接")
-                    if (connectivityManager
-                            .getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                    ) {
-                        append(" (移动数据)")
-                    } else if (connectivityManager
-                            .getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                    ) {
-                        append(" (Wi-Fi)")
-                    } else if (connectivityManager
-                            .getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-                    ) {
-                        append(" (以太网)")
-                    } else if (connectivityManager
-                            .getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)
-                    ) {
-                        append(" (蓝牙)")
-                    } else if (connectivityManager
-                            .getNetworkCapabilities(activeNetwork)!!
-                            .hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                    ) {
-                        append(" (VPN)")
-                    }
-                } else {
-                    append("未连接")
-                }
-            }
-        }
-        Text(networkStatus)
-        when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-            PowerSaveModeCompat.POWER_SAVE -> {
-                Text("省电模式：已开启")
-            }
-
-            PowerSaveModeCompat.HUAWEI_POWER_SAVE -> {
-                Text("省电模式：华为傻逼模式已开启")
-            }
-
-            else -> {
-                // Do nothing
-            }
-        }
-        AnimatedVisibility(
-            visible = isDeveloper,
-        ) {
-            Column {
-                FlowRow {
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                if (AccountData.verifyLogin(
-                                        context,
-                                        data.cookies,
-                                    )
-                                ) {
-                                    Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        },
-                    ) {
-                        Text("重新fetch数据测试")
-                    }
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                val httpClient = AccountData.httpClient(context)
-                                ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshToken(httpClient), httpClient)
-                                Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    ) {
-                        Text("刷新 Cookie 测试")
-                    }
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                throw Exception("测试异常")
-                            }
-                        },
-                    ) {
-                        Text("抛出异常测试")
-                    }
-                    Button(
-                        onClick = {
-                            onNavigate(SentenceSimilarityTest)
-                        },
-                    ) {
-                        Text("句子相似度测试")
-                    }
-                }
-
-                ProcessTextAppList()
-                // TTS引擎信息显示
-                val mainActivity = context as? MainActivity
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                    ) {
-                        Text(
-                            "语音朗读引擎信息",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                "当前引擎",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                when (mainActivity?.ttsEngine) {
-                                    MainActivity.TtsEngine.Pico -> "Pico TTS"
-                                    MainActivity.TtsEngine.Google -> "Google TTS"
-                                    MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
-                                    else -> "未初始化"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                "引擎状态",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                if (mainActivity?.isSpeaking() == true) {
-                                    "正在朗读"
-                                } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
-                                    "就绪"
-                                } else {
-                                    "未就绪"
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = when {
-                                    mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                    mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
-                                    else -> MaterialTheme.colorScheme.error
-                                },
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                "引擎列表",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = when {
-                                    mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                    mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
-                                    else -> MaterialTheme.colorScheme.error
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        Column {
-            Text(
-                "账号信息设置",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    "用户名",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(data.username)
-            }
-
-            var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
-            SwitchSettingItem(
-                title = "允许发送遥测统计数据",
-                description = "允许发送遥测数据给开发者，数据仅供统计使用",
-                checked = allowTelemetry,
-                onCheckedChange = {
-                    allowTelemetry = it
-                    preferences.edit { putBoolean("allowTelemetry", it) }
-                },
-            )
-
-            val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview1", false)) }
-            SwitchSettingItem(
-                title = "使用 WebView 显示评论",
-                description = "使用 WebView 显示评论，可以显示图片和富文本链接",
-                checked = useWebview.value,
-                onCheckedChange = {
-                    useWebview.value = it
-                    preferences.edit { putBoolean("commentsUseWebview1", it) }
-                },
-            )
-
-            val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview1", false)) }
-            SwitchSettingItem(
-                title = "评论区 WebView 对象常驻",
-                description = "直到关闭评论界面，否则 WebView 对象不会被销毁，这可以使滚动动画更流畅，但会占用更多内存，若您的设备性能较差，建议关闭",
-                checked = pinWebview.value,
-                onCheckedChange = {
-                    pinWebview.value = it
-                    preferences.edit { putBoolean("commentsPinWebview1", it) }
-                },
-            )
-
-            val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
-            SwitchSettingItem(
-                title = "使用 WebView 显示文章",
-                description = "使用 WebView 显示文章内容，关闭后将使用原生 Compose 渲染，可以更好地支持文本选择和复制，但可能缺少部分格式支持",
-                checked = articleUseWebview.value,
-                onCheckedChange = {
-                    articleUseWebview.value = it
-                    preferences.edit { putBoolean("articleUseWebview", it) }
-                },
-            )
-
-            val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
-            SwitchSettingItem(
-                title = "WebView 硬件加速",
-                description = "启用 WebView 的硬件加速功能，可以提高渲染性能，但可能在某些设备上导致渲染问题",
-                checked = useHardwareAcceleration.value,
-                onCheckedChange = {
-                    useHardwareAcceleration.value = it
-                    preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                },
-            )
-
-            val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
-            SwitchSettingItem(
-                title = "标题栏自动隐藏",
-                description = "自动隐藏标题栏，随着滚动自动隐藏，当再滚动到顶部时自动显示",
-                checked = isTitleAutoHide.value,
-                onCheckedChange = {
-                    isTitleAutoHide.value = it
-                    preferences.edit { putBoolean("titleAutoHide", it) }
-                },
-            )
-
-            val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
-            SwitchSettingItem(
-                title = "显示跳转下一个回答按钮",
-                description = "在回答页面显示可拖拽的跳转按钮，快速跳转到下一个回答",
-                checked = buttonSkipAnswer.value,
-                onCheckedChange = {
-                    buttonSkipAnswer.value = it
-                    preferences.edit { putBoolean("buttonSkipAnswer", it) }
-                },
-            )
-
-            Text(
-                "主题设置",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-
-            val useDynamicColor = ThemeManager.getUseDynamicColor()
-            SwitchSettingItem(
-                title = "使用 Material You 动态取色",
-                description = "根据系统壁纸自动提取主题色（Android 12+ 可用），关闭后使用自定义主题色",
-                checked = useDynamicColor,
-                onCheckedChange = {
-                    ThemeManager.setUseDynamicColor(context, it)
-                    Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
-                },
-            )
-
-            var showColorPicker by remember { mutableStateOf(false) }
-            val customColor = ThemeManager.getCustomColor()
-
-            AnimatedVisibility(visible = !useDynamicColor) {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showColorPicker = true }
-                            .padding(vertical = 12.dp),
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "自定义主题色",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                "点击选择您喜欢的主题颜色",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(customColor)
-                                .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
-                        )
-                    }
-
-                    if (showColorPicker) {
-                        ColorPickerDialog(
-                            title = "选择主题色",
-                            initialColor = customColor,
-                            onDismiss = { showColorPicker = false },
-                            onColorSelected = { color ->
-                                ThemeManager.setCustomColor(context, color)
-                                Toast.makeText(context, "主题色已保存", Toast.LENGTH_SHORT).show()
-                                showColorPicker = false
-                            },
-                        )
-                    }
-                }
-            }
-
-            Text(
-                "内容过滤设置",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-
-            val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
-            SwitchSettingItem(
-                title = "启用智能内容过滤",
-                description = "自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐",
-                checked = enableContentFilter.value,
-                onCheckedChange = {
-                    enableContentFilter.value = it
-                    preferences.edit { putBoolean("enableContentFilter", it) }
-                },
-            )
-
-            val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
-            SwitchSettingItem(
-                title = "过滤已关注用户内容",
-                description = "是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示",
-                checked = filterFollowedUserContent.value,
-                onCheckedChange = {
-                    filterFollowedUserContent.value = it
-                    preferences.edit { putBoolean("filterFollowedUserContent", it) }
-                },
-                enabled = enableContentFilter.value, // 只有启用内容过滤时才能设置此选项
-            )
-
-            val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
-            SwitchSettingItem(
-                title = "启用关键词屏蔽",
-                description = "屏蔽包含特定关键词的内容",
-                checked = enableKeywordBlocking.value,
-                onCheckedChange = {
-                    enableKeywordBlocking.value = it
-                    preferences.edit { putBoolean("enableKeywordBlocking", it) }
-                },
-            )
-
-            val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
-            SwitchSettingItem(
-                title = "启用用户屏蔽",
-                description = "屏蔽特定用户发布的内容",
-                checked = enableUserBlocking.value,
-                onCheckedChange = {
-                    enableUserBlocking.value = it
-                    preferences.edit { putBoolean("enableUserBlocking", it) }
-                },
-            )
-
-            // 管理屏蔽列表按钮
-            Button(
-                onClick = {
-                    onNavigate(com.github.zly2006.zhihu.Blocklist)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-            ) {
-                Text("管理屏蔽列表")
-            }
-
-            // 显示过滤统计信息
-            var filterStats by remember { mutableStateOf<FilterStats?>(null) }
-            LaunchedEffect(Unit) {
-                try {
-                    val contentFilterManager = ContentFilterManager.getInstance(context)
-                    filterStats = contentFilterManager.getFilterStats()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-
-            AnimatedVisibility(visible = enableContentFilter.value && filterStats != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                    ) {
-                        Text(
-                            "过滤统计",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        filterStats?.let { stats ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Column {
-                                    Text(
-                                        "总记录数",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        "${stats.totalRecords}",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        "已过滤内容",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        "${stats.filteredCount}",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                                Column {
-                                    Text(
-                                        "过滤率",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Text(
-                                        "%.1f%%".format(stats.filterRate * 100),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        try {
-                                            val contentFilterManager = ContentFilterManager.getInstance(context)
-                                            contentFilterManager.cleanupOldData()
-                                            filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "清理失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("清理过期数据")
-                            }
-
-                            Button(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        try {
-                                            val contentFilterManager = ContentFilterManager.getInstance(context)
-                                            contentFilterManager.clearAllData()
-                                            filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "重置失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error,
-                                    contentColor = MaterialTheme.colorScheme.onError,
-                                ),
-                            ) {
-                                Text("重置所有数据")
-                            }
-                        }
-                    }
-                }
-            }
-
-            Text(
-                "推荐算法设置",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp),
-            )
-
-            val currentRecommendationMode = remember {
-                mutableStateOf(
-                    RecommendationMode.entries.find {
-                        it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
-                    } ?: RecommendationMode.MIXED,
-                )
-            }
-
-            var expanded by remember { mutableStateOf(false) }
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                OutlinedTextField(
-                    value = currentRecommendationMode.value.displayName,
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("推荐算法") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = expanded,
-                        )
-                    },
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth(),
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    RecommendationMode.entries.forEach { mode ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(mode.displayName)
-                                    Text(
-                                        mode.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
-                            onClick = {
-                                currentRecommendationMode.value = mode
-                                preferences.edit {
-                                    putString("recommendationMode", mode.key)
-                                }
-                                expanded = false
-                                Toast
-                                    .makeText(
-                                        context,
-                                        "已切换到${mode.displayName}",
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                            },
-                            enabled = true,
-                        )
-                    }
-                }
-            }
-
-            // 推荐内容登录设置
-            val isLoginForRecommendation = remember {
-                mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
-            }
-
-            SwitchSettingItem(
-                title = "推荐内容时登录",
-                description = "获取推荐内容时是否使用登录状态，关闭后将以游客身份获取推荐",
-                checked = isLoginForRecommendation.value,
-                onCheckedChange = { checked ->
-                    isLoginForRecommendation.value = checked
-                    preferences.edit {
-                        putBoolean("loginForRecommendation", checked)
-                    }
-                    Toast
-                        .makeText(
-                            context,
-                            if (checked) "已开启推荐内容时登录" else "已关闭推荐内容时登录",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                },
-            )
-        }
-        // GitHub Token 设置
-        Text(
-            "GitHub 设置",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(top = 16.dp),
+        ListItem(
+            headlineContent = { Text("外观与阅读体验") },
+            supportingContent = { Text("主题颜色、WebView设置等") },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+            modifier = Modifier.clickable { onNavigate(Account.AppearanceSettings) },
+        )
+        ListItem(
+            headlineContent = { Text("推荐系统与内容过滤") },
+            supportingContent = { Text("智能过滤、关键词屏蔽等") },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+            modifier = Modifier.clickable { onNavigate(Account.ContentFilterSettings) },
         )
 
-        var githubToken by remember {
-            mutableStateOf(preferences.getString("githubToken", "") ?: "")
-        }
-        var showGithubToken by remember { mutableStateOf(false) }
-
-        OutlinedTextField(
-            value = githubToken,
-            onValueChange = {
-                githubToken = it
-                preferences.edit { putString("githubToken", it) }
-            },
-            label = { Text("GitHub Personal Access Token") },
-            placeholder = { Text("输入你的 GitHub Token (可选)") },
-            supportingText = {
-                Text(
-                    "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问。",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            },
-            visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { showGithubToken = !showGithubToken }) {
-                    Icon(
-                        imageVector = if (showGithubToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (showGithubToken) "隐藏" else "显示",
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
+        ListItem(
+            headlineContent = { Text("系统与更新") },
+            supportingContent = { Text("Github Token、更新设置等") },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+            modifier = Modifier.clickable { onNavigate(Account.SystemAndUpdateSettings) },
         )
 
-        val checkNightlyUpdates = remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
-        SwitchSettingItem(
-            title = "检查 Nightly 版本更新",
-            description = "检查每日构建版本，包含最新功能但可能不够稳定。关闭则只检查正式发布版本。",
-            checked = checkNightlyUpdates.value,
-            onCheckedChange = {
-                checkNightlyUpdates.value = it
-                preferences.edit { putBoolean("checkNightlyUpdates", it) }
-            },
+        ListItem(
+            headlineContent = { Text("开发者选项") },
+            supportingContent = { Text("开发者选项") },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+            modifier = Modifier.clickable { onNavigate(Account.DeveloperSettings) },
         )
+
+//        Button(
+//            onClick = { showCookieDialog = true },
+//            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+//            colors = ButtonDefaults.buttonColors(
+//                containerColor = MaterialTheme.colorScheme.secondary,
+//                contentColor = MaterialTheme.colorScheme.onSecondary,
+//            ),
+//        ) {
+//            Text("手动设置Cookie")
+//        }
 
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {
@@ -1015,158 +302,6 @@ fun AccountSettingScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             ),
         )
-        AnimatedVisibility(
-            visible = isDeveloper,
-        ) {
-            SwitchSettingItem(
-                title = "开发者模式",
-                checked = isDeveloper,
-                onCheckedChange = {
-                    isDeveloper = it
-                },
-            )
-        }
-        Button(
-            onClick = {
-                GlobalScope.launch {
-                    when (val updateState = updateState) {
-                        is UpdateState.NoUpdate, is UpdateState.Error -> {
-                            UpdateManager.checkForUpdate(context)
-                        }
-                        is UpdateState.UpdateAvailable -> {
-                            UpdateManager.downloadUpdate(context)
-                        }
-                        is UpdateState.Downloaded -> {
-                            UpdateManager.installUpdate(
-                                context,
-                                updateState.file,
-                            )
-                        }
-                        UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                when (val updateState = updateState) {
-                    is UpdateState.NoUpdate -> "检查更新"
-                    is UpdateState.Checking -> "检查中..."
-                    is UpdateState.Latest -> "已经是最新版本"
-                    is UpdateState.UpdateAvailable -> "下载更新 ${updateState.version}"
-                    is UpdateState.Downloading -> "下载中..."
-                    is UpdateState.Downloaded -> "安装更新"
-                    is UpdateState.Error -> "检查更新失败，点击重试"
-                },
-            )
-        }
-
-        // 手动设置Cookie弹窗
-        if (showCookieDialog) {
-            var cookieInputText by remember { mutableStateOf("") }
-            var showCookieText by remember { mutableStateOf(false) }
-            AlertDialog(
-                onDismissRequest = {
-                    showCookieDialog = false
-                    cookieInputText = ""
-                    showCookieText = false
-                },
-                title = { Text("手动设置Cookie") },
-                text = {
-                    Column {
-                        Text(
-                            "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 16.dp),
-                        )
-                        OutlinedTextField(
-                            value = cookieInputText,
-                            onValueChange = { cookieInputText = it },
-                            label = { Text("Cookie字符串") },
-                            placeholder = { Text("name1=value1; name2=value2; name3=value3") },
-                            visualTransformation = if (showCookieText) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { showCookieText = !showCookieText }) {
-                                    Icon(
-                                        imageVector = if (showCookieText) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = if (showCookieText) "隐藏" else "显示",
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            maxLines = 5,
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (cookieInputText.isNotBlank()) {
-                                try {
-                                    // 解析cookie字符串
-                                    val cookies = mutableMapOf<String, String>()
-                                    cookieInputText.split("; ").forEach { cookieItem ->
-                                        val parts = cookieItem.split("=", limit = 2)
-                                        if (parts.size == 2) {
-                                            cookies[parts[0].trim()] = parts[1].trim()
-                                        }
-                                    }
-
-                                    if (cookies.isNotEmpty()) {
-                                        // 保存cookie数据
-                                        val currentData = AccountData.data
-                                        AccountData.saveData(
-                                            context,
-                                            currentData.copy(
-                                                cookies = cookies,
-                                                login = true,
-                                            ),
-                                        )
-
-                                        // 验证登录状态
-                                        coroutineScope.launch {
-                                            try {
-                                                if (AccountData.verifyLogin(context, cookies)) {
-                                                    Toast.makeText(context, "Cookie设置成功并验证登录状态", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(context, "Cookie设置成功，但验证登录失败，请检查Cookie是否有效", Toast.LENGTH_LONG).show()
-                                                }
-                                            } catch (e: Exception) {
-                                                Toast.makeText(context, "验证登录时发生错误：${e.message}", Toast.LENGTH_LONG).show()
-                                            }
-                                        }
-
-                                        showCookieDialog = false
-                                        cookieInputText = ""
-                                        showCookieText = false
-                                    } else {
-                                        Toast.makeText(context, "未能解析有效的Cookie数据", Toast.LENGTH_SHORT).show()
-                                    }
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "解析Cookie时发生错误：${e.message}", Toast.LENGTH_LONG).show()
-                                }
-                            } else {
-                                Toast.makeText(context, "请输入Cookie字符串", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                    ) {
-                        Text("确认设置")
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            showCookieDialog = false
-                            cookieInputText = ""
-                            showCookieText = false
-                        },
-                    ) {
-                        Text("取消")
-                    }
-                },
-            )
-        }
     }
 }
 
@@ -1177,119 +312,4 @@ fun AccountSettingScreenPreview() {
         innerPadding = PaddingValues(16.dp),
         onNavigate = { },
     )
-}
-
-// 1. 定义一个简单的数据类来保存 App 信息
-data class ProcessTextAppInfo(
-    val label: String,
-    val icon: Drawable,
-    val packageName: String,
-    val activityName: String,
-)
-
-@Composable
-fun ProcessTextAppList(
-    textToProcess: String = "Hello World",
-) {
-    val context = LocalContext.current
-    // 使用 state 保存查询到的应用列表
-    var appList by remember { mutableStateOf<List<ProcessTextAppInfo>>(emptyList()) }
-
-    // 2. 在 LaunchedEffect 中异步查询，避免阻塞 UI 线程
-    LaunchedEffect(Unit) {
-        appList = getProcessTextApps(context)
-    }
-
-    // 3. UI 展示
-    if (appList.isEmpty()) {
-        Text("未检测到支持文本处理的应用 (如 Google 翻译)", modifier = Modifier.padding(16.dp))
-    } else {
-        Column {
-            appList.forEach { app ->
-                ProcessTextAppItem(app = app) {
-                    launchProcessTextApp(context, app, textToProcess)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProcessTextAppItem(
-    app: ProcessTextAppInfo,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // 显示 App 图标 (将 Drawable 转为 ImageBitmap)
-        Image(
-            bitmap = app.icon.toBitmap().asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier.size(40.dp),
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = app.label,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
-
-// --- 核心工具方法 ---
-
-/**
- * 查询系统中所有支持 PROCESS_TEXT 的应用
- */
-suspend fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> = withContext(Dispatchers.IO) {
-    val pm = context.packageManager
-
-    // 创建用于查询的 Intent
-    val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
-        type = "text/plain"
-    }
-
-    // 查询 Activity
-    val resolveInfos = pm.queryIntentActivities(intent, 0)
-
-    // 转换为我们的数据模型
-    resolveInfos.map { resolveInfo ->
-        val activityInfo = resolveInfo.activityInfo
-        // 获取显示的名称 (如 "Translate" 或 "Google 翻译")
-        val label = resolveInfo.loadLabel(pm).toString()
-        // 获取图标
-        val icon = resolveInfo.loadIcon(pm)
-
-        ProcessTextAppInfo(
-            label = label,
-            icon = icon,
-            packageName = activityInfo.packageName,
-            activityName = activityInfo.name,
-        )
-    }
-}
-
-/**
- * 启动选定的 App 来处理文本
- */
-fun launchProcessTextApp(context: Context, app: ProcessTextAppInfo, text: String) {
-    val intent = Intent(Intent.ACTION_PROCESS_TEXT).apply {
-        type = "text/plain"
-        // 关键：将文本放入 Intent
-        putExtra(Intent.EXTRA_PROCESS_TEXT, text)
-        // 关键：指定明确的 ComponentName，这样就不会弹出选择框，而是直接启动该 App
-        component = ComponentName(app.packageName, app.activityName)
-        // 部分应用需要在新任务栈启动
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-
-    try {
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
 }

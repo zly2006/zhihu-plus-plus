@@ -60,11 +60,16 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.NotificationSettings
+import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlin.reflect.KClass
@@ -174,7 +179,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         Item(Home, "主页", Icons.Filled.Home)
                         Item(Follow, "关注", Icons.Filled.PersonAddAlt1)
                         Item(Daily, "日报", Icons.Filled.Newspaper)
-                        Item(History, "历史", Icons.Filled.History)
+                        Item(OnlineHistory, "历史", Icons.Filled.History)
                         Item(Account, "账号", Icons.Filled.ManageAccounts)
                     }
                 }
@@ -229,6 +234,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             composable<History> {
                 HistoryScreen(activity::navigate)
             }
+            composable<OnlineHistory> {
+                OnlineHistoryScreen(activity::navigate)
+            }
             composable<Account> {
                 AccountSettingScreen(innerPadding, activity::navigate)
             }
@@ -280,6 +288,28 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 SentenceSimilarityTestScreen {
                     navController.popBackStack()
                 }
+            }
+            composable<Account.AppearanceSettings> {
+                AppearanceSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable<Account.ContentFilterSettings> {
+                ContentFilterSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigate = activity::navigate,
+                )
+            }
+            composable<Account.SystemAndUpdateSettings> {
+                SystemAndUpdateSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable<Account.DeveloperSettings> {
+                DeveloperSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigate = activity::navigate,
+                )
             }
         }
     }
