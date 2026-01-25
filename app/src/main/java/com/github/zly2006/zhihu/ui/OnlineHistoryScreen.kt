@@ -39,7 +39,7 @@ fun OnlineHistoryScreen(
                         Button(
                             onClick = {
                                 onNavigate(History)
-                            }
+                            },
                         ) {
                             Text("本地历史记录（老版本）")
                         }
