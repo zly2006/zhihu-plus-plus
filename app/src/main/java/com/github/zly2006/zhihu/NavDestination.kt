@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu
 
 import android.net.Uri
+import android.util.Log
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -173,6 +174,7 @@ fun resolveContent(uri: Uri): NavDestination? {
                 val videoId = uri.pathSegments[1].toLongOrNull() ?: return null
                 return Video(id = videoId) // todo
             }
+            Log.w("NavDestination", "Cannot resolve content from uri: $uri")
         } else if (uri.host == "zhuanlan.zhihu.com") {
             if (uri.pathSegments.size == 2 &&
                 uri.pathSegments[0] == "p"
@@ -180,6 +182,7 @@ fun resolveContent(uri: Uri): NavDestination? {
                 val articleId = uri.pathSegments[1].toLong()
                 return Article(type = ArticleType.Article, id = articleId)
             }
+            Log.w("NavDestination", "Cannot resolve content from uri: $uri")
         }
     }
     if (uri.scheme == "zhihu") {
@@ -190,11 +193,13 @@ fun resolveContent(uri: Uri): NavDestination? {
             val questionId = uri.pathSegments[0].toLong()
             return Question(questionId)
         } else if (uri.host == "feed") {
+            Log.i("NavDestination", "Resolved to Home from uri: $uri")
             return Home
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()
             return Article(type = ArticleType.Article, id = articleId)
         }
+        Log.w("NavDestination", "Cannot resolve content from uri: $uri")
     }
     return null
 }

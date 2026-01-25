@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
@@ -106,11 +107,18 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.serialization.JsonConvertException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
 import kotlin.math.abs
 
@@ -446,6 +454,23 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try {
+            AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/read_history/add") {
+                signFetchRequest(context)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("content_token", article.id.toString())
+                        put("content_type", article.type.name.lowercase())
+                    },
+                )
+            }
+        } catch (_: JsonConvertException) {
+            // 不用处理，已经添加到历史记录，返回并非标准json所致。
+        }
+    }
 
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
