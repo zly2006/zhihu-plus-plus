@@ -224,23 +224,14 @@ fun AccountSettingScreen(
             modifier = Modifier.clickable { onNavigate(Account.SystemAndUpdateSettings) },
         )
 
-        ListItem(
-            headlineContent = { Text("开发者选项") },
-            supportingContent = { Text("开发者选项") },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.DeveloperSettings) },
-        )
-
-//        Button(
-//            onClick = { showCookieDialog = true },
-//            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-//            colors = ButtonDefaults.buttonColors(
-//                containerColor = MaterialTheme.colorScheme.secondary,
-//                contentColor = MaterialTheme.colorScheme.onSecondary,
-//            ),
-//        ) {
-//            Text("手动设置Cookie")
-//        }
+        if (isDeveloper) {
+            ListItem(
+                headlineContent = { Text("开发者选项") },
+                supportingContent = { Text("开发者选项") },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable { onNavigate(Account.DeveloperSettings) },
+            )
+        }
 
         val updateState by UpdateManager.updateState.collectAsState()
         LaunchedEffect(updateState) {

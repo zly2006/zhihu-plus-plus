@@ -110,35 +110,37 @@ fun DeveloperSettingsScreen(
                 },
             )
             SelectionContainer {
-                val networkStatus = remember {
-                    buildString {
-                        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-                        val activeNetwork = connectivityManager.activeNetwork
-                        append("网络状态：")
-                        if (activeNetwork != null) {
-                            append("已连接")
-                            if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                                append(" (移动数据)")
-                            } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                                append(" (Wi-Fi)")
-                            } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                                append(" (VPN)")
+                Column {
+                    val networkStatus = remember {
+                        buildString {
+                            val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+                            val activeNetwork = connectivityManager.activeNetwork
+                            append("网络状态：")
+                            if (activeNetwork != null) {
+                                append("已连接")
+                                if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                                    append(" (移动数据)")
+                                } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                                    append(" (Wi-Fi)")
+                                } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                                    append(" (VPN)")
+                                }
+                            } else {
+                                append("未连接")
                             }
-                        } else {
-                            append("未连接")
                         }
                     }
-                }
-                Text(networkStatus)
+                    Text(networkStatus)
 
-                when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-                    PowerSaveModeCompat.POWER_SAVE -> Text("省电模式：已开启")
-                    PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text("省电模式：华为傻逼模式已开启")
-                    else -> {}
+                    when (PowerSaveModeCompat.getPowerSaveMode(context)) {
+                        PowerSaveModeCompat.POWER_SAVE -> Text("省电模式：已开启")
+                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text("省电模式：华为傻逼模式已开启")
+                        else -> {}
+                    }
+
+                    Spacer(Modifier.height(16.dp))
                 }
             }
-            Spacer(Modifier.height(16.dp))
-
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     coroutineScope.launch {
