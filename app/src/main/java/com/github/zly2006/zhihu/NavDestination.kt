@@ -39,7 +39,7 @@ data object History : NavDestination, TopLevelDestination {
 @Serializable
 data object OnlineHistory : NavDestination, TopLevelDestination {
     override val name: String
-        get() = "Online History"
+        get() = "OnlineHistory"
 }
 
 @Serializable
