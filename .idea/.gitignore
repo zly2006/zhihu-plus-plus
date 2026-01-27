@@ -6,7 +6,6 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
-/dataSources.xml
 /deploymentTargetDropDown.xml
 /deploymentTargetSelector.xml
 /discord.xml
@@ -22,3 +21,5 @@
 /AndroidProjectSystem.xml
 /ktlint-plugin.xml
 /copilot.*.xml
+/data*.xml
+/db*.xml

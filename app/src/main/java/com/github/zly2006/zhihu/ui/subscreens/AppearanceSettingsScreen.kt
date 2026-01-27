@@ -216,7 +216,7 @@ fun AppearanceSettingsScreen(
                 "HotList" to "热榜",
                 "Daily" to "日报",
                 "OnlineHistory" to "历史",
-                "Account" to "账号"
+                "Account" to "账号设置",
             )
 
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -224,13 +224,13 @@ fun AppearanceSettingsScreen(
                     "选择要在底部栏显示的页面（3-5项）",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
-                
+
                 allItems.forEach { (key, label) ->
                     val isChecked = selectedKeys.value.contains(key)
                     val isEnabled = key != "Account"
-                    
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -253,20 +253,19 @@ fun AppearanceSettingsScreen(
                                         Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                            }
-                            .padding(vertical = 12.dp),
+                            }.padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
                         androidx.compose.material3.Checkbox(
                             checked = isChecked,
                             onCheckedChange = null, // Handled by Row click
-                            enabled = isEnabled
+                            enabled = isEnabled,
                         )
                     }
                 }
