@@ -37,7 +37,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager

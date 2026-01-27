@@ -8,23 +8,45 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface NavDestination
 
-@Serializable
-data object Home : NavDestination
+interface TopLevelDestination {
+    val name: String
+}
 
 @Serializable
-data object Follow : NavDestination
+data object Home : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Home"
+}
 
 @Serializable
-data object HotList : NavDestination
+data object Follow : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Follow"
+}
 
 @Serializable
-data object History : NavDestination
+data object HotList : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Hot"
+}
 
 @Serializable
-data object OnlineHistory : NavDestination
+data object History : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "History"
+}
 
 @Serializable
-data object Account : NavDestination {
+data object OnlineHistory : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Online History"
+}
+
+@Serializable
+data object Account : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Account"
+
     @Serializable
     data object AppearanceSettings : NavDestination
 
@@ -42,7 +64,10 @@ data object Account : NavDestination {
 }
 
 @Serializable
-data object Daily : NavDestination
+data object Daily : NavDestination, TopLevelDestination {
+    override val name: String
+        get() = "Daily"
+}
 
 @Serializable
 data object Notification : NavDestination {

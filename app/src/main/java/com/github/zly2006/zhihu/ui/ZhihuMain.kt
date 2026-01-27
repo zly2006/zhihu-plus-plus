@@ -155,7 +155,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         )
                         val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
                         val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
-                        val bottomBarItems = allItems.filter { it.first.javaClass.simpleName in selectedKeys }
+                        val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
 
                         @Composable
                         fun Item(
