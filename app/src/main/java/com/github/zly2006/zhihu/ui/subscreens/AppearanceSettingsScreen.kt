@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -157,17 +160,6 @@ fun AppearanceSettingsScreen(
                 },
             )
 
-            val pinWebview = remember { mutableStateOf(preferences.getBoolean("commentsPinWebview1", false)) }
-            SwitchSettingItem(
-                title = "评论区 WebView 对象常驻",
-                description = "提高滚动流畅度，但占用更多内存",
-                checked = pinWebview.value,
-                onCheckedChange = {
-                    pinWebview.value = it
-                    preferences.edit { putBoolean("commentsPinWebview1", it) }
-                },
-            )
-
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
                 title = "WebView 硬件加速",
@@ -205,7 +197,7 @@ fun AppearanceSettingsScreen(
                 "底部栏设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
             val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
@@ -219,7 +211,7 @@ fun AppearanceSettingsScreen(
                 "Account" to "账号设置",
             )
 
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Column {
                 Text(
                     "选择要在底部栏显示的页面（3-5项）",
                     style = MaterialTheme.typography.bodyMedium,
@@ -253,7 +245,8 @@ fun AppearanceSettingsScreen(
                                         Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
                                     }
                                 }
-                            }.padding(vertical = 12.dp),
+                            }.padding(vertical = 12.dp, horizontal = 16.dp)
+                            .clip(RoundedCornerShape(8.dp)),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
@@ -262,7 +255,7 @@ fun AppearanceSettingsScreen(
                             style = MaterialTheme.typography.bodyLarge,
                             color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                         )
-                        androidx.compose.material3.Checkbox(
+                        Checkbox(
                             checked = isChecked,
                             onCheckedChange = null, // Handled by Row click
                             enabled = isEnabled,
@@ -275,22 +268,22 @@ fun AppearanceSettingsScreen(
                 "阅读设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            val fontSize = remember { mutableStateOf(preferences.getInt("webviewFontSize", 100)) }
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("字号", style = MaterialTheme.typography.bodyLarge)
-                    Text("${fontSize.value}%", style = MaterialTheme.typography.bodyMedium)
+                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
                 }
                 Slider(
-                    value = fontSize.value.toFloat(),
+                    value = fontSize.toFloat(),
                     onValueChange = {
-                        fontSize.value = it.toInt()
+                        fontSize = it.toInt()
                         preferences.edit { putInt("webviewFontSize", it.toInt()) }
                     },
                     valueRange = 50f..200f,
@@ -298,19 +291,19 @@ fun AppearanceSettingsScreen(
                 )
             }
 
-            val lineHeight = remember { mutableStateOf(preferences.getInt("webviewLineHeight", 160)) }
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("行高", style = MaterialTheme.typography.bodyLarge)
-                    Text("${lineHeight.value / 100f}", style = MaterialTheme.typography.bodyMedium)
+                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
                 }
                 Slider(
-                    value = lineHeight.value.toFloat(),
+                    value = lineHeight.toFloat(),
                     onValueChange = {
-                        lineHeight.value = it.toInt()
+                        lineHeight = it.toInt()
                         preferences.edit { putInt("webviewLineHeight", it.toInt()) }
                     },
                     valueRange = 100f..300f,

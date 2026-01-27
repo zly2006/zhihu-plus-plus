@@ -206,20 +206,20 @@ fun AccountSettingScreen(
 
         ListItem(
             headlineContent = { Text("外观与阅读体验") },
-            supportingContent = { Text("主题颜色、WebView设置等") },
+            supportingContent = { Text("主题颜色、字体大小等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
             modifier = Modifier.clickable { onNavigate(Account.AppearanceSettings) },
         )
         ListItem(
             headlineContent = { Text("推荐系统与内容过滤") },
-            supportingContent = { Text("智能过滤、关键词屏蔽等") },
+            supportingContent = { Text("推荐、智能过滤、关键词屏蔽等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.ContentFilterSettings) },
+            modifier = Modifier.clickable { onNavigate(Account.RecommendSettings) },
         )
 
         ListItem(
             headlineContent = { Text("系统与更新") },
-            supportingContent = { Text("Github Token、更新设置等") },
+            supportingContent = { Text("GitHub、更新设置等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
             modifier = Modifier.clickable { onNavigate(Account.SystemAndUpdateSettings) },
         )

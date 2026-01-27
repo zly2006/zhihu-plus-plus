@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -195,7 +196,7 @@ fun ContentFilterSettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigate(com.github.zly2006.zhihu.Blocklist) }
+                    .clickable { onNavigate(Account.RecommendSettings.Blocklist) }
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,

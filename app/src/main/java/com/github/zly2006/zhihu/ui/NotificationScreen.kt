@@ -53,7 +53,7 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.NotificationSettings
+import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
@@ -132,7 +132,7 @@ fun NotificationScreen(
                         Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                     }
                     IconButton(onClick = {
-                        onNavigate(NotificationSettings)
+                        onNavigate(Notification.NotificationSettings)
                     }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }

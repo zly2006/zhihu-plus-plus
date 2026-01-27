@@ -62,7 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -181,7 +180,6 @@ fun CommentScreen(
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
     val useWebview = remember { preferences.getBoolean("commentsUseWebview1", false) }
-    val pinWebview = remember { preferences.getBoolean("commentsPinWebview1", false) }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (val content = content()) {
@@ -297,7 +295,6 @@ fun CommentScreen(
                                     CommentItem(
                                         comment = commentItem,
                                         useWebview = useWebview,
-                                        pinWebview = pinWebview,
                                         httpClient = httpClient,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
@@ -337,7 +334,6 @@ fun CommentScreen(
                                                     CommentItem(
                                                         comment = childCommentItem,
                                                         useWebview = useWebview,
-                                                        pinWebview = pinWebview,
                                                         httpClient = httpClient,
                                                         isLiked = liked,
                                                         likeCount = likeCount,
@@ -540,7 +536,6 @@ fun CommentTopText(content: NavDestination? = null) {
 private fun CommentItem(
     comment: CommentModel,
     useWebview: Boolean,
-    pinWebview: Boolean,
     httpClient: HttpClient,
     isLiked: Boolean = false,
     likeCount: Int = 0,
@@ -626,9 +621,6 @@ private fun CommentItem(
                     }
                 }
 
-                if (pinWebview) {
-                    LocalPinnableContainer.current?.pin()
-                }
                 if (useWebview) {
                     WebviewComp {
                         it.isVerticalScrollBarEnabled = false
@@ -860,7 +852,6 @@ private fun CommentItemPreview() {
     CommentItem(
         comment,
         useWebview = false,
-        pinWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },
@@ -985,7 +976,6 @@ private fun NestedCommentPreview() {
     CommentItem(
         comment,
         useWebview = false,
-        pinWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },

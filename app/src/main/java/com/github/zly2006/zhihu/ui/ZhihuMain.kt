@@ -52,7 +52,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.Blocklist
 import com.github.zly2006.zhihu.CollectionContent
 import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.Daily
@@ -63,7 +62,6 @@ import com.github.zly2006.zhihu.HotList
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
-import com.github.zly2006.zhihu.NotificationSettings
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
@@ -279,7 +277,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 val person: Person = it.toRoute()
                 PeopleScreen(person, activity::navigate)
             }
-            composable<Blocklist> {
+            composable<Account.RecommendSettings.Blocklist> {
                 BlocklistSettingsScreen(
                     innerPadding = innerPadding,
                     onNavigateBack = {
@@ -298,7 +296,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     onNavigate = activity::navigate,
                 )
             }
-            composable<NotificationSettings> {
+            composable<Notification.NotificationSettings> {
                 NotificationSettingsScreen(
                     onBack = {
                         navController.popBackStack()
@@ -315,7 +313,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     onNavigateBack = { navController.popBackStack() },
                 )
             }
-            composable<Account.ContentFilterSettings> {
+            composable<Account.RecommendSettings> {
                 ContentFilterSettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigate = activity::navigate,

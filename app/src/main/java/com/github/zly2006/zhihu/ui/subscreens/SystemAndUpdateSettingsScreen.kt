@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,12 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -33,10 +36,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -105,24 +111,24 @@ fun SystemAndUpdateSettingsScreen(
                 )
             }
 
-            val checkNightlyUpdates = remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
+            var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
             SwitchSettingItem(
                 title = "检查 Nightly 版本更新",
                 description = "检查每日构建版本 (可能不稳定)",
-                checked = checkNightlyUpdates.value,
+                checked = checkNightlyUpdates,
                 onCheckedChange = {
-                    checkNightlyUpdates.value = it
+                    checkNightlyUpdates = it
                     preferences.edit { putBoolean("checkNightlyUpdates", it) }
                 },
             )
 
-            val allowTelemetry = remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
+            var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",
-                description = "仅用于改进应用，不包含个人隐私",
-                checked = allowTelemetry.value,
+                description = "仅用于统计使用人数，不包含个人隐私",
+                checked = allowTelemetry,
                 onCheckedChange = {
-                    allowTelemetry.value = it
+                    allowTelemetry = it
                     preferences.edit { putBoolean("allowTelemetry", it) }
                 },
             )
@@ -163,6 +169,33 @@ fun SystemAndUpdateSettingsScreen(
                     },
                 )
             }
+
+            Text(
+                "交流 & 闲聊",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+            Text(
+                "代码和功能反馈请前往GitHub。下面的频道用于用户交流和闲聊，开发者不一定会在线回答问题。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            ListItem(
+                headlineContent = { Text("Discord 频道") },
+                supportingContent = { Text("请在 my-other-apps/zhihu-plus-plus 频道讨论") },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable { luoTianYiUrlLauncher(context, "https://discord.gg/YCPFZV5XSA".toUri()) },
+            )
+
+            ListItem(
+                headlineContent = { Text("Telegram 群组 (Hydrogen)") },
+                supportingContent = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable { luoTianYiUrlLauncher(context, "https://t.me/+_A1Yto6EpyIyODA1".toUri()) },
+            )
         }
     }
 }

@@ -29,7 +29,10 @@ data object Account : NavDestination {
     data object AppearanceSettings : NavDestination
 
     @Serializable
-    data object ContentFilterSettings : NavDestination
+    data object RecommendSettings : NavDestination {
+        @Serializable
+        data object Blocklist : NavDestination
+    }
 
     @Serializable
     data object SystemAndUpdateSettings : NavDestination
@@ -39,16 +42,13 @@ data object Account : NavDestination {
 }
 
 @Serializable
-data object Blocklist : NavDestination
-
-@Serializable
 data object Daily : NavDestination
 
 @Serializable
-data object Notification : NavDestination
-
-@Serializable
-data object NotificationSettings : NavDestination
+data object Notification : NavDestination {
+    @Serializable
+    data object NotificationSettings : NavDestination
+}
 
 @Serializable
 data object SentenceSimilarityTest : NavDestination
