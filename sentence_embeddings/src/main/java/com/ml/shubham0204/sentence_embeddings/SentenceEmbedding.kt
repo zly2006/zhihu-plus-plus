@@ -20,6 +20,9 @@ class SentenceEmbedding {
     private var outputTensorName: String = ""
     private var normalizeEmbedding: Boolean = false
 
+    val isModelReady: Boolean
+        get() = this::ortSession.isInitialized && this::hfTokenizer.isInitialized
+
     suspend fun init(
         modelFilepath: String,
         tokenizerBytes: ByteArray,

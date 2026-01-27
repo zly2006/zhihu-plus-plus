@@ -1,23 +1,19 @@
 package com.github.zly2006.zhihu.nlp
 
 import android.content.Context
-import com.github.zly2006.zhihu.BuildConfig
 import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * 统一管理 Sentence-Transformers 模型的懒加载与状态。
  */
 object SentenceEmbeddingManager {
-    private const val MODEL_ASSET_PATH = "text2vec-base-chinese/model.onnx"
-    private const val TOKENIZER_ASSET_PATH = "text2vec-base-chinese/tokenizer.json"
+    private const val MODEL_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/model.onnx"
+    private const val TOKENIZER_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/tokenizer.json"
 
     private val mutex = Mutex()
     private val _state = MutableStateFlow<ModelState>(ModelState.Uninitialized)
@@ -40,12 +36,26 @@ object SentenceEmbeddingManager {
             embedding?.let { return it }
             _state.value = ModelState.Loading
             try {
+                val downloadedFiles = ModelManager.downloadModel(
+                    resolvedContext,
+                    "text2vec-base-chinese",
+                    listOf(
+                        ModelManager.RemoteFile(MODEL_URL, "model.onnx"),
+                        ModelManager.RemoteFile(TOKENIZER_URL, "tokenizer.json"),
+                    ),
+                ) { progress ->
+                    _state.value = ModelState.Downloading(progress)
+                }
+
+                _state.value = ModelState.Loading
+
+                val modelFile = downloadedFiles["model.onnx"] ?: throw IllegalStateException("Model file not found")
+                val tokenizerFile = downloadedFiles["tokenizer.json"] ?: throw IllegalStateException("Tokenizer file not found")
+
                 val model = SentenceEmbedding()
-                val modelPath = ensureAssetFile(resolvedContext, MODEL_ASSET_PATH)
-                val tokenizerBytes = readAssetBytes(resolvedContext, TOKENIZER_ASSET_PATH)
                 model.init(
-                    modelFilepath = modelPath,
-                    tokenizerBytes = tokenizerBytes,
+                    modelFilepath = modelFile.absolutePath,
+                    tokenizerBytes = tokenizerFile.readBytes(),
                     useTokenTypeIds = true,
                     outputTensorName = "last_hidden_state",
                     normalizeEmbeddings = true,
@@ -62,7 +72,8 @@ object SentenceEmbeddingManager {
         }
     }
 
-    suspend fun encode(text: String, context: Context? = null): FloatArray {
+    suspend fun encode(text: String, context: Context? = null): FloatArray? {
+        if (mutex.isLocked && embedding == null) return null // 模型正在加载，返回 null 表示无法编码
         val model = ensureModel(context)
         return model.encode(text)
     }
@@ -73,29 +84,5 @@ object SentenceEmbeddingManager {
             embedding = null
             _state.value = ModelState.Uninitialized
         }
-    }
-
-    private suspend fun ensureAssetFile(
-        context: Context,
-        assetPath: String,
-    ): String = withContext(Dispatchers.IO) {
-        val targetFile = File(context.filesDir, assetPath)
-        if (!targetFile.exists() || targetFile.lastModified() != BuildConfig.BUILD_TIME) {
-            targetFile.parentFile?.mkdirs()
-            context.assets.open(assetPath).use { input ->
-                targetFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-            targetFile.setLastModified(BuildConfig.BUILD_TIME)
-        }
-        targetFile.absolutePath
-    }
-
-    private suspend fun readAssetBytes(
-        context: Context,
-        assetPath: String,
-    ): ByteArray = withContext(Dispatchers.IO) {
-        context.assets.open(assetPath).use { it.readBytes() }
     }
 }

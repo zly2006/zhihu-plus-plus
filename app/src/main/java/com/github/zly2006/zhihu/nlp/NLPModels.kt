@@ -55,6 +55,10 @@ sealed interface ModelState {
 
     data object Loading : ModelState
 
+    data class Downloading(
+        val progress: Float,
+    ) : ModelState
+
     data object Ready : ModelState
 
     data class Error(

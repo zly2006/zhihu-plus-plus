@@ -292,7 +292,7 @@ object NLPService {
         if (normalized.isBlank()) return null
         return try {
             val embedding = SentenceEmbeddingManager.encode(normalized)
-            logDebug("encodeText len=${normalized.length} dim=${embedding.size} text='${normalized.take(80)}'")
+            logDebug("encodeText len=${normalized.length} dim=${embedding?.size} text='${normalized.take(80)}'")
             embedding
         } catch (e: Exception) {
             Log.e(TAG, "encodeText failed len=${normalized.length} text='${normalized.take(80)}'", e)

@@ -27,7 +27,7 @@ data object Follow : NavDestination, TopLevelDestination {
 @Serializable
 data object HotList : NavDestination, TopLevelDestination {
     override val name: String
-        get() = "Hot"
+        get() = "HotList"
 }
 
 @Serializable

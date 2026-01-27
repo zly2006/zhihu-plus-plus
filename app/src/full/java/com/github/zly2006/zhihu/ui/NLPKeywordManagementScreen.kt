@@ -348,6 +348,7 @@ fun NLPPhraseManagementTab(
                         ModelState.Loading -> "当前状态：正在加载"
                         ModelState.Ready -> "当前状态：已就绪"
                         is ModelState.Error -> "当前状态：加载失败"
+                        is ModelState.Downloading -> "当前状态：下载中 ${modelState.progress}%"
                     }
                     Text(statusText, style = MaterialTheme.typography.bodyMedium)
                     if (modelState is ModelState.Error) {

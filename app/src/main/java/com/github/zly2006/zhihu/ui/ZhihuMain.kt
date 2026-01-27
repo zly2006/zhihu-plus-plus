@@ -9,11 +9,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -137,7 +136,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
@@ -204,7 +202,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     ) { innerPadding ->
         NavHost(
             navController,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
             startDestination = Home,
             enterTransition = {
                 val fromIndex = getPageIndex(initialState.destination)

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,7 +112,7 @@ fun SentenceSimilarityTestScreen(
                     }
                 },
                 actions = {
-                    when (modelState) {
+                    when (val modelState = modelState) {
                         ModelState.Loading -> {
                             CircularProgressIndicator(
                                 modifier = Modifier
@@ -118,6 +120,19 @@ fun SentenceSimilarityTestScreen(
                                     .height(24.dp),
                                 strokeWidth = 2.dp,
                             )
+                        }
+                        is ModelState.Downloading -> {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "下载中 ${(modelState.progress * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(end = 16.dp),
+                                )
+                                LinearProgressIndicator(
+                                    progress = { (modelState as ModelState.Downloading).progress },
+                                    modifier = Modifier.padding(end = 16.dp).width(100.dp),
+                                )
+                            }
                         }
                         is ModelState.Error -> {
                             Text(
@@ -169,9 +184,10 @@ fun SentenceSimilarityTestScreen(
                     .padding(vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val statusText = when (modelState) {
+                val statusText = when (val state = modelState) {
                     ModelState.Uninitialized -> "当前状态：未加载"
                     ModelState.Loading -> "当前状态：正在加载模型……"
+                    is ModelState.Downloading -> "当前状态：正在下载模型 ${(state.progress * 100).toInt()}%"
                     ModelState.Ready -> "当前状态：模型已就绪"
                     is ModelState.Error -> "当前状态：加载失败"
                 }
@@ -226,8 +242,8 @@ fun SentenceSimilarityTestScreen(
                         try {
                             val start = System.currentTimeMillis()
                             val (first, second) = withContext(Dispatchers.Default) {
-                                val firstTask = async { SentenceEmbeddingManager.encode(sentence1, context) }
-                                val secondTask = async { SentenceEmbeddingManager.encode(sentence2, context) }
+                                val firstTask = async { SentenceEmbeddingManager.encode(sentence1)!! }
+                                val secondTask = async { SentenceEmbeddingManager.encode(sentence2)!! }
                                 Pair(firstTask.await(), secondTask.await())
                             }
                             val score = cosineSimilarity(first, second)
