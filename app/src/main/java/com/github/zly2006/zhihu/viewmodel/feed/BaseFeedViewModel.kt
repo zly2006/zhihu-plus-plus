@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedItemIndexGroup
 import com.github.zly2006.zhihu.data.GroupFeed
+import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.data.MomentsFeed
 import com.github.zly2006.zhihu.data.QuestionFeedCard
 import com.github.zly2006.zhihu.data.actionText
@@ -66,7 +67,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     open fun createDisplayItem(feed: Feed): FeedDisplayItem = when (feed) {
-        is CommonFeed, is FeedItemIndexGroup, is MomentsFeed -> {
+        is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> {
             val filterReason = feed.target?.filterReason()
 
             if (filterReason != null) {

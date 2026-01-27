@@ -15,6 +15,9 @@ data object Home : NavDestination
 data object Follow : NavDestination
 
 @Serializable
+data object HotList : NavDestination
+
+@Serializable
 data object History : NavDestination
 
 @Serializable

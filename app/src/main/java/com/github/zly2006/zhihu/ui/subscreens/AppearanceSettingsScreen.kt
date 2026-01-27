@@ -202,6 +202,77 @@ fun AppearanceSettingsScreen(
             )
 
             Text(
+                "底部栏设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
+            )
+
+            val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
+            val selectedKeys = remember { mutableStateOf(preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys) }
+            val allItems = listOf(
+                "Home" to "主页",
+                "Follow" to "关注",
+                "HotList" to "热榜",
+                "Daily" to "日报",
+                "OnlineHistory" to "历史",
+                "Account" to "账号"
+            )
+
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    "选择要在底部栏显示的页面（3-5项）",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                allItems.forEach { (key, label) ->
+                    val isChecked = selectedKeys.value.contains(key)
+                    val isEnabled = key != "Account"
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = isEnabled) {
+                                val currentSet = selectedKeys.value.toMutableSet()
+                                if (isChecked) {
+                                    if (currentSet.size > 3) {
+                                        currentSet.remove(key)
+                                        selectedKeys.value = currentSet
+                                        preferences.edit { putStringSet("bottom_bar_items", currentSet) }
+                                    } else {
+                                        Toast.makeText(context, "至少保留3项", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    if (currentSet.size < 5) {
+                                        currentSet.add(key)
+                                        selectedKeys.value = currentSet
+                                        preferences.edit { putStringSet("bottom_bar_items", currentSet) }
+                                    } else {
+                                        Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        )
+                        androidx.compose.material3.Checkbox(
+                            checked = isChecked,
+                            onCheckedChange = null, // Handled by Row click
+                            enabled = isEnabled
+                        )
+                    }
+                }
+            }
+
+            Text(
                 "阅读设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,

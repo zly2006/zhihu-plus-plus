@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
@@ -30,9 +31,11 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -56,6 +59,7 @@ import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.History
 import com.github.zly2006.zhihu.Home
+import com.github.zly2006.zhihu.HotList
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
@@ -79,14 +83,17 @@ import kotlin.reflect.KClass
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val activity = LocalActivity.current as MainActivity
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
         route.hasRoute<Home>() -> 0
         route.hasRoute<Follow>() -> 1
-        route.hasRoute<Daily>() -> 2
-        route.hasRoute<OnlineHistory>() -> 3
-        route.hasRoute<Account>() -> 4
+        route.hasRoute<HotList>() -> 2
+        route.hasRoute<Daily>() -> 3
+        route.hasRoute<OnlineHistory>() -> 4
+        route.hasRoute<Account>() -> 5
         else -> -1
     }
 
@@ -140,6 +147,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     NavigationBar(
                         modifier = modifier.height(56.dp + bottomPadding),
                     ) {
+                        val allItems = listOf(
+                            Triple(Home, "主页", Icons.Filled.Home),
+                            Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
+                            Triple(HotList, "热榜", Icons.Filled.Whatshot),
+                            Triple(Daily, "日报", Icons.Filled.Newspaper),
+                            Triple(OnlineHistory, "历史", Icons.Filled.History),
+                            Triple(Account, "账号", Icons.Filled.ManageAccounts),
+                        )
+                        val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
+                        val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
+                        val bottomBarItems = allItems.filter { it.first.javaClass.simpleName in selectedKeys }
+
                         @Composable
                         fun Item(
                             destination: NavDestination,
@@ -176,11 +195,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                             )
                         }
-                        Item(Home, "主页", Icons.Filled.Home)
-                        Item(Follow, "关注", Icons.Filled.PersonAddAlt1)
-                        Item(Daily, "日报", Icons.Filled.Newspaper)
-                        Item(OnlineHistory, "历史", Icons.Filled.History)
-                        Item(Account, "账号", Icons.Filled.ManageAccounts)
+
+                        bottomBarItems.forEach { item ->
+                            Item(item.first, item.second, item.third)
+                        }
                     }
                 }
             }
@@ -224,6 +242,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleViewModel(article, activity.httpClient, navEntry)
                 }
                 ArticleScreen(article, viewModel, activity::navigate)
+            }
+            composable<HotList> {
+                HotListScreen(activity::navigate)
             }
             composable<Follow> {
                 FollowScreen(activity::navigate)
@@ -317,6 +338,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
     navEntry.hasRoute(Follow::class) ||
+    navEntry.hasRoute(HotList::class) ||
     navEntry.hasRoute(Daily::class) ||
     navEntry.hasRoute(OnlineHistory::class) ||
     navEntry.hasRoute(Account::class)

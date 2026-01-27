@@ -319,6 +319,7 @@ val Feed.target: Feed.Target?
         is QuestionFeedCard -> target
         is MomentsFeed -> target
         is FeedItemIndexGroup -> target
+        is HotListFeed -> target
         else -> null
     }
 
@@ -330,6 +331,7 @@ val Feed.actionText: String?
         is QuestionFeedCard -> null
         is MomentsFeed -> null
         is FeedItemIndexGroup -> actionText
+        is HotListFeed -> detailText
     }
 
 @Serializable
@@ -427,7 +429,7 @@ data class Person(
     val headline: String,
     val avatarUrl: String,
     val isOrg: Boolean = false,
-    val gender: Int,
+    val gender: Int = 0, // todo: 0做默认合适吗？
     val followersCount: Int = 0,
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
@@ -439,3 +441,11 @@ data class Relationship(
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
 )
+
+@Serializable
+@SerialName("hot_list_feed")
+class HotListFeed(
+    val id: String,
+    val detailText: String,
+    val target: Feed.Target,
+) : Feed
