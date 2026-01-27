@@ -172,10 +172,10 @@ jobs:
           body: |
             Nightly build generated on ${{ env.date_today }}
             This is an automated nightly release that gets updated with each new build.
+          # app/build/upload/zhihu++-full.apk
+          # app/build/upload/mapping-full.zip
           files: |
-#            app/build/upload/zhihu++-full.apk
             app/build/upload/zhihu++-lite.apk
-#            app/build/upload/mapping-full.zip
             app/build/upload/mapping-lite.zip
           prerelease: true
       - name: Create Release
@@ -189,10 +189,10 @@ jobs:
             Release ${{ github.ref_name }}
             如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
             Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有 3 MB 的大小。
+          # app/build/upload/mapping-full.zip
+          # app/build/upload/zhihu++-full.apk
           files: |
-#            app/build/upload/zhihu++-full.apk
             app/build/upload/zhihu++-lite.apk
-#            app/build/upload/mapping-full.zip
             app/build/upload/mapping-lite.zip
           prerelease: false
 
