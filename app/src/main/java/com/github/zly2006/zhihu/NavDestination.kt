@@ -208,7 +208,6 @@ fun resolveContent(uri: Uri): NavDestination? {
             val questionId = uri.pathSegments[0].toLong()
             return Question(questionId)
         } else if (uri.host == "feed") {
-            Log.i("NavDestination", "Resolved to Home from uri: $uri")
             return Home
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()

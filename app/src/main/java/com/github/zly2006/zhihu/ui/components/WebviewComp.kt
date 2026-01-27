@@ -47,6 +47,7 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.blacklist
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -365,6 +366,10 @@ class CustomWebView : WebView {
             // same content
             return
         }
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val fontSize = preferences.getInt("webviewFontSize", 100)
+        val lineHeight = preferences.getInt("webviewLineHeight", 160)
+
         loadDataWithBaseURL(
             url,
             """
@@ -373,6 +378,10 @@ class CustomWebView : WebView {
             <viewport content="width=device-width, initial-scale=1.0">
             </viewport>
             <style>
+            body {
+                font-size: $fontSize%;
+                line-height: ${lineHeight / 100f};
+            }
             ${
                 // This is a workaround for the issue where the system font family name is not available in the WebView.
                 // https://github.com/zly2006/zhihu-plus-plus/issues/9
@@ -496,7 +505,7 @@ fun WebviewComp(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val httpClient = AccountData.httpClient(context)
-    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
 
     AndroidView(

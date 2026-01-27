@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -199,6 +200,53 @@ fun AppearanceSettingsScreen(
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
                 },
             )
+
+            Text(
+                "阅读设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp),
+            )
+
+            val fontSize = remember { mutableStateOf(preferences.getInt("webviewFontSize", 100)) }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("字号", style = MaterialTheme.typography.bodyLarge)
+                    Text("${fontSize.value}%", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = fontSize.value.toFloat(),
+                    onValueChange = {
+                        fontSize.value = it.toInt()
+                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
+                    },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+            }
+
+            val lineHeight = remember { mutableStateOf(preferences.getInt("webviewLineHeight", 160)) }
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("行高", style = MaterialTheme.typography.bodyLarge)
+                    Text("${lineHeight.value / 100f}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = lineHeight.value.toFloat(),
+                    onValueChange = {
+                        lineHeight.value = it.toInt()
+                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
+                    },
+                    valueRange = 100f..300f,
+                    steps = 19,
+                )
+            }
         }
     }
 }
