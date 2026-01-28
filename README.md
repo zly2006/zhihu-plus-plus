@@ -2,10 +2,6 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://github.com/zly2006/zhihu-plus-plus/releases)
 
-<img src="misc/zhihu_shit.png" width="100" height="100" />
-
-**关于图标:** 我的本意是想说知乎官方客户端就是一坨，但是也有很多人表示影响观感，故在此征集图标设计，最好不要侵犯知乎的商标权。欢迎发Issue讨论。
-
 本项目还不够完善，欢迎PR，如果对第三方知乎客户端有兴趣，也可以试试时间更早、功能更全面的[Hydrogen](https://github.com/zhihulite/Hydrogen)
 
 Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为您提供和筛选高质量内容。
