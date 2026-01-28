@@ -273,7 +273,7 @@ fun HomeScreen(
                                                                         buildJsonArray {
                                                                             add("answer")
                                                                             add(target.id.toString())
-                                                                            add("touch")
+                                                                            add("read")
                                                                         },
                                                                     )
                                                                 }
@@ -283,7 +283,7 @@ fun HomeScreen(
                                                                         buildJsonArray {
                                                                             add("article")
                                                                             add(target.id.toString())
-                                                                            add("touch")
+                                                                            add("read")
                                                                         },
                                                                     )
                                                                 }
