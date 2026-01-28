@@ -100,7 +100,7 @@ object DataHolder {
     @Serializable
     data class Author(
         val avatarUrl: String,
-        val avatarUrlTemplate: String,
+        val avatarUrlTemplate: String? = null,
         val gender: Int,
         @Serializable(HTMLDecoder::class)
         val headline: String,
@@ -406,7 +406,7 @@ object DataHolder {
         val url: String,
         val name: String,
         val avatarUrl: String,
-        val topicType: String,
+        val topicType: String? = null,
     )
 
     @Serializable
@@ -658,7 +658,7 @@ object DataHolder {
         val state: String = "",
         val reactionCount: Int = 0,
         val likers: List<Author> = emptyList(),
-        val topics: List<Topic> = emptyList(),
+        val topics: List<Topic>? = null,
         val pinType: String = "",
         val isContainAiContent: Boolean = false,
         val commentPermission: String = "",

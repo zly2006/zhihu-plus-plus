@@ -8,6 +8,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
@@ -18,11 +19,14 @@ import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.request
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.Cookie
 import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
@@ -35,6 +39,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.put
 import java.io.File
 
 object AccountData {
@@ -184,13 +189,18 @@ object AccountData {
         }
     }
 
+    class ZhPlusJsonSerializationException(
+        val originalJson: JsonElement,
+        message: String,
+        cause: Throwable?,
+    ) : SerializationException(message, cause)
+
     internal fun <T> decodeJson(serializer: KSerializer<T>, json: JsonElement): T {
         val json = snake_case2camelCase(json)
         try {
             return this.json.decodeFromJsonElement(serializer, json)
         } catch (e: SerializationException) {
-            Log.e("AccountData", "Failed to parse JSON: $json", e)
-            throw SerializationException("Failed to parse JSON: $json", e)
+            throw ZhPlusJsonSerializationException(json, "Failed to parse JSON: ${e.message}", e)
         }
     }
 
@@ -244,5 +254,32 @@ object AccountData {
     suspend fun fetchPost(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {
         block()
         method = HttpMethod.Post
+    }
+
+    /**
+     * 添加阅读历史记录
+     * @param context Android Context
+     * @param contentToken 内容标识符 (如 article.id, answer.id, pin.id 等)
+     * @param contentType 内容类型 (如 "article", "answer", "pin" 等)
+     */
+    suspend fun addReadHistory(
+        context: Context,
+        contentToken: String,
+        contentType: String,
+    ) {
+        try {
+            fetchPost(context, "https://www.zhihu.com/api/v4/read_history/add") {
+                signFetchRequest(context)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("content_token", contentToken)
+                        put("content_type", contentType)
+                    }.toString(),
+                )
+            }
+        } catch (_: SerializationException) {
+            // 忽略序列化异常，服务器已成功添加历史记录，只是返回格式不标准
+        }
     }
 }

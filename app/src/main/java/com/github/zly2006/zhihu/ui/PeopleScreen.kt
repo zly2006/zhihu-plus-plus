@@ -53,6 +53,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -175,7 +176,7 @@ class PeopleQuestionsViewModel(
         get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/questions"
 
     override val include: String
-        get() = "data[*].created,answer_count,follower_count,author"
+        get() = "data[*].created,answer_count,follower_count,author,visit_count,comment_count,detail,relationship,topics,voteup_count"
 }
 
 class PeoplePinsViewModel(
@@ -184,7 +185,7 @@ class PeoplePinsViewModel(
         typeOf<DataHolder.Pin>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/moments"
+        get() = "https://www.zhihu.com/api/v4/v2/pins/${person.userTokenOrId}/moments"
 
     override val include: String
         get() = "data[*].like_count,comment_count,created,updated,content"
@@ -694,8 +695,7 @@ private fun CollectionListItem(
                         "收藏夹详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = collection.title,
@@ -727,8 +727,7 @@ private fun QuestionListItem(
                         "问题详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = question.title,
@@ -753,13 +752,7 @@ private fun PinListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // TODO: Navigate to pin detail
-                Toast
-                    .makeText(
-                        context,
-                        "想法详情功能开发中",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                onNavigate(Pin(pin.id.toLong()))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         val text = remember { Jsoup.parse(pin.excerptTitle).text() }
@@ -795,8 +788,7 @@ private fun ColumnListItem(
                         "专栏详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }
-            .padding(vertical = 8.dp, horizontal = 4.dp),
+            }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {

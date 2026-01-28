@@ -63,6 +63,7 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
@@ -274,6 +275,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             composable<Person> {
                 val person: Person = it.toRoute()
                 PeopleScreen(person, activity::navigate)
+            }
+            composable<Pin> {
+                val pin = it.toRoute<Pin>()
+                PinScreen(
+                    pin,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onNavigate = activity::navigate,
+                )
             }
             composable<Account.RecommendSettings.Blocklist> {
                 BlocklistSettingsScreen(
