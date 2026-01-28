@@ -196,21 +196,28 @@ sealed interface Feed {
         override val author: Person,
         val commentCount: Int,
         val content: JsonArray,
+        val likeCount: Int = 0,
+        val excerptTitle: String = "",
+        val contentHtml: String = "",
+        val created: Long = 0,
+        val updated: Long = 0,
+        val reactionCount: Int = 0,
         val favoriteCount: Int = 0,
     ) : Target {
         override fun filterReason(): String? = null
 
-        override val detailsText = "想法 · $favoriteCount 赞 · $commentCount 评论"
+        override val detailsText = "想法 · $likeCount 赞 · $commentCount 评论"
         override val title: String
             get() = "想法"
-        override val excerpt = null
-        override val navDestination = null
+        override val excerpt = excerptTitle.ifEmpty { null }
+        override val navDestination = com.github.zly2006.zhihu
+            .Pin(id)
 
         override val updatedTime: Long
-            get() = -1
+            get() = updated
 
         override val createdTime: Long
-            get() = -1
+            get() = created
     }
 
     @Suppress("PropertyName")

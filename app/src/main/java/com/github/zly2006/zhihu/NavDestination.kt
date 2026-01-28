@@ -179,6 +179,15 @@ data class Video(
     val id: Long,
 ) : NavDestination
 
+@Serializable
+data class Pin(
+    val id: Long,
+) : NavDestination {
+    override fun hashCode(): Int = id.hashCode()
+
+    override fun equals(other: Any?): Boolean = other is Pin && other.id == id
+}
+
 fun resolveContent(uri: Uri): NavDestination? {
     if (uri.scheme == "http" || uri.scheme == "https") {
         if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
@@ -216,6 +225,9 @@ fun resolveContent(uri: Uri): NavDestination? {
             } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "video") {
                 val videoId = uri.pathSegments[1].toLongOrNull() ?: return null
                 return Video(id = videoId) // todo
+            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "pin") {
+                val pinId = uri.pathSegments[1].toLongOrNull() ?: return null
+                return Pin(id = pinId)
             }
             Log.w("NavDestination", "Cannot resolve content from uri: $uri")
         } else if (uri.host == "zhuanlan.zhihu.com") {

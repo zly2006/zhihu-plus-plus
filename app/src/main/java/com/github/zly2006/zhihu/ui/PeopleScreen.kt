@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,6 +75,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
+import org.jsoup.Jsoup
 import kotlin.reflect.typeOf
 
 class PeopleAnswersViewModel(
@@ -692,7 +694,8 @@ private fun CollectionListItem(
                         "收藏夹详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }.padding(vertical = 8.dp, horizontal = 4.dp),
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = collection.title,
@@ -724,7 +727,8 @@ private fun QuestionListItem(
                         "问题详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }.padding(vertical = 8.dp, horizontal = 4.dp),
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
             text = question.title,
@@ -758,8 +762,9 @@ private fun PinListItem(
                     ).show()
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
+        val text = remember { Jsoup.parse(pin.excerptTitle).text() }
         Text(
-            text = pin.excerpt,
+            text = text,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
@@ -790,7 +795,8 @@ private fun ColumnListItem(
                         "专栏详情功能开发中",
                         Toast.LENGTH_SHORT,
                     ).show()
-            }.padding(vertical = 8.dp, horizontal = 4.dp),
+            }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
