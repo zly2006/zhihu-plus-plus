@@ -21,6 +21,7 @@ import com.github.zly2006.zhihu.ui.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
@@ -134,7 +135,10 @@ abstract class PaginationViewModel<T : Any>(
                         @Suppress("UNCHECKED_CAST")
                         AccountData.decodeJson(serializer(dataType) as KSerializer<T>, it)
                     } catch (e: Exception) {
-                        Log.e(this::class.simpleName, "Failed to decode item: $it", e)
+                        if (this !is OnlineHistoryViewModel) {
+                            // Note: 小特判一下，懒得写了
+                            Log.e(this::class.simpleName, "Failed to decode item: $it", e)
+                        }
                         null
                     }
                 },
