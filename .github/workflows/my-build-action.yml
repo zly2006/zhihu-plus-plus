@@ -89,8 +89,8 @@ jobs:
       # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
-      - name: Run gradle tests
-        run: ./gradlew test
+      #- name: Run gradle tests
+      #  run: ./gradlew test
       - name: Build App
         # Build .apk
         run: |

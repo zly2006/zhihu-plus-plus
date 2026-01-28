@@ -93,6 +93,7 @@ tasks.register<Exec>("buildRustLib") {
             cargo install cargo-ndk
         fi
         
+        export DEVELOPER_DIR=/Library/Developer/CommandLineTools
         # Add Android targets if not already added
         ${androidTargets.keys.joinToString("\n") { "rustup target add $it 2>/dev/null || true" }}
         
