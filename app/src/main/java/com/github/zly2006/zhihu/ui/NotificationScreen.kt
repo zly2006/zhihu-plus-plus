@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,16 +55,13 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import io.ktor.client.request.post
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -116,20 +112,13 @@ fun NotificationScreen(
                 actions = {
                     if (viewModel.unreadCount > 0) {
                         IconButton(onClick = {
-                            viewModel.markAllAsRead(context)
-                        }) {
-                            Icon(Icons.Default.DoneAll, contentDescription = "全部已读")
-                        }
-                    }
-                    IconButton(onClick = {
-                        coroutineScope.launch {
-                            AccountData.httpClient(context).post("https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
-                                signFetchRequest(context)
+                            coroutineScope.launch {
+                                viewModel.markAllAsRead(context)
+                                Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
                             }
-                            Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                         }
-                    }) {
-                        Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                     }
                     IconButton(onClick = {
                         onNavigate(Notification.NotificationSettings)

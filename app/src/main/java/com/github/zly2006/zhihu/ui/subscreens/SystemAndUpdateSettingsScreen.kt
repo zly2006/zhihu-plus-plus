@@ -29,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -42,7 +43,6 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,10 +133,11 @@ fun SystemAndUpdateSettingsScreen(
             )
 
             val updateState by UpdateManager.updateState.collectAsState()
+            val coroutineScope = rememberCoroutineScope()
 
             Button(
                 onClick = {
-                    GlobalScope.launch {
+                    coroutineScope.launch {
                         when (val updateState = updateState) {
                             is UpdateState.NoUpdate, is UpdateState.Error -> {
                                 UpdateManager.checkForUpdate(context)

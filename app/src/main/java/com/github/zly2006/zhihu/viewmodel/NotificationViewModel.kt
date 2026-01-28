@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
+import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -46,13 +48,9 @@ class NotificationViewModel :
      * 标记所有消息为已读
      */
     @OptIn(DelicateCoroutinesApi::class)
-    fun markAllAsRead(context: Context) {
-        GlobalScope.launch {
-            try {
-                // TODO: 实现标记所有已读的API调用
-            } catch (e: Exception) {
-                errorHandle(e)
-            }
+    suspend fun markAllAsRead(context: Context) {
+        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
+            signFetchRequest(context)
         }
     }
 }

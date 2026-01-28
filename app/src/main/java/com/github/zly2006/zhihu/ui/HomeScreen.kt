@@ -7,6 +7,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -220,7 +221,7 @@ fun HomeScreen(
             }
         },
     ) { innerPadding ->
-        androidx.compose.foundation.layout.Box(
+        Box(
             modifier = Modifier.padding(innerPadding),
         ) {
             FeedPullToRefresh(viewModel) {
