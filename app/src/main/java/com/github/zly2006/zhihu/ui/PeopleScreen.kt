@@ -54,6 +54,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -716,18 +717,11 @@ private fun QuestionListItem(
     question: DataHolder.Question,
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // TODO: Navigate to question detail
-                Toast
-                    .makeText(
-                        context,
-                        "问题详情功能开发中",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                onNavigate(Question(question.id, question.title))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
@@ -748,7 +742,6 @@ private fun PinListItem(
     pin: DataHolder.Pin,
     onNavigate: (NavDestination) -> Unit,
 ) {
-    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()

@@ -405,7 +405,7 @@ object DataHolder {
         val type: String,
         val url: String,
         val name: String,
-        val avatarUrl: String,
+        val avatarUrl: String? = null,
         val topicType: String? = null,
     )
 

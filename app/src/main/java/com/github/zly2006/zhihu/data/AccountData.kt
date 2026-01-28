@@ -279,6 +279,7 @@ object AccountData {
             }
         } catch (_: JsonConvertException) {
             // 忽略序列化异常，服务器已成功添加历史记录，只是返回格式不标准
+            // fetchPost 假设返回的是 JsonObject，而实际上是 JsonNull，会触发 JsonConvertException
         }
     }
 }

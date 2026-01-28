@@ -84,59 +84,63 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                 data
                     .map { it.jsonObject }
                     .forEach { card ->
-                        if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
-                            return@forEach
-                        }
-                        val route =
-                            card["action"]!!
-                                .jsonObject["parameter"]!!
+                        try {
+                            if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
+                                return@forEach
+                            }
+                            val route =
+                                card["action"]!!
+                                    .jsonObject["parameter"]!!
+                                    .jsonPrimitive.content
+                                    .substringAfter("route_url=")
+                            val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
+                            val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
+                            val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
+                            val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
+                            val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@forEach
+                            val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
+                                val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
+                                val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
+                                val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
+                                val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
+                                "$voteUp 赞同 · $comment 评论 · $collect 收藏"
+                            } else {
+                                val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
+                                footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
+                            }
+                            val lineAuthor =
+                                children
+                                    .first {
+                                        it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
+                                                it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
+                                    }["elements"]!!
+                                    .jsonArray
+                                    .map { it.jsonObject }
+                            val avatar = lineAuthor
+                                .joStrMatch("style", "Avatar_default")["image"]!!
+                                .jsonObject["url"]!!
                                 .jsonPrimitive.content
-                                .substringAfter("route_url=")
-                        val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
-                        val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
-                        val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
-                        val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
-                        val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@forEach
-                        val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
-                            val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
-                            val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
-                            val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
-                            val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
-                            "$voteUp 赞同 · $comment 评论 · $collect 收藏"
-                        } else {
-                            val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
-                            footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
-                        }
-                        val lineAuthor =
-                            children
-                                .first {
-                                    it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
-                                        it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
-                                }["elements"]!!
-                                .jsonArray
-                                .map { it.jsonObject }
-                        val avatar = lineAuthor
-                            .joStrMatch("style", "Avatar_default")["image"]!!
-                            .jsonObject["url"]!!
-                            .jsonPrimitive.content
-                        val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
-                        if (routeDest is Article) {
-                            routeDest.authorName = authorName
-                            routeDest.title = title
-                            routeDest.avatarSrc = avatar
-                        }
+                            val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
+                            if (routeDest is Article) {
+                                routeDest.authorName = authorName
+                                routeDest.title = title
+                                routeDest.avatarSrc = avatar
+                            }
 
-                        itemsToDisplay.add(
-                            FeedDisplayItem(
-                                navDestination = routeDest,
-                                avatarSrc = avatar,
-                                authorName = authorName,
-                                summary = summary,
-                                title = title,
-                                details = "$footerText · 手机版推荐",
-                                feed = null,
-                            ),
-                        )
+                            itemsToDisplay.add(
+                                FeedDisplayItem(
+                                    navDestination = routeDest,
+                                    avatarSrc = avatar,
+                                    authorName = authorName,
+                                    summary = summary,
+                                    title = title,
+                                    details = "$footerText · 手机版推荐",
+                                    feed = null,
+                                ),
+                            )
+                        } catch (e: Exception) {
+                            Log.e("AndroidHomeFeedViewModel", "Failed to process card: $card", e)
+                        }
                     }
 
                 // 应用内容过滤
