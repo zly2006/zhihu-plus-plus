@@ -42,11 +42,7 @@ class RootCommentViewModel(
     }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
-        val clickTarget = if (comment.childCommentCount > 0) {
-            CommentHolder(comment.id, article)
-        } else {
-            null
-        }
+        val clickTarget = CommentHolder(comment.id, article)
 
         val commentItem = CommentItem(comment, clickTarget)
         commentsMap[comment.id] = commentItem

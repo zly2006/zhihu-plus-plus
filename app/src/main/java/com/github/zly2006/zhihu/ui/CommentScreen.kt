@@ -624,66 +624,50 @@ private fun CommentItem(
                     }
                 }
 
-                if (useWebview) {
-                    WebviewComp {
-                        it.isVerticalScrollBarEnabled = false
-                        it.isHorizontalScrollBarEnabled = false
-                        it.loadZhihu(
-                            "",
-                            Jsoup.parse(commentData.content).processCommentImages(),
-                            additionalStyle =
-                                """
-                                body { margin: 0; }
-                                p { margin: 0; margin-block: 0; }
-                                """.trimIndent(),
+                val document = Jsoup.parse(commentData.content)
+                val commentImg =
+                    document.selectFirst("a.comment_img")?.attr("href")
+                        ?: document.selectFirst("a.comment_gif")?.attr("href")
+                        ?: document.selectFirst("a.comment_sticker")?.attr("href")
+                val context = LocalContext.current
+
+                // 收集所有使用的emoji
+                val emojisUsed = remember { mutableSetOf<String>() }
+                val string = remember(commentData.content) {
+                    emojisUsed.clear()
+                    buildAnnotatedString {
+                        val stripped = document.body().clone()
+                        stripped.select("a.comment_img").forEach { it.remove() }
+                        stripped.select("a.comment_gif").forEach { it.remove() }
+                        stripped.select("a.comment_sticker").forEach { it.remove() }
+                        dfsSimple(stripped, onNavigate, context, emojisUsed)
+                    }
+                }
+
+                // 创建inlineContent映射
+                val inlineContent = remember(emojisUsed.size) {
+                    createEmojiInlineContent(emojisUsed)
+                }
+
+                Column {
+                    SelectionContainer(
+                        modifier = Modifier.fuckHonorService(),
+                    ) {
+                        Text(
+                            text = string,
+                            inlineContent = inlineContent,
                         )
                     }
-                } else {
-                    val document = Jsoup.parse(commentData.content)
-                    val commentImg =
-                        document.selectFirst("a.comment_img")?.attr("href")
-                            ?: document.selectFirst("a.comment_gif")?.attr("href")
-                            ?: document.selectFirst("a.comment_sticker")?.attr("href")
-                    val context = LocalContext.current
-
-                    // 收集所有使用的emoji
-                    val emojisUsed = remember { mutableSetOf<String>() }
-                    val string = remember(commentData.content) {
-                        emojisUsed.clear()
-                        buildAnnotatedString {
-                            val stripped = document.body().clone()
-                            stripped.select("a.comment_img").forEach { it.remove() }
-                            stripped.select("a.comment_gif").forEach { it.remove() }
-                            stripped.select("a.comment_sticker").forEach { it.remove() }
-                            dfsSimple(stripped, onNavigate, context, emojisUsed)
-                        }
-                    }
-
-                    // 创建inlineContent映射
-                    val inlineContent = remember(emojisUsed.size) {
-                        createEmojiInlineContent(emojisUsed)
-                    }
-
-                    Column {
-                        SelectionContainer(
-                            modifier = Modifier.fuckHonorService(),
-                        ) {
-                            Text(
-                                text = string,
-                                inlineContent = inlineContent,
-                            )
-                        }
-                        if (commentImg != null) {
-                            ClickableImageWithMenu(
-                                imageUrl = commentImg,
-                                httpClient = httpClient,
-                                modifier = Modifier
-                                    .padding(top = 8.dp)
-                                    .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentDescription = "评论图片",
-                            )
-                        }
+                    if (commentImg != null) {
+                        ClickableImageWithMenu(
+                            imageUrl = commentImg,
+                            httpClient = httpClient,
+                            modifier = Modifier
+                                .padding(top = 8.dp)
+                                .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentDescription = "评论图片",
+                        )
                     }
                 }
             }
@@ -745,13 +729,15 @@ private fun CommentItem(
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = comment.item.childCommentCount.toString(),
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    if (comment.item.childCommentCount > 0) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = comment.item.childCommentCount.toString(),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
