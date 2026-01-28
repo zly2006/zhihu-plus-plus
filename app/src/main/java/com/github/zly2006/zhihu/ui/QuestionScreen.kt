@@ -88,7 +88,7 @@ fun QuestionScreen(
                         viewModel.refresh(context)
                     }
                 }
-                val questionData = DataHolder.getQuestion(context, context.httpClient, question.questionId)?.value
+                val questionData = DataHolder.getContentDetail(context, question)
                 if (questionData != null) {
                     questionContent = questionData.detail
                     title = questionData.title

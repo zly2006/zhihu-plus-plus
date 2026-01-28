@@ -1,35 +1,17 @@
 package com.github.zly2006.zhihu.data
 
-import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.content.Context
-import android.content.Intent
 import android.util.Log
-import android.webkit.CookieManager
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Toast
 import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.Job
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
-import org.jsoup.Jsoup
-import org.jsoup.nodes.DataNode
-import org.jsoup.nodes.Document
 
 object DataHolder {
     suspend fun getContentDetail(
@@ -61,6 +43,33 @@ object DataHolder {
             }
         }.getOrElse { e ->
             Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+            null
+        }
+    }
+
+    suspend fun getContentDetail(
+        context: Context,
+        question: com.github.zly2006.zhihu.Question,
+    ): Question? {
+        val appViewUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=detail,editable_detail,comment_count,answer_count,visit_count,relationship,relationship.is_author,relationship.is_following,relationship.is_anonymous,relationship.can_lock,relationship.can_collapse_answers,relationship.voting,topics,author,can_comment,thumbnail_info,review_info,related_cards,mute_info,reaction_instruction"
+
+        return runCatching {
+            val jo = AccountData.fetchGet(context, appViewUrl) {
+                signFetchRequest(context)
+            }
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, value.jsonPrimitive.long)
+                    } else {
+                        put(key, value)
+                    }
+                }
+            }
+            // 解析为对应的Content类型
+            AccountData.decodeJson<Question>(jojo)
+        }.getOrElse { e ->
+            Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
             null
         }
     }
@@ -553,110 +562,6 @@ object DataHolder {
         }
     }
 
-    private val questions = mutableMapOf<Long, ReferenceCount<Question>>()
-    private val feeds = mutableMapOf<String, CommonFeed>()
-
-    @Deprecated("use restful api", level = DeprecationLevel.WARNING)
-    @SuppressLint("SetJavaScriptEnabled")
-    private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
-        val response = httpClient.get(url)
-        if ("https://www.zhihu.com/404" == response.call.request.url
-                .toString() &&
-            response.status.value == 200
-        ) {
-            activity.mainExecutor.execute {
-                Toast.makeText(activity, "疑似触发风控", Toast.LENGTH_SHORT).show()
-            }
-        }
-        val html = response.bodyAsText()
-        val document = Jsoup.parse(html)
-        if (document.getElementById("js-initialData") == null || extractData(document) == 0) { // 触发风控
-            // 知乎安全cookie v4检验
-            val job = Job()
-            activity.mainExecutor.execute {
-                val webView = WebView(activity)
-                val cm = CookieManager.getInstance()
-                cm.removeAllCookies { }
-                webView.settings.javaScriptEnabled = true
-                val cookies = AccountData.data.cookies
-                cookies.forEach { (key, value) ->
-                    cm.setCookie("https://www.zhihu.com", "$key=$value")
-                }
-                webView.webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView, url1: String) {
-                        if (url == url1) {
-                            val cookies =
-                                CookieManager.getInstance().getCookie("https://www.zhihu.com/").split(";").associate {
-                                    it.substringBefore("=").trim() to it.substringAfter("=")
-                                }
-                            AccountData.data.cookies.putAll(cookies)
-                            AccountData.saveData(activity, AccountData.data)
-                            view.evaluateJavascript("document.getElementsByTagName('html')[0].outerHTML") {
-                                val document = Jsoup.parse(it)
-                                Log.i("DataHolder", "Fetched data from $url:\n$document")
-                                job.complete()
-                            }
-                        }
-                    }
-                }
-                webView.loadUrl(url)
-            }
-            try {
-                job.join()
-                if (retry > 0) {
-                    get(httpClient, url, activity, retry - 1)
-                } else {
-                    error("")
-                }
-                return
-            } catch (_: Exception) {
-                activity.mainExecutor.execute {
-                    AlertDialog
-                        .Builder(activity)
-                        .setTitle("触发风控")
-                        .setMessage("请稍后尝试重新进入此页，或重新登录")
-                        .setPositiveButton("重新登录") { _, _ ->
-                            AccountData.delete(activity)
-                            val myIntent = Intent(activity, LoginActivity::class.java)
-                            activity.startActivity(myIntent)
-                        }.show()
-                }
-                return
-            }
-        }
-        extractData(document)
-    }
-
-    @Deprecated("use restful api", level = DeprecationLevel.WARNING)
-    /**
-     * 从网页中提取数据
-     * @return 提取的数据数量，如果为0则表示 404，或者触发了风控
-     */
-    private fun extractData(document: Document): Int {
-        var extractedCount = 0
-        val jojo = Json.decodeFromString<JsonObject>(
-            (document.getElementById("js-initialData")?.childNode(0) as? DataNode)?.wholeData ?: "{}",
-        )
-        val entities = jojo["initialState"]!!.jsonObject["entities"]!!.jsonObject
-        if ("questions" in entities) {
-            val questions = entities["questions"]!!.jsonObject
-            for ((_, question) in questions) {
-                try {
-                    val questionModel = Json.decodeFromJsonElement<Question>(question)
-                    this.questions[questionModel.id] = ReferenceCount(questionModel)
-                    extractedCount++
-                } catch (e: Exception) {
-                    println(jojo.toString())
-                    e.printStackTrace()
-
-                    val questionModel = AccountData.decodeJson<Question>(question)
-                    this.questions[questionModel.id] = ReferenceCount(questionModel)
-                }
-            }
-        }
-        return extractedCount
-    }
-
     @Serializable
     data class People(
         val id: String,
@@ -747,17 +652,4 @@ object DataHolder {
         val updated: Long = 0L,
         val author: JsonElement? = null,
     )
-
-    suspend fun getQuestion(activity: Context, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
-        try {
-            get(httpClient, "https://www.zhihu.com/question/$id", activity)
-            return questions[id]?.also { it.count++ }
-        } catch (e: Exception) {
-            Log.e("DataHolder", "Failed to get question $id", e)
-            activity.mainExecutor.execute {
-                Toast.makeText(activity, "Failed to get question $id", Toast.LENGTH_LONG).show()
-            }
-            return null
-        }
-    }
 }

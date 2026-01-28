@@ -65,7 +65,7 @@ abstract class PaginationViewModel<T : Any>(
         val page: Int = -1,
         val isEnd: Boolean = false,
         val isStart: Boolean = false,
-        val previous: String?,
+        val previous: String? = null,
         val totals: Int = 0,
         val next: String,
         val prev: String? = null,
