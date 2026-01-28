@@ -231,9 +231,10 @@ class ArticleViewModel(
                             authorName = article.author.name
                             authorBio = article.author.headline
                             authorAvatarSrc = article.author.avatarUrl
-                            voteUpState = when (article.relationship?.voting) {
-                                1 -> VoteUpState.Up
-                                -1 -> VoteUpState.Down
+                            voteUpState = when (article.reaction?.relation?.vote) {
+                                "UP" -> VoteUpState.Up
+                                "DOWN" -> VoteUpState.Down
+                                "Neutral" -> VoteUpState.Neutral
                                 else -> VoteUpState.Neutral
                             }
                             updatedAt = article.updated

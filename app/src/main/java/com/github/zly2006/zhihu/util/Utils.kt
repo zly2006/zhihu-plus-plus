@@ -91,12 +91,14 @@ fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
             return
         }
     }
+    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
+    val color = preferences.getInt("luotianyi_color", 0xff_66CCFF.toInt())
     val intent = CustomTabsIntent
         .Builder()
         .setDefaultColorSchemeParams(
             CustomTabColorSchemeParams
                 .Builder()
-                .setToolbarColor(0xff_66CCFF.toInt())
+                .setToolbarColor(color)
                 .build(),
         ).build()
     intent.launchUrl(context, uri)

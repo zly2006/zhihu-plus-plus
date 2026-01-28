@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
+import android.content.ClipData
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -55,6 +56,10 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.signFetchRequest
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -75,6 +80,7 @@ fun DeveloperSettingsScreen(
     val data = dataState
 
     var showCookieDialog by remember { mutableStateOf(false) }
+    var showSignedRequestDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -161,6 +167,8 @@ fun DeveloperSettingsScreen(
                 }) { Text("刷新Token") }
 
                 Button(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
+
+                Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
 
                 Button(onClick = { onNavigate(SentenceSimilarityTest) }) { Text("句子相似度") }
             }
@@ -357,6 +365,105 @@ fun DeveloperSettingsScreen(
                     },
                 ) {
                     Text("取消")
+                }
+            },
+        )
+    }
+
+    if (showSignedRequestDialog) {
+        var urlInput by remember { mutableStateOf("https://www.zhihu.com/api/v4/me") }
+        var responseText by remember { mutableStateOf("") }
+        var isLoading by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = {
+                showSignedRequestDialog = false
+                urlInput = "https://www.zhihu.com/api/v4/me"
+                responseText = ""
+                isLoading = false
+            },
+            title = { Text("签名GET请求") },
+            text = {
+                Column {
+                    Text(
+                        "输入需要签名的GET请求URL，将自动添加签名头并发送请求",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                    OutlinedTextField(
+                        value = urlInput,
+                        onValueChange = { urlInput = it },
+                        label = { Text("请求URL") },
+                        placeholder = { Text("https://www.zhihu.com/api/v4/me") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3,
+                        enabled = !isLoading,
+                    )
+                    if (responseText.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "响应内容:",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        SelectionContainer {
+                            Text(
+                                responseText,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp),
+                                maxLines = 10,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (urlInput.isNotBlank() && !isLoading) {
+                            isLoading = true
+                            coroutineScope.launch {
+                                try {
+                                    val httpClient = AccountData.httpClient(context)
+                                    val response = httpClient.get(urlInput) {
+                                        signFetchRequest(context)
+                                    }
+                                    val body = response.bodyAsText()
+                                    responseText = body
+
+                                    // 复制到剪贴板
+                                    val clip = ClipData.newPlainText("Signed Request Response", body)
+                                    context.clipboardManager.setPrimaryClip(clip)
+
+                                    Toast.makeText(context, "响应已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    responseText = "错误: ${e.message}"
+                                    Toast.makeText(context, "请求失败: ${e.message}", Toast.LENGTH_LONG).show()
+                                } finally {
+                                    isLoading = false
+                                }
+                            }
+                        } else {
+                            Toast.makeText(context, "请输入有效的URL", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = !isLoading,
+                ) {
+                    Text(if (isLoading) "请求中..." else "发送请求")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSignedRequestDialog = false
+                        urlInput = "https://www.zhihu.com/api/v4/me"
+                        responseText = ""
+                        isLoading = false
+                    },
+                    enabled = !isLoading,
+                ) {
+                    Text("关闭")
                 }
             },
         )

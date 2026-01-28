@@ -19,8 +19,8 @@ object DataHolder {
         dest: com.github.zly2006.zhihu.Article,
     ): Content? {
         val appViewUrl = when (dest.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.voting"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.voting"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.vote"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,reaction.relation.voting"
         }
 
         return runCatching {
@@ -51,7 +51,7 @@ object DataHolder {
         context: Context,
         question: com.github.zly2006.zhihu.Question,
     ): Question? {
-        val appViewUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=detail,editable_detail,comment_count,answer_count,visit_count,relationship,relationship.is_author,relationship.is_following,relationship.is_anonymous,relationship.can_lock,relationship.can_collapse_answers,relationship.voting,topics,author,can_comment,thumbnail_info,review_info,related_cards,mute_info,reaction_instruction"
+        val appViewUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=detail,editable_detail,comment_count,answer_count,visit_count,relationship,relationship.*,relationship.is_author,relationship.is_following,relationship.is_anonymous,relationship.can_lock,relationship.can_collapse_answers,relationship.voting,topics,author,can_comment,thumbnail_info,review_info,related_cards,mute_info,reaction_instruction,visit_count,follower_count,collapsed_answer_count,excerpt"
 
         return runCatching {
             val jo = AccountData.fetchGet(context, appViewUrl) {
@@ -259,6 +259,7 @@ object DataHolder {
 
     @Serializable
     data class Article(
+        val id: Long,
         val adminClosedComment: Boolean = false,
         val author: Author,
         val canComment: CanComment,
@@ -273,7 +274,6 @@ object DataHolder {
         val excerpt: String,
         val extras: String? = null,
         val favlistsCount: Int = 0,
-        val id: Long,
         val isCollapsed: Boolean = false,
         val isCopyable: Boolean = false,
         val isJumpNative: Boolean = false,
@@ -283,7 +283,7 @@ object DataHolder {
         val isSticky: Boolean = false,
         val isVisible: Boolean = false,
         val reactionInstruction: ReactionInstruction? = null,
-        val relationship: Relationship? = null,
+        val reaction: Reaction? = null,
         val relevantInfo: RelevantInfo? = null,
         val reshipmentSettings: String? = null,
         val rewardInfo: RewardInfo? = null,
@@ -305,7 +305,22 @@ object DataHolder {
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
-    ) : Content
+    ) : Content {
+        @Serializable
+        class Reaction(
+            val relation: Relation? = null,
+        )
+
+        @Serializable
+        class Relation(
+            val isAuthor: Boolean = false,
+            val vote: String,
+            val faved: Boolean = false,
+            val liked: Boolean = false,
+            val following: Boolean = false,
+            val subscribed: Boolean = false,
+        )
+    }
 
     @Serializable
     data class RelevantInfo(
@@ -323,12 +338,6 @@ object DataHolder {
         val created: Long,
         val updatedTime: Long,
         val url: String,
-        val isMuted: Boolean,
-        val isVisible: Boolean,
-        val isNormal: Boolean,
-        val isEditable: Boolean,
-        val adminClosedComment: Boolean,
-        val hasPublishingDraft: Boolean,
         val answerCount: Int,
         val visitCount: Int,
         val commentCount: Int,
@@ -367,13 +376,10 @@ object DataHolder {
 
     @Serializable
     data class QuestionRelationship(
-        val isAuthor: Boolean,
-        val isFollowing: Boolean,
-        val isAnonymous: Boolean,
-        val canLock: Boolean,
-        val canStickAnswers: Boolean,
-        val canCollapseAnswers: Boolean,
-        val voting: Int,
+        val isAuthor: Boolean = false,
+        val isFollowing: Boolean = false,
+        val isAnonymous: Boolean = false,
+        val voting: Int = 0,
     )
 
     @Serializable

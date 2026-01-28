@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
@@ -35,6 +36,14 @@ import kotlin.math.roundToInt
 fun ColorPickerDialog(
     title: String = "选择颜色",
     initialColor: Color,
+    presetColors: List<Color> = listOf(
+        Color(0xFF2196F3),
+        Color(0xFF4CAF50),
+        Color(0xFFF44336),
+        Color(0xFFFF9800),
+        Color(0xFF9C27B0),
+        Color(0xFF607D8B),
+    ),
     onDismiss: () -> Unit,
     onColorSelected: (Color) -> Unit,
 ) {
@@ -84,7 +93,7 @@ fun ColorPickerDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    "RGB: (${(red * 255).roundToInt()}, ${(green * 255).roundToInt()}, ${(blue * 255).roundToInt()})",
+                    "RGB: (${(red * 255).roundToInt()}, ${(green * 255).roundToInt()}, ${(blue * 255).roundToInt()}) #${currentColor.toArgb().toUInt().toString(16).padStart(3, '0').takeLast(6).uppercase()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -98,41 +107,12 @@ fun ColorPickerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    PresetColor(Color(0xFF2196F3)) {
-                        // Blue
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
-                    }
-                    PresetColor(Color(0xFF4CAF50)) {
-                        // Green
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
-                    }
-                    PresetColor(Color(0xFFF44336)) {
-                        // Red
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
-                    }
-                    PresetColor(Color(0xFFFF9800)) {
-                        // Orange
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
-                    }
-                    PresetColor(Color(0xFF9C27B0)) {
-                        // Purple
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
-                    }
-                    PresetColor(Color(0xFF607D8B)) {
-                        // Grey
-                        red = it.red
-                        green = it.green
-                        blue = it.blue
+                    presetColors.forEach { presetColor ->
+                        PresetColor(presetColor) {
+                            red = it.red
+                            green = it.green
+                            blue = it.blue
+                        }
                     }
                 }
             }
