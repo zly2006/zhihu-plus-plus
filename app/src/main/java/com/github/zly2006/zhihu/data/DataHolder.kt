@@ -74,6 +74,23 @@ object DataHolder {
         }
     }
 
+    suspend fun getContentDetail(
+        context: Context,
+        pin: com.github.zly2006.zhihu.Pin,
+    ): Pin? {
+        val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}"
+
+        return runCatching {
+            val jo = AccountData.fetchGet(context, apiUrl) {
+                signFetchRequest(context)
+            }
+            AccountData.decodeJson<Pin>(jo)
+        }.getOrElse { e ->
+            Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)
+            null
+        }
+    }
+
     @Serializable
     sealed interface Content
 
@@ -625,21 +642,41 @@ object DataHolder {
     )
 
     @Serializable
+    @SerialName("pin")
     data class Pin(
         val id: String,
-        val type: String = "pin",
         val url: String = "",
         val author: Author,
         val content: List<JsonElement> = emptyList(),
-        val excerpt: String = "",
         val excerptTitle: String = "",
         val contentHtml: String = "",
         val likeCount: Int = 0,
         val commentCount: Int = 0,
         val created: Long = 0L,
         val updated: Long = 0L,
-        val isLiking: Boolean = false,
         val reaction: JsonElement? = null,
+        val state: String = "",
+        val reactionCount: Int = 0,
+        val likers: List<Author> = emptyList(),
+        val topics: List<Topic> = emptyList(),
+        val pinType: String = "",
+        val isContainAiContent: Boolean = false,
+        val commentPermission: String = "",
+        val viewPermission: String = "",
+        val adminClosedComment: Boolean = false,
+        val comments: List<JsonElement> = emptyList(),
+        val favoriteCount: Int = 0,
+        val favlistsCount: Int = 0,
+        val isDeleted: Boolean = false,
+        val isTop: Boolean = false,
+        val canTop: Boolean = false,
+        val repinCount: Int = 0,
+        val sourcePinId: Long = 0L,
+        val selfCreate: Boolean = false,
+        val tags: List<JsonElement> = emptyList(),
+        val virtuals: JsonObject? = null,
+        val reactionRelation: JsonObject? = null,
+        val topReactions: JsonObject? = null,
     ) : Content
 
     @Serializable

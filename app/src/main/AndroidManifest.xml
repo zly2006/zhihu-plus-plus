@@ -90,7 +90,6 @@
         </provider>
     </application>
 
-    <!--  TTS 需要进行申明才能使用   -->
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
@@ -98,6 +97,9 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
         </intent>
     </queries>
 
