@@ -118,14 +118,14 @@ android {
             excludes +=
                 listOf(
                     "META-INF/DEPENDENCIES",
-                    "META-INF/*.version",
+//                    "META-INF/*.version",
                     "META-INF/**/LICENSE",
                     "META-INF/**/LICENSE.txt",
                     "META-INF/proguard/*",
                     "**.kotlin_module",
                     "kotlin-tooling-metadata.json",
                     "DebugProbesKt.bin",
-                    "META-INF/*.kotlin_module",
+//                    "META-INF/*.kotlin_module",
                 )
         }
     }

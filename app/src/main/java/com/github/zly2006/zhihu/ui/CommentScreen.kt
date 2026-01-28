@@ -81,7 +81,6 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
-import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -723,12 +722,16 @@ private fun CommentItem(
                     modifier = Modifier.clickable { onChildCommentClick(comment) },
                 ) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        Icons.AutoMirrored.Outlined.Comment,
-                        contentDescription = "回复",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Box(
+                        modifier = Modifier.height(24.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Outlined.Comment,
+                            contentDescription = "回复",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     if (comment.item.childCommentCount > 0) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
