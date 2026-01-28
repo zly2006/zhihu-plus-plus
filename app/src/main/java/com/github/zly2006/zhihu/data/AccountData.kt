@@ -27,6 +27,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.http.contentType
+import io.ktor.serialization.JsonConvertException
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
@@ -276,7 +277,7 @@ object AccountData {
                     }.toString(),
                 )
             }
-        } catch (_: SerializationException) {
+        } catch (_: JsonConvertException) {
             // 忽略序列化异常，服务器已成功添加历史记录，只是返回格式不标准
         }
     }
