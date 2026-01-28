@@ -257,10 +257,8 @@ object AccountData {
     }
 
     /**
-     * 添加阅读历史记录
-     * @param context Android Context
-     * @param contentToken 内容标识符 (如 article.id, answer.id, pin.id 等)
-     * @param contentType 内容类型 (如 "article", "answer", "pin" 等)
+     * 添加在线阅读历史记录
+     * @param contentType 内容类型 (如 "article", "answer", "profile" 等)
      */
     suspend fun addReadHistory(
         context: Context,

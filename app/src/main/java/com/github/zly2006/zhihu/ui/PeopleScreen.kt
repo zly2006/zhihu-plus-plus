@@ -409,6 +409,7 @@ fun PeopleScreen(
     LaunchedEffect(viewModel) {
         try {
             viewModel.load(context)
+            AccountData.addReadHistory(context, person.id, "profile")
         } catch (e: Exception) {
             Log.e("PeopleScreen", "Error loading person data", e)
             Toast
