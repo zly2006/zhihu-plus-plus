@@ -9,30 +9,61 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
 import org.jsoup.nodes.DataNode
 import org.jsoup.nodes.Document
-import java.net.UnknownHostException
 
 object DataHolder {
-    val definitelyAd = listOf(
-        "href=\"https://xg.zhihu.com/", // 知乎营销效果统计平台
-    )
+    suspend fun getContentDetail(
+        context: Context,
+        dest: com.github.zly2006.zhihu.Article,
+    ): Content? {
+        val appViewUrl = when (dest.type) {
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.voting"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.voting"
+        }
+
+        return runCatching {
+            val jo = AccountData.fetchGet(context, appViewUrl) {
+                signFetchRequest(context)
+            }
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, value.jsonPrimitive.long)
+                    } else {
+                        put(key, value)
+                    }
+                }
+            }
+            // 解析为对应的Content类型
+            when (dest.type) {
+                ArticleType.Answer -> AccountData.decodeJson<Answer>(jojo)
+                ArticleType.Article -> AccountData.decodeJson<Article>(jojo)
+            }
+        }.getOrElse { e ->
+            Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+            null
+        }
+    }
 
     @Serializable
     sealed interface Content
@@ -523,10 +554,9 @@ object DataHolder {
     }
 
     private val questions = mutableMapOf<Long, ReferenceCount<Question>>()
-    private val answers = mutableMapOf<Long, ReferenceCount<Answer>>()
-    private val articles = mutableMapOf<Long, ReferenceCount<Article>>()
     private val feeds = mutableMapOf<String, CommonFeed>()
 
+    @Deprecated("use restful api", level = DeprecationLevel.WARNING)
     @SuppressLint("SetJavaScriptEnabled")
     private suspend fun get(httpClient: HttpClient, url: String, activity: Context, retry: Int = 1) {
         val response = httpClient.get(url)
@@ -597,6 +627,7 @@ object DataHolder {
         extractData(document)
     }
 
+    @Deprecated("use restful api", level = DeprecationLevel.WARNING)
     /**
      * 从网页中提取数据
      * @return 提取的数据数量，如果为0则表示 404，或者触发了风控
@@ -623,50 +654,8 @@ object DataHolder {
                 }
             }
         }
-        if ("answers" in entities) {
-            val answers = entities["answers"]!!.jsonObject
-            for ((_, answer) in answers) {
-                try {
-                    val answerModel = AccountData.decodeJson<Answer>(answer)
-                    this.answers[answerModel.id] = ReferenceCount(answerModel)
-                    this.questions[answerModel.question.id]!!.count++
-                    extractedCount++
-                } catch (e: Exception) {
-                    println(jojo.toString())
-                    e.printStackTrace()
-                }
-            }
-        }
-        if ("articles" in entities) {
-            val articles = entities["articles"]!!.jsonObject
-            for ((_, article) in articles) {
-                try {
-                    val articleModel = AccountData.decodeJson<Article>(article)
-                    this.articles[articleModel.id] = ReferenceCount(articleModel)
-                    extractedCount++
-                } catch (e: Exception) {
-                    println(jojo.toString())
-                    e.printStackTrace()
-                }
-            }
-        }
         return extractedCount
     }
-
-    private fun Person?.mock() = Author(
-        avatarUrl = this?.avatarUrl ?: "",
-        avatarUrlTemplate = "",
-        gender = this?.gender ?: 0,
-        headline = this?.headline ?: "",
-        id = this?.id ?: "",
-        isAdvertiser = false,
-        isOrg = false,
-        name = this?.name ?: "",
-        type = "mock",
-        url = this?.url ?: "",
-        urlToken = this?.urlToken ?: "",
-        userType = this?.userType ?: "",
-    )
 
     @Serializable
     data class People(
@@ -759,66 +748,6 @@ object DataHolder {
         val author: JsonElement? = null,
     )
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun getAnswerCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Answer?) -> Unit) {
-        GlobalScope.launch {
-            try {
-                if ("answer/$id" in feeds && id !in answers) {
-                    val feed = feeds["answer/$id"]!!.target as Feed.AnswerTarget
-                    callback(
-                        Answer(
-                            adminClosedComment = false,
-                            answerType = "feed mock data",
-                            author = feed.author.mock(),
-                            canComment = CanComment(
-                                status = false,
-                                reason = "",
-                            ),
-                            commentCount = feed.commentCount,
-                            content = feed.content,
-                            createdTime = feed.createdTime,
-                            excerpt = feed.excerpt ?: "",
-                            favlistsCount = feed.favoriteCount,
-                            id = feed.id,
-                            question = AnswerModelQuestion(
-                                created = 0,
-                                id = feed.question.id,
-                                questionType = "",
-                                relationship = Relationship(),
-                                title = feed.question.title,
-                                type = "",
-                                updatedTime = 0,
-                                url = feed.question.url,
-                            ),
-                            reshipmentSettings = "",
-                            thanksCount = feed.thanksCount,
-                            type = "answer",
-                            updatedTime = feed.updatedTime,
-                            url = feed.url,
-                            voteupCount = feed.voteupCount,
-                        ),
-                    )
-                } else {
-                    answers[id]?.also { it.count++ }?.value?.let(callback)
-                }
-                get(httpClient, "https://www.zhihu.com/answer/$id", activity)
-                callback(answers[id]?.also { it.count++ }?.value)
-            } catch (e: UnknownHostException) {
-                Log.e("DataHolder", "Failed to get answer $id", e)
-                activity.mainExecutor.execute {
-                    Toast.makeText(activity, "请检查网络连接", Toast.LENGTH_LONG).show()
-                }
-                callback(null)
-            } catch (e: Exception) {
-                Log.e("DataHolder", "Failed to get answer $id", e)
-                activity.mainExecutor.execute {
-                    Toast.makeText(activity, "Failed to get answer $id", Toast.LENGTH_LONG).show()
-                }
-                callback(null)
-            }
-        }
-    }
-
     suspend fun getQuestion(activity: Context, httpClient: HttpClient, id: Long): ReferenceCount<Question>? {
         try {
             get(httpClient, "https://www.zhihu.com/question/$id", activity)
@@ -829,58 +758,6 @@ object DataHolder {
                 Toast.makeText(activity, "Failed to get question $id", Toast.LENGTH_LONG).show()
             }
             return null
-        }
-    }
-
-    fun putFeed(feed: Feed) {
-        if (feed is CommonFeed) {
-            if (feed.target is Feed.AnswerTarget) {
-                feeds["answer/${feed.target.id}"] = feed
-            } else if (feed.target is Feed.ArticleTarget) {
-                feeds["article/${feed.target.id}"] = feed
-            }
-        }
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    fun getArticleCallback(activity: Context, httpClient: HttpClient, id: Long, callback: (Article?) -> Unit) {
-        GlobalScope.launch {
-            try {
-                if ("article/$id" in feeds && id !in articles) {
-                    val feed = feeds["article/$id"]!!.target as Feed.ArticleTarget
-                    callback(
-                        Article(
-                            adminClosedComment = false,
-                            author = feed.author.mock(),
-                            content = feed.content,
-                            contentNeedTruncated = false,
-                            excerpt = feed.excerpt,
-                            title = feed.title,
-                            commentCount = feed.commentCount,
-                            id = feed.id,
-                            canComment = CanComment(
-                                status = false,
-                                reason = "",
-                            ),
-                            type = "article",
-                            created = feed.created,
-                            updated = feed.updated,
-                            voteupCount = feed.voteupCount,
-                            url = feed.url,
-                        ),
-                    )
-                } else {
-                    articles[id]?.also { it.count++ }?.value?.let(callback)
-                }
-                get(httpClient, "https://zhuanlan.zhihu.com/p/$id", activity)
-                callback(articles[id]?.also { it.count++ }?.value)
-            } catch (e: Exception) {
-                Log.e("DataHolder", "Failed to get article $id", e)
-                activity.mainExecutor.execute {
-                    Toast.makeText(activity, "Failed to get article $id", Toast.LENGTH_LONG).show()
-                }
-                callback(null)
-            }
         }
     }
 }

@@ -46,7 +46,6 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.target
@@ -256,7 +255,7 @@ fun HomeScreen(
                         },
                     ) {
                         feed?.let {
-                            DataHolder.putFeed(feed)
+//                            DataHolder.putFeed(feed)
                             GlobalScope.launch {
                                 AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
                                     header("x-requested-with", "fetch")

@@ -92,7 +92,7 @@ class ArticleViewModel(
     var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
 
     // scroll fix
-    var rememberedScrollY = MutableLiveData<Int>(0)
+    var rememberedScrollY = MutableLiveData(0)
     var rememberedScrollYSync = true
 
     init {
@@ -144,118 +144,116 @@ class ArticleViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     if (article.type == ArticleType.Answer) {
-                        DataHolder.getAnswerCallback(context, httpClient, article.id) { answer ->
-                            if (answer != null) {
-                                title = answer.question.title
-                                authorName = answer.author.name
-                                authorId = answer.author.id
-                                authorUrlToken = answer.author.urlToken
-                                content = answer.content
-                                authorBio = answer.author.headline
-                                authorAvatarSrc = answer.author.avatarUrl
-                                voteUpCount = answer.voteupCount
-                                commentCount = answer.commentCount
-                                questionId = answer.question.id
-                                voteUpState = when (answer.relationship?.voting) {
-                                    1 -> VoteUpState.Up
-                                    -1 -> VoteUpState.Down
-                                    else -> VoteUpState.Neutral
-                                }
-                                updatedAt = answer.updatedTime
-                                createdAt = answer.createdTime
-                                ipInfo = answer.ipInfo
-
-                                (context as? MainActivity)?.postHistory(
-                                    Article(
-                                        id = answer.id,
-                                        type = ArticleType.Answer,
-                                        title = answer.question.title,
-                                        authorName = answer.author.name,
-                                        authorBio = answer.author.headline,
-                                        avatarSrc = answer.author.avatarUrl,
-                                        excerpt = answer.excerpt,
-                                    ),
-                                )
-                                val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
-                                nextAnswerFuture = GlobalScope.async {
-                                    if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
-                                        val url =
-                                            if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
-                                                sharedData.nextUrl
-                                            } else {
-                                                "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
-                                            }
-                                        val jojo =
-                                            AccountData.fetchGet(context, url) {
-                                                signFetchRequest(context)
-                                            }
-                                        if ("data" !in jojo) {
-                                            Log.e("ArticleViewModel", "No data found in response: $jojo")
-                                            context.mainExecutor.execute {
-                                                Toast
-                                                    .makeText(
-                                                        context,
-                                                        "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
-                                                        Toast.LENGTH_LONG,
-                                                    ).show()
-                                            }
-                                        }
-                                        val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
-                                        sharedData.nextUrl =
-                                            jojo["paging"]
-                                                ?.jsonObject
-                                                ?.get("next")
-                                                ?.jsonPrimitive
-                                                ?.content ?: ""
-                                        sharedData.viewingQuestionId = questionId
-                                        sharedData.destinations = data
-                                            .filter {
-                                                it.target?.navDestination is Article && it != article // filter out the current article
-                                            }.toMutableList()
-                                    }
-                                    sharedData.destinations.removeAt(0)
-                                }
-                            } else {
-                                content = "<h1>回答不存在</h1>"
-                                Log.e("ArticleViewModel", "Answer not found")
+                        val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
+                        if (answer != null) {
+                            title = answer.question.title
+                            authorName = answer.author.name
+                            authorId = answer.author.id
+                            authorUrlToken = answer.author.urlToken
+                            content = answer.content
+                            authorBio = answer.author.headline
+                            authorAvatarSrc = answer.author.avatarUrl
+                            voteUpCount = answer.voteupCount
+                            commentCount = answer.commentCount
+                            questionId = answer.question.id
+                            voteUpState = when (answer.relationship?.voting) {
+                                1 -> VoteUpState.Up
+                                -1 -> VoteUpState.Down
+                                else -> VoteUpState.Neutral
                             }
+                            updatedAt = answer.updatedTime
+                            createdAt = answer.createdTime
+                            ipInfo = answer.ipInfo
+
+                            (context as? MainActivity)?.postHistory(
+                                Article(
+                                    id = answer.id,
+                                    type = ArticleType.Answer,
+                                    title = answer.question.title,
+                                    authorName = answer.author.name,
+                                    authorBio = answer.author.headline,
+                                    avatarSrc = answer.author.avatarUrl,
+                                    excerpt = answer.excerpt,
+                                ),
+                            )
+                            val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
+                            nextAnswerFuture = GlobalScope.async {
+                                if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
+                                    val url =
+                                        if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
+                                            sharedData.nextUrl
+                                        } else {
+                                            "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
+                                        }
+                                    val jojo =
+                                        AccountData.fetchGet(context, url) {
+                                            signFetchRequest(context)
+                                        }
+                                    if ("data" !in jojo) {
+                                        Log.e("ArticleViewModel", "No data found in response: $jojo")
+                                        context.mainExecutor.execute {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
+                                                    Toast.LENGTH_LONG,
+                                                ).show()
+                                        }
+                                    }
+                                    val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
+                                    sharedData.nextUrl =
+                                        jojo["paging"]
+                                            ?.jsonObject
+                                            ?.get("next")
+                                            ?.jsonPrimitive
+                                            ?.content ?: ""
+                                    sharedData.viewingQuestionId = questionId
+                                    sharedData.destinations = data
+                                        .filter {
+                                            it.target?.navDestination is Article && it != article // filter out the current article
+                                        }.toMutableList()
+                                }
+                                sharedData.destinations.removeAt(0)
+                            }
+                        } else {
+                            content = "<h1>回答不存在</h1>"
+                            Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        DataHolder.getArticleCallback(context, httpClient, article.id) { article ->
-                            if (article != null) {
-                                title = article.title
-                                content = article.content
-                                voteUpCount = article.voteupCount
-                                commentCount = article.commentCount
-                                authorId = article.author.id
-                                authorUrlToken = article.author.urlToken
-                                authorName = article.author.name
-                                authorBio = article.author.headline
-                                authorAvatarSrc = article.author.avatarUrl
-                                voteUpState = when (article.relationship?.voting) {
-                                    1 -> VoteUpState.Up
-                                    -1 -> VoteUpState.Down
-                                    else -> VoteUpState.Neutral
-                                }
-                                updatedAt = article.updated
-                                createdAt = article.created
-                                ipInfo = article.ipInfo
-
-                                (context as? MainActivity)?.postHistory(
-                                    Article(
-                                        id = article.id,
-                                        type = ArticleType.Article,
-                                        title = article.title,
-                                        authorName = article.author.name,
-                                        authorBio = article.author.headline,
-                                        avatarSrc = article.author.avatarUrl,
-                                        excerpt = article.excerpt,
-                                    ),
-                                )
-                            } else {
-                                content = "<h1>文章不存在</h1>"
-                                Log.e("ArticleViewModel", "Article not found")
+                        val article = DataHolder.getContentDetail(context, article) as? DataHolder.Article
+                        if (article != null) {
+                            title = article.title
+                            content = article.content
+                            voteUpCount = article.voteupCount
+                            commentCount = article.commentCount
+                            authorId = article.author.id
+                            authorUrlToken = article.author.urlToken
+                            authorName = article.author.name
+                            authorBio = article.author.headline
+                            authorAvatarSrc = article.author.avatarUrl
+                            voteUpState = when (article.relationship?.voting) {
+                                1 -> VoteUpState.Up
+                                -1 -> VoteUpState.Down
+                                else -> VoteUpState.Neutral
                             }
+                            updatedAt = article.updated
+                            createdAt = article.created
+                            ipInfo = article.ipInfo
+
+                            (context as? MainActivity)?.postHistory(
+                                Article(
+                                    id = article.id,
+                                    type = ArticleType.Article,
+                                    title = article.title,
+                                    authorName = article.author.name,
+                                    authorBio = article.author.headline,
+                                    avatarSrc = article.author.avatarUrl,
+                                    excerpt = article.excerpt,
+                                ),
+                            )
+                        } else {
+                            content = "<h1>文章不存在</h1>"
+                            Log.e("ArticleViewModel", "Article not found")
                         }
                     }
                 } catch (e: Exception) {
