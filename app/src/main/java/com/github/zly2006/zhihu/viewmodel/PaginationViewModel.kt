@@ -109,7 +109,9 @@ abstract class PaginationViewModel<T : Any>(
     protected open suspend fun fetchFeeds(context: Context) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val json = AccountData.fetchGet(context, url) {
+
+            @Suppress("HttpUrlsUsage")
+            val json = AccountData.fetchGet(context, url.replace("http://", "https://")) {
                 url {
                     parameters.append("include", include)
                 }
