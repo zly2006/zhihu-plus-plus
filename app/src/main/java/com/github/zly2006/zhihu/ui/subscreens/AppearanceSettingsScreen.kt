@@ -42,6 +42,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.Account
+import com.github.zly2006.zhihu.Daily
+import com.github.zly2006.zhihu.Follow
+import com.github.zly2006.zhihu.Home
+import com.github.zly2006.zhihu.HotList
+import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
@@ -200,15 +206,15 @@ fun AppearanceSettingsScreen(
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
+            val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
             val selectedKeys = remember { mutableStateOf(preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys) }
             val allItems = listOf(
-                "Home" to "主页",
-                "Follow" to "关注",
-                "HotList" to "热榜",
-                "Daily" to "日报",
-                "OnlineHistory" to "历史",
-                "Account" to "账号设置",
+                Home.name to "主页",
+                Follow.name to "关注",
+                HotList.name to "热榜",
+                Daily.name to "日报",
+                OnlineHistory.name to "历史",
+                Account.name to "账号设置",
             )
 
             Column {

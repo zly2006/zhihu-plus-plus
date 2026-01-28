@@ -151,7 +151,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             Triple(OnlineHistory, "历史", Icons.Filled.History),
                             Triple(Account, "账号", Icons.Filled.ManageAccounts),
                         )
-                        val defaultKeys = setOf("Home", "Follow", "Daily", "OnlineHistory", "Account")
+                        val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
                         val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
                         val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
 
