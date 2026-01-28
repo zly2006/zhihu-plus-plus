@@ -94,7 +94,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -276,7 +275,8 @@ fun CommentScreen(
                             }
                         }
 
-                        viewModel.allData.isEmpty() -> {
+                        activeCommentItem == null && viewModel.allData.isEmpty() -> {
+                            // Note: see LazyColumn below for activeCommentItem != null
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("暂无评论")
                             }
@@ -406,6 +406,14 @@ fun CommentScreen(
                                         ) {
                                             Comment(activeCommentItem) { }
                                             HorizontalDivider()
+                                            if (viewModel.allData.isEmpty()) {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Text(
+                                                        // Note: activeCommentItem != null, so this is a child comment view
+                                                        "暂无回复",
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -722,8 +730,9 @@ private fun CommentItem(
                     modifier = Modifier.clickable { onChildCommentClick(comment) },
                 ) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Box(
+                    Column(
                         modifier = Modifier.height(24.dp),
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.Comment,
@@ -732,8 +741,8 @@ private fun CommentItem(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
                     if (comment.item.childCommentCount > 0) {
-                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = comment.item.childCommentCount.toString(),
                             fontSize = 12.sp,
@@ -779,14 +788,6 @@ private fun CommentItem(
                 Spacer(modifier = Modifier.width(4.dp))
             }
         }
-    }
-}
-
-fun Document.processCommentImages(): Document = apply {
-    select("a.comment_img").forEach {
-        it.tagName("img")
-        it.text("")
-        it.attr("src", it.attr("href"))
     }
 }
 
