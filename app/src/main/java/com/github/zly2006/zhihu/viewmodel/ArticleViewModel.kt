@@ -156,9 +156,10 @@ class ArticleViewModel(
                             voteUpCount = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
-                            voteUpState = when (answer.relationship?.voting) {
-                                1 -> VoteUpState.Up
-                                -1 -> VoteUpState.Down
+                            voteUpState = when (answer.reaction?.relation?.vote) {
+                                "UP" -> VoteUpState.Up
+                                "DOWN" -> VoteUpState.Down
+                                "Neutral" -> VoteUpState.Neutral
                                 else -> VoteUpState.Neutral
                             }
                             updatedAt = answer.updatedTime
@@ -486,83 +487,81 @@ class ArticleViewModel(
             }
             return
         }
-        GlobalScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    // 在主线程中创建和配置WebView
-                    val webView = WebView(context).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.useWideViewPort = true
-                        settings.loadWithOverviewMode = true
-                        settings.builtInZoomControls = false
-                        settings.displayZoomControls = false
+        try {
+            withContext(Dispatchers.Main) {
+                // 在主线程中创建和配置WebView
+                val webView = WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = true
+                    settings.builtInZoomControls = false
+                    settings.displayZoomControls = false
+                }
+
+                // 创建HTML内容
+                val htmlContent = createHtmlContent(includeComments = false, commentCount = 0)
+
+                // 设置WebViewClient来监听加载完成
+                var isLoaded = false
+                val timeoutRunnable = Runnable {
+                    if (!isLoaded) {
+                        webView.destroy()
+                        Toast.makeText(context, "图片导出超时", Toast.LENGTH_SHORT).show()
+                        onComplete(false)
+                    }
+                }
+                webView.postDelayed(timeoutRunnable, 10000) // 10秒超时
+                webView.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (!isLoaded) {
+                            //   = true
+                            webView.removeCallbacks(timeoutRunnable)
+                            // 确保 WebView 测量出足以容纳所有内容的尺寸
+                            val contentWidth = webView.measuredWidth // 使用当前的宽度（通常是屏幕宽度）
+                            // 获取整个网页内容的实际高度（很重要）
+                            val contentHeight = (webView.contentHeight * webView.scale).toInt()
+
+                            if (contentWidth > 0 && contentHeight > 0) {
+                                // 1. 手动测量
+                                webView.measure(
+                                    View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
+                                    View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY),
+                                )
+
+                                // 2. 手动布局
+                                webView.layout(0, 0, contentWidth, contentHeight)
+                            }
+                            // 页面加载完成后，延迟一下确保渲染完成，然后截图
+                            view?.postDelayed({
+                                GlobalScope.launch {
+                                    captureWebViewToImage(webView, context, onComplete)
+                                }
+                            }, 1000)
+                        }
                     }
 
-                    // 创建HTML内容
-                    val htmlContent = createHtmlContent(includeComments = false, commentCount = 0)
-
-                    // 设置WebViewClient来监听加载完成
-                    var isLoaded = false
-                    val timeoutRunnable = Runnable {
+                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                        super.onReceivedError(view, request, error)
                         if (!isLoaded) {
+                            isLoaded = true
+                            webView.removeCallbacks(timeoutRunnable)
                             webView.destroy()
-                            Toast.makeText(context, "图片导出超时", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
                             onComplete(false)
                         }
                     }
-                    webView.postDelayed(timeoutRunnable, 10000) // 10秒超时
-                    webView.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            if (!isLoaded) {
-                                //   = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                // 确保 WebView 测量出足以容纳所有内容的尺寸
-                                val contentWidth = webView.measuredWidth // 使用当前的宽度（通常是屏幕宽度）
-                                // 获取整个网页内容的实际高度（很重要）
-                                val contentHeight = (webView.contentHeight * webView.scale).toInt()
-
-                                if (contentWidth > 0 && contentHeight > 0) {
-                                    // 1. 手动测量
-                                    webView.measure(
-                                        View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
-                                        View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY),
-                                    )
-
-                                    // 2. 手动布局
-                                    webView.layout(0, 0, contentWidth, contentHeight)
-                                }
-                                // 页面加载完成后，延迟一下确保渲染完成，然后截图
-                                view?.postDelayed({
-                                    GlobalScope.launch {
-                                        captureWebViewToImage(webView, context, onComplete)
-                                    }
-                                }, 1000)
-                            }
-                        }
-
-                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                            super.onReceivedError(view, request, error)
-                            if (!isLoaded) {
-                                isLoaded = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                webView.destroy()
-                                Toast.makeText(context, "图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
-                                onComplete(false)
-                            }
-                        }
-                    }
-
-                    // 加载HTML内容
-                    webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
                 }
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Image export failed", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    onComplete(false)
-                }
+
+                // 加载HTML内容
+                webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+            }
+        } catch (e: Exception) {
+            Log.e("ArticleViewModel", "Image export failed", e)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
             }
         }
     }

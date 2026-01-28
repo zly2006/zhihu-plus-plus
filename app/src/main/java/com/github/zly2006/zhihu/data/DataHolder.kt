@@ -18,13 +18,13 @@ object DataHolder {
         context: Context,
         dest: com.github.zly2006.zhihu.Article,
     ): Content? {
-        val appViewUrl = when (dest.type) {
+        val apiUrl = when (dest.type) {
             ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,relationship.vote"
             ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,reaction.relation.voting"
         }
 
         return runCatching {
-            val jo = AccountData.fetchGet(context, appViewUrl) {
+            val jo = AccountData.fetchGet(context, apiUrl) {
                 signFetchRequest(context)
             }
             val jojo = buildJsonObject {
@@ -51,10 +51,10 @@ object DataHolder {
         context: Context,
         question: com.github.zly2006.zhihu.Question,
     ): Question? {
-        val appViewUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=detail,editable_detail,comment_count,answer_count,visit_count,relationship,relationship.*,relationship.is_author,relationship.is_following,relationship.is_anonymous,relationship.can_lock,relationship.can_collapse_answers,relationship.voting,topics,author,can_comment,thumbnail_info,review_info,related_cards,mute_info,reaction_instruction,visit_count,follower_count,collapsed_answer_count,excerpt"
+        val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
         return runCatching {
-            val jo = AccountData.fetchGet(context, appViewUrl) {
+            val jo = AccountData.fetchGet(context, apiUrl) {
                 signFetchRequest(context)
             }
             val jojo = buildJsonObject {
@@ -156,14 +156,15 @@ object DataHolder {
 
     @Serializable
     data class Relationship(
-        val isAuthor: Boolean = false,
-        val isAuthorized: Boolean = false,
-        val isNothelp: Boolean = false,
-        val isFavorited: Boolean = false,
-        val isThanked: Boolean = false,
+        // v4 API removed fields are commented out
+//        val isAuthor: Boolean = false,
+//        val isAuthorized: Boolean = false,
+//        val isNothelp: Boolean = false,
+//        val isFavorited: Boolean = false,
+//        val isThanked: Boolean = false,
         val upvotedFollowees: List<String> = emptyList(),
         // 1 - 点赞， -1 - 点踩
-        val voting: Int = 0,
+//        val voting: Int = 0,
     )
 
     @Serializable
@@ -205,6 +206,21 @@ object DataHolder {
     )
 
     @Serializable
+    class Reaction(
+        val relation: Relation? = null,
+    )
+
+    @Serializable
+    class Relation(
+        val isAuthor: Boolean = false,
+        val vote: String,
+        val faved: Boolean = false,
+        val liked: Boolean = false,
+        val following: Boolean = false,
+        val subscribed: Boolean = false,
+    )
+
+    @Serializable
     data class Answer(
         val adminClosedComment: Boolean = false,
         val annotationAction: JsonElement? = null,
@@ -234,6 +250,7 @@ object DataHolder {
         val question: AnswerModelQuestion,
         val reactionInstruction: ReactionInstruction? = null,
         val relationship: Relationship? = null,
+        val reaction: Reaction? = null,
         val relevantInfo: RelevantInfo? = null,
         val reshipmentSettings: String? = null,
         val rewardInfo: RewardInfo? = null,
@@ -305,22 +322,7 @@ object DataHolder {
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
-    ) : Content {
-        @Serializable
-        class Reaction(
-            val relation: Relation? = null,
-        )
-
-        @Serializable
-        class Relation(
-            val isAuthor: Boolean = false,
-            val vote: String,
-            val faved: Boolean = false,
-            val liked: Boolean = false,
-            val following: Boolean = false,
-            val subscribed: Boolean = false,
-        )
-    }
+    ) : Content
 
     @Serializable
     data class RelevantInfo(
@@ -342,28 +344,26 @@ object DataHolder {
         val visitCount: Int,
         val commentCount: Int,
         val followerCount: Int,
-        val collapsedAnswerCount: Int,
-        val excerpt: String,
-        val commentPermission: String,
+//        val collapsedAnswerCount: Int = ,
         val detail: String,
-        val editableDetail: String,
-        val status: Status,
+//        val editableDetail: String,
+//        val status: Status,
         val relationship: QuestionRelationship,
         val topics: List<Topic>,
         val author: Author,
-        val canComment: CanComment,
-        val thumbnailInfo: ThumbnailInfo,
-        val reviewInfo: ReviewInfo,
-        val relatedCards: List<RelatedCard>,
-        val muteInfo: MuteInfo,
-        val showAuthor: Boolean,
-        val isLabeled: Boolean,
-        val isBannered: Boolean,
-        val showEncourageAuthor: Boolean,
+//        val canComment: CanComment,
+//        val thumbnailInfo: ThumbnailInfo,
+//        val reviewInfo: ReviewInfo,
+//        val relatedCards: List<RelatedCard>,
+//        val muteInfo: MuteInfo,
+//        val showAuthor: Boolean,
+//        val isLabeled: Boolean,
+//        val isBannered: Boolean,
+//        val showEncourageAuthor: Boolean,
         val voteupCount: Int,
-        val canVote: Boolean,
-        val reactionInstruction: ReactionInstruction,
-        val invisibleAuthor: Boolean = false,
+//        val canVote: Boolean,
+//        val reactionInstruction: ReactionInstruction,
+//        val invisibleAuthor: Boolean = false,
     ) : Content
 
     @Serializable
