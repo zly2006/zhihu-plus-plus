@@ -52,7 +52,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -178,7 +177,7 @@ class ArticleViewModel(
                                 ),
                             )
                             val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
-                            nextAnswerFuture = GlobalScope.async {
+                            nextAnswerFuture = viewModelScope.async {
                                 if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
                                     val url =
                                         if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
@@ -539,7 +538,7 @@ class ArticleViewModel(
                             }
                             // 页面加载完成后，延迟一下确保渲染完成，然后截图
                             view?.postDelayed({
-                                GlobalScope.launch {
+                                viewModelScope.launch {
                                     captureWebViewToImage(webView, context, onComplete)
                                 }
                             }, 1000)
@@ -615,7 +614,7 @@ class ArticleViewModel(
                                 webView.removeCallbacks(timeoutRunnable)
                                 // 页面加载完成后，延迟一下确保渲染完成，然后截图
                                 view?.postDelayed({
-                                    GlobalScope.launch {
+                                    viewModelScope.launch {
                                         captureWebViewToImage(webView, context, onComplete, "with_comments")
                                     }
                                 }, 1500) // 给更多时间加载评论

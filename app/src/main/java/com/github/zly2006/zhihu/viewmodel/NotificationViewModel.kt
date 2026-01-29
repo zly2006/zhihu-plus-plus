@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlin.reflect.typeOf
 
@@ -35,12 +35,7 @@ class NotificationViewModel :
      */
     @OptIn(DelicateCoroutinesApi::class)
     fun markAsRead(context: Context, notificationId: String) {
-        GlobalScope.launch {
-            try {
-                // TODO: 实现标记已读的API调用
-            } catch (e: Exception) {
-                errorHandle(e)
-            }
+        viewModelScope.launch {
         }
     }
 

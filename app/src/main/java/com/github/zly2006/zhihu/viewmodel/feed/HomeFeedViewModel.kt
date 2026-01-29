@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
@@ -19,7 +20,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -50,7 +50,7 @@ class HomeFeedViewModel :
         allData.addAll(data)
         debugData.addAll(rawData)
 
-        GlobalScope.launch(Dispatchers.Main) {
+        viewModelScope.launch {
             // 先创建所有的 FeedDisplayItem
             val displayItemsToFilter = data
                 .flatten()
