@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 
 enum class NotificationType(
     val displayName: String,
@@ -57,7 +58,7 @@ object NotificationPreferences {
 
     fun setSystemNotificationEnabled(context: Context, type: NotificationType, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("${KEY_SYSTEM_NOTIFICATION}${type.name}", enabled).apply()
+        prefs.edit { putBoolean("${KEY_SYSTEM_NOTIFICATION}${type.name}", enabled) }
     }
 
     fun getDisplayInAppEnabled(context: Context, type: NotificationType): Boolean {
@@ -67,7 +68,7 @@ object NotificationPreferences {
 
     fun setDisplayInAppEnabled(context: Context, type: NotificationType, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("${KEY_DISPLAY_IN_APP}${type.name}", enabled).apply()
+        prefs.edit { putBoolean("${KEY_DISPLAY_IN_APP}${type.name}", enabled) }
     }
 
     fun matchNotificationType(verb: String): NotificationType? = NotificationType.entries.find { it.regex.matches(verb) }

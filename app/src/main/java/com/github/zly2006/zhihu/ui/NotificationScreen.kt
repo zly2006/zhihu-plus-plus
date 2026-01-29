@@ -84,16 +84,6 @@ fun NotificationScreen(
         }
     }
 
-    fun shouldShowNotification(notification: NotificationItem): Boolean {
-        val verb = notification.content.verb
-        val type = NotificationPreferences.matchNotificationType(verb)
-        return if (type != null) {
-            NotificationPreferences.getDisplayInAppEnabled(context, type)
-        } else {
-            true
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -145,7 +135,7 @@ fun NotificationScreen(
                 modifier = Modifier.fillMaxSize(),
                 footer = ProgressIndicatorFooter,
             ) { notification ->
-                if (shouldShowNotification(notification)) {
+                if (viewModel.shouldShowNotification(context, notification)) {
                     NotificationItemView(
                         notification = notification,
                         onClick = {
