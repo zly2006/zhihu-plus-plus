@@ -112,7 +112,7 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
                                 children
                                     .first {
                                         it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
-                                                it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
+                                            it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
                                     }["elements"]!!
                                     .jsonArray
                                     .map { it.jsonObject }

@@ -87,6 +87,7 @@ class CustomWebView : WebView {
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     var document: Document? = null
+        private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
 
