@@ -731,6 +731,10 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 }
                 return true
             }
+            if (request.url.host!!.endsWith("zhihu.com") && view.context !is WebviewActivity) {
+                context.startActivity(Intent(Intent.ACTION_VIEW, request.url, context, WebviewActivity::class.java))
+                return true
+            }
             return super.shouldOverrideUrlLoading(view, request)
         }
 
