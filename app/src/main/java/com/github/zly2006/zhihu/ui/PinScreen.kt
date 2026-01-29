@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +49,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -139,10 +142,31 @@ fun PinScreen(
                 }
 
                 viewModel.pinContent != null -> {
+                    var showComments by remember { mutableStateOf(false) }
+
                     PinContent(
                         pin = viewModel.pinContent!!,
+                        isLiked = viewModel.isLiked,
+                        likeCount = viewModel.likeCount,
                         onNavigate = onNavigate,
+                        onLikeClick = {
+                            viewModel.toggleLike(context)
+                        },
+                        onCommentClick = {
+                            showComments = true
+                        },
                     )
+
+                    // Comment sheet component
+                    if (showComments) {
+                        CommentScreenComponent(
+                            showComments = showComments,
+                            onDismiss = { showComments = false },
+                            onNavigate = onNavigate,
+                            httpClient = httpClient,
+                            content = pin,
+                        )
+                    }
                 }
             }
         }
@@ -152,7 +176,11 @@ fun PinScreen(
 @Composable
 private fun PinContent(
     pin: com.github.zly2006.zhihu.data.DataHolder.Pin,
+    isLiked: Boolean,
+    likeCount: Int,
     onNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+    onLikeClick: () -> Unit,
+    onCommentClick: () -> Unit,
 ) {
     val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
@@ -230,22 +258,32 @@ private fun PinContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable {
+                    onLikeClick()
+                },
+            ) {
                 Icon(
-                    Icons.Default.FavoriteBorder,
+                    if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = "赞",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    "${pin.likeCount}",
+                    "$likeCount",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isLiked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable {
+                    onCommentClick()
+                },
+            ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Comment,
                     contentDescription = "评论",
