@@ -296,7 +296,6 @@ fun CommentScreen(
                                 Column(modifier = modifier) {
                                     CommentItem(
                                         comment = commentItem,
-                                        useWebview = useWebview,
                                         httpClient = httpClient,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
@@ -335,7 +334,6 @@ fun CommentScreen(
                                                     )
                                                     CommentItem(
                                                         comment = childCommentItem,
-                                                        useWebview = useWebview,
                                                         httpClient = httpClient,
                                                         isLiked = liked,
                                                         likeCount = likeCount,
@@ -486,6 +484,7 @@ fun CommentScreen(
                             textStyle = TextStyle.Default.copy(
                                 fontSize = 16.sp,
                                 lineHeight = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
                             ),
                         )
 
@@ -539,21 +538,18 @@ fun CommentTopText(content: NavDestination? = null) {
     )
 }
 
-// DFS function moved to ContentRenderingUtils.kt as dfsSimple()
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CommentItem(
     comment: CommentModel,
-    useWebview: Boolean,
     httpClient: HttpClient,
+    modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     likeCount: Int = 0,
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
     onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentModel) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val commentData = comment.item
 
@@ -844,7 +840,6 @@ private fun CommentItemPreview() {
     )
     CommentItem(
         comment,
-        useWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },
@@ -968,7 +963,6 @@ private fun NestedCommentPreview() {
     )
     CommentItem(
         comment,
-        useWebview = false,
         httpClient = HttpClient(),
         onNavigate = { },
         onChildCommentClick = { },

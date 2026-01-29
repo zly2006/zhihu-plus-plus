@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -109,7 +110,7 @@ fun HomeScreen(
     }
 
     // 通知 ViewModel
-    var unreadCount by remember { mutableStateOf(0) }
+    var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
