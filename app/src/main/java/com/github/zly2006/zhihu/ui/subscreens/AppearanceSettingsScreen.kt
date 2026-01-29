@@ -207,13 +207,9 @@ fun AppearanceSettingsScreen(
             }
 
             val isDarkTheme = isSystemInDarkTheme()
-            val backgroundColorKey = if (isDarkTheme) "backgroundColorDark" else "backgroundColorLight"
             val defaultBackgroundColor = if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()
-
             var showBackgroundColorPicker by remember { mutableStateOf(false) }
-            var backgroundColor by remember {
-                mutableStateOf(Color(preferences.getInt(backgroundColorKey, defaultBackgroundColor)))
-            }
+            val backgroundColor = ThemeManager.getBackgroundColor()
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -252,14 +248,7 @@ fun AppearanceSettingsScreen(
                     ),
                     onDismiss = { showBackgroundColorPicker = false },
                     onColorSelected = { color ->
-                        val argbColor = android.graphics.Color.argb(
-                            (color.alpha * 255).toInt(),
-                            (color.red * 255).toInt(),
-                            (color.green * 255).toInt(),
-                            (color.blue * 255).toInt(),
-                        )
-                        preferences.edit { putInt(backgroundColorKey, argbColor) }
-                        backgroundColor = color
+                        ThemeManager.setBackgroundColor(context, color, isDarkTheme)
                         Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
                         showBackgroundColorPicker = false
                     },

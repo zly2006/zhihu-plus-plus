@@ -39,17 +39,7 @@ fun ZhihuTheme(
 ) {
     val context = LocalContext.current
     val useDynamicColor = ThemeManager.getUseDynamicColor()
-
-    // Get custom background color from preferences
-    val preferences = context.getSharedPreferences(
-        com.github.zly2006.zhihu.ui.PREFERENCE_NAME,
-        android.content.Context.MODE_PRIVATE,
-    )
-    val backgroundColorKey = if (darkTheme) "backgroundColorDark" else "backgroundColorLight"
-    val defaultBackgroundColor = if (darkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()
-    val customBackgroundColor = androidx.compose.ui.graphics.Color(
-        preferences.getInt(backgroundColorKey, defaultBackgroundColor),
-    )
+    val customBackgroundColor = ThemeManager.getBackgroundColor()
 
     val baseColorScheme = when {
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
