@@ -26,9 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,9 +47,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -65,7 +66,7 @@ import java.util.Locale
 fun PinScreen(
     pin: Pin,
     onNavigateBack: () -> Unit,
-    onNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     val httpClient = remember { AccountData.httpClient(context) }
@@ -177,10 +178,10 @@ fun PinScreen(
 
 @Composable
 private fun PinContent(
-    pin: com.github.zly2006.zhihu.data.DataHolder.Pin,
+    pin: DataHolder.Pin,
     isLiked: Boolean,
     likeCount: Int,
-    onNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+    onNavigate: (NavDestination) -> Unit,
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
 ) {
@@ -260,12 +261,8 @@ private fun PinContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
-            Button(
+            FilledTonalButton(
                 onClick = onLikeClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
             ) {
                 Icon(
                     if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -279,12 +276,8 @@ private fun PinContent(
                 )
             }
 
-            Button(
+            FilledTonalButton(
                 onClick = onCommentClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Comment,

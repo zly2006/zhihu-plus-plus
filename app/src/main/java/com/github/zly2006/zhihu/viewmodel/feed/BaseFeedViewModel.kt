@@ -95,6 +95,17 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                         )
                     }
 
+                    is Feed.PinTarget -> {
+                        FeedDisplayItem(
+                            title = feed.target!!.author!!.name + "的想法",
+                            summary = feed.target!!.excerpt,
+                            details = feed.target!!.detailsText,
+                            avatarSrc = feed.target?.author?.avatarUrl,
+                            authorName = feed.target?.author?.name,
+                            feed = feed,
+                        )
+                    }
+
                     else -> {
                         FeedDisplayItem(
                             title = feed.target?.javaClass?.simpleName ?: "广告",

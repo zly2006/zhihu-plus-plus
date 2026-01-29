@@ -4,6 +4,7 @@ import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.CommentItem
@@ -19,6 +20,10 @@ class RootCommentViewModel(
             }
         }
 
+        is Pin -> {
+            "https://www.zhihu.com/api/v4/comment_v5/pins/${content.id}/comment"
+        }
+
         is Question -> {
             "https://www.zhihu.com/api/v4/comment_v5/questions/${content.questionId}/comment"
         }
@@ -32,6 +37,10 @@ class RootCommentViewModel(
                 ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
                 ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
             }
+        }
+
+        is Pin -> {
+            "https://www.zhihu.com/api/v4/comment_v5/pins/${content.id}/root_comment"
         }
 
         is Question -> {

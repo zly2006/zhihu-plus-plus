@@ -5,3 +5,6 @@
 如果 create file 遇到了Path already exists，不要尝试rm或者删除文件，也不要一直重试，使用edit file工具精确的替换文本内容。
 
 如果我要求你检查重复代码，首先看看你修改了哪些代码片段，然后使用grep工具，检查这些片段是否在其他地方也出现了，如果有的话，依次检查，然后考虑提取出函数、data class、接口等，来复用代码。
+
+DataHolder 里的数据定义使用 camelCase，但是知乎 API 返回的结果一般是 snake_case，这个是通过 AccountData.snake_case2camelCase 转换的。
+此外，调用 AccountData 中的fetch和decode系列方法时会自动转换
