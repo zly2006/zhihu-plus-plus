@@ -89,7 +89,7 @@ class ArticleViewModel(
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
-    var nextAnswerFuture: Deferred<Feed> = CompletableDeferred()
+    var nextAnswerFuture: Deferred<Feed?> = CompletableDeferred()
 
     // scroll fix
     var rememberedScrollY = MutableLiveData(0)
@@ -214,7 +214,11 @@ class ArticleViewModel(
                                             it.target?.navDestination is Article && it != article // filter out the current article
                                         }.toMutableList()
                                 }
-                                sharedData.destinations.removeAt(0)
+                                if (sharedData.destinations.isNotEmpty()) {
+                                    sharedData.destinations.removeAt(0)
+                                } else {
+                                    null
+                                }
                             }
                         } else {
                             content = "<h1>回答不存在</h1>"

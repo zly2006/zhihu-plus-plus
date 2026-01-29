@@ -447,6 +447,7 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         AccountData.addReadHistory(
@@ -771,11 +772,10 @@ fun ArticleScreen(
             }
 
             if (viewModel.content.isNotEmpty()) {
-                val coroutineScope = rememberCoroutineScope()
                 WebviewComp {
                     it.setupUpWebviewClient {
                         if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                            coroutineScope.launch(coroutineScope.coroutineContext) {
+                            coroutineScope.launch {
                                 val rememberedY = viewModel.rememberedScrollY.value ?: 0
                                 while (scrollState.maxValue < rememberedY) {
                                     delay(100)
@@ -865,8 +865,13 @@ fun ArticleScreen(
         DraggableRefreshButton(
             onClick = {
                 navigatingToNextAnswer = true
-                viewModel.viewModelScope.launch {
+                coroutineScope.launch {
                     val dest = viewModel.nextAnswerFuture.await()
+                    if (dest == null) {
+                        Toast.makeText(context, "没有更多回答了", Toast.LENGTH_SHORT).show()
+                        navigatingToNextAnswer = false
+                        return@launch
+                    }
                     val activity = context as? MainActivity ?: return@launch
                     val target = dest.target!!
                     if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
