@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -201,6 +202,66 @@ fun AppearanceSettingsScreen(
                         preferences.edit { putInt("luotianyi_color", argbColor) }
                         Toast.makeText(context, "浏览器主题色已保存", Toast.LENGTH_SHORT).show()
                         showLuotianYiColorPicker = false
+                    },
+                )
+            }
+
+            val isDarkTheme = isSystemInDarkTheme()
+            val backgroundColorKey = if (isDarkTheme) "backgroundColorDark" else "backgroundColorLight"
+            val defaultBackgroundColor = if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()
+
+            var showBackgroundColorPicker by remember { mutableStateOf(false) }
+            var backgroundColor by remember {
+                mutableStateOf(Color(preferences.getInt(backgroundColorKey, defaultBackgroundColor)))
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showBackgroundColorPicker = true }
+                    .padding(vertical = 12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "背景颜色",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        if (isDarkTheme) "深色模式背景色" else "浅色模式背景色",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(backgroundColor)
+                        .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                )
+            }
+
+            if (showBackgroundColorPicker) {
+                ColorPickerDialog(
+                    title = "选择背景颜色",
+                    initialColor = backgroundColor,
+                    presetColors = listOf(
+                        Color(defaultBackgroundColor),
+                    ),
+                    onDismiss = { showBackgroundColorPicker = false },
+                    onColorSelected = { color ->
+                        val argbColor = android.graphics.Color.argb(
+                            (color.alpha * 255).toInt(),
+                            (color.red * 255).toInt(),
+                            (color.green * 255).toInt(),
+                            (color.blue * 255).toInt(),
+                        )
+                        preferences.edit { putInt(backgroundColorKey, argbColor) }
+                        backgroundColor = color
+                        Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
+                        showBackgroundColorPicker = false
                     },
                 )
             }
