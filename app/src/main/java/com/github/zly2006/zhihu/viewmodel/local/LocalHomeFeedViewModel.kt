@@ -88,4 +88,7 @@ class LocalHomeFeedViewModel :
         feed: Feed,
     ) {
     }
+
+    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
+    }
 }

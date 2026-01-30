@@ -150,6 +150,17 @@ class HomeFeedViewModel :
         }
     }
 
+    /**
+     * 记录用户点击内容
+     * 在viewModelScope中运行，使用viewModelScope代替GlobalScope
+     */
+    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            sendReadStatusToServer(context, feed)
+            recordContentInteraction(context, feed)
+        }
+    }
+
     private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {
         try {
             val untouchedAnswers = displayItems

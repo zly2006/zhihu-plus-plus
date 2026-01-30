@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
@@ -69,9 +70,6 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -82,9 +80,69 @@ const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
 interface IHomeFeedViewModel {
     suspend fun recordContentInteraction(context: Context, feed: Feed)
+
+    fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem)
+
+    /**
+     * 发送"已读"状态到知乎服务器的通用实现
+     */
+    suspend fun sendReadStatusToServer(context: Context, feed: Feed) {
+        try {
+            AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
+                header("x-requested-with", "fetch")
+                signFetchRequest(context)
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            append(
+                                "items",
+                                buildJsonArray {
+                                    when (val target = feed.target) {
+                                        is Feed.AnswerTarget -> {
+                                            add(
+                                                buildJsonArray {
+                                                    add("answer")
+                                                    add(target.id.toString())
+                                                    add("read")
+                                                },
+                                            )
+                                        }
+
+                                        is Feed.ArticleTarget -> {
+                                            add(
+                                                buildJsonArray {
+                                                    add("article")
+                                                    add(target.id.toString())
+                                                    add("read")
+                                                },
+                                            )
+                                        }
+
+                                        is Feed.PinTarget -> {
+                                            add(
+                                                buildJsonArray {
+                                                    add("pin")
+                                                    add(target.id.toString())
+                                                    add("read")
+                                                },
+                                            )
+                                        }
+
+                                        else -> {}
+                                    }
+                                }.toString(),
+                            )
+                        },
+                    ),
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("IHomeFeedViewModel", "Failed to send read status", e)
+        }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onNavigate: (NavDestination) -> Unit,
@@ -258,49 +316,7 @@ fun HomeScreen(
                     ) {
                         feed?.let {
 //                            DataHolder.putFeed(feed)
-                            GlobalScope.launch {
-                                AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
-                                    header("x-requested-with", "fetch")
-                                    signFetchRequest(context)
-                                    setBody(
-                                        MultiPartFormDataContent(
-                                            formData {
-                                                append(
-                                                    "items",
-                                                    buildJsonArray {
-                                                        item.feed?.let { feed ->
-                                                            when (val target = feed.target) {
-                                                                is Feed.AnswerTarget -> {
-                                                                    add(
-                                                                        buildJsonArray {
-                                                                            add("answer")
-                                                                            add(target.id.toString())
-                                                                            add("read")
-                                                                        },
-                                                                    )
-                                                                }
-
-                                                                is Feed.ArticleTarget -> {
-                                                                    add(
-                                                                        buildJsonArray {
-                                                                            add("article")
-                                                                            add(target.id.toString())
-                                                                            add("read")
-                                                                        },
-                                                                    )
-                                                                }
-
-                                                                else -> {}
-                                                            }
-                                                        }
-                                                    }.toString(),
-                                                )
-                                            },
-                                        ),
-                                    )
-                                }
-                                (viewModel as IHomeFeedViewModel).recordContentInteraction(context, feed)
-                            }
+                            (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
                         }
                         if (navDestination != null) {
                             onNavigate(navDestination)

@@ -35,4 +35,8 @@ class MixedHomeFeedViewModel :
     override suspend fun recordContentInteraction(context: Context, feed: Feed) {
         web.recordContentInteraction(context, feed)
     }
+
+    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+        web.onUiContentClick(context, feed, item)
+    }
 }

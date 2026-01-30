@@ -4,10 +4,13 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
@@ -38,7 +41,9 @@ private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders
     }
 }
 
-class AndroidHomeFeedViewModel : BaseFeedViewModel() {
+class AndroidHomeFeedViewModel :
+    BaseFeedViewModel(),
+    IHomeFeedViewModel {
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
@@ -166,6 +171,16 @@ class AndroidHomeFeedViewModel : BaseFeedViewModel() {
             throw e
         } finally {
             isLoading = false
+        }
+    }
+
+    override suspend fun recordContentInteraction(context: Context, feed: Feed) {
+        // Android 版本暂不记录交互
+    }
+
+    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            sendReadStatusToServer(context, feed)
         }
     }
 }
