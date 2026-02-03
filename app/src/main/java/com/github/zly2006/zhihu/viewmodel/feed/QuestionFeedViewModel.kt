@@ -1,13 +1,25 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 
 class QuestionFeedViewModel(
     private val questionId: Long,
 ) : BaseFeedViewModel() {
+    var sortOrder by mutableStateOf("default")
+        private set
+
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20"
+        get() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&order=$sortOrder"
+
+    fun updateSortOrder(order: String) {
+        if (sortOrder != order) {
+            sortOrder = order
+        }
+    }
 
     override fun createDisplayItem(feed: Feed): FeedDisplayItem {
         val target = feed.target
