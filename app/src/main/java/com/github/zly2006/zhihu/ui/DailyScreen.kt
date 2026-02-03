@@ -289,7 +289,9 @@ fun DailyScreen(
                                             val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")
                                             val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
                                             val url = body.selectFirst("a")?.attr("href")
-                                            val destination = url?.let { resolveContent(url.toUri()) }
+                                            val destination = runCatching {
+                                                url?.let { resolveContent(url.toUri()) }
+                                            }.getOrNull()
                                             if (destination != null) {
                                                 onNavigate(destination)
                                             } else {

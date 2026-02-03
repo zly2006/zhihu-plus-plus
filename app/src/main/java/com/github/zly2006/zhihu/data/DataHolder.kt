@@ -230,7 +230,7 @@ object DataHolder {
     @Serializable
     class Relation(
         val isAuthor: Boolean = false,
-        val vote: String,
+        val vote: String = "Neutral",
         val faved: Boolean = false,
         val liked: Boolean = false,
         val following: Boolean = false,
