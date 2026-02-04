@@ -373,7 +373,6 @@ class QuestionFeedCard(
 @SerialName("feed")
 data class CommonFeed(
     val id: String = "",
-    val type: String,
     val verb: String = "possibly ads, filter me",
     val createdTime: Long = -1,
     val updatedTime: Long = -1,

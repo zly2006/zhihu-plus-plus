@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package com.github.zly2006.zhihu.data
 
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -43,7 +41,6 @@ data class SearchResult(
                 // The object field IS the Feed.Target (answer/article/question)
                 CommonFeed(
                     id = id,
-                    type = "search_result",
                     verb = "SEARCH_RESULT",
                     target = searchObj.target,
                 )

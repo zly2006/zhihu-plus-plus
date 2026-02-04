@@ -16,9 +16,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +71,8 @@ import kotlin.math.min
 fun FeedCard(
     item: BaseFeedViewModel.FeedDisplayItem,
     modifier: Modifier = Modifier,
+    maxHeight: Dp = 240.dp,
+    thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
@@ -118,6 +122,7 @@ fun FeedCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(max = maxHeight)
             .padding(horizontal = horizontalPadding, vertical = 8.dp),
     ) {
         Card(
@@ -221,60 +226,78 @@ fun FeedCard(
                     }
                 }
 
-                Text(
-                    text = parseHtmlTextWithTheme(item.summary ?: ""),
-                    fontSize = 14.sp,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(
-                        top = if (item.isFiltered) 0.dp else 3.dp,
-                    ),
-                )
-
-                if (item.details.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                Row {
+                    Column(
+                        modifier = Modifier.weight(2f),
                     ) {
                         Text(
-                            text = item.details,
-                            fontSize = 12.sp,
-                            lineHeight = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
+                            text = parseHtmlTextWithTheme(item.summary ?: ""),
+                            fontSize = 14.sp,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(
+                                top = if (item.isFiltered) 0.dp else 3.dp,
+                            ),
                         )
-                        Box {
-                            IconButton(
-                                onClick = { showMenu = true },
-                                modifier = Modifier.size(24.dp),
+
+                        if (item.details.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "更多选项",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp),
+                                Text(
+                                    text = item.details,
+                                    fontSize = 12.sp,
+                                    lineHeight = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f),
                                 )
-                            }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("按关键词屏蔽") },
-                                    onClick = {
-                                        showMenu = false
-                                        onBlockByKeywords?.invoke(item)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("屏蔽用户") },
-                                    onClick = {
-                                        showMenu = false
-                                        onBlockUser?.invoke(item)
-                                    },
-                                )
+                                Box {
+                                    IconButton(
+                                        onClick = { showMenu = true },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "更多选项",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("按关键词屏蔽") },
+                                            onClick = {
+                                                showMenu = false
+                                                onBlockByKeywords?.invoke(item)
+                                            },
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("屏蔽用户") },
+                                            onClick = {
+                                                showMenu = false
+                                                onBlockUser?.invoke(item)
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
+                    }
+
+                    if (!thumbnailUrl.isNullOrEmpty()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = "Thumbnail",
+                            modifier = Modifier
+                                .weight(1f)
+                                .sizeIn(maxWidth = 60.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                        )
                     }
                 }
             }

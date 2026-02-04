@@ -291,6 +291,10 @@ fun HomeScreen(
                 ) { item ->
                     FeedCard(
                         item,
+                        thumbnailUrl = when (val target = item.feed?.target) {
+                            is Feed.AnswerTarget -> target.thumbnail
+                            else -> null
+                        },
                         onLike = {
                             Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
                         },
