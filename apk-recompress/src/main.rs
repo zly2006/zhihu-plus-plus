@@ -262,7 +262,7 @@ fn recompress_apk(input_path: &str, output_path: &str) -> Result<(), Box<dyn std
         file.read_to_end(&mut buffer)?;
 
         // 根据文件类型选择压缩策略
-        let options = if should_store_uncompressed(&file_name) {
+        let options: zip::write::FileOptions<'_, ()> = if should_store_uncompressed(&file_name) {
             // 某些文件需要保持未压缩状态
             zip::write::FileOptions::default()
                 .compression_method(CompressionMethod::Stored)
@@ -274,7 +274,7 @@ fn recompress_apk(input_path: &str, output_path: &str) -> Result<(), Box<dyn std
         };
 
         // 写入到新的压缩文件
-        zip_writer.start_file(&file_name, options)?;
+        zip_writer.start_file::<&String, ()>(&file_name, options)?;
         zip_writer.write_all(&buffer)?;
     }
 
