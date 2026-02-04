@@ -11,5 +11,7 @@ object SentenceEmbeddingManager {
 
     fun setDefaultContext(context: Context) {}
 
+    fun ensureModel(context: Context) {}
+
     suspend fun unload() {}
 }
