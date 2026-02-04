@@ -6,10 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokenizers = { version = "0.19.1", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.22.2", default-features = false, features = ["onig"] }
 jni = { version = "0.21.1" }
-serde = { version = "1.0" , features = ["derive"] }
-serde_json = "1.0"
+bytes = "1.11.1"
+serde = { version = "1.0.228" , features = ["derive"] }
+serde_json = "1.0.149"
 
 [lib]
 name = "hftokenizer"
