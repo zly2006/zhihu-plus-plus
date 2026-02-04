@@ -58,6 +58,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Account
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -78,6 +80,7 @@ fun FeedCard(
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onNavigate: ((NavDestination) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -88,11 +91,15 @@ fun FeedCard(
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
     val enableSwipeReaction = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE).getBoolean("enableSwipeReaction", false)
+        preferences.getBoolean("enableSwipeReaction", false)
     } &&
         onLike != null &&
         onDislike != null
+    val showFeedThumbnail = remember {
+        preferences.getBoolean("showFeedThumbnail", true)
+    }
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -282,13 +289,22 @@ fun FeedCard(
                                                 onBlockUser?.invoke(item)
                                             },
                                         )
+                                        if (onNavigate != null) {
+                                            DropdownMenuItem(
+                                                text = { Text("外观设置") },
+                                                onClick = {
+                                                    showMenu = false
+                                                    onNavigate(Account.AppearanceSettings)
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (!thumbnailUrl.isNullOrEmpty()) {
+                    if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
                         Spacer(modifier = Modifier.width(8.dp))
                         AsyncImage(
                             model = thumbnailUrl,

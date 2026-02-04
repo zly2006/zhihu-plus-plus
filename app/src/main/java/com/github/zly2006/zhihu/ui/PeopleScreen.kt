@@ -514,6 +514,7 @@ fun PeopleScreen(
                                         feed = null,
                                     ),
                                     horizontalPadding = 4.dp,
+                                    onNavigate = onNavigate,
                                 ) {
                                     onNavigate(
                                         Article(
@@ -554,6 +555,7 @@ fun PeopleScreen(
                                         feed = null,
                                     ),
                                     horizontalPadding = 4.dp,
+                                    onNavigate = onNavigate,
                                 ) {
                                     onNavigate(
                                         Article(
@@ -579,6 +581,7 @@ fun PeopleScreen(
                             FeedCard(
                                 it,
                                 horizontalPadding = 4.dp,
+                                onNavigate = onNavigate,
                             ) {
                                 it.navDestination?.let(onNavigate)
                             }

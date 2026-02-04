@@ -66,7 +66,10 @@ fun HotListScreen(
                 },
                 footer = ProgressIndicatorFooter,
             ) { item ->
-                FeedCard(item) {
+                FeedCard(
+                    item,
+                    onNavigate = onNavigate,
+                ) {
                     if (navDestination != null) {
                         onNavigate(navDestination)
                     } else {

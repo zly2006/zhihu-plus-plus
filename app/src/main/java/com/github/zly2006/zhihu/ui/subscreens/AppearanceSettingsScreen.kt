@@ -310,6 +310,17 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
+            SwitchSettingItem(
+                title = "显示 Feed 卡片缩略图",
+                description = "在信息流卡片中显示文章缩略图",
+                checked = showFeedThumbnail.value,
+                onCheckedChange = {
+                    showFeedThumbnail.value = it
+                    preferences.edit { putBoolean("showFeedThumbnail", it) }
+                },
+            )
+
             Text(
                 "底部栏设置",
                 style = MaterialTheme.typography.titleMedium,

@@ -317,6 +317,7 @@ fun HomeScreen(
                                 Toast.makeText(context, "无法获取内容信息", Toast.LENGTH_SHORT).show()
                             }
                         },
+                        onNavigate = onNavigate,
                     ) {
                         feed?.let {
 //                            DataHolder.putFeed(feed)

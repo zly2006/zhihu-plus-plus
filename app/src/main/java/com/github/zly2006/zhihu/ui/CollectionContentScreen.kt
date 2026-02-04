@@ -63,6 +63,7 @@ fun CollectionContentScreen(
         FeedCard(
             item,
             Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            onNavigate = onNavigate,
         ) {
             navDestination?.let { onNavigate(it) }
         }

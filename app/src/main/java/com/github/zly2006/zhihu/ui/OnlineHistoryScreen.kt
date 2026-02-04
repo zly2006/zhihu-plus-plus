@@ -47,7 +47,10 @@ fun OnlineHistoryScreen(
                 }
             },
         ) { item ->
-            FeedCard(item) {
+            FeedCard(
+                item,
+                onNavigate = onNavigate,
+            ) {
                 item.navDestination?.let {
                     onNavigate(it)
                 }

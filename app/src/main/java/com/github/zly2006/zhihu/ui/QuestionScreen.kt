@@ -264,7 +264,10 @@ fun QuestionScreen(
                     }
                 },
             ) { item ->
-                FeedCard(item) {
+                FeedCard(
+                    item,
+                    onNavigate = onNavigate,
+                ) {
 //                    feed?.let { DataHolder.putFeed(it) }
                     navDestination?.let { onNavigate(it) }
                 }
