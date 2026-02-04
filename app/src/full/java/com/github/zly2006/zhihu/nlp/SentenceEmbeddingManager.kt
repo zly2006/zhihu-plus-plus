@@ -12,8 +12,8 @@ import kotlinx.coroutines.sync.withLock
  * 统一管理 Sentence-Transformers 模型的懒加载与状态。
  */
 object SentenceEmbeddingManager {
-    private const val MODEL_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/model.onnx"
-    private const val TOKENIZER_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/tokenizer.json"
+    private const val MODEL_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/onnx/model_O4.onnx"
+    private const val TOKENIZER_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/onnx/tokenizer.json"
 
     private val mutex = Mutex()
     private val _state = MutableStateFlow<ModelState>(ModelState.Uninitialized)
@@ -40,7 +40,7 @@ object SentenceEmbeddingManager {
                     resolvedContext,
                     "text2vec-base-chinese",
                     listOf(
-                        ModelManager.RemoteFile(MODEL_URL, "model.onnx"),
+                        ModelManager.RemoteFile(MODEL_URL, "model_O4.onnx"),
                         ModelManager.RemoteFile(TOKENIZER_URL, "tokenizer.json"),
                     ),
                 ) { progress ->
@@ -49,7 +49,7 @@ object SentenceEmbeddingManager {
 
                 _state.value = ModelState.Loading
 
-                val modelFile = downloadedFiles["model.onnx"] ?: throw IllegalStateException("Model file not found")
+                val modelFile = downloadedFiles["model_O4.onnx"] ?: throw IllegalStateException("Model file not found")
                 val tokenizerFile = downloadedFiles["tokenizer.json"] ?: throw IllegalStateException("Tokenizer file not found")
 
                 val model = SentenceEmbedding()
