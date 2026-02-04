@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -157,6 +158,13 @@ class MainActivity : ComponentActivity() {
                                 "刷新登录状态失败，如多次看到此提示请重新登录",
                                 Toast.LENGTH_LONG,
                             ).show()
+                    }
+                }
+                if (!PowerSaveModeCompat.getPowerSaveMode(this@MainActivity).isPowerSaveMode) {
+                    try {
+                        SentenceEmbeddingManager.ensureModel(this@MainActivity)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to initialize NLP embedding model", e)
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.nlp
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.sync.withLock
 /**
  * 统一管理 Sentence-Transformers 模型的懒加载与状态。
  */
+@SuppressLint("StaticFieldLeak")
 object SentenceEmbeddingManager {
     private const val MODEL_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/onnx/model_O4.onnx"
     private const val TOKENIZER_URL = "https://huggingface.co/shibing624/text2vec-base-chinese/resolve/main/onnx/tokenizer.json"
