@@ -3,15 +3,20 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
@@ -33,8 +39,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
@@ -62,14 +70,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -86,6 +100,7 @@ import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
@@ -98,12 +113,153 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
-typealias CommentModel = com.github.zly2006.zhihu.viewmodel.CommentItem
+typealias CommentModel = CommentItem
 
 private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
 val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+
+@Composable
+fun SwipeToReplyContainer(
+    modifier: Modifier = Modifier,
+    onArchive: (() -> Unit)? = null,   // 向右滑触发，传 null 则禁向右滑
+    onReply: (() -> Unit)? = null, // 向左滑触发，传 null 则禁向左滑
+    archiveIcon: ImageVector = Icons.Default.Archive,
+    replyIcon: ImageVector = Icons.AutoMirrored.Filled.Reply,
+    content: @Composable () -> Unit
+) {
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    val density = LocalDensity.current
+    val hapticFeedback = LocalHapticFeedback.current
+
+    // 触发阈值 (60dp)
+    val triggerThreshold = with(density) { 60.dp.toPx() }
+    // 最大滑动距离 (100dp)
+    val maxDragDistance = with(density) { 100.dp.toPx() }
+
+    var hasVibrated by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+    ) {
+        // --- 背景层 (图标) ---
+        // 只有在发生位移时才计算显示逻辑
+        if (offsetX.value != 0f) {
+            val isRightSwipe = offsetX.value > 0
+
+            // 计算进度 (0.0 ~ 1.0)
+            val progress = (abs(offsetX.value) / triggerThreshold).coerceIn(0f, 1f)
+
+            val iconScale = 0.5f + (0.5f * progress)
+
+            // 决定背景颜色和对齐方式
+            val align = if (isRightSwipe) Alignment.CenterStart else Alignment.CenterEnd
+            val icon = if (isRightSwipe) archiveIcon else replyIcon
+            val iconTint = if (isRightSwipe) Color.Gray else MaterialTheme.colorScheme.primary
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = align
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                        alpha = progress
+                    }
+                )
+            }
+        }
+
+        // --- 前景层 (内容) ---
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        scope.launch {
+                            val current = offsetX.value
+                            // 加上阻尼系数 0.5
+                            val target = current + delta * 0.5f
+
+                            // --- 核心逻辑：判断是否允许滑动 ---
+                            val isTryingToSwipeRight = target > 0
+                            val isTryingToSwipeLeft = target < 0
+
+                            val canSwipeRight = onArchive != null
+                            val canSwipeLeft = onReply != null
+
+                            // 如果试图向右滑但 onReply 为空 -> 强制为 0 (或保持在非正数)
+                            // 如果试图向左滑但 onArchive 为空 -> 强制为 0 (或保持在非负数)
+                            var newOffset = target
+
+                            if (isTryingToSwipeRight && !canSwipeRight) {
+                                newOffset = 0f
+                            }
+                            if (isTryingToSwipeLeft && !canSwipeLeft) {
+                                newOffset = 0f
+                            }
+
+                            // 限制最大滑动距离 (正负方向)
+                            if (newOffset > maxDragDistance) newOffset = maxDragDistance
+                            if (newOffset < -maxDragDistance) newOffset = -maxDragDistance
+
+                            // 应用位移
+                            offsetX.snapTo(newOffset)
+
+                            // --- 震动反馈逻辑 ---
+                            // 绝对值超过阈值
+                            if (abs(newOffset) >= triggerThreshold) {
+                                if (!hasVibrated) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    hasVibrated = true
+                                }
+                            } else {
+                                hasVibrated = false
+                            }
+                        }
+                    },
+                    orientation = Orientation.Horizontal,
+                    onDragStopped = {
+                        val currentVal = offsetX.value
+
+                        // 判断触发逻辑
+                        if (currentVal >= triggerThreshold && onArchive != null) {
+                            onArchive()
+                        } else if (currentVal <= -triggerThreshold && onReply != null) {
+                            onReply()
+                        }
+
+                        // 无论如何回弹归零
+                        scope.launch {
+                            offsetX.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow
+                                )
+                            )
+                            hasVibrated = false
+                        }
+                    }
+                )
+        ) {
+            content()
+        }
+    }
+}
 
 /**
  * 可点击的图片组件，支持点击查看和长按显示菜单
@@ -419,20 +575,27 @@ fun CommentScreen(
                                 items(
                                     items = viewModel.allData,
                                     key = { it.id },
-                                ) { commentItem ->
-                                    Comment(
-                                        viewModel.createCommentItem(commentItem, article = rootContent),
-                                        modifier = Modifier.animateItem(
-                                            fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                                            fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                                            placementSpec = spring(
-                                                stiffness = Spring.StiffnessMediumLow,
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                ) { dto ->
+                                    val commentItem = viewModel.createCommentItem(dto, article = rootContent)
+                                    SwipeToReplyContainer(onReply = {
+                                        if (activeCommentItem == null && commentItem.clickTarget != null) {
+                                            onChildCommentClick(commentItem)
+                                        }
+                                    }) {
+                                        Comment(
+                                            commentItem,
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                                placementSpec = spring(
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                ),
                                             ),
-                                        ),
-                                    ) { comment ->
-                                        if (comment.clickTarget != null) {
-                                            onChildCommentClick(comment)
+                                        ) { comment ->
+                                            if (comment.clickTarget != null) {
+                                                onChildCommentClick(comment)
+                                            }
                                         }
                                     }
                                 }
@@ -570,7 +733,7 @@ private fun CommentItem(
             Spacer(modifier = Modifier.width(8.dp))
             Column(
                 verticalArrangement = Arrangement.Top,
-                modifier = Modifier.fillMaxHeight(),
+                modifier = Modifier,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
