@@ -125,11 +125,11 @@ val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 @Composable
 fun SwipeToReplyContainer(
     modifier: Modifier = Modifier,
-    onArchive: (() -> Unit)? = null,   // 向右滑触发，传 null 则禁向右滑
+    onArchive: (() -> Unit)? = null, // 向右滑触发，传 null 则禁向右滑
     onReply: (() -> Unit)? = null, // 向左滑触发，传 null 则禁向左滑
     archiveIcon: ImageVector = Icons.Default.Archive,
     replyIcon: ImageVector = Icons.AutoMirrored.Filled.Reply,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -147,7 +147,7 @@ fun SwipeToReplyContainer(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
+            .height(IntrinsicSize.Min),
     ) {
         // --- 背景层 (图标) ---
         // 只有在发生位移时才计算显示逻辑
@@ -168,7 +168,7 @@ fun SwipeToReplyContainer(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                contentAlignment = align
+                contentAlignment = align,
             ) {
                 Icon(
                     imageVector = icon,
@@ -178,7 +178,7 @@ fun SwipeToReplyContainer(
                         scaleX = iconScale
                         scaleY = iconScale
                         alpha = progress
-                    }
+                    },
                 )
             }
         }
@@ -248,13 +248,13 @@ fun SwipeToReplyContainer(
                                 targetValue = 0f,
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow
-                                )
+                                    stiffness = Spring.StiffnessLow,
+                                ),
                             )
                             hasVibrated = false
                         }
-                    }
-                )
+                    },
+                ),
         ) {
             content()
         }
