@@ -310,7 +310,9 @@ class ArticleViewModel(
                         ArticleType.Article -> "article"
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
-                    val jojo = AccountData.fetchGet(context, collectionsUrl)
+                    val jojo = AccountData.fetchGet(context, collectionsUrl) {
+                        signFetchRequest(context)
+                    }
                     val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(

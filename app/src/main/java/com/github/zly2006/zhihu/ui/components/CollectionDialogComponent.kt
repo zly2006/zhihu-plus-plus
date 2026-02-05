@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +60,12 @@ fun CollectionDialogComponent(
 ) {
     // 新建收藏夹对话框状态
     var showCreateDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (viewModel.collections.isEmpty()) {
+            viewModel.loadCollections(context)
+        }
+    }
 
     val dialogTopPadding = if (LocalConfiguration.current.screenHeightDp > 500) {
         100.dp
