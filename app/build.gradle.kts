@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.github.zly2006.zhplus"
-        minSdk = 28
+        minSdk = 27
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
         versionName = property("app.versionName").toString()
