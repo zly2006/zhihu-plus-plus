@@ -30,12 +30,10 @@ object ThemeManager {
     fun getCustomColor(): Color = Color(customColorInt.intValue)
 
     @Composable
-    fun getBackgroundColor(): Color {
-        return if (isDarkTheme()) {
-            Color(backgroundColorDark.intValue)
-        } else {
-            Color(backgroundColorLight.intValue)
-        }
+    fun getBackgroundColor(): Color = if (isDarkTheme()) {
+        Color(backgroundColorDark.intValue)
+    } else {
+        Color(backgroundColorLight.intValue)
     }
 
     @Composable
