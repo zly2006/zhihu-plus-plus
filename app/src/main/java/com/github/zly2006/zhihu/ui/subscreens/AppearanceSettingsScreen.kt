@@ -485,6 +485,36 @@ fun AppearanceSettingsScreen(
                     steps = 19,
                 )
             }
+
+            Text(
+                "导航设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val useCustomNavHost = remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
+            SwitchSettingItem(
+                title = "使用自定义导航",
+                description = "使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。",
+                checked = useCustomNavHost.value,
+                onCheckedChange = {
+                    useCustomNavHost.value = it
+                    preferences.edit { putBoolean("use_custom_nav_host", it) }
+                    Toast.makeText(context, "需要重启应用生效", Toast.LENGTH_SHORT).show()
+                },
+            )
+
+            val enablePredictiveBack = remember { mutableStateOf(preferences.getBoolean("enable_predictive_back", true)) }
+            SwitchSettingItem(
+                title = "启用预测性返回",
+                description = "开启 Android 14+ 的预测性返回手势动画",
+                checked = enablePredictiveBack.value,
+                onCheckedChange = {
+                    enablePredictiveBack.value = it
+                    preferences.edit { putBoolean("enable_predictive_back", it) }
+                },
+            )
         }
     }
 }

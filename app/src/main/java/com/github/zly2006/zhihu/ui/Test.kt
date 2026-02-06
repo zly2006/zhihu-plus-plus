@@ -5,7 +5,6 @@ package com.github.zly2006.zhihu.ui
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.collection.mutableObjectFloatMapOf
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
@@ -31,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavBackStackEntry
@@ -51,7 +51,6 @@ import androidx.navigation.get
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -65,34 +64,35 @@ public fun NavHost(
     route: KClass<*>? = null,
     typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
     enterTransition:
-    (@JvmSuppressWildcards
-    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) =
+        (@JvmSuppressWildcards AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) =
         {
             fadeIn(animationSpec = tween(700))
         },
     exitTransition:
-    (@JvmSuppressWildcards
-    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) =
+        (@JvmSuppressWildcards AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) =
         {
             fadeOut(animationSpec = tween(700))
         },
     popEnterTransition:
-    (@JvmSuppressWildcards
-    AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) =
+        (@JvmSuppressWildcards AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) =
         enterTransition,
     popExitTransition:
-    (@JvmSuppressWildcards
-    AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) =
+        (@JvmSuppressWildcards AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) =
         exitTransition,
-    sizeTransform:
-    (@JvmSuppressWildcards
-    AnimatedContentTransitionScope<NavBackStackEntry>.() -> SizeTransform?)? =
+    sizeTransform: (@JvmSuppressWildcards AnimatedContentTransitionScope<NavBackStackEntry>.() -> SizeTransform?)? =
         null,
-    builder: NavGraphBuilder.() -> Unit
+    builder: NavGraphBuilder.() -> Unit,
 ) {
-    //todo: add system shared reference.
-    val useCustomNavHost = true
-    val disableOnBackEvent = true
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    val useCustomNavHost = remember {
+        prefs.getBoolean("use_custom_nav_host", true)
+    }
+    val enablePredictiveBack = remember {
+        prefs.getBoolean("enable_predictive_back", true)
+    }
 
     if (!useCustomNavHost) {
         androidx.navigation.compose.NavHost(
@@ -123,7 +123,7 @@ public fun NavHost(
         popEnterTransition,
         popExitTransition,
         sizeTransform,
-        disableOnBackEvent,
+        !enablePredictiveBack,
     )
 }
 
