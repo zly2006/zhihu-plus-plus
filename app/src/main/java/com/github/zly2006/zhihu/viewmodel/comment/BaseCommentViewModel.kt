@@ -21,10 +21,16 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
+enum class CommentSortOrder {
+    SCORE, // 按热度
+    TIME, // 按时间
+}
+
 abstract class BaseCommentViewModel(
     val article: NavDestination,
 ) : PaginationViewModel<DataHolder.Comment>(typeOf<DataHolder.Comment>()) {
     protected val commentsMap = mutableMapOf<String, CommentItem>()
+    var sortOrder by mutableStateOf(CommentSortOrder.SCORE)
 
     override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
@@ -42,6 +48,13 @@ abstract class BaseCommentViewModel(
     abstract fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem
 
     fun getCommentById(id: String): CommentItem? = commentsMap[id]
+
+    fun changeSortOrder(newSortOrder: CommentSortOrder, context: Context) {
+        if (sortOrder != newSortOrder) {
+            sortOrder = newSortOrder
+            refresh(context)
+        }
+    }
 
     abstract fun submitComment(
         content: NavDestination,

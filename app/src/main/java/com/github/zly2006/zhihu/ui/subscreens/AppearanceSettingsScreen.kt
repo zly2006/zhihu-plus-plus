@@ -6,7 +6,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,11 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -51,6 +52,7 @@ import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
@@ -89,6 +91,51 @@ fun AppearanceSettingsScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
+            val currentThemeMode = ThemeManager.getThemeMode()
+
+            Text(
+                "主题设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+            )
+
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "主题模式",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    val themeModes = listOf(
+                        ThemeMode.SYSTEM to "跟随系统",
+                        ThemeMode.LIGHT to "亮色",
+                        ThemeMode.DARK to "暗色",
+                    )
+                    themeModes.forEach { (mode, label) ->
+                        OutlinedButton(
+                            onClick = {
+                                ThemeManager.setThemeMode(context, mode)
+                                Toast.makeText(context, "已切换到$label", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (currentThemeMode == mode) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surface
+                                },
+                            ),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            }
+
             SwitchSettingItem(
                 title = "使用 Material You 动态取色",
                 description = "根据系统壁纸自动提取主题色（Android 12+ 可用）\n关闭后可以自己设定主题颜色。",
@@ -206,8 +253,8 @@ fun AppearanceSettingsScreen(
                 )
             }
 
-            val isDarkTheme = isSystemInDarkTheme()
-            val defaultBackgroundColor = if (isDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()
+            val currentIsDarkTheme = ThemeManager.isDarkTheme()
+            val defaultBackgroundColor = if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()
             var showBackgroundColorPicker by remember { mutableStateOf(false) }
             val backgroundColor = ThemeManager.getBackgroundColor()
 
@@ -225,7 +272,7 @@ fun AppearanceSettingsScreen(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Text(
-                        if (isDarkTheme) "深色模式背景色" else "浅色模式背景色",
+                        if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -248,7 +295,7 @@ fun AppearanceSettingsScreen(
                     ),
                     onDismiss = { showBackgroundColorPicker = false },
                     onColorSelected = { color ->
-                        ThemeManager.setBackgroundColor(context, color, isDarkTheme)
+                        ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
                         Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
                         showBackgroundColorPicker = false
                     },

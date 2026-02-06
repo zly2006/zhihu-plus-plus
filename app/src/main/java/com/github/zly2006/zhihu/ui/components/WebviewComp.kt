@@ -170,6 +170,34 @@ class CustomWebView : WebView {
     }
 
     /**
+     * 应用主题样式到WebView
+     * 根据应用的主题设置为body添加或移除dark-theme类
+     */
+    fun applyThemeStyle() {
+        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
+        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
+
+        // 判断是否应该应用暗色主题
+        val shouldApplyDarkTheme = when (themeModeValue) {
+            "LIGHT" -> false
+            "DARK" -> true
+            else -> { // SYSTEM
+                // 检查系统是否为暗色模式
+                val currentNightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+
+        val jsCode = if (shouldApplyDarkTheme) {
+            "document.body.classList.add('dark-theme');"
+        } else {
+            "document.body.classList.remove('dark-theme');"
+        }
+
+        evaluateJavascript(jsCode, null)
+    }
+
+    /**
      * 注入点击监听的 JavaScript 代码
      * 这个方法应该在页面加载完成后调用
      */
@@ -742,9 +770,11 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             super.onPageFinished(view, url)
             Log.i("WebView-Page", "Page finished loading: $url")
 
-            // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本
+            // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本和主题样式
             if (view is CustomWebView) {
                 view.injectClickListenerScript()
+                // 注入主题样式
+                view.applyThemeStyle()
             }
 
             onPageFinished?.invoke(url)

@@ -13,6 +13,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
+import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -50,24 +51,33 @@ class RootCommentViewModel(
             }
     }
 
-    override val initialUrl = when (content) {
-        is Article -> {
-            when (content.type) {
-                ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${content.id}/root_comment"
-                ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${content.id}/root_comment"
+    override val initialUrl: String
+        get() {
+            val baseUrl = when (article) {
+                is Article -> {
+                    when (article.type) {
+                        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/${article.id}/root_comment"
+                        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/${article.id}/root_comment"
+                    }
+                }
+
+                is Pin -> {
+                    "https://www.zhihu.com/api/v4/comment_v5/pins/${article.id}/root_comment"
+                }
+
+                is Question -> {
+                    "https://www.zhihu.com/api/v4/comment_v5/questions/${article.questionId}/root_comment"
+                }
+
+                else -> ""
             }
+            // 添加排序参数
+            val orderParam = when (sortOrder) {
+                CommentSortOrder.SCORE -> "score"
+                CommentSortOrder.TIME -> "time"
+            }
+            return "$baseUrl?order=$orderParam"
         }
-
-        is Pin -> {
-            "https://www.zhihu.com/api/v4/comment_v5/pins/${content.id}/root_comment"
-        }
-
-        is Question -> {
-            "https://www.zhihu.com/api/v4/comment_v5/questions/${content.questionId}/root_comment"
-        }
-
-        else -> ""
-    }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
         val clickTarget = CommentHolder(comment.id, article)

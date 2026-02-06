@@ -8,26 +8,30 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+
+enum class ThemeMode {
+    LIGHT,
+    DARK,
+    SYSTEM,
+}
 
 object ThemeManager {
     private val useDynamicColor = mutableStateOf(true)
     private val customColorInt = mutableIntStateOf(0xFF2196F3.toInt())
     private val backgroundColorLight = mutableIntStateOf(0xFFFFFFFF.toInt())
     private val backgroundColorDark = mutableIntStateOf(0xFF121212.toInt())
+    private val themeMode = mutableStateOf(ThemeMode.SYSTEM)
 
     @Composable
     fun getUseDynamicColor(): Boolean = useDynamicColor.value
-
-    @Composable
-    fun getCustomColorInt(): Int = customColorInt.intValue
 
     @Composable
     fun getCustomColor(): Color = Color(customColorInt.intValue)
 
     @Composable
     fun getBackgroundColor(): Color {
-        val isDark = isSystemInDarkTheme()
-        return if (isDark) {
+        return if (isDarkTheme()) {
             Color(backgroundColorDark.intValue)
         } else {
             Color(backgroundColorLight.intValue)
@@ -35,9 +39,13 @@ object ThemeManager {
     }
 
     @Composable
-    fun getBackgroundColorInt(): Int {
-        val isDark = isSystemInDarkTheme()
-        return if (isDark) backgroundColorDark.intValue else backgroundColorLight.intValue
+    fun getThemeMode(): ThemeMode = themeMode.value
+
+    @Composable
+    fun isDarkTheme(): Boolean = when (themeMode.value) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
     }
 
     fun initialize(context: Context) {
@@ -46,6 +54,12 @@ object ThemeManager {
         customColorInt.intValue = preferences.getInt("customThemeColor", 0xFF2196F3.toInt())
         backgroundColorLight.intValue = preferences.getInt("backgroundColorLight", 0xFFFFFFFF.toInt())
         backgroundColorDark.intValue = preferences.getInt("backgroundColorDark", 0xFF121212.toInt())
+        val themeModeValue = preferences.getString("themeMode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+        themeMode.value = try {
+            ThemeMode.valueOf(themeModeValue)
+        } catch (_: IllegalArgumentException) {
+            ThemeMode.SYSTEM
+        }
     }
 
     fun setUseDynamicColor(context: Context, useDynamic: Boolean) {
@@ -67,8 +81,14 @@ object ThemeManager {
         } else {
             backgroundColorLight.intValue = colorInt
         }
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val key = if (isDark) "backgroundColorDark" else "backgroundColorLight"
         preferences.edit { putInt(key, colorInt) }
+    }
+
+    fun setThemeMode(context: Context, mode: ThemeMode) {
+        themeMode.value = mode
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences.edit { putString("themeMode", mode.name) }
     }
 }

@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -34,12 +33,12 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ZhihuTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val useDynamicColor = ThemeManager.getUseDynamicColor()
     val customBackgroundColor = ThemeManager.getBackgroundColor()
+    val darkTheme = ThemeManager.isDarkTheme()
 
     val baseColorScheme = when {
         useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

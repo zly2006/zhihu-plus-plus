@@ -33,35 +33,29 @@ figure {
   margin: 0;
 }
 
-@media (prefers-color-scheme: dark) {
+/* 暗色主题样式 */
+body.dark-theme {
   color: #fff;
-  html {
-    color: #fff;
-  }
+}
 
-  body {
-    color: #fff;
-  }
+body.dark-theme pre {
+  background-color: #262626;
+  color: #fff;
+}
 
-  pre {
-    background-color: #262626;
-    color: #fff;
-  }
+body.dark-theme code {
+  color: #fff;
+}
 
-  code {
-    color: #fff;
-  }
+body.dark-theme blockquote {
+  background-color: #444;
+  color: #fff;
+}
 
-  blockquote {
-    background-color: #444;
-    color: #fff;
-  }
+body.dark-theme hr {
+  border-color: #666;
+}
 
-  hr {
-    border-color: #666;
-  }
-
-  img {
-    background-color: white;
-  }
+body.dark-theme img {
+  background-color: white;
 }
