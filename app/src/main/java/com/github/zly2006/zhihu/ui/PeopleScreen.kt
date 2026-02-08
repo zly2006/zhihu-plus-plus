@@ -313,7 +313,7 @@ class PersonViewModel(
                 )
             }
             signFetchRequest(context)
-        }
+        }!!
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl
         this.name = person.name

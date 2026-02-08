@@ -44,8 +44,11 @@ class NotificationViewModel :
         try {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
-            }
-            return jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 0
+            }!!
+            val default = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 0
+            val follow = jojo["follow_notifications_count"]?.jsonPrimitive?.int ?: 0
+            val voteThank = jojo["vote_thank_notifications_count"]?.jsonPrimitive?.int ?: 0
+            return default + follow + voteThank
         } catch (_: Exception) {
             // 忽略错误
             return 0
@@ -92,6 +95,12 @@ class NotificationViewModel :
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(context: Context) {
         AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
+            signFetchRequest(context)
+        }
+        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall") {
+            signFetchRequest(context)
+        }
+        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall") {
             signFetchRequest(context)
         }
     }

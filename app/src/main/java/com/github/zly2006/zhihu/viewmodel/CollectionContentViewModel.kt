@@ -59,10 +59,10 @@ class CollectionContentViewModel(
         if (isLoading) return
         displayItems.clear()
         viewModelScope.launch {
-            val jsonObject = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
+            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
                 signFetchRequest(context)
-            }
-            collection = AccountData.decodeJson<Collection>(jsonObject["collection"]!!)
+            }!!
+            collection = AccountData.decodeJson<Collection>(jojo["collection"]!!)
         }
         super.refresh(context)
     }

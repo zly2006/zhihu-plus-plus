@@ -26,7 +26,7 @@ object DataHolder {
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
                 signFetchRequest(context)
-            }
+            }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
                     if (key == "id") {
@@ -56,7 +56,7 @@ object DataHolder {
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
                 signFetchRequest(context)
-            }
+            }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
                     if (key == "id") {
@@ -83,7 +83,7 @@ object DataHolder {
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
                 signFetchRequest(context)
-            }
+            }!!
             AccountData.decodeJson<Pin>(jo)
         }.getOrElse { e ->
             Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)

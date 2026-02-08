@@ -28,7 +28,7 @@ class SearchViewModel(
                     parameters.append("include", include)
                 }
                 signFetchRequest(context)
-            }
+            }!!
             val jsonArray = jojo["data"]!!.jsonArray
 
             // Parse search results and convert to Feed objects

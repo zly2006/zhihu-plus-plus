@@ -286,7 +286,7 @@ fun DailyScreen(
                                     story = story,
                                     onClick = {
                                         scope.launch {
-                                            val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")
+                                            val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
                                             val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
                                             val url = body.selectFirst("a")?.attr("href")
                                             val destination = runCatching {

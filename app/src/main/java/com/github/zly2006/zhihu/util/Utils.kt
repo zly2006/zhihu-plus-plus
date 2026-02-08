@@ -17,8 +17,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
 import io.ktor.http.contentType
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.serializer
@@ -34,7 +34,7 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     } else {
         null
     }
-    withContext(context.mainExecutor.asCoroutineDispatcher()) {
+    withContext(Dispatchers.Main) {
         header("x-zse-93", MainActivity.ZSE93)
         header(
             "x-zse-96",

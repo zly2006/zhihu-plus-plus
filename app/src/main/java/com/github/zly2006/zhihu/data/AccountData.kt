@@ -228,15 +228,19 @@ object AccountData {
 
     private var lastRefreshCookie = 0L
 
-    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject {
+    suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? {
         val client = this.httpClient ?: httpClient(context)
         val response = client.request(url) {
             block()
         }
-        if (response.status != HttpStatusCode.Unauthorized) return response.raiseForStatus().body()
+        if (response.status == HttpStatusCode.NoContent) {
+            return null
+        }
+        val body = response.raiseForStatus().body<JsonElement>()
+        if (response.status != HttpStatusCode.Unauthorized) return body as? JsonObject
         if (System.currentTimeMillis() - lastRefreshCookie < 10_000) {
             // 10s 内只刷新一次，避免死循环
-            return response.raiseForStatus().body()
+            return body as? JsonObject
         }
         val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
         ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
@@ -244,7 +248,8 @@ object AccountData {
         val retryResponse = client.request(url) {
             block()
         }
-        return retryResponse.raiseForStatus().body()
+        val body1 = retryResponse.raiseForStatus().body<JsonElement>()
+        return body1 as? JsonObject
     }
 
     suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {

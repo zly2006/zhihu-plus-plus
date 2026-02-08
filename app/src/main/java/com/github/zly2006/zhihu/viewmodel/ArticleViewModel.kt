@@ -188,7 +188,7 @@ class ArticleViewModel(
                                     val jojo =
                                         AccountData.fetchGet(context, url) {
                                             signFetchRequest(context)
-                                        }
+                                        }!!
                                     if ("data" !in jojo) {
                                         Log.e("ArticleViewModel", "No data found in response: $jojo")
                                         context.mainExecutor.execute {
@@ -312,7 +312,7 @@ class ArticleViewModel(
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
                     val jojo = AccountData.fetchGet(context, collectionsUrl) {
                         signFetchRequest(context)
-                    }
+                    }!!
                     val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
                     collections.addAll(
@@ -371,7 +371,7 @@ class ArticleViewModel(
                         ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
                     }
                     contentType(ContentType.Application.Json)
-                }
+                }!!
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int

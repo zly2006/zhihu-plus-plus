@@ -17,7 +17,7 @@ import kotlinx.serialization.json.put
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50")
+        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50")!!
         val collection = AccountData
             .decodeJson<List<Collection>>(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
@@ -32,7 +32,7 @@ object OpenInBrowser {
                         },
                     )
                     signFetchRequest(context)
-                }["collection"]!!,
+                }!!["collection"]!!,
             )
         if (destination is Article) {
             val contentType = when (destination.type) {

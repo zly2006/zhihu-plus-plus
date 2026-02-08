@@ -72,7 +72,7 @@ class PinViewModel(
                 val jojo = AccountData.fetch(context, endpoint) {
                     this.method = method
                     signFetchRequest(context)
-                }
+                }!!
 
                 isLiked = !isLiked
                 likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1
