@@ -67,6 +67,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
@@ -198,136 +199,39 @@ class CustomWebView : WebView {
     }
 
     /**
+     * 从 assets 文件夹加载 JavaScript 文件内容
+     */
+    private fun loadJavaScriptFromAssets(fileName: String): String = try {
+        context.assets.open(fileName).use { inputStream ->
+            inputStream.bufferedReader().use { reader ->
+                reader.readText()
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("WebView-Assets", "Failed to load JavaScript file: $fileName", e)
+        ""
+    }
+
+    /**
      * 注入点击监听的 JavaScript 代码
      * 这个方法应该在页面加载完成后调用
      */
     fun injectClickListenerScript() {
         if (htmlClickListener != null) {
-            val jsCode =
-                """
-                (function() {
-                    // 移除之前的监听器（如果存在）
-                    if (window.zhihuPlusClickListener) {
-                        document.removeEventListener('click', window.zhihuPlusClickListener, true);
-                    }
-                    
-                    // 创建新的监听器
-                    window.zhihuPlusClickListener = function(event) {
-                        try {
-                            var target = event.target;
-                            var clickedElement = target;
-                            
-                            // 向上查找，找到实际的可点击元素
-                            while (clickedElement && clickedElement !== document.body) {
-                                // 检查是否是视频链接
-                                if (clickedElement.tagName === 'A' && clickedElement.classList.contains('video-box')) {
-                                    // 阻止默认行为
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    
-                                    // 获取被点击元素的 outerHTML
-                                    var outerHtml = clickedElement.outerHTML;
-                                    // 调用 Android 接口
-                                    if (window.AndroidInterface) {
-                                        AndroidInterface.onElementClick(outerHtml);
-                                    }
-                                    return false;
-                                }
-                                
-                                // 检查是否在视频链接内部点击
-                                if (clickedElement.closest && clickedElement.closest('a.video-box')) {
-                                    // 阻止默认行为
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    
-                                    var videoBox = clickedElement.closest('a.video-box');
-                                    var outerHtml = videoBox.outerHTML;
-                                    // 调用 Android 接口
-                                    if (window.AndroidInterface) {
-                                        AndroidInterface.onElementClick(outerHtml);
-                                    }
-                                    return false;
-                                }
-                                
-                                clickedElement = clickedElement.parentElement;
-                            }
-                            
-                            // 对于其他元素，正常处理
-                            var outerHtml = target.outerHTML;
-                            // 调用 Android 接口
-                            if (window.AndroidInterface) {
-                                AndroidInterface.onElementClick(outerHtml);
-                            }
-                        } catch (e) {
-                            console.error('Error in click listener:', e);
-                        }
-                    };
-                    
-                    // 添加点击事件监听器
-                    document.addEventListener('click', window.zhihuPlusClickListener, true);
-                    
-                    // 专门为视频链接添加点击处理
-                    var videoBoxes = document.querySelectorAll('a.video-box');
-                    videoBoxes.forEach(function(videoBox) {
-                        videoBox.addEventListener('click', function(event) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            
-                            console.log('Video box clicked:', videoBox.getAttribute('data-lens-id'));
-                            
-                            if (window.AndroidInterface) {
-                                AndroidInterface.onElementClick(videoBox.outerHTML);
-                            }
-                        }, true);
-                    });
-                    
-                    // 监控动态添加的视频元素
-                    var observer = new MutationObserver(function(mutations) {
-                        mutations.forEach(function(mutation) {
-                            mutation.addedNodes.forEach(function(node) {
-                                if (node.nodeType === 1) { // Element node
-                                    if (node.tagName === 'A' && node.classList.contains('video-box')) {
-                                        // 新添加的视频链接
-                                        node.addEventListener('click', function(event) {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            
-                                            console.log('Dynamic video box clicked:', node.getAttribute('data-lens-id'));
-                                            
-                                            if (window.AndroidInterface) {
-                                                AndroidInterface.onElementClick(node.outerHTML);
-                                            }
-                                        }, true);
-                                    } else {
-                                        // 检查新添加元素内的视频链接
-                                        var videoBoxes = node.querySelectorAll && node.querySelectorAll('a.video-box');
-                                        if (videoBoxes) {
-                                            videoBoxes.forEach(function(videoBox) {
-                                                videoBox.addEventListener('click', function(event) {
-                                                    event.preventDefault();
-                                                    event.stopPropagation();
-                                                    
-                                                    console.log('Nested video box clicked:', videoBox.getAttribute('data-lens-id'));
-                                                    
-                                                    if (window.AndroidInterface) {
-                                                        AndroidInterface.onElementClick(videoBox.outerHTML);
-                                                    }
-                                                }, true);
-                                            });
-                                        }
-                                    }
-                                }
-                            });
-                        });
-                    });
-                    
-                    observer.observe(document.body, {
-                        childList: true,
-                        subtree: true
-                    });
-                })();
-                """.trimIndent()
+            val jsCode = loadJavaScriptFromAssets("click-listener.js")
+            if (jsCode.isNotEmpty()) {
+                evaluateJavascript(jsCode, null)
+            }
+        }
+    }
 
+    /**
+     * 注入脚注处理的 JavaScript 代码
+     * 处理 data-draft-type="reference" 的 sup 标签，生成脚注列表
+     */
+    fun injectFootnoteScript() {
+        val jsCode = loadJavaScriptFromAssets("footnotes.js")
+        if (jsCode.isNotEmpty()) {
             evaluateJavascript(jsCode, null)
         }
     }
@@ -502,7 +406,7 @@ class OpenImageDislog(
                         .buffered()
                         .use {
                             val bitmap = BitmapFactory.decodeStream(it)
-                            context.mainExecutor.execute {
+                            withContext(Dispatchers.Main) {
                                 setImageBitmap(bitmap)
                             }
                         }
@@ -792,6 +696,10 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, request.url, context, WebviewActivity::class.java))
                 return true
             }
+            if (!request.url.host!!.endsWith("zhihu.com")) {
+                luoTianYiUrlLauncher(context, request.url)
+                return true
+            }
             return super.shouldOverrideUrlLoading(view, request)
         }
 
@@ -802,6 +710,8 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本和主题样式
             if (view is CustomWebView) {
                 view.injectClickListenerScript()
+                // 注入脚注处理脚本
+                view.injectFootnoteScript()
                 // 注入主题样式
                 view.applyThemeStyle()
             }
