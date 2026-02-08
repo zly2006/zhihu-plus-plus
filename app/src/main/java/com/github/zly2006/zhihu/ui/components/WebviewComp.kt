@@ -566,6 +566,41 @@ fun WebviewComp(
                             } ?: imgElement?.attr("data-original")?.takeIf { it.isNotBlank() }
                         val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
                         if (url != null) {
+                            suspend fun downloadAndSaveImage(fileName: String, isPending: Boolean = false): android.net.Uri? {
+                                val response = httpClient.get(url)
+                                val bytes = response.readRawBytes()
+
+                                val contentValues = ContentValues().apply {
+                                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                                        if (isPending) put(MediaStore.MediaColumns.IS_PENDING, 1)
+                                    }
+                                }
+
+                                val resolver = context.contentResolver
+                                val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                                } else {
+                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                                }
+
+                                val imageUri = resolver.insert(collection, contentValues)
+                                if (imageUri != null) {
+                                    resolver.openOutputStream(imageUri).use { os ->
+                                        os?.write(bytes)
+                                    }
+
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPending) {
+                                        contentValues.clear()
+                                        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                                        resolver.update(imageUri, contentValues, null, null)
+                                    }
+                                }
+                                return imageUri
+                            }
+
                             menu.add("查看图片").setOnMenuItemClickListener {
                                 openImage(httpClient, url)
                                 true
@@ -577,50 +612,44 @@ fun WebviewComp(
                             menu.add("保存图片").setOnMenuItemClickListener {
                                 coroutineScope.launch {
                                     try {
-                                        val response = httpClient.get(url)
-                                        val bytes = response.readRawBytes()
                                         val fileName = url.toUri().lastPathSegment ?: "downloaded_image.jpg"
-
-                                        val contentValues = ContentValues().apply {
-                                            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                                            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                                                put(MediaStore.MediaColumns.IS_PENDING, 1)
-                                            }
-                                        }
-
-                                        val resolver = context.contentResolver
-                                        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                                        } else {
-                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                                        }
-
-                                        val imageUri = resolver.insert(collection, contentValues)
-                                        if (imageUri != null) {
-                                            resolver.openOutputStream(imageUri).use { os ->
-                                                os?.write(bytes)
-                                            }
-
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                                contentValues.clear()
-                                                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                                                resolver.update(imageUri, contentValues, null, null)
-                                            }
-
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    "图片已保存到相册",
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
-                                        }
+                                        downloadAndSaveImage(fileName, isPending = true)
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "图片已保存到相册",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                     } catch (e: Exception) {
                                         Toast
                                             .makeText(
                                                 context,
                                                 "保存失败: ${e.message}",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
+                                }
+                                true
+                            }
+                            menu.add("分享图片").setOnMenuItemClickListener {
+                                coroutineScope.launch {
+                                    try {
+                                        val fileName = "share_${System.currentTimeMillis()}.jpg"
+                                        val imageUri = downloadAndSaveImage(fileName)
+                                        if (imageUri != null) {
+                                            val shareIntent = Intent().apply {
+                                                action = Intent.ACTION_SEND
+                                                putExtra(Intent.EXTRA_STREAM, imageUri)
+                                                type = "image/jpeg"
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                "分享失败: ${e.message}",
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                     }
