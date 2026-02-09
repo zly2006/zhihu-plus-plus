@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.theme
 
 import android.app.Activity
 import android.os.Build
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -57,9 +56,6 @@ fun ZhihuTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
-    }
-
-    PredictiveBackHandler {
     }
 
     // Apply custom background color
