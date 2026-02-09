@@ -152,16 +152,16 @@ class CustomWebView : WebView {
                         val httpClient = AccountData.httpClient(context)
                         val videoUrl = getHighestQualityVideoUrl(httpClient, dataLensId, contentId!!)
                         if (videoUrl != null) {
-                            GlobalScope.launch(Dispatchers.Main) {
+                            withContext(Dispatchers.Main) {
                                 luoTianYiUrlLauncher(context, videoUrl.toUri())
                             }
                         } else {
-                            GlobalScope.launch(Dispatchers.Main) {
+                            withContext(Dispatchers.Main) {
                                 Toast.makeText(context, "无法获取视频链接", Toast.LENGTH_SHORT).show()
                             }
                         }
                     } catch (e: Exception) {
-                        GlobalScope.launch(Dispatchers.Main) {
+                        withContext(Dispatchers.Main) {
                             Toast.makeText(context, "获取视频链接失败: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -267,7 +267,7 @@ class CustomWebView : WebView {
 
         // 找到最高质量的视频
         var bestVideo: JsonObject? = null
-        var maxBitrate = 0
+        var maxBitrate = -1
 
         mp4List?.forEach { videoElement ->
             val video = videoElement.jsonObject
