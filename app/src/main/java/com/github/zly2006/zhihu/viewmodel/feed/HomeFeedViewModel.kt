@@ -55,7 +55,7 @@ class HomeFeedViewModel :
             val displayItemsToFilter = data
                 .flatten()
                 .filter { feed -> feed.target?.navDestination != null }
-                .map { feed -> createDisplayItem(feed) }
+                .map { feed -> createDisplayItem(context, feed) }
 
             // 应用内容过滤（包括广告检测）
             val filteredDisplayItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, displayItemsToFilter)

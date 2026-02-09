@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import android.content.Context
 import com.github.zly2006.zhihu.data.Feed
 
 class HotListViewModel : BaseFeedViewModel() {
@@ -10,7 +11,7 @@ class HotListViewModel : BaseFeedViewModel() {
         allowGuestAccess = true
     }
 
-    override fun createDisplayItem(feed: Feed): FeedDisplayItem = super.createDisplayItem(feed).copy(
+    override fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem = super.createDisplayItem(context, feed).copy(
         authorName = null,
         avatarSrc = null,
     )

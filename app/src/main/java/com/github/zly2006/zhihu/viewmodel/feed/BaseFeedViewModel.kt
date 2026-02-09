@@ -16,6 +16,7 @@ import com.github.zly2006.zhihu.data.MomentsFeed
 import com.github.zly2006.zhihu.data.QuestionFeedCard
 import com.github.zly2006.zhihu.data.actionText
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
@@ -39,7 +40,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
-        displayItems.addAll(data.flatten().map { createDisplayItem(it) }) // 展示用的已flatten数据
+        displayItems.addAll(data.flatten().map { createDisplayItem(context, it) }) // 展示用的已flatten数据
     }
 
     override fun refresh(context: Context) {
@@ -66,9 +67,12 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         isPullToRefresh = false
     }
 
-    open fun createDisplayItem(feed: Feed): FeedDisplayItem = when (feed) {
+    open fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem = when (feed) {
         is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> {
-            val filterReason = feed.target?.filterReason()
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val enableQualityFilter = preferences.getBoolean("enableQualityFilter", true)
+
+            val filterReason = if (!enableQualityFilter) null else feed.target?.filterReason()
 
             if (filterReason != null) {
                 FeedDisplayItem(

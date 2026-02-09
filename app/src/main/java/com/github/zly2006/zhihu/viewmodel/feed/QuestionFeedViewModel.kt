@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,7 +22,7 @@ class QuestionFeedViewModel(
         }
     }
 
-    override fun createDisplayItem(feed: Feed): FeedDisplayItem {
+    override fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
         val target = feed.target
         if (target is Feed.AnswerTarget) {
             return FeedDisplayItem(
@@ -33,6 +34,6 @@ class QuestionFeedViewModel(
                 title = "",
             )
         }
-        return super.createDisplayItem(feed)
+        return super.createDisplayItem(context, feed)
     }
 }

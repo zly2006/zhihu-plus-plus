@@ -148,6 +148,17 @@ fun ContentFilterSettingsScreen(
                 },
             )
 
+            val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
+            SwitchSettingItem(
+                title = "启用质量过滤规则",
+                description = "根据赞同数、关注数等指标过滤低质量内容",
+                checked = enableQualityFilter.value,
+                onCheckedChange = {
+                    enableQualityFilter.value = it
+                    preferences.edit { putBoolean("enableQualityFilter", it) }
+                },
+            )
+
             val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
             SwitchSettingItem(
                 title = "启用智能内容过滤",
