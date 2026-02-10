@@ -38,6 +38,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
 import androidx.core.view.size
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
@@ -94,11 +96,10 @@ class CustomWebView : WebView {
 
     // JavaScript 接口类
     inner class JsInterface {
-        @OptIn(DelicateCoroutinesApi::class)
         @JavascriptInterface
         fun onElementClick(outerHtml: String) {
             val clicked = Jsoup.parse(outerHtml).body().child(0)
-            GlobalScope.launch(Dispatchers.Main) {
+            findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 htmlClickListener?.onElementClick(clicked)
             }
         }
