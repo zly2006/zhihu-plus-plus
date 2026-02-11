@@ -446,6 +446,19 @@ fun ArticleActionsMenu(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // 复制 Markdown 按钮
+                        MenuActionButton(
+                            icon = Icons.Filled.ContentCopy,
+                            text = "复制 Markdown",
+                            onClick = {
+                                onDismissRequest()
+                                viewModel.exportToClipboard(context)
+                                Toast.makeText(context, "已复制 Markdown", Toast.LENGTH_SHORT).show()
+                            },
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         // 导出按钮
                         MenuActionButton(
                             icon = Icons.Filled.GetApp,
