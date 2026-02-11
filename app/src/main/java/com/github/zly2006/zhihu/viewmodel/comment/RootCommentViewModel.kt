@@ -92,6 +92,7 @@ class RootCommentViewModel(
         commentText: String,
         httpClient: HttpClient,
         context: Context,
+        replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {
         if (commentText.isBlank()) return
@@ -104,6 +105,7 @@ class RootCommentViewModel(
                 // Use buildJsonObject to properly escape JSON special characters
                 val requestBody = buildJsonObject {
                     put("content", "<p>$escapedText</p>")
+                    replyToCommentId?.let { put("reply_comment_id", it) }
                 }
 
                 val response = httpClient.post(content.submitCommentUrl) {

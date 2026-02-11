@@ -61,6 +61,7 @@ abstract class BaseCommentViewModel(
         commentText: String,
         httpClient: HttpClient,
         context: Context,
+        replyToCommentId: String? = null,
         onSuccess: () -> Unit,
     )
 

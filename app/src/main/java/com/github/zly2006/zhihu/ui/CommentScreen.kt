@@ -3,9 +3,14 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +48,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
@@ -331,6 +337,7 @@ fun CommentScreen(
     val context = LocalContext.current
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
+    var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -388,8 +395,15 @@ fun CommentScreen(
         if (commentInput.isBlank() || isSending) return
 
         isSending = true
-        viewModel.submitComment(content(), commentInput, httpClient, context) {
+        viewModel.submitComment(
+            content = content(),
+            commentText = commentInput,
+            httpClient = httpClient,
+            context = context,
+            replyToCommentId = replyToComment?.item?.id,
+        ) {
             commentInput = ""
+            replyToComment = null
             isSending = false
             coroutineScope.launch {
                 listState.animateScrollToItem(
@@ -578,8 +592,13 @@ fun CommentScreen(
                                 ) { dto ->
                                     val commentItem = viewModel.createCommentItem(dto, article = rootContent)
                                     SwipeToReplyContainer(onReply = {
-                                        if (activeCommentItem == null && commentItem.clickTarget != null) {
-                                            onChildCommentClick(commentItem)
+                                        if (activeCommentItem == null) {
+                                            if (commentItem.clickTarget != null) {
+                                                onChildCommentClick(commentItem)
+                                            }
+                                        } else {
+                                            // Set reply target when swiping to reply
+                                            replyToComment = commentItem
                                         }
                                     }) {
                                         Comment(
@@ -622,56 +641,106 @@ fun CommentScreen(
                     tonalElevation = 2.dp,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 40.dp, max = 140.dp)
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        BasicTextField(
-                            value = commentInput,
-                            onValueChange = { commentInput = it },
-                            modifier = Modifier.weight(1f),
-                            decorationBox = { inner ->
-                                Box {
-                                    if (commentInput.isEmpty()) {
-                                        Text(
-                                            "写下你的评论...",
-                                            fontSize = 16.sp,
+                    Column {
+                        // Reply indicator bar
+                        AnimatedVisibility(
+                            visible = replyToComment != null,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut(),
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Reply,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "回复 ${replyToComment?.item?.author?.name ?: ""}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    IconButton(
+                                        onClick = { replyToComment = null },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "取消回复",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         )
                                     }
-                                    inner()
                                 }
-                            },
-                            textStyle = TextStyle.Default.copy(
-                                fontSize = 16.sp,
-                                lineHeight = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        )
+                            }
+                        }
 
-                        IconButton(
-                            onClick = { submitComment() },
-                            modifier = Modifier.size(24.dp),
-                            enabled = !isSending && commentInput.isNotBlank(),
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 40.dp, max = 140.dp)
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            if (isSending) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            } else {
-                                Icon(
-                                    Icons.AutoMirrored.Outlined.Send,
-                                    contentDescription = "发送评论",
-                                    tint = if (commentInput.isNotBlank()) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                    },
-                                )
+                            BasicTextField(
+                                value = commentInput,
+                                onValueChange = { commentInput = it },
+                                modifier = Modifier.weight(1f),
+                                decorationBox = { inner ->
+                                    Box {
+                                        if (commentInput.isEmpty()) {
+                                            Text(
+                                                if (replyToComment != null) {
+                                                    "回复 ${replyToComment?.item?.author?.name}..."
+                                                } else {
+                                                    "写下你的评论..."
+                                                },
+                                                fontSize = 16.sp,
+                                            )
+                                        }
+                                        inner()
+                                    }
+                                },
+                                textStyle = TextStyle.Default.copy(
+                                    fontSize = 16.sp,
+                                    lineHeight = 18.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            )
+
+                            IconButton(
+                                onClick = { submitComment() },
+                                modifier = Modifier.size(24.dp),
+                                enabled = !isSending && commentInput.isNotBlank(),
+                            ) {
+                                if (isSending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.AutoMirrored.Outlined.Send,
+                                        contentDescription = "发送评论",
+                                        tint = if (commentInput.isNotBlank()) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

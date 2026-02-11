@@ -48,6 +48,7 @@ class ChildCommentViewModel(
         commentText: String,
         httpClient: HttpClient,
         context: Context,
+        replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {
         val commentHolder = content as CommentHolder
@@ -61,7 +62,7 @@ class ChildCommentViewModel(
                 // Use buildJsonObject to properly escape JSON special characters
                 val requestBody = buildJsonObject {
                     put("content", "<p>$escapedText</p>")
-                    put("reply_comment_id", commentHolder.commentId)
+                    put("reply_comment_id", replyToCommentId ?: commentHolder.commentId)
                 }
 
                 val response = httpClient.post(commentHolder.article.submitCommentUrl) {
