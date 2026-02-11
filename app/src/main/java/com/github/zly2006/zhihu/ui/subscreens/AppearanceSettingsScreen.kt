@@ -33,15 +33,18 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -60,6 +63,7 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
+    setting: String = "",
     onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -68,6 +72,24 @@ fun AppearanceSettingsScreen(
             PREFERENCE_NAME,
             Context.MODE_PRIVATE,
         )
+    }
+
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    // 用于存储各个设置项的位置
+    var shareActionPosition by remember { mutableIntStateOf(0) }
+
+    // 当 setting 参数不为空时，滚动到指定位置
+    LaunchedEffect(setting, shareActionPosition) {
+        if (setting.isNotEmpty() && shareActionPosition > 0) {
+            when (setting) {
+                "shareAction" -> {
+                    kotlinx.coroutines.delay(100) // 等待布局完成
+                    scrollState.animateScrollTo(shareActionPosition)
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -88,7 +110,7 @@ fun AppearanceSettingsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
@@ -367,6 +389,62 @@ fun AppearanceSettingsScreen(
                     preferences.edit { putBoolean("showFeedThumbnail", it) }
                 },
             )
+
+            // 分享操作设置
+            var shareActionExpanded by remember { mutableStateOf(false) }
+            val shareActionMode = remember {
+                mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
+            }
+            val shareActionOptions = listOf(
+                "ask" to "询问",
+                "copy" to "复制链接",
+                "share" to "Android分享",
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(vertical = 8.dp)
+                    .onGloballyPositioned { coordinates ->
+                        // 存储设置项的 Y 位置
+                        shareActionPosition = coordinates.size.height
+                    },
+            ) {
+                Text(
+                    "分享操作",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "点击分享按钮时的默认行为",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                Box {
+                    OutlinedButton(
+                        onClick = { shareActionExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问")
+                    }
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = shareActionExpanded,
+                        onDismissRequest = { shareActionExpanded = false },
+                    ) {
+                        shareActionOptions.forEach { (mode, label) ->
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    shareActionMode.value = mode
+                                    preferences.edit { putString("shareActionMode", mode) }
+                                    shareActionExpanded = false
+                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
 
             Text(
                 "底部栏设置",

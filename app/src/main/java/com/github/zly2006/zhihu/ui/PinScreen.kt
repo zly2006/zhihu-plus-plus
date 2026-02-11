@@ -2,8 +2,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,9 +51,11 @@ import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.PinViewModel
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
@@ -85,6 +85,8 @@ fun PinScreen(
         AccountData.addReadHistory(context, pin.id.toString(), "pin")
     }
 
+    var showShareDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             Row(
@@ -103,15 +105,16 @@ fun PinScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                IconButton(onClick = {
-                    val pinContent = viewModel.pinContent
-                    if (pinContent != null) {
-                        context.clipboardManager.setPrimaryClip(
-                            ClipData.newPlainText("Pin URL", pinContent.url),
-                        )
-                        Toast.makeText(context, "链接已复制", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
+                IconButton(
+                    onClick = {
+                        val shareText = getShareText(pin)
+                        if (shareText != null) {
+                            handleShareAction(context, pin, shareText) {
+                                showShareDialog = true
+                            }
+                        }
+                    },
+                ) {
                     Icon(Icons.Default.Share, contentDescription = "分享")
                 }
             }
@@ -168,6 +171,18 @@ fun PinScreen(
                             onNavigate = onNavigate,
                             httpClient = httpClient,
                             content = pin,
+                        )
+                    }
+
+                    // 分享对话框
+                    val shareText = getShareText(pin)
+                    if (shareText != null) {
+                        ShareDialog(
+                            content = pin,
+                            shareText = shareText,
+                            showDialog = showShareDialog,
+                            onDismissRequest = { showShareDialog = false },
+                            context = context,
                         )
                     }
                 }

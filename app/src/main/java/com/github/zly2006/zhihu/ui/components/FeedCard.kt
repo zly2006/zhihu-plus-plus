@@ -294,7 +294,7 @@ fun FeedCard(
                                                 text = { Text("外观设置") },
                                                 onClick = {
                                                     showMenu = false
-                                                    onNavigate(Account.AppearanceSettings)
+                                                    onNavigate(Account.AppearanceSettings())
                                                 },
                                             )
                                         }

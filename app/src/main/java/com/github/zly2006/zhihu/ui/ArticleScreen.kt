@@ -2,7 +2,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -105,10 +104,12 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
+import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
@@ -209,6 +210,7 @@ fun ArticleActionsMenu(
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onExportRequest: () -> Unit,
+    onShareRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -396,20 +398,15 @@ fun ArticleActionsMenu(
                         // 分享按钮
                         MenuActionButton(
                             icon = Icons.Filled.Share,
-                            text = "复制链接",
+                            text = "分享",
                             onClick = {
                                 onDismissRequest()
-                                val text = when (article.type) {
-                                    ArticleType.Answer -> {
-                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                    }
-                                    ArticleType.Article -> {
-                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                val shareText = getShareText(article, viewModel.title, viewModel.authorName)
+                                if (shareText != null) {
+                                    handleShareAction(context, article, shareText) {
+                                        onShareRequest()
                                     }
                                 }
-                                (context as? MainActivity)?.sharedData?.clipboardDestination = article
-                                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
                         )
 
@@ -471,6 +468,7 @@ fun ArticleScreen(
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -944,6 +942,7 @@ fun ArticleScreen(
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onExportRequest = { showExportDialog = true },
+        onShareRequest = { showShareDialog = true },
     )
 
     BackHandler(showActionsMenu) {
@@ -974,6 +973,22 @@ fun ArticleScreen(
         onDismiss = { showExportDialog = false },
         viewModel = viewModel,
     )
+
+    // 分享对话框
+    val shareText = getShareText(article, viewModel.title, viewModel.authorName)
+    if (shareText != null) {
+        ShareDialog(
+            content = article,
+            shareText = shareText,
+            showDialog = showShareDialog,
+            onDismissRequest = { showShareDialog = false },
+            context = context,
+        )
+    }
+
+    BackHandler(showShareDialog) {
+        showShareDialog = false
+    }
 }
 
 // HTML 转 AstNode 的辅助函数（参考 ArticleViewModel 中的 htmlToMarkdown）
@@ -1258,6 +1273,7 @@ fun ArticleActionsMenuPreview() {
                 showMenu = true,
                 onDismissRequest = {},
                 onExportRequest = {},
+                onShareRequest = {},
             )
         }
     }

@@ -2,7 +2,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -54,8 +53,10 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
-import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +82,7 @@ fun QuestionScreen(
     var title by remember { mutableStateOf(question.title) }
     var showComments by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
+    var showShareDialog by remember { mutableStateOf(false) }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
@@ -266,14 +268,12 @@ fun QuestionScreen(
 
                             Button(
                                 onClick = {
-                                    val clip = ClipData.newPlainText(
-                                        "Link",
-                                        "https://www.zhihu.com/question/${question.questionId}" +
-                                            "\n【${question.title}】",
-                                    )
-                                    context.clipboardManager.setPrimaryClip(clip)
-                                    (context as? MainActivity)?.sharedData?.clipboardDestination = question
-                                    Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                                    val shareText = getShareText(question, title)
+                                    if (shareText != null) {
+                                        handleShareAction(context, question, shareText) {
+                                            showShareDialog = true
+                                        }
+                                    }
                                 },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
@@ -281,9 +281,9 @@ fun QuestionScreen(
                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                 ),
                             ) {
-                                Icon(Icons.Filled.Share, contentDescription = "复制链接")
+                                Icon(Icons.Filled.Share, contentDescription = "分享")
                                 Spacer(Modifier.width(8.dp))
-                                Text("复制链接")
+                                Text("分享")
                             }
 
                             Spacer(Modifier.width(8.dp))
@@ -324,6 +324,18 @@ fun QuestionScreen(
             httpClient = context.httpClient,
             onNavigate = onNavigate,
             content = question,
+        )
+    }
+
+    // 分享对话框
+    val shareText = getShareText(question, title)
+    if (shareText != null) {
+        ShareDialog(
+            content = question,
+            shareText = shareText,
+            showDialog = showShareDialog,
+            onDismissRequest = { showShareDialog = false },
+            context = context,
         )
     }
 }

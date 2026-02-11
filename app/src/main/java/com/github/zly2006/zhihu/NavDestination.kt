@@ -48,7 +48,9 @@ data object Account : NavDestination, TopLevelDestination {
         get() = "Account"
 
     @Serializable
-    data object AppearanceSettings : NavDestination
+    data class AppearanceSettings(
+        val setting: String = "",
+    ) : NavDestination
 
     @Serializable
     data object RecommendSettings : NavDestination {

@@ -318,7 +318,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
             }
             composable<Account.AppearanceSettings> {
+                val args = it.toRoute<Account.AppearanceSettings>()
                 AppearanceSettingsScreen(
+                    setting = args.setting,
                     onNavigateBack = { navController.popBackStack() },
                 )
             }

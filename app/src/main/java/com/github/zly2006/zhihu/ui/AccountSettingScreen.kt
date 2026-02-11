@@ -208,7 +208,7 @@ fun AccountSettingScreen(
             headlineContent = { Text("外观与阅读体验") },
             supportingContent = { Text("主题颜色、字体大小等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.AppearanceSettings) },
+            modifier = Modifier.clickable { onNavigate(Account.AppearanceSettings()) },
         )
         ListItem(
             headlineContent = { Text("推荐系统与内容过滤") },
