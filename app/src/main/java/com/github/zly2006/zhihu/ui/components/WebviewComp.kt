@@ -49,6 +49,7 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.blacklist
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -626,6 +627,11 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 url.contains(".svg", true)
             ) {
                 Log.i("WebView-Image", "Loading image: $url")
+            }
+
+            if (request.url.host == "www.zhihu.com" && request.url.path == "/equation") {
+                if (ThemeManager.isDarkTheme) {
+                }
             }
 
             return assetLoader.shouldInterceptRequest(request.url)

@@ -4,6 +4,7 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -37,6 +38,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -107,8 +109,30 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import com.halilibo.richtext.markdown.BasicMarkdown
+import com.halilibo.richtext.markdown.node.AstBlockQuote
+import com.halilibo.richtext.markdown.node.AstCode
+import com.halilibo.richtext.markdown.node.AstDocument
+import com.halilibo.richtext.markdown.node.AstEmphasis
+import com.halilibo.richtext.markdown.node.AstFencedCodeBlock
+import com.halilibo.richtext.markdown.node.AstHardLineBreak
+import com.halilibo.richtext.markdown.node.AstHeading
+import com.halilibo.richtext.markdown.node.AstImage
+import com.halilibo.richtext.markdown.node.AstLink
+import com.halilibo.richtext.markdown.node.AstListItem
+import com.halilibo.richtext.markdown.node.AstNode
+import com.halilibo.richtext.markdown.node.AstNodeLinks
+import com.halilibo.richtext.markdown.node.AstOrderedList
+import com.halilibo.richtext.markdown.node.AstParagraph
+import com.halilibo.richtext.markdown.node.AstStrongEmphasis
+import com.halilibo.richtext.markdown.node.AstText
+import com.halilibo.richtext.markdown.node.AstThematicBreak
+import com.halilibo.richtext.markdown.node.AstUnorderedList
+import com.halilibo.richtext.ui.material3.RichText
+import io.ktor.http.Url
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -772,64 +796,80 @@ fun ArticleScreen(
             }
 
             if (viewModel.content.isNotEmpty()) {
-                WebviewComp {
-                    it.setupUpWebviewClient {
-                        if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                            coroutineScope.launch {
-                                val rememberedY = viewModel.rememberedScrollY.value ?: 0
-                                while (scrollState.maxValue < rememberedY) {
-                                    delay(100)
+                if (preferences.getBoolean("articleUseWebview", true)) {
+                    WebviewComp {
+                        it.setupUpWebviewClient {
+                            if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                coroutineScope.launch {
+                                    val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                    while (scrollState.maxValue < rememberedY) {
+                                        delay(100)
+                                    }
+                                    Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                    scrollState.animateScrollTo(rememberedY)
+                                    viewModel.rememberedScrollYSync = true
                                 }
-                                Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
-                                scrollState.animateScrollTo(rememberedY)
-                                viewModel.rememberedScrollYSync = true
                             }
                         }
-                    }
-                    it.contentId = article.id.toString()
-                    it.loadZhihu(
-                        "https://www.zhihu.com/${article.type}/${article.id}",
-                        Jsoup.parse(viewModel.content).apply {
-                            select("noscript").forEach { noscript ->
-                                /*
-                                 * 已修复的图片异常:
-                                 * https://www.zhihu.com/question/263764510/answer/273310677
-                                 * https://www.zhihu.com/question/21725193/answer/1931362214
-                                 * https://www.zhihu.com/question/419720398/answer/3155540572
-                                 */
-                                noscript.nextSibling()?.let { actualImg ->
-                                    if (actualImg.nodeName() == "img") {
-                                        if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                                            actualImg.attr("src", actualImg.attr("data-actualsrc"))
-                                            actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
-                                            noscript.remove()
-                                            return@forEach
-                                        }
-                                    }
-                                }
-
-                                if (noscript.childrenSize() > 0) {
-                                    val node = noscript.child(0)
-                                    if (node.tagName() == "img") {
-                                        if (node.attr("class").contains("content_image")) {
-                                            // GIF 优化
-                                            node.attr("src", node.attr("data-thumbnail"))
-                                        }
-                                        if (node.attr("src").isEmpty()) {
-                                            if (node.attr("data-default-watermark-src").isNotEmpty()) {
-                                                node.attr("src", node.attr("data-default-watermark-src"))
-                                            } else {
-                                                context.mainExecutor.execute {
-                                                    Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
-                                                }
+                        it.contentId = article.id.toString()
+                        it.loadZhihu(
+                            "https://www.zhihu.com/${article.type}/${article.id}",
+                            Jsoup.parse(viewModel.content).apply {
+                                select("noscript").forEach { noscript ->
+                                    /*
+                                     * 已修复的图片异常:
+                                     * https://www.zhihu.com/question/263764510/answer/273310677
+                                     * https://www.zhihu.com/question/21725193/answer/1931362214
+                                     * https://www.zhihu.com/question/419720398/answer/3155540572
+                                     */
+                                    noscript.nextSibling()?.let { actualImg ->
+                                        if (actualImg.nodeName() == "img") {
+                                            if (actualImg.attr("data-actualsrc").isNotEmpty()) {
+                                                actualImg.attr("src", actualImg.attr("data-actualsrc"))
+                                                actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
+                                                noscript.remove()
+                                                return@forEach
                                             }
                                         }
                                     }
-                                    noscript.after(node)
+
+                                    if (noscript.childrenSize() > 0) {
+                                        val node = noscript.child(0)
+                                        if (node.tagName() == "img") {
+                                            if (node.attr("class").contains("content_image")) {
+                                                // GIF 优化
+                                                node.attr("src", node.attr("data-thumbnail"))
+                                            }
+                                            if (node.attr("src").isEmpty()) {
+                                                if (node.attr("data-default-watermark-src").isNotEmpty()) {
+                                                    node.attr("src", node.attr("data-default-watermark-src"))
+                                                } else {
+                                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                                        context.mainExecutor.execute {
+                                                            Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        noscript.after(node)
+                                    }
                                 }
-                            }
-                        },
-                    )
+                            },
+                        )
+                    }
+                } else {
+                    val astNode = remember(viewModel.content) {
+                        val document = Jsoup.parse(viewModel.content)
+                        htmlToAstNode(document.body())
+                    }
+                    SelectionContainer(
+                        modifier = Modifier.fuckHonorService(),
+                    ) {
+                        RichText {
+                            BasicMarkdown(astNode)
+                        }
+                    }
                 }
             }
             Column(
@@ -934,6 +974,227 @@ fun ArticleScreen(
         onDismiss = { showExportDialog = false },
         viewModel = viewModel,
     )
+}
+
+// HTML 转 AstNode 的辅助函数（参考 ArticleViewModel 中的 htmlToMarkdown）
+private fun htmlToAstNode(element: org.jsoup.nodes.Element): AstNode {
+    val documentLinks = AstNodeLinks()
+    val document = AstNode(AstDocument, documentLinks)
+
+    var lastChild: AstNode? = null
+
+    for (node in element.childNodes()) {
+        val childNode = convertNodeToAst(node, document)
+        if (childNode != null) {
+            childNode.links.parent = document
+            childNode.links.previous = lastChild
+            lastChild?.links?.next = childNode
+
+            if (documentLinks.firstChild == null) {
+                documentLinks.firstChild = childNode
+            }
+            documentLinks.lastChild = childNode
+            lastChild = childNode
+        }
+    }
+
+    return document
+}
+
+private fun convertNodeToAst(
+    node: org.jsoup.nodes.Node,
+    parent: AstNode,
+): AstNode? = when (node) {
+    is org.jsoup.nodes.Element -> {
+        when (node.tagName().lowercase()) {
+            "h1" -> createHeading(node, 1, parent)
+            "h2" -> createHeading(node, 2, parent)
+            "h3" -> createHeading(node, 3, parent)
+            "h4" -> createHeading(node, 4, parent)
+            "h5" -> createHeading(node, 5, parent)
+            "h6" -> createHeading(node, 6, parent)
+            "p" -> createParagraph(node, parent)
+            "br" -> AstNode(AstHardLineBreak, AstNodeLinks(parent = parent))
+            "strong", "b" -> createStrongEmphasis(node, parent)
+            "em", "i" -> createEmphasis(node, parent)
+            "code" -> createInlineCode(node, parent)
+            "pre" -> createCodeBlock(node, parent)
+            "blockquote" -> createBlockQuote(node, parent)
+            "ul" -> createUnorderedList(node, parent)
+            "ol" -> createOrderedList(node, parent)
+            "li" -> createListItem(node, parent)
+            "a" -> createLink(node, parent)
+            "img" -> createImage(node, parent)
+            "figure" -> {
+                val img = node.selectFirst("img")
+                if (img != null) {
+                    createImage(img, parent)
+                } else {
+                    createParagraph(node, parent)
+                }
+            }
+            "hr" -> AstNode(AstThematicBreak, AstNodeLinks(parent = parent))
+            "div", "span" -> {
+                val className = node.attr("class")
+                if (className.contains("highlight")) {
+                    val code = node.selectFirst("code")
+                    if (code != null) {
+                        createCodeBlock(node, parent)
+                    } else {
+                        createParagraph(node, parent)
+                    }
+                } else {
+                    createParagraph(node, parent)
+                }
+            }
+            else -> createParagraph(node, parent)
+        }
+    }
+    is org.jsoup.nodes.TextNode -> {
+        val text = node.text()
+        if (text.isNotBlank()) {
+            AstNode(AstText(text), AstNodeLinks(parent = parent))
+        } else {
+            null
+        }
+    }
+    else -> null
+}
+
+private fun createHeading(element: org.jsoup.nodes.Element, level: Int, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val heading = AstNode(AstHeading(level), links)
+    addInlineChildren(element, heading, links)
+    return heading
+}
+
+private fun createParagraph(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val paragraph = AstNode(AstParagraph, links)
+    addInlineChildren(element, paragraph, links)
+    return paragraph
+}
+
+private fun createStrongEmphasis(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val strong = AstNode(AstStrongEmphasis("**"), links)
+    addInlineChildren(element, strong, links)
+    return strong
+}
+
+private fun createEmphasis(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val emphasis = AstNode(AstEmphasis("*"), links)
+    addInlineChildren(element, emphasis, links)
+    return emphasis
+}
+
+private fun createInlineCode(element: org.jsoup.nodes.Element, parent: AstNode): AstNode = AstNode(AstCode(element.text()), AstNodeLinks(parent = parent))
+
+private fun createCodeBlock(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val code = element.selectFirst("code")?.text() ?: element.text()
+    return AstNode(
+        AstFencedCodeBlock(
+            fenceChar = '`',
+            fenceLength = 3,
+            fenceIndent = 0,
+            info = "",
+            literal = code,
+        ),
+        AstNodeLinks(parent = parent),
+    )
+}
+
+private fun createBlockQuote(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val blockQuote = AstNode(AstBlockQuote, links)
+    addBlockChildren(element, blockQuote, links)
+    return blockQuote
+}
+
+private fun createUnorderedList(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val list = AstNode(AstUnorderedList('-'), links)
+    addBlockChildren(element, list, links)
+    return list
+}
+
+private fun createOrderedList(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val list = AstNode(AstOrderedList(1, '.'), links)
+    addBlockChildren(element, list, links)
+    return list
+}
+
+private fun createListItem(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val links = AstNodeLinks(parent = parent)
+    val listItem = AstNode(AstListItem, links)
+    addBlockChildren(element, listItem, links)
+    return listItem
+}
+
+private fun createLink(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val href = Url(element.attr("href"))
+    val title = element.attr("title")
+    val links = AstNodeLinks(parent = parent)
+    val url = if (href.host == "link.zhihu.com") {
+        href.parameters["target"] ?: href.toString()
+    } else {
+        href.toString()
+    }
+    val link = AstNode(AstLink(url, title), links)
+    addInlineChildren(element, link, links)
+    return link
+}
+
+private fun createImage(element: org.jsoup.nodes.Element, parent: AstNode): AstNode {
+    val src = element.attr("src").ifEmpty { element.attr("data-actualsrc") }
+    val alt = element.attr("alt").ifEmpty { "image" }
+    return AstNode(AstImage(alt, src), AstNodeLinks(parent = parent))
+}
+
+private fun addInlineChildren(
+    element: org.jsoup.nodes.Element,
+    parent: AstNode,
+    parentLinks: AstNodeLinks,
+) {
+    var lastChild: AstNode? = null
+
+    for (node in element.childNodes()) {
+        val childNode = convertNodeToAst(node, parent)
+        if (childNode != null) {
+            childNode.links.previous = lastChild
+            lastChild?.links?.next = childNode
+
+            if (parentLinks.firstChild == null) {
+                parentLinks.firstChild = childNode
+            }
+            parentLinks.lastChild = childNode
+            lastChild = childNode
+        }
+    }
+}
+
+private fun addBlockChildren(
+    element: org.jsoup.nodes.Element,
+    parent: AstNode,
+    parentLinks: AstNodeLinks,
+) {
+    var lastChild: AstNode? = null
+
+    for (node in element.childNodes()) {
+        val childNode = convertNodeToAst(node, parent)
+        if (childNode != null) {
+            childNode.links.previous = lastChild
+            lastChild?.links?.next = childNode
+
+            if (parentLinks.firstChild == null) {
+                parentLinks.firstChild = childNode
+            }
+            parentLinks.lastChild = childNode
+            lastChild = childNode
+        }
+    }
 }
 
 @Preview

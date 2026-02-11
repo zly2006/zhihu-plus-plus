@@ -39,11 +39,18 @@ object ThemeManager {
     @Composable
     fun getThemeMode(): ThemeMode = themeMode.value
 
+    //
+    var isDarkTheme: Boolean = false
+
     @Composable
-    fun isDarkTheme(): Boolean = when (themeMode.value) {
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    fun isDarkTheme(): Boolean {
+        val isDark = when (themeMode.value) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
+        isDarkTheme = isDark
+        return isDark
     }
 
     fun initialize(context: Context) {

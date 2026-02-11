@@ -197,6 +197,8 @@ dependencies {
 
     // HanLP for Chinese NLP
     "fullImplementation"("com.hankcs:hanlp:portable-1.8.4")
+    implementation("com.halilibo.compose-richtext:richtext-ui-material3-android:1.0.0-alpha03")
+    implementation("com.halilibo.compose-richtext:richtext-markdown-android:1.0.0-alpha03")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-cio:$ktor")
