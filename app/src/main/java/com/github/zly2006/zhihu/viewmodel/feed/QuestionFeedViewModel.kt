@@ -1,11 +1,15 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.util.signFetchRequest
+import io.ktor.http.HttpMethod
 
 class QuestionFeedViewModel(
     private val questionId: Long,
@@ -35,5 +39,17 @@ class QuestionFeedViewModel(
             )
         }
         return super.createDisplayItem(context, feed)
+    }
+
+    suspend fun followQuestion(context: Context, questionId: Long, follow: Boolean) {
+        try {
+            val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+            AccountData.fetch(context, url) {
+                signFetchRequest(context)
+                method = if (follow) HttpMethod.Post else HttpMethod.Delete
+            }
+        } catch (e: Exception) {
+            Log.e("QuestionFeedViewModel", "Failed to follow/unfollow question: $questionId", e)
+        }
     }
 }

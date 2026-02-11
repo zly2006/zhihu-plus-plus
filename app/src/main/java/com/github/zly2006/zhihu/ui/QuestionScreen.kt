@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +80,7 @@ fun QuestionScreen(
     var followerCount by remember { mutableIntStateOf(0) }
     var title by remember { mutableStateOf(question.title) }
     var showComments by remember { mutableStateOf(false) }
+    var isFollowing by remember { mutableStateOf(false) }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
@@ -97,6 +100,7 @@ fun QuestionScreen(
                     visitCount = questionData.visitCount
                     commentCount = questionData.commentCount
                     followerCount = questionData.followerCount
+                    isFollowing = questionData.relationship.isFollowing
                     context.postHistory(
                         Question(
                             question.questionId,
@@ -155,51 +159,89 @@ fun QuestionScreen(
                     }
                     item(2) {
                         val handle = LocalPinnableContainer.current?.pin()
-                        // 排序选项
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("排序：", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(Modifier.width(8.dp))
-                            FilledTonalButton(
-                                onClick = {
-                                    viewModel.updateSortOrder("default")
-                                    viewModel.refresh(context)
-                                },
-                                colors = if (viewModel.sortOrder == "default") {
-                                    ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    )
-                                } else {
-                                    ButtonDefaults.filledTonalButtonColors()
-                                },
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                Text("默认")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("排序：", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(Modifier.width(8.dp))
+                                FilledTonalButton(
+                                    onClick = {
+                                        viewModel.updateSortOrder("default")
+                                        viewModel.refresh(context)
+                                    },
+                                    colors = if (viewModel.sortOrder == "default") {
+                                        ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    } else {
+                                        ButtonDefaults.filledTonalButtonColors()
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                ) {
+                                    Text("默认")
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                FilledTonalButton(
+                                    onClick = {
+                                        viewModel.updateSortOrder("updated")
+                                        viewModel.refresh(context)
+                                    },
+                                    colors = if (viewModel.sortOrder == "updated") {
+                                        ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                                        )
+                                    } else {
+                                        ButtonDefaults.filledTonalButtonColors()
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                ) {
+                                    Text("最新")
+                                }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            FilledTonalButton(
+
+                            val scope = rememberCoroutineScope()
+                            Button(
                                 onClick = {
-                                    viewModel.updateSortOrder("updated")
-                                    viewModel.refresh(context)
-                                },
-                                colors = if (viewModel.sortOrder == "updated") {
-                                    ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                                    )
-                                } else {
-                                    ButtonDefaults.filledTonalButtonColors()
+                                    scope.launch {
+                                        viewModel.followQuestion(
+                                            context,
+                                            question.questionId,
+                                            !isFollowing,
+                                        )
+                                        isFollowing = !isFollowing
+                                        followerCount += if (isFollowing) 1 else -1
+                                        Toast.makeText(
+                                            context,
+                                            if (isFollowing) "已关注问题" else "已取消关注问题",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                    }
                                 },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                colors = if (isFollowing) {
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                } else {
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                },
                             ) {
-                                Text("最新")
+                                Icon(Icons.Filled.Add, contentDescription = if (isFollowing) "取消关注" else "关注问题")
+                                Spacer(Modifier.width(8.dp))
+                                Text(if (isFollowing) "已关注" else "关注问题")
                             }
                         }
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
