@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg id="_图层_2" xmlns="http://www.w3.org/2000/svg"
-     viewBox="-221.12 -219.56 732.44 729.02">
+     viewBox="-162 -162 648 648">
     <defs>
         <style>
             .cls-1{opacity:.5;}.cls-2{fill:#3996d1;}.cls-2,.cls-3,.cls-4,.cls-5,.cls-6{stroke-width:0px;}.cls-3{fill:none;}.cls-4{fill:#040000;}.cls-7{clip-path:url(#clippath-1);}.cls-8{opacity:.95;stroke:#fff;stroke-miterlimit:10;}.cls-8,.cls-5{fill:#fff;}.cls-9{clip-path:url(#clippath);}.cls-6{fill:#f4f4f4;}
         </style>
-        <clipPath id="clippath">
-            <rect class="cls-3" x="-221.12" y="-219.56" width="732.44" height="729.02"/>
-        </clipPath>
-        <clipPath id="clippath-1">
-            <rect class="cls-3" x="-221.12" y="-219.56" width="732.44" height="729.02"/>
-        </clipPath>
     </defs>
     <g id="_图层_1-2">
         <rect class="cls-5" x="-221.12" y="-219.56" width="732.44" height="729.02"/>
