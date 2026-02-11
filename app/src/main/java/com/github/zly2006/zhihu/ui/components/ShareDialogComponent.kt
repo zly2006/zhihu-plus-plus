@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
@@ -97,6 +99,7 @@ fun ShareDialog(
     showDialog: Boolean,
     onDismissRequest: () -> Unit,
     context: Context,
+    onNavigate: ((NavDestination) -> Unit)? = null,
 ) {
     @Composable
     fun MenuActionButton(
@@ -217,6 +220,19 @@ fun ShareDialog(
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
                         )
+
+                        if (onNavigate != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            MenuActionButton(
+                                icon = Icons.Filled.Settings,
+                                text = "分享设置",
+                                onClick = {
+                                    onDismissRequest()
+                                    onNavigate(Account.AppearanceSettings(setting = "shareAction"))
+                                },
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
                     }

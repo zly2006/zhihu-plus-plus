@@ -336,6 +336,7 @@ fun QuestionScreen(
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
             context = context,
+            onNavigate = onNavigate,
         )
     }
 }

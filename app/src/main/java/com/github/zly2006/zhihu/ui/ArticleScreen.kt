@@ -2,7 +2,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.content.ClipData
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
@@ -107,9 +110,9 @@ import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
-import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
@@ -210,7 +213,6 @@ fun ArticleActionsMenu(
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onExportRequest: () -> Unit,
-    onShareRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -401,12 +403,44 @@ fun ArticleActionsMenu(
                             text = "分享",
                             onClick = {
                                 onDismissRequest()
-                                val shareText = getShareText(article, viewModel.title, viewModel.authorName)
-                                if (shareText != null) {
-                                    handleShareAction(context, article, shareText) {
-                                        onShareRequest()
+                                val text = when (article.type) {
+                                    ArticleType.Answer -> {
+                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                                    }
+                                    ArticleType.Article -> {
+                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                                     }
                                 }
+                                val shareIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, text)
+                                }
+                                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(chooserIntent)
+                            },
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 复制链接按钮
+                        MenuActionButton(
+                            icon = Icons.Filled.ContentCopy,
+                            text = "复制链接",
+                            onClick = {
+                                onDismissRequest()
+                                val text = when (article.type) {
+                                    ArticleType.Answer -> {
+                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                                    }
+                                    ArticleType.Article -> {
+                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                                    }
+                                }
+                                (context as? MainActivity)?.sharedData?.clipboardDestination = article
+                                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
+                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },
                         )
 
@@ -942,7 +976,6 @@ fun ArticleScreen(
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onExportRequest = { showExportDialog = true },
-        onShareRequest = { showShareDialog = true },
     )
 
     BackHandler(showActionsMenu) {
@@ -983,6 +1016,7 @@ fun ArticleScreen(
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
             context = context,
+            onNavigate = onNavigate,
         )
     }
 
@@ -1273,7 +1307,6 @@ fun ArticleActionsMenuPreview() {
                 showMenu = true,
                 onDismissRequest = {},
                 onExportRequest = {},
-                onShareRequest = {},
             )
         }
     }

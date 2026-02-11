@@ -23,11 +23,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -420,19 +425,26 @@ fun AppearanceSettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
-                Box {
-                    OutlinedButton(
-                        onClick = { shareActionExpanded = true },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问")
-                    }
-                    androidx.compose.material3.DropdownMenu(
+                ExposedDropdownMenuBox(
+                    expanded = shareActionExpanded,
+                    onExpandedChange = { shareActionExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
                         expanded = shareActionExpanded,
                         onDismissRequest = { shareActionExpanded = false },
                     ) {
                         shareActionOptions.forEach { (mode, label) ->
-                            androidx.compose.material3.DropdownMenuItem(
+                            DropdownMenuItem(
                                 text = { Text(label) },
                                 onClick = {
                                     shareActionMode.value = mode
