@@ -44,7 +44,6 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     }
 
     override fun refresh(context: Context) {
-        if (isLoading) return
         displayItems.clear()
         super.refresh(context)
     }

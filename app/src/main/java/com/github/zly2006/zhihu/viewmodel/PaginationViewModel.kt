@@ -28,6 +28,7 @@ import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -53,6 +54,7 @@ abstract class PaginationViewModel<T : Any>(
     protected var lastPaging: Paging? by mutableStateOf(null)
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
+    private var currentJob: Job? = null
 
     /**
      * Generally used fields to include in the API request.
@@ -72,7 +74,9 @@ abstract class PaginationViewModel<T : Any>(
     )
 
     open fun refresh(context: Context) {
-        if (isLoading) return
+        currentJob?.cancel()
+        currentJob = null
+        isLoading = false
         errorMessage = null
         debugData.clear()
         allData.clear()
@@ -206,7 +210,7 @@ abstract class PaginationViewModel<T : Any>(
     open fun loadMore(context: Context) {
         if (isLoading || isEnd) return // 使用新的isEnd getter
         isLoading = true
-        viewModelScope.launch {
+        currentJob = viewModelScope.launch {
             try {
                 fetchFeeds(context)
             } catch (e: Exception) {

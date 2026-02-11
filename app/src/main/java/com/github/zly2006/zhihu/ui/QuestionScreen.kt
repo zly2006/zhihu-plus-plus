@@ -215,11 +215,12 @@ fun QuestionScreen(
                                         )
                                         isFollowing = !isFollowing
                                         followerCount += if (isFollowing) 1 else -1
-                                        Toast.makeText(
-                                            context,
-                                            if (isFollowing) "已关注问题" else "已取消关注问题",
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                if (isFollowing) "已关注问题" else "已取消关注问题",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                     }
                                 },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
