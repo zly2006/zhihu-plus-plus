@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -190,22 +191,35 @@ fun MdAst.render(
     renderContext: MarkdownRenderContext,
     onNavigate: (NavDestination) -> Unit,
 ) {
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("webview_settings", android.content.Context.MODE_PRIVATE) }
+    val fontSizePercent = remember { preferences.getInt("webviewFontSize", 100) }
+    val lineHeightPercent = remember { preferences.getInt("webviewLineHeight", 160) }
+
+    val baseStyle = MaterialTheme.typography.bodyLarge
+    val fontSizeMultiplier = fontSizePercent / 100f
+    val lineHeightMultiplier = lineHeightPercent / 100f
+
     when (val d = data) {
         is AstHeader -> {
+            val headerStyle = when (d.level) {
+                1 -> MaterialTheme.typography.headlineLarge
+                2 -> MaterialTheme.typography.headlineMedium
+                3 -> MaterialTheme.typography.headlineSmall
+                4 -> MaterialTheme.typography.titleLarge
+                5 -> MaterialTheme.typography.titleMedium
+                else -> MaterialTheme.typography.titleSmall
+            }
             Text(
                 text = buildAnnotatedString {
                     d.text.forEach {
                         renderInline(it, renderContext, onNavigate)
                     }
                 },
-                style = when (d.level) {
-                    1 -> MaterialTheme.typography.headlineLarge
-                    2 -> MaterialTheme.typography.headlineMedium
-                    3 -> MaterialTheme.typography.headlineSmall
-                    4 -> MaterialTheme.typography.titleLarge
-                    5 -> MaterialTheme.typography.titleMedium
-                    else -> MaterialTheme.typography.titleSmall
-                },
+                style = headerStyle.copy(
+                    fontSize = baseStyle.fontSize * fontSizeMultiplier * (headerStyle.fontSize.value / baseStyle.fontSize.value),
+                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                ),
             )
         }
 
@@ -216,7 +230,10 @@ fun MdAst.render(
                         renderInline(it, renderContext, onNavigate)
                     }
                 },
-                style = TextStyle.Default,
+                style = baseStyle.copy(
+                    fontSize = baseStyle.fontSize * fontSizeMultiplier,
+                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                ),
             )
         }
 
@@ -286,7 +303,11 @@ fun MdAst.render(
             ) {
                 Text(
                     text = d.code,
-                    style = TextStyle(fontFamily = FontFamily.Monospace),
+                    style = baseStyle.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = baseStyle.fontSize * fontSizeMultiplier,
+                        lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                    ),
                 )
             }
         }
@@ -294,7 +315,10 @@ fun MdAst.render(
             renderContext.requestedFormulaBlocks.add(d)
             Text(
                 text = d.math,
-                style = MaterialTheme.typography.bodySmall,
+                style = baseStyle.copy(
+                    fontSize = baseStyle.fontSize * fontSizeMultiplier,
+                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                ),
             )
         }
         AstHorizontalRule -> {
@@ -382,14 +406,17 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
         val inlineData = extractInlineElements(element)
         MdAst(AstHeader(inlineData, level), MdAstLinks())
     }
+
     "p" -> {
         val inlines = extractInlineElements(element).toMutableList()
         MdAst(AstParagraph(inlines), MdAstLinks())
     }
+
     "blockquote" -> {
         val children = element.childNodes().convertNodesToAst()
         MdAst(AstBlockquote(children), MdAstLinks())
     }
+
     "pre" -> {
         val code = element.selectFirst("code")?.text() ?: element.text()
         val lang = element
@@ -399,6 +426,7 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
             ?.trim()
         MdAst(AstCodeBlock(code, lang), MdAstLinks())
     }
+
     "ul" -> {
         val items = element.select("> li").map { li ->
             val children = li.childNodes().convertNodesToAst()
@@ -406,6 +434,7 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
         }
         MdAst(AstList(items, ordered = false), MdAstLinks())
     }
+
     "ol" -> {
         val items = element.select("> li").map { li ->
             val children = li.childNodes().convertNodesToAst()
@@ -413,12 +442,17 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
         }
         MdAst(AstList(items, ordered = true), MdAstLinks())
     }
-    "hr" -> MdAst(AstHorizontalRule, MdAstLinks())
+
+    "hr" -> {
+        MdAst(AstHorizontalRule, MdAstLinks())
+    }
+
     "img" -> {
         val src = element.attr("src").ifEmpty { element.attr("data-actualsrc") }
         val alt = element.attr("alt").ifEmpty { "image" }
         MdAst(AstImage(src, alt), MdAstLinks())
     }
+
     "figure" -> {
         element.selectFirst("img")?.let { img ->
             val src = img.attr("src").ifEmpty { img.attr("data-actualsrc") }
@@ -426,6 +460,7 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
             MdAst(AstImage(src, alt), MdAstLinks())
         }
     }
+
     "div", "span" -> {
         if (element.attr("class").contains("highlight")) {
             element.selectFirst("code")?.let { code ->
@@ -441,6 +476,7 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
             }
         }
     }
+
     else -> null
 }
 
@@ -460,6 +496,7 @@ private fun extractInlineElements(element: Element): List<InlineAstData> {
                     result.add(AstSpan(text, TextStyle.Default))
                 }
             }
+
             is Element -> {
                 extractInlineElement(node, result)
             }
