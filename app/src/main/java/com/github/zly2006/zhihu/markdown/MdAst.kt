@@ -34,6 +34,9 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import org.jsoup.nodes.Element
+import org.jsoup.nodes.Node
+import org.jsoup.nodes.TextNode
 
 sealed interface AstData
 
@@ -58,12 +61,12 @@ class AstSpan(
 ) : InlineAstData
 
 class AstHeader(
-    val text: InlineAstData,
+    val text: List<InlineAstData>,
     val level: Int,
 ) : AstData
 
 class AstParagraph(
-    val inlines: List<InlineAstData>,
+    val inlines: MutableList<InlineAstData>,
 ) : AstData
 
 class AstBlockquote(
@@ -193,7 +196,9 @@ fun MdAst.render(
         is AstHeader -> {
             Text(
                 text = buildAnnotatedString {
-                    renderInline(d.text, renderContext, onNavigate)
+                    d.text.forEach {
+                        renderInline(it, renderContext, onNavigate)
+                    }
                 },
                 style = when (d.level) {
                     1 -> MaterialTheme.typography.headlineLarge
@@ -284,21 +289,72 @@ fun MdAst.render(
 // HTML 转 MdAst 的辅助函数
 fun htmlToMdAst(html: String): List<MdAst> {
     val doc = org.jsoup.Jsoup.parse(html)
-    return doc.body().children().mapNotNull { convertElementToAst(it) }
+    return doc.body().childNodes().convertNodesToAst()
 }
 
-private fun convertElementToAst(element: org.jsoup.nodes.Element): MdAst? = when (element.tagName().lowercase()) {
+private fun List<Node>.convertNodesToAst(): List<MdAst> {
+    val ret = mutableListOf<MdAst>()
+
+    for (node in this) {
+        if (node is TextNode) {
+            if (ret.lastOrNull()?.data !is AstParagraph) {
+                ret.add(
+                    MdAst(
+                        AstParagraph(
+                            mutableListOf(
+                                AstSpan(
+                                    node.text().trim(),
+                                    TextStyle.Default,
+                                ),
+                            ),
+                        ),
+                        MdAstLinks(),
+                    ),
+                )
+                continue
+            }
+            val lastParagraph = ret.last().data as AstParagraph
+            lastParagraph.inlines.add(
+                AstSpan(
+                    node.text().trim(),
+                    TextStyle.Default,
+                ),
+            )
+        } else if (node is Element) {
+            val paraAst = convertElementToAst(node)
+            if (paraAst != null) {
+                ret.add(paraAst)
+            } else {
+                if (ret.lastOrNull()?.data !is AstParagraph) {
+                    ret.add(
+                        MdAst(
+                            AstParagraph(mutableListOf()),
+                            MdAstLinks(),
+                        ),
+                    )
+                }
+                val lastParagraph = ret.last().data as AstParagraph
+                // parse inline ast
+                extractInlineElement(node, lastParagraph.inlines)
+            }
+        }
+    }
+
+    return ret
+}
+
+private fun convertElementToAst(element: Element): MdAst? = when (element.tagName().lowercase()) {
     "h1", "h2", "h3", "h4", "h5", "h6" -> {
         val level = element.tagName()[1].digitToInt()
-        val inlineData = extractInlineContent(element)
+        val inlineData = extractInlineElements(element)
         MdAst(AstHeader(inlineData, level), MdAstLinks())
     }
     "p" -> {
-        val inlines = extractInlineElements(element)
+        val inlines = extractInlineElements(element).toMutableList()
         MdAst(AstParagraph(inlines), MdAstLinks())
     }
     "blockquote" -> {
-        val children = element.children().mapNotNull { convertElementToAst(it) }
+        val children = element.childNodes().convertNodesToAst()
         MdAst(AstBlockquote(children), MdAstLinks())
     }
     "pre" -> {
@@ -312,15 +368,15 @@ private fun convertElementToAst(element: org.jsoup.nodes.Element): MdAst? = when
     }
     "ul" -> {
         val items = element.select("> li").map { li ->
-            val children = li.children().mapNotNull { convertElementToAst(it) }
-            AstListItem(children.ifEmpty { listOf(MdAst(AstParagraph(extractInlineElements(li)), MdAstLinks())) })
+            val children = li.childNodes().convertNodesToAst()
+            AstListItem(children.ifEmpty { listOf(MdAst(AstParagraph(extractInlineElements(li).toMutableList()), MdAstLinks())) })
         }
         MdAst(AstList(items, ordered = false), MdAstLinks())
     }
     "ol" -> {
         val items = element.select("> li").map { li ->
-            val children = li.children().mapNotNull { convertElementToAst(it) }
-            AstListItem(children.ifEmpty { listOf(MdAst(AstParagraph(extractInlineElements(li)), MdAstLinks())) })
+            val children = li.childNodes().convertNodesToAst()
+            AstListItem(children.ifEmpty { mutableListOf(MdAst(AstParagraph(extractInlineElements(li).toMutableList()), MdAstLinks())) })
         }
         MdAst(AstList(items, ordered = true), MdAstLinks())
     }
@@ -344,7 +400,7 @@ private fun convertElementToAst(element: org.jsoup.nodes.Element): MdAst? = when
                 MdAst(AstCodeBlock(code.text(), lang), MdAstLinks())
             }
         } else {
-            val inlines = extractInlineElements(element)
+            val inlines = extractInlineElements(element).toMutableList()
             if (inlines.isNotEmpty()) {
                 MdAst(AstParagraph(inlines), MdAstLinks())
             } else {
@@ -355,66 +411,78 @@ private fun convertElementToAst(element: org.jsoup.nodes.Element): MdAst? = when
     else -> null
 }
 
-private fun extractInlineContent(element: org.jsoup.nodes.Element): InlineAstData {
+private fun extractInlineContent(element: Element): InlineAstData {
     val inlines = extractInlineElements(element)
-    return if (inlines.size == 1) inlines[0] else AstSpan(element.text(), androidx.compose.ui.text.TextStyle.Default)
+    return if (inlines.size == 1) inlines[0] else AstSpan(element.text(), TextStyle.Default)
 }
 
-private fun extractInlineElements(element: org.jsoup.nodes.Element): List<InlineAstData> {
+private fun extractInlineElements(element: Element): List<InlineAstData> {
     val result = mutableListOf<InlineAstData>()
 
     for (node in element.childNodes()) {
         when (node) {
-            is org.jsoup.nodes.TextNode -> {
+            is TextNode -> {
                 val text = node.text()
                 if (text.isNotBlank()) {
-                    result.add(AstSpan(text, androidx.compose.ui.text.TextStyle.Default))
+                    result.add(AstSpan(text, TextStyle.Default))
                 }
             }
-            is org.jsoup.nodes.Element -> {
-                when (node.tagName().lowercase()) {
-                    "strong", "b" -> {
-                        result.add(
-                            AstSpan(
-                                node.text(),
-                                TextStyle(fontWeight = FontWeight.Bold),
-                            ),
-                        )
-                    }
-                    "em", "i" -> {
-                        result.add(
-                            AstSpan(
-                                node.text(),
-                                TextStyle(fontStyle = FontStyle.Italic),
-                            ),
-                        )
-                    }
-                    "code" -> {
-                        result.add(AstCodeSpan(node.text()))
-                    }
-                    "a" -> {
-                        val href = node.attr("href")
-                        val url = if (href.contains("link.zhihu.com")) {
-                            href.toUri().getQueryParameter("target") ?: href
-                        } else {
-                            href
-                        }
-                        val title = extractInlineContent(node)
-                        result.add(AstLink(url, title))
-                    }
-                    "br" -> {
-                        result.add(AstLineBreak())
-                    }
-                    else -> {
-                        val text = node.text()
-                        if (text.isNotBlank()) {
-                            result.add(AstSpan(text, androidx.compose.ui.text.TextStyle.Default))
-                        }
-                    }
-                }
+            is Element -> {
+                extractInlineElement(node, result)
             }
         }
     }
 
     return result
+}
+
+private fun extractInlineElement(
+    node: Element,
+    result: MutableList<InlineAstData>
+) {
+    when (node.tagName().lowercase()) {
+        "strong", "b" -> {
+            result.add(
+                AstSpan(
+                    node.text(),
+                    TextStyle(fontWeight = FontWeight.Bold),
+                ),
+            )
+        }
+
+        "em", "i" -> {
+            result.add(
+                AstSpan(
+                    node.text(),
+                    TextStyle(fontStyle = FontStyle.Italic),
+                ),
+            )
+        }
+
+        "code" -> {
+            result.add(AstCodeSpan(node.text()))
+        }
+
+        "a" -> {
+            val href = node.attr("href")
+            val url = if (href.contains("link.zhihu.com")) {
+                href.toUri().getQueryParameter("target") ?: href
+            } else {
+                href
+            }
+            val title = extractInlineContent(node)
+            result.add(AstLink(url, title))
+        }
+
+        "br" -> {
+            result.add(AstLineBreak())
+        }
+
+        else -> {
+            val text = node.text()
+            if (text.isNotBlank()) {
+                result.add(AstSpan(text, TextStyle.Default))
+            }
+        }
+    }
 }

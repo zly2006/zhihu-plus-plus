@@ -286,23 +286,6 @@ suspend fun saveImageToGallery(
 }
 
 /**
- * 解析HTML为ContentBlock列表的包装函数
- */
-fun parseHtmlToContentBlocks(
-    nodes: List<Node>,
-    onNavigate: (NavDestination) -> Unit,
-    context: Context,
-): List<ContentBlock> {
-    val blocks = mutableListOf<ContentBlock>()
-
-    nodes.forEach { node ->
-        parseArticleContentBlocks(node, onNavigate, context, blocks)
-    }
-
-    return blocks
-}
-
-/**
  * 解析HTML节点为ContentBlock列表，用于Column渲染
  * 每个<p>标签解析成一个独立的TextBlock
  */
