@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -102,6 +103,9 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
+import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.markdown.render
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -110,6 +114,7 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import kotlinx.coroutines.delay
@@ -593,13 +598,18 @@ fun ArticleScreen(
             Column {
                 if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp)
+                            .padding(horizontal = 0.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(
-                            modifier = Modifier.clip(RoundedCornerShape(50)).background(
-                                color = Color(0xFF40B6F6),
-                            ),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    color = Color(0xFF40B6F6),
+                                ),
                             horizontalArrangement = Arrangement.Start,
                         ) {
                             when (viewModel.voteUpState) {
@@ -625,7 +635,9 @@ fun ArticleScreen(
                                             contentColor = Color.Black,
                                         ),
                                         shape = RectangleShape,
-                                        modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
+                                        modifier = Modifier
+                                            .height(ButtonDefaults.MinHeight)
+                                            .width(ButtonDefaults.MinHeight),
                                         contentPadding = PaddingValues(horizontal = 0.dp),
                                     ) {
                                         Icon(Icons.Filled.ArrowDownward, "反对")
@@ -878,6 +890,20 @@ fun ArticleScreen(
                         )
                     }
                 } else {
+                    val astNode = remember(viewModel.content) {
+                        htmlToMdAst(viewModel.content)
+                    }
+                    val context = MarkdownRenderContext()
+                    SelectionContainer(
+                        modifier = Modifier.fuckHonorService(),
+                    ) {
+                        Column {
+                            for (ast in astNode) {
+                                ast.render(context, onNavigate)
+                                Spacer(Modifier.height(12.dp))
+                            }
+                        }
+                    }
                 }
             }
             Column(
