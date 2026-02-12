@@ -3,8 +3,6 @@ package com.github.zly2006.zhihu.markdown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -218,29 +216,64 @@ fun MdAst.render(
                         renderInline(it, renderContext, onNavigate)
                     }
                 },
-                style = MaterialTheme.typography.bodyLarge,
+                style = TextStyle.Default,
             )
         }
 
         is AstBlockquote -> {
-            Row {
-                Box(
-                    Modifier
-                        .padding(
-                            start = 6.dp,
-                            end = 6.dp,
-                        ).width(3.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.onBackground, RoundedCornerShape(50)),
-                )
-                Text(
-                    text = buildAnnotatedString {
+            androidx.compose.ui.layout.Layout(
+                content = {
+                    // Gutter bar
+                    Box(
+                        Modifier
+                            .padding(start = 6.dp, end = 6.dp)
+                            .width(3.dp)
+                            .background(
+                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f),
+                                RoundedCornerShape(50),
+                            ),
+                    )
+                    // Content
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier.padding(start = 4.dp),
+                    ) {
                         d.children.forEach {
                             it.render(renderContext, onNavigate)
                         }
+                    }
+                },
+            ) { measurables, constraints ->
+                val gutterMeasurable = measurables[0]
+                val contentMeasurable = measurables[1]
+
+                // Get gutter's intrinsic width
+                val gutterWidth = gutterMeasurable.minIntrinsicWidth(constraints.maxHeight)
+
+                // Measure content with remaining width
+                val contentConstraints = constraints.copy(
+                    maxWidth = if (constraints.hasBoundedWidth) {
+                        (constraints.maxWidth - gutterWidth).coerceAtLeast(0)
+                    } else {
+                        constraints.maxWidth
                     },
-                    modifier = Modifier.padding(start = 4.dp),
                 )
+                val contentPlaceable = contentMeasurable.measure(contentConstraints)
+
+                val layoutWidth = contentPlaceable.width + gutterWidth
+                val layoutHeight = contentPlaceable.height
+
+                // Measure gutter to match content height
+                val gutterConstraints = constraints.copy(
+                    maxWidth = gutterWidth,
+                    minHeight = layoutHeight,
+                    maxHeight = layoutHeight,
+                )
+                val gutterPlaceable = gutterMeasurable.measure(gutterConstraints)
+
+                layout(layoutWidth, layoutHeight) {
+                    gutterPlaceable.place(0, 0)
+                    contentPlaceable.place(gutterWidth, 0)
+                }
             }
         }
 
@@ -261,7 +294,7 @@ fun MdAst.render(
             renderContext.requestedFormulaBlocks.add(d)
             Text(
                 text = d.math,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
         AstHorizontalRule -> {
@@ -438,7 +471,7 @@ private fun extractInlineElements(element: Element): List<InlineAstData> {
 
 private fun extractInlineElement(
     node: Element,
-    result: MutableList<InlineAstData>
+    result: MutableList<InlineAstData>,
 ) {
     when (node.tagName().lowercase()) {
         "strong", "b" -> {
