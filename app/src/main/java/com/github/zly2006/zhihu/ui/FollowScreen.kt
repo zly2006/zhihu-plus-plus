@@ -43,7 +43,6 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import kotlinx.coroutines.launch
@@ -145,28 +144,13 @@ fun FollowDynamicScreen(
                         Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
                     },
                     onBlockUser = { feedItem ->
-                        coroutineScope.launch {
-                            val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
-                            if (authorInfo != null) {
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
-                            } else {
-                                FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
-                            }
+                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                            userToBlock = authorInfo
+                            showBlockUserDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        coroutineScope.launch {
-                            try {
-                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-                                    .getInstance(context)
-                                blocklistManager.addBlockedTopic(topicId, topicName)
-                                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
-                                viewModel.refresh(context)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "屏蔽失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        viewModel.blockTopic(context, topicId, topicName)
                     },
                     onNavigate = onNavigate,
                 ) {
@@ -256,28 +240,13 @@ fun FollowRecommendScreen(
                 FeedCard(
                     item,
                     onBlockUser = { feedItem ->
-                        coroutineScope.launch {
-                            val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
-                            if (authorInfo != null) {
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
-                            } else {
-                                FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
-                            }
+                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                            userToBlock = authorInfo
+                            showBlockUserDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        coroutineScope.launch {
-                            try {
-                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-                                    .getInstance(context)
-                                blocklistManager.addBlockedTopic(topicId, topicName)
-                                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
-                                viewModel.refresh(context)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "屏蔽失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        viewModel.blockTopic(context, topicId, topicName)
                     },
                     onNavigate = onNavigate,
                 ) {

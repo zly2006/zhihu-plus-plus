@@ -60,7 +60,6 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -72,7 +71,6 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -305,39 +303,19 @@ fun HomeScreen() {
                             Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
                         },
                         onBlockUser = { feedItem ->
-                            coroutineScope.launch {
-                                val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
-                                if (authorInfo != null) {
-                                    userToBlock = authorInfo
-                                    showBlockUserDialog = true
-                                } else {
-                                    FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
-                                }
+                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                                userToBlock = authorInfo
+                                showBlockUserDialog = true
                             }
                         },
                         onBlockByKeywords = { feedItem ->
-                            coroutineScope.launch {
-                                val contentInfo = FeedCardDataHelper.ensureContentForKeywordBlocking(context, feedItem)
-                                if (contentInfo != null) {
-                                    feedToBlockByKeywords = contentInfo.first to contentInfo.second // 直接存储 Triple
-                                    showBlockByKeywordsDialog = true
-                                } else {
-                                    FeedCardDataHelper.showLoadFailedToast(context, "关键词屏蔽")
-                                }
+                            viewModel.handleBlockByKeywords(context, feedItem) { (item, contentInfo) ->
+                                feedToBlockByKeywords = contentInfo.first to contentInfo.second
+                                showBlockByKeywordsDialog = true
                             }
                         },
                         onBlockTopic = { topicId, topicName ->
-                            coroutineScope.launch {
-                                try {
-                                    val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-                                        .getInstance(context)
-                                    blocklistManager.addBlockedTopic(topicId, topicName)
-                                    Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
-                                    viewModel.refresh(context)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "屏蔽失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                            viewModel.blockTopic(context, topicId, topicName)
                         },
                         onNavigate = onNavigate,
                     ) {

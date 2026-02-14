@@ -1,10 +1,12 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.CommonFeed
@@ -18,6 +20,8 @@ import com.github.zly2006.zhihu.data.actionText
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
@@ -137,5 +141,74 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     @Suppress("NOTHING_TO_INLINE")
     inline fun List<Feed>.flatten() = flatMap {
         (it as? GroupFeed)?.list ?: listOf(it)
+    }
+
+    /**
+     * 处理用户屏蔽（包含数据获取和屏蔽逻辑）
+     */
+    fun handleBlockUser(
+        context: Context,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<String, String>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val authorInfo = com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
+                .ensureAuthorInfo(context, feedItem)
+            if (authorInfo != null) {
+                onShowDialog(authorInfo)
+            } else {
+                com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
+                    .showLoadFailedToast(context, "屏蔽用户")
+            }
+        }
+    }
+
+    /**
+     * 处理关键词屏蔽（包含数据获取和屏蔽逻辑）
+     */
+    fun handleBlockByKeywords(
+        context: Context,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val contentInfo = com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
+                .ensureContentForKeywordBlocking(context, feedItem)
+            if (contentInfo != null) {
+                onShowDialog(feedItem to contentInfo)
+            } else {
+                com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
+                    .showLoadFailedToast(context, "关键词屏蔽")
+            }
+        }
+    }
+
+    /**
+     * 屏蔽主题
+     */
+    fun blockTopic(
+        context: Context,
+        topicId: String,
+        topicName: String,
+    ) {
+        viewModelScope.launch {
+            try {
+                val blocklistManager = BlocklistManager.getInstance(context)
+                blocklistManager.addBlockedTopic(topicId, topicName)
+                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
+                displayItems.removeAll {
+                    val topics = when (it.raw) {
+                        is com.github.zly2006.zhihu.data.DataHolder.Answer -> it.raw.question.topics
+                        is com.github.zly2006.zhihu.data.DataHolder.Article -> it.raw.topics
+                        is com.github.zly2006.zhihu.data.DataHolder.Question -> it.raw.topics
+                        else -> null
+                    }
+                    topics?.any { topic -> topic.id == topicId } == true
+                }
+            } catch (e: Exception) {
+                val message = "屏蔽失败: ${e.message}"
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
