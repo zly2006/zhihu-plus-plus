@@ -155,6 +155,19 @@ fun FollowDynamicScreen(
                             }
                         }
                     },
+                    onBlockTopic = { topicId, topicName ->
+                        coroutineScope.launch {
+                            try {
+                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+                                    .getInstance(context)
+                                blocklistManager.addBlockedTopic(topicId, topicName)
+                                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
+                                viewModel.refresh(context)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "屏蔽失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
                     onNavigate = onNavigate,
                 ) {
                     if (navDestination != null) {
@@ -250,6 +263,19 @@ fun FollowRecommendScreen(
                                 showBlockUserDialog = true
                             } else {
                                 FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
+                            }
+                        }
+                    },
+                    onBlockTopic = { topicId, topicName ->
+                        coroutineScope.launch {
+                            try {
+                                val blocklistManager = com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+                                    .getInstance(context)
+                                blocklistManager.addBlockedTopic(topicId, topicName)
+                                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
+                                viewModel.refresh(context)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "屏蔽失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },

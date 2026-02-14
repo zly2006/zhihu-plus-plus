@@ -68,14 +68,16 @@ fun BlocklistSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("屏蔽关键词", "NLP智能屏蔽", "屏蔽用户")
+    val tabs = listOf("屏蔽关键词", "NLP智能屏蔽", "屏蔽用户", "屏蔽主题")
 
     var blockedKeywords by remember { mutableStateOf<List<BlockedKeyword>>(emptyList()) }
     var blockedUsers by remember { mutableStateOf<List<BlockedUser>>(emptyList()) }
+    var blockedTopics by remember { mutableStateOf<List<com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic>>(emptyList()) }
     var stats by remember { mutableStateOf<BlocklistStats?>(null) }
 
     var showAddKeywordDialog by remember { mutableStateOf(false) }
     var showAddUserDialog by remember { mutableStateOf(false) }
+    var showAddTopicDialog by remember { mutableStateOf(false) }
 
     // 加载数据
     fun loadData() {
@@ -87,6 +89,7 @@ fun BlocklistSettingsScreen(
                     .getAllBlockedKeywords()
                     .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
                 blockedUsers = blocklistManager.getAllBlockedUsers()
+                blockedTopics = blocklistManager.getAllBlockedTopics()
                 stats = blocklistManager.getBlocklistStats()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -101,13 +104,14 @@ fun BlocklistSettingsScreen(
 
     Scaffold(
         floatingActionButton = {
-            // 只在传统关键词和用户屏蔽标签页显示添加按钮
-            if (selectedTab == 0 || selectedTab == 2) {
+            // 只在传统关键词、用户屏蔽和主题屏蔽标签页显示添加按钮
+            if (selectedTab == 0 || selectedTab == 2 || selectedTab == 3) {
                 FloatingActionButton(
                     onClick = {
                         when (selectedTab) {
                             0 -> showAddKeywordDialog = true
                             2 -> showAddUserDialog = true
+                            3 -> showAddTopicDialog = true
                         }
                     },
                 ) {
@@ -163,6 +167,17 @@ fun BlocklistSettingsScreen(
                                 )
                                 Text(
                                     "${statsData.userCount}",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "屏蔽主题",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                Text(
+                                    "${statsData.topicCount}",
                                     style = MaterialTheme.typography.headlineMedium,
                                     color = MaterialTheme.colorScheme.primary,
                                 )
@@ -256,6 +271,35 @@ fun BlocklistSettingsScreen(
                         )
                     },
                 )
+                3 -> BlockedTopicsList(
+                    topics = blockedTopics,
+                    onDeleteTopic = { topic ->
+                        coroutineScope.launch {
+                            try {
+                                val blocklistManager = BlocklistManager.getInstance(context)
+                                blocklistManager.removeBlockedTopic(topic.topicId)
+                                Toast.makeText(context, "已删除主题", Toast.LENGTH_SHORT).show()
+                                loadData()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    onClearAll = {
+                        coroutineScope.launch {
+                            try {
+                                val blocklistManager = BlocklistManager.getInstance(context)
+                                blocklistManager.clearAllBlockedTopics()
+                                Toast.makeText(context, "已清空所有主题", Toast.LENGTH_SHORT).show()
+                                loadData()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                )
             }
         }
     }
@@ -272,6 +316,27 @@ fun BlocklistSettingsScreen(
                         Toast.makeText(context, "已添加关键词", Toast.LENGTH_SHORT).show()
                         loadData()
                         showAddKeywordDialog = false
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+        )
+    }
+
+    // 添加主题对话框
+    if (showAddTopicDialog) {
+        AddTopicDialog(
+            onDismiss = { showAddTopicDialog = false },
+            onConfirm = { topicId, topicName ->
+                coroutineScope.launch {
+                    try {
+                        val blocklistManager = BlocklistManager.getInstance(context)
+                        blocklistManager.addBlockedTopic(topicId, topicName)
+                        Toast.makeText(context, "已添加主题", Toast.LENGTH_SHORT).show()
+                        loadData()
+                        showAddTopicDialog = false
                     } catch (e: Exception) {
                         e.printStackTrace()
                         Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -581,6 +646,157 @@ fun AddUserDialog(
                     }
                 },
                 enabled = userId.isNotBlank(),
+            ) {
+                Text("添加")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        },
+    )
+}
+
+@Composable
+fun BlockedTopicsList(
+    topics: List<com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic>,
+    onDeleteTopic: (com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic) -> Unit,
+    onClearAll: () -> Unit,
+) {
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (topics.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "暂无屏蔽主题",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "点击右下角的 + 按钮添加要屏蔽的主题",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            // 清空按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    onClick = { showClearConfirmDialog = true },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    ),
+                ) {
+                    Text("清空全部")
+                }
+            }
+
+            LazyColumn {
+                items(topics, key = { it.topicId }) { topic ->
+                    ListItem(
+                        headlineContent = { Text(topic.topicName) },
+                        supportingContent = { Text("ID: ${topic.topicId}") },
+                        trailingContent = {
+                            IconButton(onClick = { onDeleteTopic(topic) }) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "删除",
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text("确认清空") },
+            text = { Text("确定要清空所有屏蔽主题吗？此操作不可撤销。") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onClearAll()
+                        showClearConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("清空")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+}
+
+@Composable
+fun AddTopicDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit,
+) {
+    var topicId by remember { mutableStateOf("") }
+    var topicName by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("添加屏蔽主题") },
+        text = {
+            Column {
+                Text(
+                    "输入要屏蔽的主题ID和名称。主题ID可以从知乎网页版主题链接中获取。",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = topicId,
+                    onValueChange = { topicId = it },
+                    label = { Text("主题ID") },
+                    placeholder = { Text("例如: 19550517") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = topicName,
+                    onValueChange = { topicName = it },
+                    label = { Text("主题名称") },
+                    placeholder = { Text("例如: 娱乐") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (topicId.isNotBlank()) {
+                        onConfirm(topicId, topicName.ifBlank { topicId })
+                    }
+                },
+                enabled = topicId.isNotBlank(),
             ) {
                 Text("添加")
             }

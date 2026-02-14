@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class],
-    version = 3,
+    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
@@ -20,6 +20,8 @@ abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun blockedUserDao(): BlockedUserDao
 
     abstract fun blockedContentRecordDao(): BlockedContentRecordDao
+
+    abstract fun blockedTopicDao(): BlockedTopicDao
 
     companion object {
         @Volatile
@@ -64,6 +66,26 @@ abstract class ContentFilterDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 3 to version 4
+         * Changes:
+         * 1. Add new table: blocked_topics
+         */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create blocked_topics table
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `blocked_topics` (
+                        `topicId` TEXT NOT NULL PRIMARY KEY,
+                        `topicName` TEXT NOT NULL,
+                        `addedTime` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ContentFilterDatabase = INSTANCE ?: synchronized(this) {
             val instance =
                 Room
@@ -71,7 +93,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         context.applicationContext,
                         ContentFilterDatabase::class.java,
                         "content_filter_database",
-                    ).addMigrations(MIGRATION_2_3)
+                    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration(true)
                     .build()
             INSTANCE = instance

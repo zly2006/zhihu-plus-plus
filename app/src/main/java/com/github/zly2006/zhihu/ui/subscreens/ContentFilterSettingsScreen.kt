@@ -204,6 +204,89 @@ fun ContentFilterSettingsScreen(
                 },
             )
 
+            val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
+            SwitchSettingItem(
+                title = "启用主题屏蔽",
+                description = "屏蔽包含特定主题的内容",
+                checked = enableTopicBlocking.value,
+                onCheckedChange = {
+                    enableTopicBlocking.value = it
+                    preferences.edit { putBoolean("enableTopicBlocking", it) }
+                },
+            )
+
+            AnimatedVisibility(visible = enableTopicBlocking.value) {
+                Column {
+                    val topicThreshold = remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
+                    var showThresholdDialog by remember { mutableStateOf(false) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showThresholdDialog = true }
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text("主题屏蔽阈值", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            topicThreshold.value.toString(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+
+                    if (showThresholdDialog) {
+                        var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
+
+                        AlertDialog(
+                            onDismissRequest = { showThresholdDialog = false },
+                            title = { Text("设置主题屏蔽阈值") },
+                            text = {
+                                Column {
+                                    Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    OutlinedTextField(
+                                        value = inputValue,
+                                        onValueChange = { inputValue = it },
+                                        label = { Text("阈值") },
+                                        singleLine = true,
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        val newThreshold = inputValue.toIntOrNull()
+                                        if (newThreshold != null && newThreshold > 0) {
+                                            topicThreshold.value = newThreshold
+                                            preferences.edit { putInt("topicBlockingThreshold", newThreshold) }
+                                            showThresholdDialog = false
+                                        } else {
+                                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                ) {
+                                    Text("确定")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showThresholdDialog = false }) {
+                                    Text("取消")
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

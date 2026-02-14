@@ -14,6 +14,7 @@ class BlocklistManager private constructor(
     private val database = ContentFilterDatabase.getDatabase(context)
     private val keywordDao = database.blockedKeywordDao()
     private val userDao = database.blockedUserDao()
+    private val topicDao = database.blockedTopicDao()
 
     companion object {
         @Volatile
@@ -169,6 +170,7 @@ class BlocklistManager private constructor(
         BlocklistStats(
             keywordCount = keywordDao.getKeywordCount(),
             userCount = userDao.getUserCount(),
+            topicCount = topicDao.getTopicCount(),
         )
     }
 
@@ -179,7 +181,65 @@ class BlocklistManager private constructor(
         withContext(Dispatchers.IO) {
             keywordDao.clearAllKeywords()
             userDao.clearAllUsers()
+            topicDao.clearAllTopics()
         }
+    }
+
+    // ==================== 主题屏蔽 ====================
+
+    /**
+     * 添加屏蔽主题
+     */
+    suspend fun addBlockedTopic(
+        topicId: String,
+        topicName: String,
+    ): Long = withContext(Dispatchers.IO) {
+        val blockedTopic = BlockedTopic(
+            topicId = topicId,
+            topicName = topicName,
+        )
+        topicDao.insertTopic(blockedTopic)
+    }
+
+    /**
+     * 删除屏蔽主题
+     */
+    suspend fun removeBlockedTopic(topicId: String) {
+        withContext(Dispatchers.IO) {
+            topicDao.deleteTopicById(topicId)
+        }
+    }
+
+    /**
+     * 获取所有屏蔽主题
+     */
+    suspend fun getAllBlockedTopics(): List<BlockedTopic> = withContext(Dispatchers.IO) {
+        topicDao.getAllTopics()
+    }
+
+    /**
+     * 清空所有屏蔽主题
+     */
+    suspend fun clearAllBlockedTopics() {
+        withContext(Dispatchers.IO) {
+            topicDao.clearAllTopics()
+        }
+    }
+
+    /**
+     * 检查主题是否被屏蔽
+     */
+    suspend fun isTopicBlocked(topicId: String?): Boolean = withContext(Dispatchers.IO) {
+        if (topicId.isNullOrBlank()) return@withContext false
+        topicDao.isTopicBlocked(topicId)
+    }
+
+    /**
+     * 批量检查主题是否被屏蔽，返回被屏蔽的主题数量
+     */
+    suspend fun countBlockedTopics(topicIds: List<String>?): Int = withContext(Dispatchers.IO) {
+        if (topicIds.isNullOrEmpty()) return@withContext 0
+        topicDao.getBlockedTopicIds(topicIds).size
     }
 }
 
@@ -189,4 +249,5 @@ class BlocklistManager private constructor(
 data class BlocklistStats(
     val keywordCount: Int,
     val userCount: Int,
+    val topicCount: Int,
 )

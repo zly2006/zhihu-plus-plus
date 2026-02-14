@@ -81,6 +81,7 @@ fun FeedCard(
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
     onNavigate: ((NavDestination) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
@@ -293,6 +294,24 @@ fun FeedCard(
                                                 onBlockUser?.invoke(item)
                                             },
                                         )
+                                        // 添加主题屏蔽选项
+                                        if (onBlockTopic != null && item.raw != null) {
+                                            val topics = when (val raw = item.raw) {
+                                                is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
+                                                is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
+                                                is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
+                                                else -> emptyList()
+                                            }
+                                            topics.forEach { topic ->
+                                                DropdownMenuItem(
+                                                    text = { Text("屏蔽「${topic.name}」") },
+                                                    onClick = {
+                                                        showMenu = false
+                                                        onBlockTopic(topic.id, topic.name)
+                                                    },
+                                                )
+                                            }
+                                        }
                                         if (onNavigate != null) {
                                             DropdownMenuItem(
                                                 text = { Text("外观设置") },

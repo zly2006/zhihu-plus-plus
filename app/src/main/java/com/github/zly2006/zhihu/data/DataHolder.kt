@@ -169,6 +169,7 @@ object DataHolder {
         val type: String,
         val updatedTime: Long,
         val url: String,
+        val topics: List<Topic> = emptyList(),
     )
 
     @Serializable
@@ -339,6 +340,7 @@ object DataHolder {
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
+        val topics: List<Topic>? = null,
     ) : Content
 
     @Serializable

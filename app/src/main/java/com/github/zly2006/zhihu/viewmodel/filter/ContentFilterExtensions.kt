@@ -84,6 +84,22 @@ object ContentFilterExtensions {
     }
 
     /**
+     * 检查是否启用了主题屏蔽功能
+     */
+    fun isTopicBlockingEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean("enableTopicBlocking", true)
+    }
+
+    /**
+     * 获取主题屏蔽阈值
+     */
+    fun getTopicBlockingThreshold(context: Context): Int {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getInt("topicBlockingThreshold", 1)
+    }
+
+    /**
      * 在内容显示时记录展示次数
      * 建议在RecyclerView的onBindViewHolder或Compose的LaunchedEffect中调用
      */
@@ -178,8 +194,10 @@ object ContentFilterExtensions {
                 Pair(emptyList(), filteredItems)
             }
 
-            // 2. 转换为FilterableContent并获取完整内容
-            val filterableContents = otherItems.map { item ->
+            // 2. 转换为FilterableContent并获取完整内容，同时建立映射关系
+            val itemToFilterableMap = mutableMapOf<com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem, FilterableContent>()
+
+            otherItems.forEach { item ->
                 val (contentType, contentId) = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> {
                         val type = when (dest.type) {
@@ -202,7 +220,7 @@ object ContentFilterExtensions {
                     else -> DataHolder.DummyContent
                 }
 
-                FilterableContent(
+                val filterableContent = FilterableContent(
                     title = item.title,
                     summary = item.summary,
                     content = when (rawContent) {
@@ -223,7 +241,11 @@ object ContentFilterExtensions {
                         ?.author
                         ?.isFollowing ?: false,
                 )
+
+                itemToFilterableMap[item] = filterableContent
             }
+
+            val filterableContents = itemToFilterableMap.values.toList()
 
             // 3. 过滤广告和付费内容
             val nonAdContents = filterableContents.filter { content ->
@@ -234,16 +256,26 @@ object ContentFilterExtensions {
             val filteredContents = filterContents(context, nonAdContents)
             val filteredContentIds = filteredContents.map { it.contentId }.toSet()
 
-            val filteredOtherItems = otherItems.filter { item ->
+            // 5. 根据过滤结果重新构建FeedDisplayItem，并附带raw信息
+            val itemToRawMap = itemToFilterableMap.entries.associate { (item, filterable) ->
+                filterable.contentId to Pair(item, filterable.raw)
+            }
+
+            val filteredOtherItems = otherItems.mapNotNull { item ->
                 val contentId = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> dest.id.toString()
                     is com.github.zly2006.zhihu.Question -> dest.questionId.toString()
                     else -> item.navDestination.hashCode().toString()
                 }
-                contentId in filteredContentIds
+                if (contentId in filteredContentIds) {
+                    val (_, raw) = itemToRawMap[contentId] ?: (null to null)
+                    item.copy(raw = raw)
+                } else {
+                    null
+                }
             }
 
-            // 5. 应用用户屏蔽
+            // 6. 应用用户屏蔽
             filteredItems = if (isUserBlockingEnabled(context)) {
                 val blocklistManager = BlocklistManager.getInstance(context)
                 (followedUserItems + filteredOtherItems).filter { item ->
@@ -360,7 +392,29 @@ object ContentFilterExtensions {
             filteredContents = finalFilteredContents
         }
 
+        // 应用主题屏蔽
+        if (isTopicBlockingEnabled(context)) {
+            val blocklistManager = BlocklistManager.getInstance(context)
+            val threshold = getTopicBlockingThreshold(context)
+
+            filteredContents = filteredContents.filter { content ->
+                val topicIds = extractTopicIds(content.raw)
+                val blockedTopicCount = blocklistManager.countBlockedTopics(topicIds)
+                blockedTopicCount < threshold
+            }
+        }
+
         return filteredContents
+    }
+
+    /**
+     * 从raw content中提取主题ID列表
+     */
+    private fun extractTopicIds(raw: DataHolder.Content): List<String>? = when (raw) {
+        is DataHolder.Answer -> raw.question.topics.map { it.id }
+        is DataHolder.Question -> raw.topics.map { it.id }
+        is DataHolder.Article -> raw.topics?.map { it.id }
+        else -> null
     }
 }
 
