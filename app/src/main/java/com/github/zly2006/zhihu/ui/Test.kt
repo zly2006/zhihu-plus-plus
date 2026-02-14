@@ -56,7 +56,7 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KType
 
 @Composable
-public fun NavHost(
+fun NavHost(
     navController: NavHostController,
     startDestination: Any,
     modifier: Modifier = Modifier,
