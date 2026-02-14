@@ -1,9 +1,11 @@
 package com.github.zly2006.zhihu.markdown
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -11,15 +13,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -31,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
@@ -147,7 +157,7 @@ class MarkdownRenderContext(
 )
 
 @Composable
-fun AnnotatedString.Builder.renderInline(
+fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
     renderContext: MarkdownRenderContext,
     onNavigate: (NavDestination) -> Unit,
@@ -170,7 +180,7 @@ fun AnnotatedString.Builder.renderInline(
                         ?: luoTianYiUrlLauncher(context, d.url.toUri())
                 },
             ) {
-                renderInline(d.title, renderContext, onNavigate)
+                RenderInline(d.title, renderContext, onNavigate)
             }
         }
 
@@ -197,7 +207,7 @@ fun AnnotatedString.Builder.renderInline(
 }
 
 @Composable
-fun MdAst.render(
+fun MdAst.Render(
     renderContext: MarkdownRenderContext,
     onNavigate: (NavDestination) -> Unit,
 ) {
@@ -223,7 +233,7 @@ fun MdAst.render(
             Text(
                 text = buildAnnotatedString {
                     d.text.forEach {
-                        renderInline(it, renderContext, onNavigate)
+                        RenderInline(it, renderContext, onNavigate)
                     }
                 },
                 style = headerStyle.copy(
@@ -237,7 +247,7 @@ fun MdAst.render(
             Text(
                 text = buildAnnotatedString {
                     d.inlines.forEach {
-                        renderInline(it, renderContext, onNavigate)
+                        RenderInline(it, renderContext, onNavigate)
                     }
                 },
                 style = baseStyle.copy(
@@ -250,7 +260,6 @@ fun MdAst.render(
         is AstBlockquote -> {
             androidx.compose.ui.layout.Layout(
                 content = {
-                    // Gutter bar
                     Box(
                         Modifier
                             .padding(start = 6.dp, end = 6.dp)
@@ -260,12 +269,11 @@ fun MdAst.render(
                                 RoundedCornerShape(50),
                             ),
                     )
-                    // Content
-                    androidx.compose.foundation.layout.Column(
+                    Column(
                         modifier = Modifier.padding(start = 4.dp),
                     ) {
                         d.children.forEach {
-                            it.render(renderContext, onNavigate)
+                            it.Render(renderContext, onNavigate)
                         }
                     }
                 },
@@ -341,55 +349,78 @@ fun MdAst.render(
             )
         }
         is AstImage -> {
+            var expanded by remember { mutableStateOf(false) }
+            var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
+            val density = LocalDensity.current
             val view = LocalView.current
+            val coroutineScope = rememberCoroutineScope()
+            val httpClient = AccountData.httpClient(context)
+
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
-                val coroutineScope = rememberCoroutineScope()
                 AsyncImage(
                     model = d.url,
                     contentDescription = d.altText,
                     modifier = Modifier
-                        .fillMaxWidth(0.8f) // 限制最大宽度为父容器的80%
-                        .combinedClickable(
-                            onClick = {
-                                // 点击：使用与WebviewComp中相同的openImage函数逻辑
-                                val httpClient = AccountData.httpClient(context)
-                                // 调用与WebviewComp相同的OpenImageDislog类
-                                val dialog = OpenImageDislog(context, httpClient, d.url)
-                                dialog.show()
-                            },
-                            onLongClick = {
-                                // 长按：显示上下文菜单
-                                val popupMenu = androidx.appcompat.widget.PopupMenu(context, view)
-                                val httpClient = AccountData.httpClient(context)
-
-                                popupMenu.menu.add("查看图片").setOnMenuItemClickListener {
+                        .fillMaxWidth(0.8f)
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = {
                                     val dialog = OpenImageDislog(context, httpClient, d.url)
                                     dialog.show()
-                                    true
-                                }
-                                popupMenu.menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                    luoTianYiUrlLauncher(context, d.url.toUri())
-                                    true
-                                }
-                                popupMenu.menu.add("保存图片").setOnMenuItemClickListener {
-                                    coroutineScope.launch {
-                                        saveImageToGallery(context, httpClient, d.url)
+                                },
+                                onLongPress = { offset ->
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                    pressOffset = with(density) {
+                                        DpOffset(offset.x.toDp(), offset.y.toDp() - 20.dp)
                                     }
-                                    true
-                                }
-                                popupMenu.menu.add("分享图片").setOnMenuItemClickListener {
-                                    coroutineScope.launch {
-                                        shareImage(context, httpClient, d.url)
-                                    }
-                                    true
-                                }
-                                popupMenu.show()
-                            },
-                        ),
+                                    expanded = true
+                                },
+                            )
+                        },
                 )
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    offset = pressOffset,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("查看图片") },
+                        onClick = {
+                            expanded = false
+                            val dialog = OpenImageDislog(context, httpClient, d.url)
+                            dialog.show()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("在浏览器中打开") },
+                        onClick = {
+                            expanded = false
+                            luoTianYiUrlLauncher(context, d.url.toUri())
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("保存图片") },
+                        onClick = {
+                            expanded = false
+                            coroutineScope.launch {
+                                saveImageToGallery(context, httpClient, d.url)
+                            }
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("分享图片") },
+                        onClick = {
+                            expanded = false
+                            coroutineScope.launch {
+                                shareImage(context, httpClient, d.url)
+                            }
+                        },
+                    )
+                }
             }
         }
         is AstList -> {}

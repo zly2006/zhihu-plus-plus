@@ -104,8 +104,8 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
+import com.github.zly2006.zhihu.markdown.Render
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
-import com.github.zly2006.zhihu.markdown.render
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -900,7 +900,7 @@ fun ArticleScreen(
                     ) {
                         Column {
                             for (ast in astNode) {
-                                ast.render(context, onNavigate)
+                                ast.Render(context, onNavigate)
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
