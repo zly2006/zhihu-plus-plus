@@ -222,8 +222,18 @@ fun MdAst.Render(
     when (val d = data) {
         is AstHeader -> {
             val headerStyle = when (d.level) {
-                1 -> MaterialTheme.typography.headlineLarge
-                2 -> MaterialTheme.typography.headlineMedium
+                1 -> TextStyle(
+                    fontFamily = FontFamily.Default,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = baseStyle.fontSize * 2.0f,
+                    lineHeight = baseStyle.fontSize * 2.0f * 1.4f,
+                )
+                2 -> TextStyle(
+                    fontFamily = FontFamily.Default,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = baseStyle.fontSize * 1.5f,
+                    lineHeight = baseStyle.fontSize * 1.5f * 1.4f,
+                )
                 3 -> MaterialTheme.typography.headlineSmall
                 4 -> MaterialTheme.typography.titleLarge
                 5 -> MaterialTheme.typography.titleMedium
@@ -236,8 +246,7 @@ fun MdAst.Render(
                     }
                 },
                 style = headerStyle.copy(
-                    fontSize = baseStyle.fontSize * fontSizeMultiplier * (headerStyle.fontSize.value / baseStyle.fontSize.value),
-                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                    fontSize = headerStyle.fontSize * fontSizeMultiplier,
                 ),
             )
         }
