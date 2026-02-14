@@ -325,7 +325,7 @@ fun MdAst.render(
             Box(
                 Modifier
                     .padding(vertical = 8.dp)
-                    .height(3.dp)
+                    .height(1.5.dp)
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),
             )

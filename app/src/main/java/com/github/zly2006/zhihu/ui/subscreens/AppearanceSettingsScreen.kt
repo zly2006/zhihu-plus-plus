@@ -340,17 +340,6 @@ fun AppearanceSettingsScreen(
                 },
             )
 
-            val useWebview = remember { mutableStateOf(preferences.getBoolean("commentsUseWebview1", false)) }
-            SwitchSettingItem(
-                title = "使用 WebView 显示评论",
-                description = "支持显示图片和富文本链接",
-                checked = useWebview.value,
-                onCheckedChange = {
-                    useWebview.value = it
-                    preferences.edit { putBoolean("commentsUseWebview1", it) }
-                },
-            )
-
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
                 title = "WebView 硬件加速",
