@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
 fun DeveloperSettingsScreen(
     onNavigateBack: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
@@ -171,7 +171,7 @@ fun DeveloperSettingsScreen(
                 Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
 
                 Button(onClick = {
-                    onNavigate(SentenceSimilarityTest)
+                    navigator.onNavigate(SentenceSimilarityTest)
                 }) { Text("句子相似度") }
             }
 

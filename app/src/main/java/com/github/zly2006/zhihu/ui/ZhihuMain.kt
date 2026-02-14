@@ -61,6 +61,7 @@ import com.github.zly2006.zhihu.HotList
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.Navigator
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
@@ -206,7 +207,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
         },
     ) { innerPadding ->
-        CompositionLocalProvider(LocalNavigator provides activity::navigate) {
+        CompositionLocalProvider(
+            LocalNavigator provides Navigator(
+                onNavigate = activity::navigate,
+                onNavigateBack = navController::popBackStack,
+            ),
+        ) {
             MyNavHost(
                 navController,
                 modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),

@@ -63,7 +63,7 @@ fun BlocklistSettingsScreen(
     innerPadding: PaddingValues,
     onNavigateBack: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -262,7 +262,7 @@ fun BlocklistSettingsScreen(
                         }
                     },
                     onNavigateToUser = { user ->
-                        onNavigate(
+                        navigator.onNavigate(
                             com.github.zly2006.zhihu.Person(
                                 id = user.userId,
                                 urlToken = user.urlToken ?: "",

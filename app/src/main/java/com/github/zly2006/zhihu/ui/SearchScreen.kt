@@ -57,7 +57,7 @@ fun SearchScreen(
     search: com.github.zly2006.zhihu.Search,
     onBack: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel { SearchViewModel(search.query) }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -118,7 +118,7 @@ fun SearchScreen(
                                         onSearch = {
                                             keyboardController?.hide()
                                             if (searchText.isNotBlank()) {
-                                                onNavigate(
+                                                navigator.onNavigate(
                                                     com.github.zly2006.zhihu
                                                         .Search(query = searchText),
                                                 )
@@ -190,10 +190,9 @@ fun SearchScreen(
                     ) { item ->
                         FeedCard(
                             item,
-                            onNavigate = onNavigate,
                         ) {
                             if (navDestination != null) {
-                                onNavigate(navDestination)
+                                navigator.onNavigate(navDestination)
                             } else {
                                 Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
                             }

@@ -33,7 +33,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HotListScreen() {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
 
@@ -67,10 +67,9 @@ fun HotListScreen() {
             ) { item ->
                 FeedCard(
                     item,
-                    onNavigate = onNavigate,
                 ) {
                     if (navDestination != null) {
-                        onNavigate(navDestination)
+                        navigator.onNavigate(navDestination)
                     } else {
                         Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
                     }

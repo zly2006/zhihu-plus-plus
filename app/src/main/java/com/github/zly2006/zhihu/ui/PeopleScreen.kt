@@ -389,7 +389,7 @@ suspend fun HttpResponse.raiseForStatus() = apply {
 fun PeopleScreen(
     person: Person,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
@@ -515,9 +515,8 @@ fun PeopleScreen(
                                         feed = null,
                                     ),
                                     horizontalPadding = 4.dp,
-                                    onNavigate = onNavigate,
                                 ) {
-                                    onNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             type = ArticleType.Answer,
                                             id = it.id,
@@ -556,9 +555,8 @@ fun PeopleScreen(
                                         feed = null,
                                     ),
                                     horizontalPadding = 4.dp,
-                                    onNavigate = onNavigate,
                                 ) {
-                                    onNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             type = ArticleType.Article,
                                             id = it.id,
@@ -582,9 +580,8 @@ fun PeopleScreen(
                             FeedCard(
                                 it,
                                 horizontalPadding = 4.dp,
-                                onNavigate = onNavigate,
                             ) {
-                                it.navDestination?.let(onNavigate)
+                                it.navDestination?.let(navigator.onNavigate)
                             }
                         }
                     }
@@ -599,7 +596,7 @@ fun PeopleScreen(
                         ) { collection ->
                             CollectionListItem(
                                 collection = collection,
-                                onNavigate = onNavigate,
+                                onNavigate = navigator.onNavigate,
                             )
                         }
                     }
@@ -612,10 +609,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.questionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { question ->
-                            QuestionListItem(
-                                question = question,
-                                onNavigate = onNavigate,
-                            )
+                            QuestionListItem(question)
                         }
                     }
 
@@ -627,10 +621,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.pinsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { pin ->
-                            PinListItem(
-                                pin = pin,
-                                onNavigate = onNavigate,
-                            )
+                            PinListItem(pin)
                         }
                     }
 
@@ -642,10 +633,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.columnsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { column ->
-                            ColumnListItem(
-                                column = column,
-                                onNavigate = onNavigate,
-                            )
+                            ColumnListItem(column)
                         }
                     }
 
@@ -657,10 +645,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.followersFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { people ->
-                            PeopleListItem(
-                                people = people,
-                                onNavigate = onNavigate,
-                            )
+                            PeopleListItem(people)
                         }
                     }
 
@@ -672,10 +657,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.followingFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { people ->
-                            PeopleListItem(
-                                people = people,
-                                onNavigate = onNavigate,
-                            )
+                            PeopleListItem(people)
                         }
                     }
                 }
@@ -719,13 +701,13 @@ private fun CollectionListItem(
 @Composable
 private fun QuestionListItem(
     question: DataHolder.Question,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                onNavigate(Question(question.id, question.title))
+                navigator.onNavigate(Question(question.id, question.title))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         Text(
@@ -744,13 +726,13 @@ private fun QuestionListItem(
 @Composable
 private fun PinListItem(
     pin: DataHolder.Pin,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                onNavigate(Pin(pin.id.toLong()))
+                navigator.onNavigate(Pin(pin.id.toLong()))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
         val text = remember { Jsoup.parse(pin.excerptTitle).text() }
@@ -772,7 +754,6 @@ private fun PinListItem(
 @Composable
 private fun ColumnListItem(
     column: DataHolder.Column,
-    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     Row(
@@ -817,8 +798,8 @@ private fun ColumnListItem(
 @Composable
 private fun PeopleListItem(
     people: DataHolder.People,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -870,7 +851,7 @@ private fun PeopleListItem(
         }
         OutlinedButton(
             onClick = {
-                onNavigate(
+                navigator.onNavigate(
                     Person(
                         id = people.id,
                         name = people.name,

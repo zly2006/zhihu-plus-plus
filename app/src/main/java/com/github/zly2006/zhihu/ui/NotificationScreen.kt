@@ -74,7 +74,7 @@ fun NotificationScreen(
     viewModel: NotificationViewModel,
     onBack: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -111,7 +111,7 @@ fun NotificationScreen(
                         }
                     }
                     IconButton(onClick = {
-                        onNavigate(Notification.NotificationSettings)
+                        navigator.onNavigate(Notification.NotificationSettings)
                     }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
@@ -147,20 +147,20 @@ fun NotificationScreen(
                                 -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
-                                        onNavigate(it)
+                                        navigator.onNavigate(it)
                                     } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                                 }
 
                                 is NotificationTarget.Question -> {
-                                    onNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
                                 }
 
                                 is NotificationTarget.People -> {
-                                    onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
+                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                 }
 
                                 is NotificationTarget.Answer -> {
-                                    onNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Answer,
@@ -170,7 +170,7 @@ fun NotificationScreen(
                                     )
                                 }
                                 is NotificationTarget.Article -> {
-                                    onNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Article,

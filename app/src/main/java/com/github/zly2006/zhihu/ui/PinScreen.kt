@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -50,12 +52,16 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
+import com.github.zly2006.zhihu.markdown.Render
+import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.PinViewModel
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
@@ -68,6 +74,7 @@ fun PinScreen(
     onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val httpClient = remember { AccountData.httpClient(context) }
 
     val viewModel = viewModel<PinViewModel>(
@@ -196,7 +203,9 @@ private fun PinContent(
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
+    val context = LocalContext.current
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     Column(
@@ -210,7 +219,7 @@ private fun PinContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable {
-                    onNavigate(
+                    navigator.onNavigate(
                         Person(
                             id = pin.author.id,
                             urlToken = pin.author.urlToken,
@@ -256,13 +265,31 @@ private fun PinContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Content
-        WebviewComp {
-            it.setupUpWebviewClient()
-            val document = Jsoup.parse(pin.contentHtml)
-            it.loadZhihu(
-                "https://www.zhihu.com",
-                document,
-            )
+        if (preferences.getBoolean("articleUseWebview", true)) {
+            WebviewComp {
+                it.setupUpWebviewClient()
+                val document = Jsoup.parse(pin.contentHtml)
+                it.loadZhihu(
+                    "https://www.zhihu.com",
+                    document,
+                )
+            }
+        } else {
+            val astNode = remember(pin.contentHtml) {
+                htmlToMdAst(pin.contentHtml)
+            }
+            val mdContext = MarkdownRenderContext()
+            Spacer(Modifier.height(10.dp))
+            SelectionContainer(
+                modifier = Modifier.fuckHonorService(),
+            ) {
+                Column {
+                    for (ast in astNode) {
+                        ast.Render(mdContext)
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

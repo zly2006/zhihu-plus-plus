@@ -146,7 +146,7 @@ interface IHomeFeedViewModel {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen() {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
@@ -227,7 +227,7 @@ fun HomeScreen() {
                         shape = RoundedCornerShape(24.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         onClick = {
-                            onNavigate(
+                            navigator.onNavigate(
                                 com.github.zly2006.zhihu
                                     .Search(query = ""),
                             )
@@ -258,7 +258,7 @@ fun HomeScreen() {
                     // 通知按钮
                     IconButton(
                         onClick = {
-                            onNavigate(Notification)
+                            navigator.onNavigate(Notification)
                         },
                     ) {
                         BadgedBox(
@@ -317,14 +317,13 @@ fun HomeScreen() {
                         onBlockTopic = { topicId, topicName ->
                             viewModel.handleBlockTopic(context, topicId, topicName)
                         },
-                        onNavigate = onNavigate,
                     ) {
                         feed?.let {
 //                            DataHolder.putFeed(feed)
                             (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
                         }
                         if (navDestination != null) {
-                            onNavigate(navDestination)
+                            navigator.onNavigate(navDestination)
                         }
                     }
                 }
