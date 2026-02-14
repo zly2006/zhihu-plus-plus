@@ -1,7 +1,9 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.MediaStore.MediaColumns
 import android.widget.Toast
@@ -31,6 +33,19 @@ import io.ktor.client.statement.readRawBytes
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
+
+/**
+ * 从 img 元素提取最高质量的图片URL（无水印原图）
+ * 按优先级尝试不同的属性
+ */
+fun extractImageUrl(imgElement: Element): String? = imgElement.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
+    "https://pic1.zhimg.com/$it"
+}
+    ?: imgElement.attr("data-original").takeIf { it.isNotBlank() }
+    ?: imgElement.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
+    ?: imgElement.attr("data-actualsrc").takeIf { it.isNotBlank() }
+    ?: imgElement.attr("data-thumbnail").takeIf { it.isNotBlank() }
+    ?: imgElement.attr("src").takeIf { it.isNotBlank() }
 
 /**
  * 内容块类型，用于Column渲染
@@ -280,6 +295,82 @@ suspend fun saveImageToGallery(
             .makeText(
                 context,
                 "保存失败: ${e.message}",
+                Toast.LENGTH_SHORT,
+            ).show()
+    }
+}
+
+/**
+ * 下载图片并保存到相册（不显示Toast）
+ * @return 保存的图片 URI，如果失败则返回 null
+ */
+suspend fun downloadAndSaveImage(
+    context: Context,
+    httpClient: HttpClient,
+    imageUrl: String,
+    fileName: String,
+    isPending: Boolean = false,
+): android.net.Uri? {
+    val response = httpClient.get(imageUrl)
+    val bytes = response.readRawBytes()
+
+    val contentValues = android.content.ContentValues().apply {
+        put(MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaColumns.MIME_TYPE, "image/jpeg")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+            if (isPending) put(MediaColumns.IS_PENDING, 1)
+        }
+    }
+
+    val resolver = context.contentResolver
+    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        MediaStore.Images.Media
+            .getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    } else {
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    }
+
+    val imageUri = resolver.insert(collection, contentValues)
+    if (imageUri != null) {
+        resolver.openOutputStream(imageUri).use { os ->
+            os?.write(bytes)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPending) {
+            contentValues.clear()
+            contentValues.put(MediaColumns.IS_PENDING, 0)
+            resolver.update(imageUri, contentValues, null, null)
+        }
+    }
+    return imageUri
+}
+
+/**
+ * 分享图片
+ */
+suspend fun shareImage(
+    context: Context,
+    httpClient: HttpClient,
+    imageUrl: String,
+) {
+    try {
+        val fileName = "share_${System.currentTimeMillis()}.jpg"
+        val imageUri = downloadAndSaveImage(context, httpClient, imageUrl, fileName)
+        if (imageUri != null) {
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_STREAM, imageUri)
+                type = "image/jpeg"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+        }
+    } catch (e: Exception) {
+        Toast
+            .makeText(
+                context,
+                "分享失败: ${e.message}",
                 Toast.LENGTH_SHORT,
             ).show()
     }

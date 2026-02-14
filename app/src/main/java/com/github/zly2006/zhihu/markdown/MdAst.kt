@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.markdown
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,9 +15,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -31,8 +35,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.ui.components.OpenImageDislog
+import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.util.shareImage
+import kotlinx.coroutines.launch
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
@@ -331,10 +341,56 @@ fun MdAst.render(
             )
         }
         is AstImage -> {
-            AsyncImage(
-                d.url,
-                contentDescription = d.altText,
-            )
+            val view = LocalView.current
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                val coroutineScope = rememberCoroutineScope()
+                AsyncImage(
+                    model = d.url,
+                    contentDescription = d.altText,
+                    modifier = Modifier
+                        .fillMaxWidth(0.8f) // 限制最大宽度为父容器的80%
+                        .combinedClickable(
+                            onClick = {
+                                // 点击：使用与WebviewComp中相同的openImage函数逻辑
+                                val httpClient = AccountData.httpClient(context)
+                                // 调用与WebviewComp相同的OpenImageDislog类
+                                val dialog = OpenImageDislog(context, httpClient, d.url)
+                                dialog.show()
+                            },
+                            onLongClick = {
+                                // 长按：显示上下文菜单
+                                val popupMenu = androidx.appcompat.widget.PopupMenu(context, view)
+                                val httpClient = AccountData.httpClient(context)
+
+                                popupMenu.menu.add("查看图片").setOnMenuItemClickListener {
+                                    val dialog = OpenImageDislog(context, httpClient, d.url)
+                                    dialog.show()
+                                    true
+                                }
+                                popupMenu.menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                                    luoTianYiUrlLauncher(context, d.url.toUri())
+                                    true
+                                }
+                                popupMenu.menu.add("保存图片").setOnMenuItemClickListener {
+                                    coroutineScope.launch {
+                                        saveImageToGallery(context, httpClient, d.url)
+                                    }
+                                    true
+                                }
+                                popupMenu.menu.add("分享图片").setOnMenuItemClickListener {
+                                    coroutineScope.launch {
+                                        shareImage(context, httpClient, d.url)
+                                    }
+                                    true
+                                }
+                                popupMenu.show()
+                            },
+                        ),
+                )
+            }
         }
         is AstList -> {}
         is AstListItem -> {}
@@ -448,16 +504,24 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
     }
 
     "img" -> {
-        val src = element.attr("src").ifEmpty { element.attr("data-actualsrc") }
+        val src = extractImageUrl(element)
         val alt = element.attr("alt").ifEmpty { "image" }
-        MdAst(AstImage(src, alt), MdAstLinks())
+        if (src != null) {
+            MdAst(AstImage(src, alt), MdAstLinks())
+        } else {
+            null
+        }
     }
 
     "figure" -> {
         element.selectFirst("img")?.let { img ->
-            val src = img.attr("src").ifEmpty { img.attr("data-actualsrc") }
+            val src = extractImageUrl(img)
             val alt = img.attr("alt").ifEmpty { "image" }
-            MdAst(AstImage(src, alt), MdAstLinks())
+            if (src != null) {
+                MdAst(AstImage(src, alt), MdAstLinks())
+            } else {
+                null
+            }
         }
     }
 

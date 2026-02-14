@@ -2,7 +2,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -11,8 +10,6 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.AttributeSet
 import android.util.Log
 import android.view.ActionMode
@@ -52,7 +49,10 @@ import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.blacklist
+import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
+import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -61,7 +61,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
 import io.ktor.http.Url
 import io.ktor.http.contentType
@@ -128,13 +127,7 @@ class CustomWebView : WebView {
 
     fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
         if (clicked.tagName() == "img") {
-            val url =
-                clicked.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
-                    "https://pic1.zhimg.com/$it"
-                }
-                    ?: clicked.attr("data-original").takeIf { it.isNotBlank() }
-                    ?: clicked.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
-                    ?: clicked.attr("src").takeIf { it.isNotBlank() }
+            val url = extractImageUrl(clicked)
             if (url != null) {
                 val httpClient = AccountData.httpClient(context)
                 this.openImage(httpClient, url)
@@ -466,47 +459,9 @@ fun WebviewComp(
                         result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
                     ) {
                         val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val dataOriginalUrl =
-                            imgElement?.attr("data-original-token")?.takeIf { it.startsWith("v2-") }?.let {
-                                "https://pic1.zhimg.com/$it"
-                            } ?: imgElement?.attr("data-original")?.takeIf { it.isNotBlank() }
-                        val url = dataOriginalUrl ?: result.extra?.takeIf { !it.startsWith("data") }
+                        val url = imgElement?.let { extractImageUrl(it) }
+                            ?: result.extra?.takeIf { !it.startsWith("data") }
                         if (url != null) {
-                            suspend fun downloadAndSaveImage(fileName: String, isPending: Boolean = false): android.net.Uri? {
-                                val response = httpClient.get(url)
-                                val bytes = response.readRawBytes()
-
-                                val contentValues = ContentValues().apply {
-                                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                                        if (isPending) put(MediaStore.MediaColumns.IS_PENDING, 1)
-                                    }
-                                }
-
-                                val resolver = context.contentResolver
-                                val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                                } else {
-                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                                }
-
-                                val imageUri = resolver.insert(collection, contentValues)
-                                if (imageUri != null) {
-                                    resolver.openOutputStream(imageUri).use { os ->
-                                        os?.write(bytes)
-                                    }
-
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPending) {
-                                        contentValues.clear()
-                                        contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                                        resolver.update(imageUri, contentValues, null, null)
-                                    }
-                                }
-                                return imageUri
-                            }
-
                             menu.add("查看图片").setOnMenuItemClickListener {
                                 openImage(httpClient, url)
                                 true
@@ -517,48 +472,13 @@ fun WebviewComp(
                             }
                             menu.add("保存图片").setOnMenuItemClickListener {
                                 coroutineScope.launch {
-                                    try {
-                                        val fileName = url.toUri().lastPathSegment ?: "downloaded_image.jpg"
-                                        downloadAndSaveImage(fileName, isPending = true)
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "图片已保存到相册",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    } catch (e: Exception) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "保存失败: ${e.message}",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    }
+                                    saveImageToGallery(context, httpClient, url)
                                 }
                                 true
                             }
                             menu.add("分享图片").setOnMenuItemClickListener {
                                 coroutineScope.launch {
-                                    try {
-                                        val fileName = "share_${System.currentTimeMillis()}.jpg"
-                                        val imageUri = downloadAndSaveImage(fileName)
-                                        if (imageUri != null) {
-                                            val shareIntent = Intent().apply {
-                                                action = Intent.ACTION_SEND
-                                                putExtra(Intent.EXTRA_STREAM, imageUri)
-                                                type = "image/jpeg"
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            }
-                                            context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
-                                        }
-                                    } catch (e: Exception) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "分享失败: ${e.message}",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    }
+                                    shareImage(context, httpClient, url)
                                 }
                                 true
                             }
