@@ -1,10 +1,6 @@
 package com.github.zly2006.zhihu.ui.components
 
 import android.content.Context
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -21,10 +17,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -70,6 +68,7 @@ fun DraggableRefreshButton(
         animationSpec = tween(if (pressing) 1 else 300),
         label = "offsetY",
     )
+    val hapticFeedback = LocalHapticFeedback.current
 
     FloatingActionButton(
         onClick = onClick,
@@ -80,19 +79,7 @@ fun DraggableRefreshButton(
                 detectDragGestures(
                     onDragStart = {
                         pressing = true
-                        // 震动反馈
-                        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            (context.getSystemService(VibratorManager::class.java) as VibratorManager).defaultVibrator
-                        } else {
-                            @Suppress("DEPRECATION")
-                            context.getSystemService(Vibrator::class.java) as Vibrator
-                        }
-                        vibrator.vibrate(
-                            VibrationEffect.createOneShot(
-                                50,
-                                VibrationEffect.DEFAULT_AMPLITUDE,
-                            ),
-                        )
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                     onDragEnd = {
                         pressing = false
