@@ -22,6 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -35,15 +36,18 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
+import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -401,6 +405,42 @@ class MainActivity : ComponentActivity() {
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
         history.add(route)
+        if (route is Video) {
+            val current = runCatching {
+                navController.currentBackStackEntry?.toRoute<Article>()
+            }.getOrNull() ?: runCatching {
+                navController.previousBackStackEntry?.toRoute<Question>()
+            }.getOrNull()
+            if (current == null) {
+                Toast
+                    .makeText(this, "无法打开视频：未知的内容类型", Toast.LENGTH_SHORT)
+                    .show()
+                return
+            }
+            val (contentId, contentType) = when (current) {
+                is Article -> {
+                    current.id.toString() to when (current.type) {
+                        ArticleType.Answer -> "answer"
+                        ArticleType.Article -> "article"
+                    }
+                }
+                is Question -> {
+                    current.questionId.toString() to "question"
+                }
+                else -> error("Unsupported content type for video: $current")
+            }
+            CoroutineScope(Dispatchers.Main).launch {
+                val videoUrl = getHighestQualityVideoUrl(this@MainActivity, httpClient, route.id.toString(), contentId, contentType)
+                if (videoUrl == null) {
+                    Toast
+                        .makeText(this@MainActivity, "获取视频链接失败", Toast.LENGTH_SHORT)
+                        .show()
+                    return@launch
+                }
+                luoTianYiUrlLauncher(this@MainActivity, videoUrl.toUri())
+            }
+            return
+        }
         navController.navigate(route) {
             if (popup) {
                 launchSingleTop = true

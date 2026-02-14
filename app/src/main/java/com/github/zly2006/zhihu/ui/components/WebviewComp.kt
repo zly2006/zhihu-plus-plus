@@ -84,6 +84,56 @@ fun interface HtmlClickListener {
     fun onElementClick(element: Element)
 }
 
+/**
+ * 获取最高清晰度的视频URL
+ */
+@OptIn(DelicateCoroutinesApi::class)
+suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, videoId: String, contentId: String, contentType: String = "answer"): String? = try {
+    val response = httpClient.post("https://www.zhihu.com/api/v4/video/play_info?r=$videoId") {
+        contentType(ContentType.Application.Json)
+        header("x-xsrftoken", AccountData.data.cookies["_xsrf"])
+        header("x-app-za", "OS=webplayer")
+        header("x-referer", "")
+        setBody(
+            """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
+        )
+        signFetchRequest(context)
+    }
+
+    val responseText = response.bodyAsText()
+    val jsonResponse = json
+        .parseToJsonElement(responseText)
+        .jsonObject
+
+    val videoPlay = jsonResponse["video_play"]?.jsonObject
+    val playlist = videoPlay?.get("playlist")?.jsonObject
+    val mp4List = playlist?.get("mp4")?.jsonArray
+
+    // 找到最高质量的视频
+    var bestVideo: JsonObject? = null
+    var maxBitrate = -1
+
+    mp4List?.forEach { videoElement ->
+        val video = videoElement.jsonObject
+        val bitrate = video["bitrate"]?.jsonPrimitive?.intOrNull ?: 0
+        if (bitrate > maxBitrate) {
+            maxBitrate = bitrate
+            bestVideo = video
+        }
+    }
+
+    // 获取视频URL
+    bestVideo
+        ?.get("url")
+        ?.jsonArray
+        ?.firstOrNull()
+        ?.jsonPrimitive
+        ?.content
+} catch (e: Exception) {
+    Log.e("VideoDownload", "Error getting video URL: ${e.message}")
+    null
+}
+
 class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
@@ -145,7 +195,7 @@ class CustomWebView : WebView {
                 GlobalScope.launch(Dispatchers.IO) {
                     try {
                         val httpClient = AccountData.httpClient(context)
-                        val videoUrl = getHighestQualityVideoUrl(httpClient, dataLensId, contentId!!)
+                        val videoUrl = getHighestQualityVideoUrl(context, httpClient, dataLensId, contentId!!)
                         if (videoUrl != null) {
                             withContext(Dispatchers.Main) {
                                 luoTianYiUrlLauncher(context, videoUrl.toUri())
@@ -233,56 +283,6 @@ class CustomWebView : WebView {
 
     fun openImage(httpClient: HttpClient, url: String) {
         OpenImageDislog(context, httpClient, url).show()
-    }
-
-    /**
-     * 获取最高清晰度的视频URL
-     */
-    @OptIn(DelicateCoroutinesApi::class)
-    private suspend fun getHighestQualityVideoUrl(httpClient: HttpClient, videoId: String, contentId: String): String? = try {
-        val response = httpClient.post("https://www.zhihu.com/api/v4/video/play_info?r=$videoId") {
-            contentType(ContentType.Application.Json)
-            header("x-xsrftoken", AccountData.data.cookies["_xsrf"])
-            header("x-app-za", "OS=webplayer")
-            header("x-referer", "")
-            setBody(
-                """{"content_id":"$contentId","content_type_str":"answer","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
-            )
-            signFetchRequest(context)
-        }
-
-        val responseText = response.bodyAsText()
-        val jsonResponse = json
-            .parseToJsonElement(responseText)
-            .jsonObject
-
-        val videoPlay = jsonResponse["video_play"]?.jsonObject
-        val playlist = videoPlay?.get("playlist")?.jsonObject
-        val mp4List = playlist?.get("mp4")?.jsonArray
-
-        // 找到最高质量的视频
-        var bestVideo: JsonObject? = null
-        var maxBitrate = -1
-
-        mp4List?.forEach { videoElement ->
-            val video = videoElement.jsonObject
-            val bitrate = video["bitrate"]?.jsonPrimitive?.intOrNull ?: 0
-            if (bitrate > maxBitrate) {
-                maxBitrate = bitrate
-                bestVideo = video
-            }
-        }
-
-        // 获取视频URL
-        bestVideo
-            ?.get("url")
-            ?.jsonArray
-            ?.firstOrNull()
-            ?.jsonPrimitive
-            ?.content
-    } catch (e: Exception) {
-        Log.e("VideoDownload", "Error getting video URL: ${e.message}")
-        null
     }
 
     fun loadZhihu(
