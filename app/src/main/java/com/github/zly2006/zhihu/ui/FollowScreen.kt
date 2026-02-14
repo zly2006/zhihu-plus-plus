@@ -36,7 +36,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -54,7 +53,6 @@ class FollowScreenData : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen() {
-    val onNavigate = LocalNavigator.current
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("动态", "推荐")
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -92,17 +90,16 @@ fun FollowScreen() {
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> FollowDynamicScreen(onNavigate)
-                1 -> FollowRecommendScreen(onNavigate)
+                0 -> FollowDynamicScreen()
+                1 -> FollowRecommendScreen()
             }
         }
     }
 }
 
 @Composable
-fun FollowDynamicScreen(
-    onNavigate: (NavDestination) -> Unit,
-) {
+fun FollowDynamicScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowViewModel by context.viewModels()
@@ -152,10 +149,9 @@ fun FollowDynamicScreen(
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                    onNavigate = onNavigate,
                 ) {
                     if (navDestination != null) {
-                        onNavigate(navDestination)
+                        navigator.onNavigate(navDestination)
                     } else {
                         Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
                     }
@@ -195,9 +191,8 @@ fun FollowDynamicScreen(
 }
 
 @Composable
-fun FollowRecommendScreen(
-    onNavigate: (NavDestination) -> Unit,
-) {
+fun FollowRecommendScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowRecommendViewModel by context.viewModels()
@@ -248,10 +243,9 @@ fun FollowRecommendScreen(
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                    onNavigate = onNavigate,
                 ) {
                     if (navDestination != null) {
-                        onNavigate(navDestination)
+                        navigator.onNavigate(navDestination)
                     } else {
                         Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
                     }

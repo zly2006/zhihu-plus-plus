@@ -25,7 +25,7 @@ import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 fun CollectionScreen(
     urlToken: String,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel {
         CollectionsViewModel(urlToken)
@@ -59,7 +59,7 @@ fun CollectionScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             elevation = CardDefaults.cardElevation(4.dp),
             onClick = {
-                onNavigate(CollectionContent(collection.id))
+                navigator.onNavigate(CollectionContent(collection.id))
             },
         ) {
             Column(modifier = Modifier.padding(16.dp)) {

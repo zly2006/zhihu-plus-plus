@@ -16,7 +16,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 
 @Composable
 fun OnlineHistoryScreen() {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
 
@@ -37,7 +37,7 @@ fun OnlineHistoryScreen() {
                         Text("您正在查看在线阅读历史，点击查看")
                         Button(
                             onClick = {
-                                onNavigate(History)
+                                navigator.onNavigate(History)
                             },
                         ) {
                             Text("本地历史记录（老版本）")
@@ -48,10 +48,9 @@ fun OnlineHistoryScreen() {
         ) { item ->
             FeedCard(
                 item,
-                onNavigate = onNavigate,
             ) {
                 item.navDestination?.let {
-                    onNavigate(it)
+                    navigator.onNavigate(it)
                 }
             }
         }

@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -82,9 +82,9 @@ fun FeedCard(
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
-    onNavigate: ((NavDestination) -> Unit)? = null,
     onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val density = LocalDensity.current
     val context = LocalContext.current
     var offsetX by remember { mutableFloatStateOf(0f) }
@@ -312,15 +312,13 @@ fun FeedCard(
                                                 )
                                             }
                                         }
-                                        if (onNavigate != null) {
-                                            DropdownMenuItem(
-                                                text = { Text("外观设置") },
-                                                onClick = {
-                                                    showMenu = false
-                                                    onNavigate(Account.AppearanceSettings())
-                                                },
-                                            )
-                                        }
+                                        DropdownMenuItem(
+                                            text = { Text("外观设置") },
+                                            onClick = {
+                                                showMenu = false
+                                                navigator.onNavigate(Account.AppearanceSettings())
+                                            },
+                                        )
                                     }
                                 }
                             }

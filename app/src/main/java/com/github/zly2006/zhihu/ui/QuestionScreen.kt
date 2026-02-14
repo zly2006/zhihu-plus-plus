@@ -2,15 +2,18 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -48,6 +51,9 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
+import com.github.zly2006.zhihu.markdown.Render
+import com.github.zly2006.zhihu.markdown.htmlToMdAst
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -69,8 +75,9 @@ import org.jsoup.Jsoup
 fun QuestionScreen(
     question: Question,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val viewModel: QuestionFeedViewModel = viewModel {
         QuestionFeedViewModel(question.questionId)
     }
@@ -151,11 +158,29 @@ fun QuestionScreen(
                     item(1) {
                         val handle = LocalPinnableContainer.current?.pin()
                         if (questionContent.isNotEmpty()) {
-                            WebviewComp {
-                                it.loadZhihu(
-                                    "https://www.zhihu.com/question/${question.questionId}",
-                                    Jsoup.parse(questionContent),
-                                )
+                            if (preferences.getBoolean("articleUseWebview", true)) {
+                                WebviewComp {
+                                    it.loadZhihu(
+                                        "https://www.zhihu.com/question/${question.questionId}",
+                                        Jsoup.parse(questionContent),
+                                    )
+                                }
+                            } else {
+                                val astNode = remember(questionContent) {
+                                    htmlToMdAst(questionContent)
+                                }
+                                val mdContext = MarkdownRenderContext()
+                                Spacer(Modifier.height(10.dp))
+                                SelectionContainer(
+                                    modifier = Modifier.fuckHonorService(),
+                                ) {
+                                    Column {
+                                        for (ast in astNode) {
+                                            ast.Render(mdContext)
+                                            Spacer(Modifier.height(12.dp))
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -311,7 +336,7 @@ fun QuestionScreen(
                     item,
                 ) {
 //                    feed?.let { DataHolder.putFeed(it) }
-                    navDestination?.let { onNavigate(it) }
+                    navDestination?.let { navigator.onNavigate(it) }
                 }
             }
         }

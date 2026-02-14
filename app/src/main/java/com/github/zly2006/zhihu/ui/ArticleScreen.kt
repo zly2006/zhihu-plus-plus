@@ -1,4 +1,4 @@
-@file:Suppress("FunctionName", "PropertyName")
+@file:Suppress("FunctionName", "PropertyName", "INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 
 package com.github.zly2006.zhihu.ui
 
@@ -21,6 +21,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.internal.toClipEntry
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +41,11 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.LocalSelectionRegistrar
+import androidx.compose.foundation.text.selection.Selection
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.SelectionManager
+import androidx.compose.foundation.text.selection.SelectionRegistrarImpl
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -73,9 +79,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -477,7 +485,7 @@ fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
@@ -584,7 +592,7 @@ fun ArticleScreen(
                             .let {
                                 if (article.type == ArticleType.Answer) {
                                     it.clickable {
-                                        onNavigate(Question(viewModel.questionId, viewModel.title))
+                                        navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
                                     }
                                 } else {
                                     it
@@ -779,7 +787,7 @@ fun ArticleScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onNavigate(
+                        navigator.onNavigate(
                             com.github.zly2006.zhihu.Person(
                                 id = viewModel.authorId,
                                 urlToken = viewModel.authorUrlToken,
@@ -895,8 +903,22 @@ fun ArticleScreen(
                     }
                     val context = MarkdownRenderContext()
                     Spacer(Modifier.height(10.dp))
+                    var selection by remember { mutableStateOf<Selection?>(null) }
+
                     SelectionContainer(
-                        modifier = Modifier.fuckHonorService(),
+                        modifier = Modifier.fuckHonorService().dragAndDropSource { offset ->
+                            val manager = SelectionManager(SelectionRegistrarImpl())
+                            manager.selection = selection
+                            val text = manager.getSelectedText()
+                            val clipData = ClipData.newPlainText(
+                                "Selected Text",
+                                text!!.text,
+                            )
+                            val data = DragAndDropTransferData(clipData)
+                            data
+                        },
+                        selection = selection,
+                        onSelectionChange = { selection = it },
                     ) {
                         Column {
                             for (ast in astNode) {
@@ -957,7 +979,7 @@ fun ArticleScreen(
                         ) {
                             activity.navController.popBackStack()
                         }
-                        onNavigate(target.navDestination)
+                        navigator.onNavigate(target.navDestination)
                     }
                 }
             },

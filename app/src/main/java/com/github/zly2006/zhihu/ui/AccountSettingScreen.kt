@@ -65,7 +65,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 fun AccountSettingScreen(
     @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val preferences = remember {
         context.getSharedPreferences(
@@ -134,7 +134,7 @@ fun AccountSettingScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onNavigate(
+                        navigator.onNavigate(
                             Person(
                                 id = data.self?.id ?: "",
                                 urlToken = data.self?.urlToken ?: "",
@@ -182,7 +182,7 @@ fun AccountSettingScreen(
             )
 
             Button(
-                onClick = { onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
+                onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
@@ -208,20 +208,20 @@ fun AccountSettingScreen(
             headlineContent = { Text("外观与阅读体验") },
             supportingContent = { Text("主题颜色、字体大小等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.AppearanceSettings()) },
+            modifier = Modifier.clickable { navigator.onNavigate(Account.AppearanceSettings()) },
         )
         ListItem(
             headlineContent = { Text("推荐系统与内容过滤") },
             supportingContent = { Text("推荐、智能过滤、关键词屏蔽等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.RecommendSettings) },
+            modifier = Modifier.clickable { navigator.onNavigate(Account.RecommendSettings) },
         )
 
         ListItem(
             headlineContent = { Text("系统与更新") },
             supportingContent = { Text("GitHub、更新设置等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { onNavigate(Account.SystemAndUpdateSettings) },
+            modifier = Modifier.clickable { navigator.onNavigate(Account.SystemAndUpdateSettings) },
         )
 
         if (isDeveloper) {
@@ -229,7 +229,7 @@ fun AccountSettingScreen(
                 headlineContent = { Text("开发者选项") },
                 supportingContent = { Text("开发者选项") },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-                modifier = Modifier.clickable { onNavigate(Account.DeveloperSettings) },
+                modifier = Modifier.clickable { navigator.onNavigate(Account.DeveloperSettings) },
             )
         }
 

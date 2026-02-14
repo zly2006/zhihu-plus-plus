@@ -60,7 +60,7 @@ import kotlinx.coroutines.launch
 fun ContentFilterSettingsScreen(
     onNavigateBack: () -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
@@ -290,7 +290,7 @@ fun ContentFilterSettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigate(Account.RecommendSettings.Blocklist) }
+                    .clickable { navigator.onNavigate(Account.RecommendSettings.Blocklist) }
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,

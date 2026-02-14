@@ -161,7 +161,7 @@ fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
     renderContext: MarkdownRenderContext,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     when (val d = ast) {
         is AstSpan -> {
@@ -176,7 +176,7 @@ fun AnnotatedString.Builder.RenderInline(
                     d.url,
                     TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
                 ) {
-                    resolveContent(d.url.toUri())?.let(onNavigate)
+                    resolveContent(d.url.toUri())?.let(navigator.onNavigate)
                         ?: luoTianYiUrlLauncher(context, d.url.toUri())
                 },
             ) {
@@ -210,7 +210,6 @@ fun AnnotatedString.Builder.RenderInline(
 fun MdAst.Render(
     renderContext: MarkdownRenderContext,
 ) {
-    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("webview_settings", android.content.Context.MODE_PRIVATE) }
     val fontSizePercent = remember { preferences.getInt("webviewFontSize", 100) }

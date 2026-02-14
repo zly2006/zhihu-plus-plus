@@ -780,7 +780,7 @@ private fun CommentItem(
     toggleLike: () -> Unit = {},
     onChildCommentClick: (CommentModel) -> Unit,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val commentData = comment.item
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -811,7 +811,7 @@ private fun CommentItem(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         modifier = Modifier.clickable {
-                            onNavigate(
+                            navigator.onNavigate(
                                 Person(
                                     id = commentData.author.id,
                                     name = commentData.author.name,
@@ -845,7 +845,7 @@ private fun CommentItem(
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             modifier = Modifier.clickable {
-                                onNavigate(
+                                navigator.onNavigate(
                                     Person(
                                         id = commentData.replyToAuthor.id,
                                         name = commentData.replyToAuthor.name,
@@ -873,7 +873,7 @@ private fun CommentItem(
                         stripped.select("a.comment_img").forEach { it.remove() }
                         stripped.select("a.comment_gif").forEach { it.remove() }
                         stripped.select("a.comment_sticker").forEach { it.remove() }
-                        dfsSimple(stripped, onNavigate, context, emojisUsed)
+                        dfsSimple(stripped, navigator.onNavigate, context, emojisUsed)
                     }
                 }
 

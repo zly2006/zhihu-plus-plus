@@ -79,7 +79,7 @@ data class DailySection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DailyScreen() {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     var sections by remember { mutableStateOf<List<DailySection>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -292,7 +292,7 @@ fun DailyScreen() {
                                                 url?.let { resolveContent(url.toUri()) }
                                             }.getOrNull()
                                             if (destination != null) {
-                                                onNavigate(destination)
+                                                navigator.onNavigate(destination)
                                             } else {
                                                 val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
                                                 context.startActivity(intent)

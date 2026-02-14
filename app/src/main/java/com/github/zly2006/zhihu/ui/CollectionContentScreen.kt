@@ -24,7 +24,7 @@ import java.util.Date
 fun CollectionContentScreen(
     collectionId: String,
 ) {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { CollectionContentViewModel(collectionId) }
     val listState = rememberLazyListState()
@@ -63,9 +63,8 @@ fun CollectionContentScreen(
         FeedCard(
             item,
             Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            onNavigate = onNavigate,
         ) {
-            navDestination?.let { onNavigate(it) }
+            navDestination?.let { navigator.onNavigate(it) }
         }
     }
 }

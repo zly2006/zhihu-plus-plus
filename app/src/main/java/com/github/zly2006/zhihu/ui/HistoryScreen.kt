@@ -12,7 +12,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 
 @Composable
 fun HistoryScreen() {
-    val onNavigate = LocalNavigator.current
+    val navigator = LocalNavigator.current
     val viewModel: HistoryViewModel = viewModel()
     val context = LocalContext.current
 
@@ -30,10 +30,9 @@ fun HistoryScreen() {
         ) { item ->
             FeedCard(
                 item,
-                onNavigate = onNavigate,
             ) {
                 navDestination?.let {
-                    onNavigate(it)
+                    navigator.onNavigate(it)
                 }
             }
         }
