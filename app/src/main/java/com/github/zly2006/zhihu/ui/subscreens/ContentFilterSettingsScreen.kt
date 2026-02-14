@@ -47,7 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.Account
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
@@ -59,8 +59,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ContentFilterSettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val preferences = remember {

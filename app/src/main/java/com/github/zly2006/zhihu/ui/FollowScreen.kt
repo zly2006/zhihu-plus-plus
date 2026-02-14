@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.target
@@ -53,9 +54,8 @@ class FollowScreenData : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun FollowScreen(
-    onNavigate: (NavDestination) -> Unit,
-) {
+fun FollowScreen() {
+    val onNavigate = LocalNavigator.current
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("动态", "推荐")
     val pagerState = rememberPagerState(pageCount = { titles.size })

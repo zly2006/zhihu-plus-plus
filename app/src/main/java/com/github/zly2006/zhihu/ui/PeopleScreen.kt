@@ -50,6 +50,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
@@ -387,8 +388,8 @@ suspend fun HttpResponse.raiseForStatus() = apply {
 @Composable
 fun PeopleScreen(
     person: Person,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()

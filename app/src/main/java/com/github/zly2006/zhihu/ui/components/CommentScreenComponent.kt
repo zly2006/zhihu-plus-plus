@@ -32,7 +32,6 @@ import io.ktor.client.HttpClient
 fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
-    onNavigate: (NavDestination) -> Unit,
     httpClient: HttpClient,
     content: NavDestination,
 ) {
@@ -80,7 +79,6 @@ fun CommentScreenComponent(
             httpClient = httpClient,
             content = { content },
             topPadding = commentTopPadding,
-            onNavigate = onNavigate,
             onChildCommentClick = {
                 activeChildComment = it
             },
@@ -128,7 +126,6 @@ fun CommentScreenComponent(
             topPadding = commentTopPadding,
             content = { notNullActiveChildComment!!.clickTarget!! },
             activeCommentItem = notNullActiveChildComment,
-            onNavigate = onNavigate,
             onChildCommentClick = { },
         )
     }

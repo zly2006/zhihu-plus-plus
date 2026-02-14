@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.DataHolder
@@ -68,8 +68,8 @@ import org.jsoup.Jsoup
 @Composable
 fun QuestionScreen(
     question: Question,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val viewModel: QuestionFeedViewModel = viewModel {
         QuestionFeedViewModel(question.questionId)
@@ -309,7 +309,6 @@ fun QuestionScreen(
             ) { item ->
                 FeedCard(
                     item,
-                    onNavigate = onNavigate,
                 ) {
 //                    feed?.let { DataHolder.putFeed(it) }
                     navDestination?.let { onNavigate(it) }
@@ -322,7 +321,6 @@ fun QuestionScreen(
             showComments = showComments,
             onDismiss = { showComments = false },
             httpClient = context.httpClient,
-            onNavigate = onNavigate,
             content = question,
         )
     }
@@ -336,7 +334,6 @@ fun QuestionScreen(
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
             context = context,
-            onNavigate = onNavigate,
         )
     }
 }
@@ -347,6 +344,5 @@ fun QuestionScreenPreview() {
     val question = Question(123456789, "这是一个问题的标题")
     QuestionScreen(
         question = question,
-        onNavigate = { },
     )
 }

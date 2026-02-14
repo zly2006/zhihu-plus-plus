@@ -96,6 +96,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
@@ -331,7 +332,6 @@ fun CommentScreen(
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
     topPadding: Dp = 100.dp,
-    onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentModel) -> Unit,
 ) {
     val context = LocalContext.current
@@ -483,7 +483,6 @@ fun CommentScreen(
                                                 commentItem.item.likeCount = likeCount
                                             }
                                         },
-                                        onNavigate = onNavigate,
                                         onChildCommentClick = onChildCommentClick,
                                     )
 
@@ -520,7 +519,6 @@ fun CommentScreen(
                                                                 childCommentItem.item.likeCount = likeCount
                                                             }
                                                         },
-                                                        onNavigate = onNavigate,
                                                         onChildCommentClick = onChildCommentClick,
                                                     )
                                                 }
@@ -780,9 +778,9 @@ private fun CommentItem(
     likeCount: Int = 0,
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
-    onNavigate: (NavDestination) -> Unit,
     onChildCommentClick: (CommentModel) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val commentData = comment.item
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1073,7 +1071,6 @@ private fun CommentItemPreview() {
     CommentItem(
         comment,
         httpClient = HttpClient(),
-        onNavigate = { },
         onChildCommentClick = { },
     )
 }
@@ -1196,7 +1193,6 @@ private fun NestedCommentPreview() {
     CommentItem(
         comment,
         httpClient = HttpClient(),
-        onNavigate = { },
         onChildCommentClick = { },
     )
 }

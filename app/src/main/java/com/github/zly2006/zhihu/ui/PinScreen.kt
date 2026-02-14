@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import com.github.zly2006.zhihu.LocalNavigator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.data.AccountData
@@ -66,7 +66,6 @@ import java.util.Locale
 fun PinScreen(
     pin: Pin,
     onNavigateBack: () -> Unit,
-    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     val httpClient = remember { AccountData.httpClient(context) }
@@ -154,7 +153,6 @@ fun PinScreen(
                         pin = viewModel.pinContent!!,
                         isLiked = viewModel.isLiked,
                         likeCount = viewModel.likeCount,
-                        onNavigate = onNavigate,
                         onLikeClick = {
                             viewModel.toggleLike(context)
                         },
@@ -168,7 +166,6 @@ fun PinScreen(
                         CommentScreenComponent(
                             showComments = showComments,
                             onDismiss = { showComments = false },
-                            onNavigate = onNavigate,
                             httpClient = httpClient,
                             content = pin,
                         )
@@ -183,7 +180,6 @@ fun PinScreen(
                             showDialog = showShareDialog,
                             onDismissRequest = { showShareDialog = false },
                             context = context,
-                            onNavigate = onNavigate,
                         )
                     }
                 }
@@ -197,11 +193,10 @@ private fun PinContent(
     pin: DataHolder.Pin,
     isLiked: Boolean,
     likeCount: Int,
-    onNavigate: (NavDestination) -> Unit,
     onLikeClick: () -> Unit,
     onCommentClick: () -> Unit,
 ) {
-    val context = LocalContext.current
+    val onNavigate = LocalNavigator.current
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     Column(

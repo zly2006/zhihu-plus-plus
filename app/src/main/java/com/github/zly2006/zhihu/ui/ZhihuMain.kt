@@ -29,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -57,6 +58,7 @@ import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.History
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
@@ -109,12 +111,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 isPop && isEnter -> {
                     return EnterTransition.None
                 }
+
                 isPop && !isEnter -> {
                     return slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
                 }
+
                 !isPop && isEnter -> {
                     return slideInHorizontally(tween(300)) { it }
                 }
+
                 !isPop && !isEnter -> {
                     return ExitTransition.None
                 }
@@ -201,145 +206,142 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             }
         },
     ) { innerPadding ->
-        MyNavHost(
-            navController,
-            modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
-            startDestination = Home,
-            enterTransition = {
-                val fromIndex = getPageIndex(initialState.destination)
-                val toIndex = getPageIndex(targetState.destination)
-                createSlideAnimation(isEnter = true, isPop = false, fromIndex, toIndex) as EnterTransition
-            },
-            exitTransition = {
-                val fromIndex = getPageIndex(initialState.destination)
-                val toIndex = getPageIndex(targetState.destination)
-                createSlideAnimation(isEnter = false, isPop = false, fromIndex, toIndex) as ExitTransition
-            },
-            popEnterTransition = {
-                val fromIndex = getPageIndex(initialState.destination)
-                val toIndex = getPageIndex(targetState.destination)
-                createSlideAnimation(isEnter = true, isPop = true, fromIndex, toIndex) as EnterTransition
-            },
-            popExitTransition = {
-                val fromIndex = getPageIndex(initialState.destination)
-                val toIndex = getPageIndex(targetState.destination)
-                createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
-            },
-        ) {
-            composable<Home> {
-                HomeScreen(activity::navigate)
-            }
-            composable<Question> { navEntry ->
-                val question: Question = navEntry.toRoute()
-                QuestionScreen(question, activity::navigate)
-            }
-            composable<Article> { navEntry ->
-                val article: Article = navEntry.toRoute()
-                val viewModel: ArticleViewModel = viewModel(navEntry) {
-                    ArticleViewModel(article, activity.httpClient, navEntry)
+        CompositionLocalProvider(LocalNavigator provides activity::navigate) {
+            MyNavHost(
+                navController,
+                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+                startDestination = Home,
+                enterTransition = {
+                    val fromIndex = getPageIndex(initialState.destination)
+                    val toIndex = getPageIndex(targetState.destination)
+                    createSlideAnimation(isEnter = true, isPop = false, fromIndex, toIndex) as EnterTransition
+                },
+                exitTransition = {
+                    val fromIndex = getPageIndex(initialState.destination)
+                    val toIndex = getPageIndex(targetState.destination)
+                    createSlideAnimation(isEnter = false, isPop = false, fromIndex, toIndex) as ExitTransition
+                },
+                popEnterTransition = {
+                    val fromIndex = getPageIndex(initialState.destination)
+                    val toIndex = getPageIndex(targetState.destination)
+                    createSlideAnimation(isEnter = true, isPop = true, fromIndex, toIndex) as EnterTransition
+                },
+                popExitTransition = {
+                    val fromIndex = getPageIndex(initialState.destination)
+                    val toIndex = getPageIndex(targetState.destination)
+                    createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
+                },
+            ) {
+                composable<Home> {
+                    HomeScreen()
                 }
-                ArticleScreen(article, viewModel, activity::navigate)
-            }
-            composable<HotList> {
-                HotListScreen(activity::navigate)
-            }
-            composable<Follow> {
-                FollowScreen(activity::navigate)
-            }
-            composable<Daily> {
-                DailyScreen(activity::navigate)
-            }
-            composable<History> {
-                HistoryScreen(activity::navigate)
-            }
-            composable<OnlineHistory> {
-                OnlineHistoryScreen(activity::navigate)
-            }
-            composable<Account> {
-                AccountSettingScreen(innerPadding, activity::navigate)
-            }
-            composable<Search> { navEntry ->
-                val search: Search = navEntry.toRoute()
-                SearchScreen(search, activity::navigate) {
-                    navController.popBackStack()
+                composable<Question> { navEntry ->
+                    val question: Question = navEntry.toRoute()
+                    QuestionScreen(question)
                 }
-            }
-            composable<Collections> {
-                val data: Collections = it.toRoute()
-                CollectionScreen(data.userToken, activity::navigate)
-            }
-            composable<CollectionContent> {
-                val content: CollectionContent = it.toRoute()
-                CollectionContentScreen(content.collectionId, activity::navigate)
-            }
-            composable<Person> {
-                val person: Person = it.toRoute()
-                PeopleScreen(person, activity::navigate)
-            }
-            composable<Pin> {
-                val pin = it.toRoute<Pin>()
-                PinScreen(
-                    pin,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigate = activity::navigate,
-                )
-            }
-            composable<Account.RecommendSettings.Blocklist> {
-                BlocklistSettingsScreen(
-                    innerPadding = innerPadding,
-                    onNavigateBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigate = activity::navigate,
-                )
-            }
-            composable<Notification> {
-                val viewModel = viewModel<NotificationViewModel>()
-                NotificationScreen(
-                    viewModel = viewModel,
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                    onNavigate = activity::navigate,
-                )
-            }
-            composable<Notification.NotificationSettings> {
-                NotificationSettingsScreen(
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                )
-            }
-            composable<SentenceSimilarityTest> {
-                SentenceSimilarityTestScreen {
-                    navController.popBackStack()
+                composable<Article> { navEntry ->
+                    val article: Article = navEntry.toRoute()
+                    val viewModel: ArticleViewModel = viewModel(navEntry) {
+                        ArticleViewModel(article, activity.httpClient, navEntry)
+                    }
+                    ArticleScreen(article, viewModel)
                 }
-            }
-            composable<Account.AppearanceSettings> {
-                val args = it.toRoute<Account.AppearanceSettings>()
-                AppearanceSettingsScreen(
-                    setting = args.setting,
-                    onNavigateBack = { navController.popBackStack() },
-                )
-            }
-            composable<Account.RecommendSettings> {
-                ContentFilterSettingsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigate = activity::navigate,
-                )
-            }
-            composable<Account.SystemAndUpdateSettings> {
-                SystemAndUpdateSettingsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                )
-            }
-            composable<Account.DeveloperSettings> {
-                DeveloperSettingsScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigate = activity::navigate,
-                )
+                composable<HotList> {
+                    HotListScreen()
+                }
+                composable<Follow> {
+                    FollowScreen()
+                }
+                composable<Daily> {
+                    DailyScreen()
+                }
+                composable<History> {
+                    HistoryScreen()
+                }
+                composable<OnlineHistory> {
+                    OnlineHistoryScreen()
+                }
+                composable<Account> {
+                    AccountSettingScreen(innerPadding)
+                }
+                composable<Search> { navEntry ->
+                    val search: Search = navEntry.toRoute()
+                    SearchScreen(search) {
+                        navController.popBackStack()
+                    }
+                }
+                composable<Collections> {
+                    val data: Collections = it.toRoute()
+                    CollectionScreen(data.userToken)
+                }
+                composable<CollectionContent> {
+                    val content: CollectionContent = it.toRoute()
+                    CollectionContentScreen(content.collectionId)
+                }
+                composable<Person> {
+                    val person: Person = it.toRoute()
+                    PeopleScreen(person)
+                }
+                composable<Pin> {
+                    val pin = it.toRoute<Pin>()
+                    PinScreen(
+                        pin,
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable<Account.RecommendSettings.Blocklist> {
+                    BlocklistSettingsScreen(
+                        innerPadding = innerPadding,
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable<Notification> {
+                    val viewModel = viewModel<NotificationViewModel>()
+                    NotificationScreen(
+                        viewModel = viewModel,
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable<Notification.NotificationSettings> {
+                    NotificationSettingsScreen(
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                composable<SentenceSimilarityTest> {
+                    SentenceSimilarityTestScreen {
+                        navController.popBackStack()
+                    }
+                }
+                composable<Account.AppearanceSettings> {
+                    val args = it.toRoute<Account.AppearanceSettings>()
+                    AppearanceSettingsScreen(
+                        setting = args.setting,
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
+                composable<Account.RecommendSettings> {
+                    ContentFilterSettingsScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
+                composable<Account.SystemAndUpdateSettings> {
+                    SystemAndUpdateSettingsScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
+                composable<Account.DeveloperSettings> {
+                    DeveloperSettingsScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
             }
         }
     }

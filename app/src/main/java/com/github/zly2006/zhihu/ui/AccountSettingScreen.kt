@@ -47,8 +47,8 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.Collections
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -64,8 +64,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 @Composable
 fun AccountSettingScreen(
     @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val preferences = remember {
         context.getSharedPreferences(
@@ -301,6 +301,5 @@ fun AccountSettingScreen(
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
         innerPadding = PaddingValues(16.dp),
-        onNavigate = { },
     )
 }

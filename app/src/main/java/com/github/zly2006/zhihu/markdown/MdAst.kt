@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
@@ -160,8 +160,8 @@ class MarkdownRenderContext(
 fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
     renderContext: MarkdownRenderContext,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     when (val d = ast) {
         is AstSpan -> {
@@ -180,7 +180,7 @@ fun AnnotatedString.Builder.RenderInline(
                         ?: luoTianYiUrlLauncher(context, d.url.toUri())
                 },
             ) {
-                RenderInline(d.title, renderContext, onNavigate)
+                RenderInline(d.title, renderContext)
             }
         }
 
@@ -209,8 +209,8 @@ fun AnnotatedString.Builder.RenderInline(
 @Composable
 fun MdAst.Render(
     renderContext: MarkdownRenderContext,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("webview_settings", android.content.Context.MODE_PRIVATE) }
     val fontSizePercent = remember { preferences.getInt("webviewFontSize", 100) }
@@ -233,7 +233,7 @@ fun MdAst.Render(
             Text(
                 text = buildAnnotatedString {
                     d.text.forEach {
-                        RenderInline(it, renderContext, onNavigate)
+                        RenderInline(it, renderContext)
                     }
                 },
                 style = headerStyle.copy(
@@ -247,7 +247,7 @@ fun MdAst.Render(
             Text(
                 text = buildAnnotatedString {
                     d.inlines.forEach {
-                        RenderInline(it, renderContext, onNavigate)
+                        RenderInline(it, renderContext)
                     }
                 },
                 style = baseStyle.copy(
@@ -273,7 +273,7 @@ fun MdAst.Render(
                         modifier = Modifier.padding(start = 4.dp),
                     ) {
                         d.children.forEach {
-                            it.Render(renderContext, onNavigate)
+                            it.Render(renderContext)
                         }
                     }
                 },

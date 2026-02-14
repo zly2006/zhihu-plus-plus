@@ -95,9 +95,9 @@ import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
@@ -476,8 +476,8 @@ fun ArticleActionsMenu(
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
@@ -900,7 +900,7 @@ fun ArticleScreen(
                     ) {
                         Column {
                             for (ast in astNode) {
-                                ast.Render(context, onNavigate)
+                                ast.Render(context)
                                 Spacer(Modifier.height(12.dp))
                             }
                         }
@@ -998,7 +998,6 @@ fun ArticleScreen(
             showComments = showComments,
             onDismiss = { showComments = false },
             httpClient = it,
-            onNavigate = onNavigate,
             content = article,
         )
     }
@@ -1037,7 +1036,7 @@ fun ArticleScreenPreview() {
                 null,
             )
         },
-    ) {}
+    )
 }
 
 @Preview

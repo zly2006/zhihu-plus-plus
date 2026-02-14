@@ -48,8 +48,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -66,8 +66,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun DeveloperSettingsScreen(
     onNavigateBack: () -> Unit,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
@@ -170,7 +170,9 @@ fun DeveloperSettingsScreen(
 
                 Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
 
-                Button(onClick = { onNavigate(SentenceSimilarityTest) }) { Text("句子相似度") }
+                Button(onClick = {
+                    onNavigate(SentenceSimilarityTest)
+                }) { Text("句子相似度") }
             }
 
             // TTS引擎信息显示

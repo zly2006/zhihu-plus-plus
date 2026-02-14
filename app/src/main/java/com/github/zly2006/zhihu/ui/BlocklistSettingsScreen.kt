@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
@@ -61,8 +62,8 @@ import kotlinx.coroutines.launch
 fun BlocklistSettingsScreen(
     innerPadding: PaddingValues,
     onNavigateBack: () -> Unit,
-    onNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 

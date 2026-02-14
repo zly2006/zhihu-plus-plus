@@ -54,8 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DailyStoriesResponse
 import com.github.zly2006.zhihu.data.DailyStory
@@ -78,9 +78,8 @@ data class DailySection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyScreen(
-    onNavigate: (NavDestination) -> Unit,
-) {
+fun DailyScreen() {
+    val onNavigate = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     var sections by remember { mutableStateOf<List<DailySection>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }

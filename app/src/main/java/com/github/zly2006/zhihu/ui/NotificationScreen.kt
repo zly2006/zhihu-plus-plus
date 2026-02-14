@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
 import android.widget.Toast
+import com.github.zly2006.zhihu.LocalNavigator
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +52,6 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Question
@@ -73,8 +73,8 @@ import java.util.Locale
 fun NotificationScreen(
     viewModel: NotificationViewModel,
     onBack: () -> Unit,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 

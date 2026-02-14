@@ -20,8 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -32,9 +32,8 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen(
-    onNavigate: (NavDestination) -> Unit,
-) {
+fun HotListScreen() {
+    val onNavigate = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
 

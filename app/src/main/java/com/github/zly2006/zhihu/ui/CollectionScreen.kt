@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.CollectionContent
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
@@ -24,8 +24,8 @@ import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 @Composable
 fun CollectionScreen(
     urlToken: String,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel {
         CollectionsViewModel(urlToken)

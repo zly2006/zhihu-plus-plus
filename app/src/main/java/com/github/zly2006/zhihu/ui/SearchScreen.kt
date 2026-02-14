@@ -42,8 +42,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -55,9 +55,9 @@ import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
 @Composable
 fun SearchScreen(
     search: com.github.zly2006.zhihu.Search,
-    onNavigate: (NavDestination) -> Unit,
     onBack: () -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel { SearchViewModel(search.query) }
     val keyboardController = LocalSoftwareKeyboardController.current

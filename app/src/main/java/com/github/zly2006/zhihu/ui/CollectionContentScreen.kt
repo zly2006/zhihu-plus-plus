@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -23,8 +23,8 @@ import java.util.Date
 @Composable
 fun CollectionContentScreen(
     collectionId: String,
-    onNavigate: (NavDestination) -> Unit,
 ) {
+    val onNavigate = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { CollectionContentViewModel(collectionId) }
     val listState = rememberLazyListState()

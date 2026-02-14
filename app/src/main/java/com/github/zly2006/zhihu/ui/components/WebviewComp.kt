@@ -24,7 +24,6 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
-import android.widget.Toast
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
