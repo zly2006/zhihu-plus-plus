@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -22,6 +23,8 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.internal.toClipEntry
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +47,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.LocalSelectionRegistrar
 import androidx.compose.foundation.text.selection.Selection
 import androidx.compose.foundation.text.selection.SelectionContainer
+import com.github.zly2006.zhihu.ui.hack.SelectionContainer as MySelectionContainer
 import androidx.compose.foundation.text.selection.SelectionManager
 import androidx.compose.foundation.text.selection.SelectionRegistrarImpl
 import androidx.compose.foundation.verticalScroll
@@ -88,10 +92,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -553,7 +559,8 @@ fun ArticleScreen(
             .fillMaxSize()
             .padding(
                 horizontal = 16.dp,
-            ).background(
+            )
+            .background(
                 color = MaterialTheme.colorScheme.background,
                 shape = RectangleShape,
             ),
@@ -565,7 +572,8 @@ fun ArticleScreen(
                         if (coordinates.size.height >= topBarHeight) {
                             topBarHeight = coordinates.size.height
                         }
-                    }.background(
+                    }
+                    .background(
                         color = MaterialTheme.colorScheme.background,
                         shape = RectangleShape,
                     ),
@@ -773,7 +781,8 @@ fun ArticleScreen(
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ).verticalScroll(scrollState),
+                )
+                .verticalScroll(scrollState),
         ) {
             Spacer(
                 modifier = Modifier.height(
@@ -903,22 +912,27 @@ fun ArticleScreen(
                     }
                     val context = MarkdownRenderContext()
                     Spacer(Modifier.height(10.dp))
-                    var selection by remember { mutableStateOf<Selection?>(null) }
 
+                    val view = LocalView.current
                     SelectionContainer(
-                        modifier = Modifier.fuckHonorService().dragAndDropSource { offset ->
-                            val manager = SelectionManager(SelectionRegistrarImpl())
-                            manager.selection = selection
-                            val text = manager.getSelectedText()
-                            val clipData = ClipData.newPlainText(
-                                "Selected Text",
-                                text!!.text,
-                            )
-                            val data = DragAndDropTransferData(clipData)
-                            data
-                        },
-                        selection = selection,
-                        onSelectionChange = { selection = it },
+                        modifier = Modifier
+                            .fuckHonorService()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onLongPress = {
+                                        val clipData = ClipData.newPlainText(
+                                            "Selected Text",
+                                            "fuck u google",
+                                        )
+                                        view.startDragAndDrop(
+                                            clipData,
+                                            View.DragShadowBuilder(view),
+                                            null,
+                                            View.DRAG_FLAG_GLOBAL,
+                                        )
+                                    },
+                                )
+                            },
                     ) {
                         Column {
                             for (ast in astNode) {

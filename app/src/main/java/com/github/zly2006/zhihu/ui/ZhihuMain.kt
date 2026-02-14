@@ -77,7 +77,7 @@ import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlin.reflect.KClass
-import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
+import com.github.zly2006.zhihu.ui.hack.NavHost as MyNavHost
 
 @SuppressLint("RestrictedApi")
 @Composable

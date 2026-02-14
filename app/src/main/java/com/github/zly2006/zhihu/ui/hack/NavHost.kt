@@ -1,7 +1,8 @@
 @file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.ui.hack
 
+import android.content.Context
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.collection.mutableObjectFloatMapOf
 import androidx.compose.animation.AnimatedContent
@@ -48,12 +49,13 @@ import androidx.navigation.compose.DialogNavigator
 import androidx.navigation.compose.LocalOwnersProvider
 import androidx.navigation.createGraph
 import androidx.navigation.get
-import kotlinx.coroutines.flow.collect
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.min
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import androidx.navigation.compose.NavHost as AndroidComposeNavHost
 
 @Composable
 fun NavHost(
@@ -85,7 +87,7 @@ fun NavHost(
 ) {
     val context = LocalContext.current
     val prefs = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
     val useCustomNavHost = remember {
         prefs.getBoolean("use_custom_nav_host", true)
@@ -95,7 +97,7 @@ fun NavHost(
     }
 
     if (!useCustomNavHost) {
-        androidx.navigation.compose.NavHost(
+        AndroidComposeNavHost(
             navController,
             remember(route, startDestination, builder) {
                 navController.createGraph(startDestination, route, typeMap, builder)
@@ -128,7 +130,7 @@ fun NavHost(
 }
 
 @Composable
-public fun NavHost(
+fun NavHost(
     navController: NavHostController,
     graph: NavGraph,
     modifier: Modifier = Modifier,
