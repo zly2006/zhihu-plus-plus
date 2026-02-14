@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
+import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
@@ -275,13 +276,16 @@ fun FeedCard(
                                         expanded = showMenu,
                                         onDismissRequest = { showMenu = false },
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("按关键词屏蔽") },
-                                            onClick = {
-                                                showMenu = false
-                                                onBlockByKeywords?.invoke(item)
-                                            },
-                                        )
+                                        @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
+                                        if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
+                                            DropdownMenuItem(
+                                                text = { Text("按关键词屏蔽") },
+                                                onClick = {
+                                                    showMenu = false
+                                                    onBlockByKeywords(item)
+                                                },
+                                            )
+                                        }
                                         DropdownMenuItem(
                                             text = { Text("屏蔽用户") },
                                             onClick = {

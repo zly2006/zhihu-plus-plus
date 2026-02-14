@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -70,6 +72,7 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
@@ -147,6 +150,7 @@ interface IHomeFeedViewModel {
 fun HomeScreen() {
     val onNavigate = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
+    val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -301,19 +305,25 @@ fun HomeScreen() {
                             Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
                         },
                         onBlockUser = { feedItem ->
-                            feedItem.feed?.target?.author?.let { author ->
-                                userToBlock = Pair(author.id, author.name)
-                                showBlockUserDialog = true
-                            } ?: run {
-                                Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
+                                if (authorInfo != null) {
+                                    userToBlock = authorInfo
+                                    showBlockUserDialog = true
+                                } else {
+                                    FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
+                                }
                             }
                         },
                         onBlockByKeywords = { feedItem ->
-                            feedItem.feed?.target?.let { target ->
-                                feedToBlockByKeywords = Pair(target.title, target.excerpt)
-                                showBlockByKeywordsDialog = true
-                            } ?: run {
-                                Toast.makeText(context, "无法获取内容信息", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                val contentInfo = FeedCardDataHelper.ensureContentForKeywordBlocking(context, feedItem)
+                                if (contentInfo != null) {
+                                    feedToBlockByKeywords = contentInfo.first to contentInfo.second // 直接存储 Triple
+                                    showBlockByKeywordsDialog = true
+                                } else {
+                                    FeedCardDataHelper.showLoadFailedToast(context, "关键词屏蔽")
+                                }
                             }
                         },
                         onNavigate = onNavigate,

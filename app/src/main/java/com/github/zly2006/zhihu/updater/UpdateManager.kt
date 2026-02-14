@@ -247,14 +247,14 @@ object UpdateManager {
                     }
                 }.body<JsonObject>()
             val assets = response["assets"]?.jsonArray
-            val isLite = BuildConfig.IS_LITE
             val apkAssets = assets
                 ?.map { it.jsonObject }
                 ?.filter {
                     it["content_type"]?.jsonPrimitive?.content == "application/vnd.android.package-archive"
                 } ?: emptyList()
 
-            val selectedAsset = if (isLite) {
+            @Suppress("KotlinConstantConditions")
+            val selectedAsset = if (BuildConfig.IS_LITE) {
                 // Lite version: strictly look for "lite" in filename
                 apkAssets.firstOrNull {
                     it["name"]?.jsonPrimitive?.content?.contains("lite", ignoreCase = true) == true

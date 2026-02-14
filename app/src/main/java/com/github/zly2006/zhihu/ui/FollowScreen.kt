@@ -37,13 +37,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.util.FeedCardDataHelper
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import kotlinx.coroutines.launch
@@ -105,6 +105,7 @@ fun FollowDynamicScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
+    val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowViewModel by context.viewModels()
 
     LaunchedEffect(Unit) {
@@ -144,11 +145,14 @@ fun FollowDynamicScreen(
                         Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
                     },
                     onBlockUser = { feedItem ->
-                        feedItem.feed?.target?.author?.let { author ->
-                            userToBlock = Pair(author.id, author.name)
-                            showBlockUserDialog = true
-                        } ?: run {
-                            Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                            val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
+                            if (authorInfo != null) {
+                                userToBlock = authorInfo
+                                showBlockUserDialog = true
+                            } else {
+                                FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
+                            }
                         }
                     },
                     onNavigate = onNavigate,
@@ -198,6 +202,7 @@ fun FollowRecommendScreen(
     onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalActivity.current as MainActivity
+    val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowRecommendViewModel by context.viewModels()
 
     LaunchedEffect(Unit) {
@@ -238,11 +243,14 @@ fun FollowRecommendScreen(
                 FeedCard(
                     item,
                     onBlockUser = { feedItem ->
-                        feedItem.feed?.target?.author?.let { author ->
-                            userToBlock = Pair(author.id, author.name)
-                            showBlockUserDialog = true
-                        } ?: run {
-                            Toast.makeText(context, "无法获取用户信息，请尝试进入作者主页点击屏蔽", Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                            val authorInfo = FeedCardDataHelper.ensureAuthorInfo(context, feedItem)
+                            if (authorInfo != null) {
+                                userToBlock = authorInfo
+                                showBlockUserDialog = true
+                            } else {
+                                FeedCardDataHelper.showLoadFailedToast(context, "屏蔽用户")
+                            }
                         }
                     },
                     onNavigate = onNavigate,
