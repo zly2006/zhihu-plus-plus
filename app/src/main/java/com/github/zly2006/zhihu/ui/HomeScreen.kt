@@ -315,7 +315,7 @@ fun HomeScreen() {
                             }
                         },
                         onBlockTopic = { topicId, topicName ->
-                            viewModel.blockTopic(context, topicId, topicName)
+                            viewModel.handleBlockTopic(context, topicId, topicName)
                         },
                         onNavigate = onNavigate,
                     ) {

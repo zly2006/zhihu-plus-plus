@@ -1,13 +1,16 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -172,8 +175,8 @@ object ContentFilterExtensions {
      */
     suspend fun applyContentFilterToDisplayItems(
         context: Context,
-        items: List<com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem>,
-    ): List<com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem> = withContext(Dispatchers.IO) {
+        items: List<FeedDisplayItem>,
+    ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
             var filteredItems = items
 
@@ -195,7 +198,7 @@ object ContentFilterExtensions {
             }
 
             // 2. 转换为FilterableContent并获取完整内容，同时建立映射关系
-            val itemToFilterableMap = mutableMapOf<com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem, FilterableContent>()
+            val itemToFilterableMap = mutableMapOf<FeedDisplayItem, FilterableContent>()
 
             otherItems.forEach { item ->
                 val (contentType, contentId) = when (val dest = item.navDestination) {
@@ -216,7 +219,7 @@ object ContentFilterExtensions {
 
                 // 获取完整内容详情
                 val rawContent = when (val dest = item.navDestination) {
-                    is com.github.zly2006.zhihu.Article -> DataHolder.getContentDetail(context, dest) ?: DataHolder.DummyContent
+                    is com.github.zly2006.zhihu.Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     else -> DataHolder.DummyContent
                 }
 
@@ -384,8 +387,10 @@ object ContentFilterExtensions {
             }
 
             if (blockedThisRound.isNotEmpty()) {
-                context.mainExecutor.execute {
-                    Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    context.mainExecutor.execute {
+                        Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
 

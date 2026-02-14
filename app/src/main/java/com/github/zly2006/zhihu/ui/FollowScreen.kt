@@ -150,7 +150,7 @@ fun FollowDynamicScreen(
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        viewModel.blockTopic(context, topicId, topicName)
+                        viewModel.handleBlockTopic(context, topicId, topicName)
                     },
                     onNavigate = onNavigate,
                 ) {
@@ -246,7 +246,7 @@ fun FollowRecommendScreen(
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        viewModel.blockTopic(context, topicId, topicName)
+                        viewModel.handleBlockTopic(context, topicId, topicName)
                     },
                     onNavigate = onNavigate,
                 ) {
