@@ -42,6 +42,7 @@ import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.Video
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -184,34 +185,8 @@ class CustomWebView : WebView {
             }
         } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
             // 处理视频链接点击
-            val dataLensId = clicked.attr("data-lens-id")
-            if (dataLensId.isNotEmpty()) {
-                if (contentId == null) {
-                    GlobalScope.launch(Dispatchers.Main) {
-                        Toast.makeText(context, "无法获取视频链接，contentId 为空", Toast.LENGTH_SHORT).show()
-                    }
-                    return@HtmlClickListener
-                }
-                GlobalScope.launch(Dispatchers.IO) {
-                    try {
-                        val httpClient = AccountData.httpClient(context)
-                        val videoUrl = getHighestQualityVideoUrl(context, httpClient, dataLensId, contentId!!)
-                        if (videoUrl != null) {
-                            withContext(Dispatchers.Main) {
-                                luoTianYiUrlLauncher(context, videoUrl.toUri())
-                            }
-                        } else {
-                            withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "无法获取视频链接", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(context, "获取视频链接失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
+            val videoId = clicked.attr("data-lens-id")
+            (context as? MainActivity)?.navigate(Video(videoId.toLong()))
         }
     }
 
