@@ -257,7 +257,7 @@ fun AnnotatedString.Builder.RenderInline(
                 }
             }
 
-            appendInlineContent(inlineContentId, d.math)
+            appendInlineContent(inlineContentId, " $${d.math}$ ")
         }
     }
 }
