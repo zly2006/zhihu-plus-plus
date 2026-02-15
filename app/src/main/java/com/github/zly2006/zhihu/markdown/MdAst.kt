@@ -22,14 +22,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -148,17 +152,6 @@ class AstTable(
     val rows: List<List<List<InlineAstData>>>,
 ) : AstData
 
-class AstTableAlignments(
-    val alignments: List<Alignment>,
-) : AstData {
-    enum class Alignment {
-        LEFT,
-        CENTER,
-        RIGHT,
-        NONE,
-    }
-}
-
 class MarkdownRenderContext(
     val requestedImages: MutableSet<AstImage> = mutableSetOf(),
 )
@@ -167,7 +160,7 @@ class MarkdownRenderContext(
 fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
     renderContext: MarkdownRenderContext,
-    inlineContentMap: MutableMap<String, InlineTextContent> = mutableMapOf(),
+    inlineContentMap: SnapshotStateMap<String, InlineTextContent>,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -217,10 +210,10 @@ fun AnnotatedString.Builder.RenderInline(
             val inlineContentId = "math_${d.math.hashCode()}"
 
             // 使用 SubcomposeLayout 精确测量 Latex 组件的大小
-            var measuredWidthSp by remember { mutableStateOf(1.sp) }
-            var measuredHeightSp by remember { mutableStateOf(1.sp) }
+            val measuredWidthSp = remember { mutableStateOf(0.sp) }
+            val measuredHeightSp = remember { mutableStateOf(0.sp) }
 
-            androidx.compose.ui.layout.SubcomposeLayout { constraints ->
+            SubcomposeLayout { constraints ->
                 val measurable = subcompose("measure") {
                     Box {
                         Latex(
@@ -235,29 +228,33 @@ fun AnnotatedString.Builder.RenderInline(
                 }.first().measure(constraints)
 
                 with(density) {
-                    measuredWidthSp = measurable.width.toSp()
-                    measuredHeightSp = measurable.height.toSp()
+                    if (measurable.width != 0) {
+                        measuredWidthSp.value = measurable.width.toSp()
+                        measuredHeightSp.value = measurable.height.toSp()
+                    }
                 }
 
                 layout(0, 0) {}
             }
 
             // 添加到 inline content map，使用精确测量的大小
-            inlineContentMap[inlineContentId] = InlineTextContent(
-                placeholder = Placeholder(
-                    width = measuredWidthSp,
-                    height = measuredHeightSp,
-                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
-                ),
-            ) {
-                Latex(
-                    latex = d.math,
-                    config = LatexConfig(
-                        fontSize = fontSize.value.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        darkColor = MaterialTheme.colorScheme.onBackground,
+            if (measuredWidthSp.value != 0.sp && measuredHeightSp.value != 0.sp) {
+                inlineContentMap[inlineContentId] = InlineTextContent(
+                    placeholder = Placeholder(
+                        width = measuredWidthSp.value,
+                        height = measuredHeightSp.value,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
                     ),
-                )
+                ) {
+                    Latex(
+                        latex = d.math,
+                        config = LatexConfig(
+                            fontSize = fontSize.value.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            darkColor = MaterialTheme.colorScheme.onBackground,
+                        ),
+                    )
+                }
             }
 
             appendInlineContent(inlineContentId, d.math)
@@ -299,7 +296,7 @@ fun MdAst.Render(
                 else -> MaterialTheme.typography.titleSmall
             }
 
-            val inlineContentMap = remember { mutableMapOf<String, InlineTextContent>() }
+            val inlineContentMap = remember { mutableStateMapOf<String, InlineTextContent>() }
 
             Text(
                 text = buildAnnotatedString {
@@ -315,7 +312,7 @@ fun MdAst.Render(
         }
 
         is AstParagraph -> {
-            val inlineContentMap = remember { mutableMapOf<String, InlineTextContent>() }
+            val inlineContentMap = remember { mutableStateMapOf<String, InlineTextContent>() }
 
             Text(
                 text = buildAnnotatedString {
@@ -509,7 +506,6 @@ fun MdAst.Render(
         is AstList -> {}
         is AstListItem -> {}
         is AstTable -> {}
-        is AstTableAlignments -> {}
     }
 }
 
