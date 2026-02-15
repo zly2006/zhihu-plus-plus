@@ -29,6 +29,7 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import coil3.svg.SvgDecoder
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
@@ -237,7 +238,9 @@ class MainActivity : ComponentActivity() {
         ImageLoader
             .Builder(this)
             .crossfade(true)
-            .memoryCache {
+            .components {
+                add(SvgDecoder.Factory())
+            }.memoryCache {
                 MemoryCache
                     .Builder()
                     .maxSizePercent(this, 0.25)

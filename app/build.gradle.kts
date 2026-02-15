@@ -150,11 +150,12 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.3.0")
     implementation("io.coil-kt.coil3:coil-gif:3.3.0")
+    implementation("io.coil-kt.coil3:coil-svg:3.3.0")
 
     implementation("com.google.android.material:material:1.13.0")
-    implementation("com.materialkolor:material-kolor:4.0.5")
+    implementation("com.materialkolor:material-kolor:4.1.1")
 
-    implementation("org.jsoup:jsoup:1.21.2")
+    implementation("org.jsoup:jsoup:1.22.1")
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
     // ZXing for QR code scanning
