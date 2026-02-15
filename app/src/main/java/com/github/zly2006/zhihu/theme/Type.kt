@@ -2,9 +2,16 @@ package com.github.zly2006.zhihu.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.R
+
+// Latin Modern Math font family
+val LatinModernMathFontFamily = FontFamily(
+    Font(R.font.latinmodern_math, FontWeight.Normal),
+)
 
 // Set of Material typography styles to start with
 val Typography = Typography(

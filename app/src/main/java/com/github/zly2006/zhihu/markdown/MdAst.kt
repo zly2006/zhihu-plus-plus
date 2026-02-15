@@ -22,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +56,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.theme.LatinModernMathFontFamily
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -249,6 +249,7 @@ fun AnnotatedString.Builder.RenderInline(
                     Latex(
                         latex = d.math,
                         config = LatexConfig(
+                            baseFontFamily = LatinModernMathFontFamily,
                             fontSize = fontSize.value.sp,
                             color = MaterialTheme.colorScheme.onBackground,
                             darkColor = MaterialTheme.colorScheme.onBackground,
@@ -257,7 +258,7 @@ fun AnnotatedString.Builder.RenderInline(
                 }
             }
 
-            appendInlineContent(inlineContentId, " $${d.math}$ ")
+            appendInlineContent(inlineContentId, "$${d.math}$ ")
         }
     }
 }
