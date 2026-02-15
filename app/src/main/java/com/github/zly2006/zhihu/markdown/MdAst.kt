@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
@@ -42,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
@@ -52,10 +59,14 @@ import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
+import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
+import org.scilab.forge.jlatexmath.TeXConstants
+import org.scilab.forge.jlatexmath.TeXFormula
+import java.net.URLEncoder
 
 sealed interface AstData
 
@@ -152,14 +163,13 @@ class AstTableAlignments(
 
 class MarkdownRenderContext(
     val requestedImages: MutableSet<AstImage> = mutableSetOf(),
-    val requestedFormulas: MutableSet<AstInlineMath> = mutableSetOf(),
-    val requestedFormulaBlocks: MutableSet<AstDisplayMath> = mutableSetOf(),
 )
 
 @Composable
 fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
     renderContext: MarkdownRenderContext,
+    inlineContentMap: MutableMap<String, InlineTextContent> = mutableMapOf(),
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -180,7 +190,7 @@ fun AnnotatedString.Builder.RenderInline(
                         ?: luoTianYiUrlLauncher(context, d.url.toUri())
                 },
             ) {
-                RenderInline(d.title, renderContext)
+                RenderInline(d.title, renderContext, inlineContentMap)
             }
         }
 
@@ -200,8 +210,59 @@ fun AnnotatedString.Builder.RenderInline(
         }
 
         is AstInlineMath -> {
-            renderContext.requestedFormulas.add(d)
-            appendInlineContent(d.toString(), d.math)
+            // 获取当前文本样式的字体大小
+            val currentTextStyle = LocalTextStyle.current
+            val fontSize = currentTextStyle.fontSize
+            val density = LocalDensity.current
+
+            // 生成唯一的内联内容 ID
+            val inlineContentId = "math_${d.math.hashCode()}"
+
+            // 使用 SubcomposeLayout 精确测量 Latex 组件的大小
+            var measuredWidthSp by remember { mutableStateOf(1.sp) }
+            var measuredHeightSp by remember { mutableStateOf(1.sp) }
+
+            androidx.compose.ui.layout.SubcomposeLayout { constraints ->
+                val measurable = subcompose("measure") {
+                    Box {
+                        Latex(
+                            latex = d.math,
+                            config = LatexConfig(
+                                fontSize = fontSize.value.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                darkColor = MaterialTheme.colorScheme.onBackground,
+                            ),
+                        )
+                    }
+                }.first().measure(constraints)
+
+                with(density) {
+                    measuredWidthSp = measurable.width.toSp()
+                    measuredHeightSp = measurable.height.toSp()
+                }
+
+                layout(0, 0) {}
+            }
+
+            // 添加到 inline content map，使用精确测量的大小
+            inlineContentMap[inlineContentId] = InlineTextContent(
+                placeholder = Placeholder(
+                    width = measuredWidthSp,
+                    height = measuredHeightSp,
+                    placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
+                ),
+            ) {
+                Latex(
+                    latex = d.math,
+                    config = LatexConfig(
+                        fontSize = fontSize.value.sp,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        darkColor = MaterialTheme.colorScheme.onBackground,
+                    ),
+                )
+            }
+
+            appendInlineContent(inlineContentId, d.math)
         }
     }
 }
@@ -239,29 +300,36 @@ fun MdAst.Render(
                 5 -> MaterialTheme.typography.titleMedium
                 else -> MaterialTheme.typography.titleSmall
             }
+
+            val inlineContentMap = remember { mutableMapOf<String, InlineTextContent>() }
+
             Text(
                 text = buildAnnotatedString {
                     d.text.forEach {
-                        RenderInline(it, renderContext)
+                        RenderInline(it, renderContext, inlineContentMap)
                     }
                 },
                 style = headerStyle.copy(
                     fontSize = headerStyle.fontSize * fontSizeMultiplier,
                 ),
+                inlineContent = inlineContentMap,
             )
         }
 
         is AstParagraph -> {
+            val inlineContentMap = remember { mutableMapOf<String, InlineTextContent>() }
+
             Text(
                 text = buildAnnotatedString {
                     d.inlines.forEach {
-                        RenderInline(it, renderContext)
+                        RenderInline(it, renderContext, inlineContentMap)
                     }
                 },
                 style = baseStyle.copy(
                     fontSize = baseStyle.fontSize * fontSizeMultiplier,
                     lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
                 ),
+                inlineContent = inlineContentMap,
             )
         }
 
@@ -338,14 +406,23 @@ fun MdAst.Render(
             }
         }
         is AstDisplayMath -> {
-            renderContext.requestedFormulaBlocks.add(d)
-            Text(
-                text = d.math,
-                style = baseStyle.copy(
-                    fontSize = baseStyle.fontSize * fontSizeMultiplier,
-                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
-                ),
-            )
+            // 块级公式
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp) // 设置最小高度，避免过小的公式显示不完整
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Latex(
+                    latex = d.math,
+                    config = LatexConfig(
+                        fontSize = (baseStyle.fontSize * fontSizeMultiplier * 1.2f).value.sp,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        darkColor = MaterialTheme.colorScheme.onBackground,
+                    ),
+                )
+            }
         }
         AstHorizontalRule -> {
             Box(
@@ -543,16 +620,29 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
     }
 
     "img" -> {
-        val src = extractImageUrl(element)
-        val alt = element.attr("alt").ifEmpty { "image" }
-        if (src != null) {
-            MdAst(AstImage(src, alt), MdAstLinks())
+        // 检查是否是块级数学公式
+        if (element.hasAttr("data-formula")) {
+            val formula = element.attr("data-formula")
+            MdAst(AstDisplayMath(formula), MdAstLinks())
         } else {
-            null
+            val src = extractImageUrl(element)
+            val alt = element.attr("alt").ifEmpty { "image" }
+            if (src != null) {
+                MdAst(AstImage(src, alt), MdAstLinks())
+            } else {
+                null
+            }
         }
     }
 
     "figure" -> {
+        // 优先检查是否包含数学公式
+        element.selectFirst("img[data-formula]")?.let { img ->
+            val formula = img.attr("data-formula")
+            return MdAst(AstDisplayMath(formula), MdAstLinks())
+        }
+
+        // 其次检查普通图片
         element.selectFirst("img")?.let { img ->
             val src = extractImageUrl(img)
             val alt = img.attr("alt").ifEmpty { "image" }
@@ -649,6 +739,16 @@ private fun extractInlineElement(
 
         "br" -> {
             result.add(AstLineBreak())
+        }
+
+        "img" -> {
+            // 检查是否是数学公式
+            val src = node.attr("src")
+            if (src.startsWith("https://www.zhihu.com/equation?tex=")) {
+                val formula = Url(src).parameters["tex"] ?: ""
+                result.add(AstInlineMath(formula))
+            }
+            // 普通图片作为 inline 不处理，只在块级处理
         }
 
         else -> {
