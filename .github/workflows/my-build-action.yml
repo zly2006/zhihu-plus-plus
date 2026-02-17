@@ -105,7 +105,8 @@ jobs:
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew ${{inputs.args}} assembleFullRelease assembleLiteRelease
+          bash ./gradlew ${{inputs.args}} assembleFullRelease
+          bash ./gradlew ${{inputs.args}} assembleLiteRelease
         env:
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
