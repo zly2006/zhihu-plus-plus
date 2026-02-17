@@ -134,11 +134,13 @@ android {
         beforeVariants(selector().all()) { variantBuilder ->
             val flavorName = variantBuilder.flavorName
             if (variantBuilder.buildType == "release") {
-                variantBuilder.isMinifyEnabled =
+                val minify =
                     when (flavorName) {
                         "lite" -> true
                         else -> false
                     }
+                variantBuilder.isMinifyEnabled = minify
+                variantBuilder.shrinkResources = minify
             }
         }
     }
