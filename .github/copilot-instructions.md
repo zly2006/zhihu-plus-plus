@@ -79,10 +79,11 @@ adb pull /sdcard/screenshot2.png /tmp/screenshot2.png
 2. ✅ 安装到设备
 3. ✅ 正确启动应用（检查包名！）
 4. ✅ 等待加载完成（至少 8-10 秒）
-5. ✅ 截图并使用 view 工具查看
-6. ✅ 测试交互（滚动、点击）
-7. ✅ 再次截图验证
-8. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
+5. ✅ 截图并 adb pull 到本地，注意不要在一个response中同时包括截图和第七步的Read命令，因为截图需要时间，此时要read的文件还不存在。
+6. ✅ 使用 Read 工具查看，记得要用ls检查文件是否存在，路径是否正确
+7. ✅ 测试交互（滚动、点击）
+8. ✅ 再次截图验证
+9. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
 
 ## 代码风格
 - Kotlin Serialization with `@Serializable`
