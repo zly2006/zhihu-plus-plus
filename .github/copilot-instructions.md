@@ -156,7 +156,7 @@ When asked to check for duplicate code:
 
 ### Build Features
 - ViewBinding: Enabled
-- BuildConfig: Enabled (includes `GIT_HASH`, `BUILD_TIME`, `IS_LITE`)
+- BuildConfig: Enabled (includes `GIT_HASH`, `IS_LITE`)
 - Compose: Enabled
 
 ## Development Dependencies

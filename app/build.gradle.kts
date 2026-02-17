@@ -83,14 +83,12 @@ android {
         val gitHash = grgit.head().abbreviatedId
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }
