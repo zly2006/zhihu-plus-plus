@@ -144,15 +144,9 @@ jobs:
           echo "Moving recompressed Lite APK to upload directory"
           mv ./zhihu++-lite.apk ../app/build/upload/zhihu++-lite.apk
 
-      - name: Compress mapping file
+      - name: Compress lite mapping file
         if: ${{ inputs.minify }}
         run: |
-          # Full mapping
-          cd app/build/outputs/mapping/fullRelease
-          zip mapping-full.zip mapping.txt
-          mv mapping-full.zip ../../../upload/mapping-full.zip
-          
-          # Lite mapping
           cd ../../../../../app/build/outputs/mapping/liteRelease
           zip mapping-lite.zip mapping.txt
           mv mapping-lite.zip ../../../upload/mapping-lite.zip
