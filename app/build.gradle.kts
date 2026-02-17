@@ -129,6 +129,19 @@ android {
                 )
         }
     }
+
+    androidComponents {
+        beforeVariants(selector().all()) { variantBuilder ->
+            val flavorName = variantBuilder.flavorName
+            if (variantBuilder.buildType == "release") {
+                variantBuilder.isMinifyEnabled =
+                    when (flavorName) {
+                        "lite" -> true
+                        else -> false
+                    }
+            }
+        }
+    }
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
