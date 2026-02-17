@@ -24,6 +24,14 @@ ktlint {
     }
 }
 
+ksp {
+    // Fix cache invalidation by stabilizing inputs
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    // Stabilize logLevel to prevent cache invalidation
+    arg("logging.level", "WARN")
+}
+
 android {
     namespace = "com.github.zly2006.zhihu"
     compileSdk = 36
