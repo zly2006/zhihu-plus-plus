@@ -86,13 +86,9 @@ android {
             buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         }
         release {
-            if (System.getenv("GITHUB_ACTIONS") == null ||
-                System.getenv("CI_BUILD_MINIFY").toBoolean()
-            ) {
-                isMinifyEnabled = true
-                isShrinkResources = true
-                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
             if (System.getenv("signingKey") != null) {
