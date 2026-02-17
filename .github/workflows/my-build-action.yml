@@ -147,9 +147,8 @@ jobs:
       - name: Compress lite mapping file
         if: ${{ inputs.minify }}
         run: |
-          cd ../../../../../app/build/outputs/mapping/liteRelease
-          zip mapping-lite.zip mapping.txt
-          mv mapping-lite.zip ../../../upload/mapping-lite.zip
+          mkdir -p app/build/upload
+          zip app/build/upload/mapping-lite.zip app/build/outputs/mapping/liteRelease/mapping.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
