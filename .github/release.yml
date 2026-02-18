@@ -1,7 +1,4 @@
 changelog:
-  exclude:
-    labels:
-      - "*"
   categories:
     - title: 🚀 新功能
       labels:
