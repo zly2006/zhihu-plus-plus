@@ -131,28 +131,6 @@ private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 
 @Serializable
-data class Reaction(
-    val reaction_count: Int,
-    val reaction_state: Boolean,
-    val reaction_value: String,
-    val success: Boolean,
-    val is_thanked: Boolean,
-    val thanks_count: Int,
-    val red_heart_count: Int,
-    val red_heart_has_set: Boolean,
-    val is_liked: Boolean,
-    val liked_count: Int,
-    val is_up: Boolean,
-    val voteup_count: Int,
-    val is_upped: Boolean,
-    val up_count: Int,
-    val is_down: Boolean,
-    val voting: Int,
-    val heavy_up_result: String,
-    val is_auto_send_moments: Boolean,
-)
-
-@Serializable
 data class Collection(
     val id: String,
     val isFavorited: Boolean = false,
