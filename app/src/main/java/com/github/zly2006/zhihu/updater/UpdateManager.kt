@@ -40,6 +40,7 @@ object UpdateManager {
         data class UpdateAvailable(
             val version: SchematicVersion,
             val isNightly: Boolean = false,
+            val releaseNotes: String? = null,
         ) : UpdateState()
 
         object Downloading : UpdateState()
@@ -144,7 +145,8 @@ object UpdateManager {
                 val versionString = latestVersion.toString()
                 // 检查是否是被跳过的版本
                 if (skippedVersion != versionString) {
-                    updateState.value = UpdateState.UpdateAvailable(latestVersion, false)
+                    val releaseNotes = latestResponse["body"]?.jsonPrimitive?.content
+                    updateState.value = UpdateState.UpdateAvailable(latestVersion, false, releaseNotes)
                     return true // 有可用更新且未被跳过
                 } else {
                     updateState.value = UpdateState.Latest
@@ -171,6 +173,7 @@ object UpdateManager {
 
             var latestVersion: SchematicVersion?
             var isNightly = false
+            var releaseNotes: String? = null
 
             // 检查正式版本
             val latestResponse = client
@@ -182,6 +185,7 @@ object UpdateManager {
                     }
                 }.body<JsonObject>()
             latestVersion = latestResponse["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
+            releaseNotes = latestResponse["body"]?.jsonPrimitive?.content
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -204,6 +208,7 @@ object UpdateManager {
                             build = "",
                         )
                         isNightly = true
+                        releaseNotes = nightlyResponse["body"]?.jsonPrimitive?.content
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -215,7 +220,7 @@ object UpdateManager {
                 val versionString = latestVersion.toString()
                 // 检查是否是被跳过的版本
                 if (skippedVersion != versionString) {
-                    updateState.value = UpdateState.UpdateAvailable(latestVersion, isNightly)
+                    updateState.value = UpdateState.UpdateAvailable(latestVersion, isNightly, releaseNotes)
                 } else {
                     updateState.value = UpdateState.Latest
                 }
