@@ -180,7 +180,10 @@ fun HomeScreen(refreshTrigger: Int = 0) {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
             }!!
-            unreadCount = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 99
+            val default = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 0
+            val follow = jojo["follow_notifications_count"]?.jsonPrimitive?.int ?: 0
+            val voteThank = jojo["vote_thank_notifications_count"]?.jsonPrimitive?.int ?: 0
+            unreadCount = default + follow + voteThank
         } catch (_: Exception) {
             // 忽略错误
         }
