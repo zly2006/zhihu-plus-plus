@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.util.signFetchRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -43,7 +44,9 @@ object DataHolder {
                 ArticleType.Article -> AccountData.decodeJson<Article>(jojo)
             }
         }.getOrElse { e ->
-            Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+            if (e !is CancellationException) {
+                Log.e("getContentDetail", "Failed to fetch content detail for ${dest.type} id=${dest.id}", e)
+            }
             null
         }
     }
@@ -70,7 +73,9 @@ object DataHolder {
             // 解析为对应的Content类型
             AccountData.decodeJson<Question>(jojo)
         }.getOrElse { e ->
-            Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
+            if (e !is CancellationException) {
+                Log.e("getContentDetail", "Failed to fetch content detail for question id=${question.questionId}", e)
+            }
             null
         }
     }
@@ -87,7 +92,9 @@ object DataHolder {
             }!!
             AccountData.decodeJson<Pin>(jo)
         }.getOrElse { e ->
-            Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)
+            if (e !is CancellationException) {
+                Log.e("getContentDetail", "Failed to fetch content detail for pin id=${pin.id}", e)
+            }
             null
         }
     }

@@ -448,6 +448,35 @@ fun AppearanceSettingsScreen(
             }
 
             Text(
+                "交互设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("doubleTapBottomBarRefresh", true)) }
+            SwitchSettingItem(
+                title = "点击底部导航栏刷新",
+                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
+                checked = tapToRefresh.value,
+                onCheckedChange = {
+                    tapToRefresh.value = it
+                    preferences.edit { putBoolean("doubleTapBottomBarRefresh", it) }
+                },
+            )
+
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SwitchSettingItem(
+                title = "显示刷新FAB按钮",
+                description = "在页面上显示可拖动的刷新按钮",
+                checked = showRefreshFab.value,
+                onCheckedChange = {
+                    showRefreshFab.value = it
+                    preferences.edit { putBoolean("showRefreshFab", it) }
+                },
+            )
+
+            Text(
                 "底部栏设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,

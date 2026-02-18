@@ -31,7 +31,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -86,6 +88,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
+
+    // 底部导航栏刷新功能
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    val tapToRefreshEnabled = remember { preferences.getBoolean("doubleTapBottomBarRefresh", true) }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -177,6 +183,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    } else if (tapToRefreshEnabled) {
+                                        // 已经在当前页面，触发刷新
+                                        refreshTrigger++
                                     }
                                 },
                                 label = {
@@ -239,7 +248,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<Home> {
-                    HomeScreen()
+                    HomeScreen(refreshTrigger = refreshTrigger)
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()

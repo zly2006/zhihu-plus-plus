@@ -25,6 +25,7 @@ import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
@@ -164,9 +165,11 @@ class AndroidHomeFeedViewModel :
                     }.joinAll()
             }
         } catch (e: Exception) {
-            Log.e(this::class.simpleName, "Failed to fetch feeds", e)
-            context.mainExecutor.execute {
-                Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            if (e !is CancellationException) {
+                Log.e(this::class.simpleName, "Failed to fetch feeds", e)
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
             throw e
         } finally {

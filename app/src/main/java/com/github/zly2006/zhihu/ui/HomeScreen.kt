@@ -145,10 +145,9 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(refreshTrigger: Int = 0) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -166,6 +165,12 @@ fun HomeScreen() {
         RecommendationMode.ANDROID -> context.viewModels<AndroidHomeFeedViewModel>()
         RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
+    }
+
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger > 0) {
+            viewModel.refresh(context)
+        }
     }
 
     // 通知 ViewModel
@@ -342,15 +347,18 @@ fun HomeScreen() {
                     }
                 }
 
-                DraggableRefreshButton(
-                    onClick = {
-                        viewModel.refresh(context)
-                    },
-                ) {
-                    if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        onClick = {
+                            viewModel.refresh(context)
+                        },
+                    ) {
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }
