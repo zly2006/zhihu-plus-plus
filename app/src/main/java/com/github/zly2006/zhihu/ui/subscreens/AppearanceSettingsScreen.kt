@@ -454,14 +454,14 @@ fun AppearanceSettingsScreen(
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("doubleTapBottomBarRefresh", true)) }
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
             SwitchSettingItem(
                 title = "点击底部导航栏刷新",
                 description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
                 checked = tapToRefresh.value,
                 onCheckedChange = {
                     tapToRefresh.value = it
-                    preferences.edit { putBoolean("doubleTapBottomBarRefresh", it) }
+                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
                 },
             )
 

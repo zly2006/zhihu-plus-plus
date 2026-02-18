@@ -91,7 +91,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
     // 底部导航栏刷新功能
     var refreshTrigger by remember { mutableIntStateOf(0) }
-    val tapToRefreshEnabled = remember { preferences.getBoolean("doubleTapBottomBarRefresh", true) }
+    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
