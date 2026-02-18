@@ -1,0 +1,11 @@
+changelog:
+  exclude:
+    labels:
+      - "*"
+  categories:
+    - title: 🚀 新功能
+      labels:
+        - enhancement
+    - title: 🐛 Bug 修复
+      labels:
+        - bug
