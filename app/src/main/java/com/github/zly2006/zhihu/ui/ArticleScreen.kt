@@ -108,7 +108,7 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
 import com.github.zly2006.zhihu.markdown.Render
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
-import com.github.zly2006.zhihu.ui.components.AnswerHorizontalPager
+import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -555,7 +555,13 @@ fun ArticleScreen(
     }
 
     val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS
+        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS
+        } else {
+            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS
+        }
+        // 缓存当前回答内容作为下一屏的 nextAnswerContent
+        sharedData?.nextAnswerContent = viewModel.toCachedContent()
         val prev = sharedData?.popAnswer()
         if (prev != null) {
             val activity = context as? MainActivity
@@ -573,7 +579,13 @@ fun ArticleScreen(
     }
 
     val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT
+        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT
+        } else {
+            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT
+        }
+        // 缓存当前回答内容作为下一屏的 previousAnswerContent
+        sharedData?.previousAnswerContent = viewModel.toCachedContent()
         coroutineScope.launch {
             val dest = viewModel.nextAnswerFuture.await()
             navigateToAnswer(dest)
@@ -1010,15 +1022,20 @@ fun ArticleScreen(
             answerSwitchContent()
         }
     } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        AnswerHorizontalPager(
+        AnswerHorizontalOverscroll(
             canGoPrevious = sharedData?.previousAnswer != null,
             canGoNext = true,
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
-            currentContent = { answerSwitchContent() },
-            previousContent = null,
-            nextContent = null,
-        )
+            previousContent = sharedData?.previousAnswerContent?.let { cached ->
+                { CachedAnswerPreview(cached) }
+            },
+            nextContent = sharedData?.nextAnswerContent?.let { cached ->
+                { CachedAnswerPreview(cached) }
+            },
+        ) {
+            answerSwitchContent()
+        }
     } else {
         answerSwitchContent()
     }
@@ -1096,6 +1113,154 @@ fun ArticleScreen(
         onDismiss = { showExportDialog = false },
         viewModel = viewModel,
     )
+}
+
+/**
+ * 渲染缓存的回答完整内容，用于水平滑动预览。
+ * 显示标题、作者信息、HTML 内容（WebView）。
+ */
+@Composable
+private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
+    val context = LocalContext.current
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .background(
+                color = MaterialTheme.colorScheme.background,
+                shape = RectangleShape,
+            ),
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background),
+            ) {
+                Text(
+                    text = cached.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 32.sp,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+        },
+        bottomBar = {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(color = Color(0xFF40B6F6)),
+                        horizontalArrangement = Arrangement.Start,
+                    ) {
+                        Button(
+                            onClick = {},
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF40B6F6),
+                                contentColor = Color.Black,
+                            ),
+                            shape = RectangleShape,
+                            contentPadding = PaddingValues(horizontal = 0.dp),
+                        ) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = cached.voteUpCount.toString())
+                        }
+                    }
+                    Button(
+                        onClick = {},
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "${cached.commentCount}")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(
+                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                ).verticalScroll(rememberScrollState()),
+        ) {
+            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (cached.authorAvatarUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = cached.authorAvatarUrl,
+                        contentDescription = "作者头像",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray),
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = cached.authorName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                    )
+                    if (cached.authorBio.isNotEmpty()) {
+                        Text(
+                            text = cached.authorBio,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                        )
+                    }
+                }
+            }
+            if (cached.content.isNotEmpty()) {
+                if (preferences.getBoolean("articleUseWebview", true)) {
+                    WebviewComp {
+                        it.loadZhihu(
+                            "https://www.zhihu.com/answer/${cached.article.id}",
+                            Jsoup.parse(cached.content),
+                        )
+                    }
+                } else {
+                    val astNode = remember(cached.content) {
+                        htmlToMdAst(cached.content)
+                    }
+                    val mdContext = MarkdownRenderContext()
+                    Spacer(Modifier.height(10.dp))
+                    Column {
+                        for (ast in astNode) {
+                            ast.Render(mdContext)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height((16 + 36).dp))
+        }
+    }
 }
 
 @Preview

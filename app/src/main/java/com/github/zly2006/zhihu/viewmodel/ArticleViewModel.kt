@@ -94,6 +94,17 @@ class ArticleViewModel(
     var rememberedScrollY = MutableLiveData(0)
     var rememberedScrollYSync = true
 
+    fun toCachedContent(): CachedAnswerContent = CachedAnswerContent(
+        article = article,
+        title = title,
+        authorName = authorName,
+        authorBio = authorBio,
+        authorAvatarUrl = authorAvatarSrc,
+        content = content,
+        voteUpCount = voteUpCount,
+        commentCount = commentCount,
+    )
+
     init {
         Log.i("zhihu-scroll", "me is $this, savedStateHandle is ${navBackStackEntry?.savedStateHandle}")
         navBackStackEntry?.lifecycle?.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
@@ -133,7 +144,23 @@ class ArticleViewModel(
         DEFAULT,
         VERTICAL_NEXT,
         VERTICAL_PREVIOUS,
+        HORIZONTAL_NEXT,
+        HORIZONTAL_PREVIOUS,
     }
+
+    /**
+     * 缓存的回答完整内容，用于水平滑动预览。
+     */
+    data class CachedAnswerContent(
+        val article: Article,
+        val title: String,
+        val authorName: String,
+        val authorBio: String,
+        val authorAvatarUrl: String,
+        val content: String,
+        val voteUpCount: Int,
+        val commentCount: Int,
+    )
 
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {
@@ -148,6 +175,10 @@ class ArticleViewModel(
         var nextAnswerAuthorName by mutableStateOf("")
         var nextAnswerExcerpt by mutableStateOf("")
         var nextAnswerAvatarUrl by mutableStateOf("")
+
+        // 缓存的完整回答内容，用于水平滑动预览
+        var previousAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
+        var nextAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
 
         // 导航动画方向
         var answerTransitionDirection = AnswerTransitionDirection.DEFAULT
@@ -257,11 +288,33 @@ class ArticleViewModel(
                                         sharedData.nextAnswerExcerpt = nextTarget.excerpt ?: ""
                                         sharedData.nextAnswerAvatarUrl = nextTarget.author?.avatarUrl ?: ""
                                     }
+                                    // 预加载下一个回答的完整内容（用于水平滑动预览）
+                                    val nextDest = nextFeed.target?.navDestination
+                                    if (nextDest is Article && nextDest.type == ArticleType.Answer) {
+                                        try {
+                                            val nextDetail = DataHolder.getContentDetail(context, nextDest) as? DataHolder.Answer
+                                            if (nextDetail != null) {
+                                                sharedData.nextAnswerContent = CachedAnswerContent(
+                                                    article = nextDest,
+                                                    title = nextDetail.question.title,
+                                                    authorName = nextDetail.author.name,
+                                                    authorBio = nextDetail.author.headline,
+                                                    authorAvatarUrl = nextDetail.author.avatarUrl,
+                                                    content = nextDetail.content,
+                                                    voteUpCount = nextDetail.voteupCount,
+                                                    commentCount = nextDetail.commentCount,
+                                                )
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.w("ArticleViewModel", "Failed to pre-load next answer content", e)
+                                        }
+                                    }
                                     nextFeed
                                 } else {
                                     sharedData.nextAnswerAuthorName = ""
                                     sharedData.nextAnswerExcerpt = ""
                                     sharedData.nextAnswerAvatarUrl = ""
+                                    sharedData.nextAnswerContent = null
                                     null
                                 }
                             }

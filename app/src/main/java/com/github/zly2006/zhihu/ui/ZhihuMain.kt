@@ -269,6 +269,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 slideInVertically(tween(300)) { it } + fadeIn(tween(300))
                             ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
                                 slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
                             else -> slideInHorizontally(tween(300)) { it }
                         }
                     },
@@ -284,6 +288,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
                             ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
                                 slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
                             else -> ExitTransition.None
                         }
                     },
