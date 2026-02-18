@@ -50,7 +50,8 @@ jobs:
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew assembleFullDebug assembleLiteDebug
+          bash ./gradlew assembleFullDebug
+          bash ./gradlew assembleLiteDebug
         env:
           CI_BUILD_MINIFY: false
       - name: Move files

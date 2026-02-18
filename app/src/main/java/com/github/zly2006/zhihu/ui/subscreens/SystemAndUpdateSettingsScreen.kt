@@ -38,8 +38,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -179,7 +183,11 @@ fun SystemAndUpdateSettingsScreen(
             LaunchedEffect(updateState) {
                 val updateState = updateState
                 if (updateState is UpdateState.UpdateAvailable) {
-                    releaseNotes = updateState.releaseNotes?.substringAfter("## What's Changed\n")?.substringBefore("\n**Full Changelog**:")
+                    releaseNotes = updateState
+                        .releaseNotes
+                        ?.substringAfter("## What's Changed\n")
+                        ?.substringBefore("\n**Full Changelog**:")
+                        ?.replace("https://github.com/zly2006/zhihu-plus-plus/pull/", "#")
                 }
             }
             if (releaseNotes != null) {
@@ -193,7 +201,21 @@ fun SystemAndUpdateSettingsScreen(
                 )
                 SelectionContainer {
                     Text(
-                        releaseNotes!!,
+                        buildAnnotatedString {
+                            val prRegex = Regex("#(\\d+)")
+                            var lastIndex = 0
+                            prRegex.findAll(releaseNotes!!).forEach { matchResult ->
+                                append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
+                                val prNumber = matchResult.groupValues[1]
+                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues/$prNumber")) {
+                                    withStyle(MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary).toSpanStyle()) {
+                                        append("#$prNumber")
+                                    }
+                                }
+                                lastIndex = matchResult.range.last + 1
+                            }
+                            append(releaseNotes!!.substring(lastIndex))
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
