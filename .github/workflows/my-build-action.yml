@@ -128,15 +128,6 @@ jobs:
           APKSIGNER_PATH: /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner
         run: |
           cd apk-recompress
-          echo "Building Rust tool"
-          cargo build --release 2> /dev/null
-          echo "Recompressing Full APK with Rust tool"
-          cargo run --release -- \
-            -i ../app/build/upload/zhihu++-full.apk \
-            -o ./zhihu++-full.apk
-          echo "Moving recompressed Full APK to upload directory"
-          mv ./zhihu++-full.apk ../app/build/upload/zhihu++-full.apk
-          
           echo "Recompressing Lite APK with Rust tool"
           cargo run --release -- \
             -i ../app/build/upload/zhihu++-lite.apk \
