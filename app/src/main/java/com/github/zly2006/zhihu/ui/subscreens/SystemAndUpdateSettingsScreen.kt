@@ -178,7 +178,7 @@ fun SystemAndUpdateSettingsScreen(
             LaunchedEffect(updateState) {
                 val updateState = updateState
                 if (updateState is UpdateState.UpdateAvailable) {
-                    releaseNotes = updateState.releaseNotes
+                    releaseNotes = updateState.releaseNotes?.substringAfter("## What's Changed\n")
                 }
             }
             if (releaseNotes != null) {
