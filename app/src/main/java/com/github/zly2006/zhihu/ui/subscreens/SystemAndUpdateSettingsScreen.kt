@@ -187,7 +187,6 @@ fun SystemAndUpdateSettingsScreen(
                         .releaseNotes
                         ?.substringAfter("## What's Changed\n")
                         ?.substringBefore("\n**Full Changelog**:")
-                        ?.replace("https://github.com/zly2006/zhihu-plus-plus/pull/", "#")
                 }
             }
             if (releaseNotes != null) {
@@ -195,21 +194,21 @@ fun SystemAndUpdateSettingsScreen(
                 HorizontalDivider()
                 Text(
                     "更新内容",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                 )
                 SelectionContainer {
                     Text(
                         buildAnnotatedString {
-                            val prRegex = Regex("#(\\d+)")
+                            val prRegex = Regex("https://github.com/zly2006/zhihu-plus-plus/pull/(\\d+)")
                             var lastIndex = 0
                             prRegex.findAll(releaseNotes!!).forEach { matchResult ->
                                 append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
                                 val prNumber = matchResult.groupValues[1]
-                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues/$prNumber")) {
+                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/pull/$prNumber")) {
                                     withStyle(
-                                        MaterialTheme.typography.bodySmall
+                                        MaterialTheme.typography.bodyMedium
                                             .copy(color = MaterialTheme.colorScheme.primary)
                                             .toSpanStyle(),
                                     ) {
@@ -220,10 +219,13 @@ fun SystemAndUpdateSettingsScreen(
                             }
                             append(releaseNotes!!.substring(lastIndex))
                         },
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                Button(onClick = {
+                    luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri())
+                }) { }
             }
 
             Text(
