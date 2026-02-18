@@ -225,7 +225,9 @@ fun SystemAndUpdateSettingsScreen(
                 }
                 Button(onClick = {
                     luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri())
-                }) { }
+                }) {
+                    Text("查看完整更新日志")
+                }
             }
 
             Text(

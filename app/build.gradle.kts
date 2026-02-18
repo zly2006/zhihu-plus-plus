@@ -25,6 +25,22 @@ ktlint {
 }
 
 ksp {
+    val exclude = listOf(
+        "data",
+        "markdown",
+        "nlp",
+        "theme",
+        "ui",
+        "updater",
+        "util",
+        "viewmodel/comment",
+        "viewmodel/feed",
+        "viewmodel/za",
+    )
+    val prefix = "src/main/java/com/github/zly2006/zhihu/"
+    excludedSources.from(
+        exclude.map { "$prefix$it/**" }
+    )
     // Fix cache invalidation by stabilizing inputs
     arg("room.schemaLocation", "$projectDir/schemas")
     arg("room.incremental", "true")
