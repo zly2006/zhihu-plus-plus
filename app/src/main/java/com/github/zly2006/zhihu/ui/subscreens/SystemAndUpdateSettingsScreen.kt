@@ -208,7 +208,11 @@ fun SystemAndUpdateSettingsScreen(
                                 append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
                                 val prNumber = matchResult.groupValues[1]
                                 withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues/$prNumber")) {
-                                    withStyle(MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary).toSpanStyle()) {
+                                    withStyle(
+                                        MaterialTheme.typography.bodySmall
+                                            .copy(color = MaterialTheme.colorScheme.primary)
+                                            .toSpanStyle(),
+                                    ) {
                                         append("#$prNumber")
                                     }
                                 }
