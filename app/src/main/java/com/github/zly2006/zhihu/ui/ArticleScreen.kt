@@ -1085,16 +1085,6 @@ fun ArticleScreen(
         }
     }
 
-    // 上一个回答按钮
-    if (article.type == ArticleType.Answer && sharedData?.previousAnswer != null) {
-        DraggableRefreshButton(
-            onClick = { navigateToPrevious() },
-            preferenceName = "buttonSkipAnswerPrev",
-        ) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = "上一个回答")
-        }
-    }
-
     // 全屏菜单
     ArticleActionsMenu(
         article = article,
