@@ -186,7 +186,7 @@ fun SystemAndUpdateSettingsScreen(
                     releaseNotes = updateState
                         .releaseNotes
                         ?.substringAfter("## What's Changed\n")
-                        ?.substringBefore("\n**Full Changelog**:")
+                        ?.substringBefore("\n\n\n**Full Changelog**:")
                 }
             }
             if (releaseNotes != null) {
