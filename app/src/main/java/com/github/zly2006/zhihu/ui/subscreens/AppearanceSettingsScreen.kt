@@ -373,6 +373,62 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            // 回答切换手势设置
+            var answerSwitchExpanded by remember { mutableStateOf(false) }
+            val answerSwitchMode = remember {
+                mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
+            }
+            val answerSwitchOptions = listOf(
+                "off" to "关闭",
+                "vertical" to "上下滑动切换",
+                "horizontal" to "左右滑动切换",
+            )
+
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "回答切换手势",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "在回答页面通过手势切换同一问题下的其他回答",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = answerSwitchExpanded,
+                    onExpandedChange = { answerSwitchExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = answerSwitchExpanded,
+                        onDismissRequest = { answerSwitchExpanded = false },
+                    ) {
+                        answerSwitchOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    answerSwitchMode.value = mode
+                                    preferences.edit { putString("answerSwitchMode", mode) }
+                                    answerSwitchExpanded = false
+                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
             SwitchSettingItem(
                 title = "显示 Feed 卡片缩略图",

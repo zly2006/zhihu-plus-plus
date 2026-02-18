@@ -129,11 +129,45 @@ class ArticleViewModel(
         ActivityCompat.requestPermissions(activity, permissions, 1001) // 使用请求码1001
     }
 
+    enum class AnswerTransitionDirection {
+        DEFAULT,
+        VERTICAL_NEXT,
+        VERTICAL_PREVIOUS,
+    }
+
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {
         var viewingQuestionId: Long = 0L
         var nextUrl: String = ""
         var destinations = mutableListOf<Feed>()
+
+        // 回答历史栈，用于"上一个回答"导航
+        val answerHistory = mutableListOf<Article>()
+
+        // 下一个回答的预览信息
+        var nextAnswerAuthorName by mutableStateOf("")
+        var nextAnswerExcerpt by mutableStateOf("")
+        var nextAnswerAvatarUrl by mutableStateOf("")
+
+        // 导航动画方向
+        var answerTransitionDirection = AnswerTransitionDirection.DEFAULT
+
+        val previousAnswer: Article?
+            get() = if (answerHistory.size >= 2) answerHistory[answerHistory.size - 2] else null
+
+        fun pushAnswer(article: Article) {
+            if (answerHistory.lastOrNull() != article) {
+                answerHistory.add(article)
+            }
+        }
+
+        fun popAnswer(): Article? {
+            if (answerHistory.size >= 2) {
+                answerHistory.removeAt(answerHistory.size - 1)
+                return answerHistory.lastOrNull()
+            }
+            return null
+        }
     }
 
     @OptIn(ExperimentalStdlibApi::class, DelicateCoroutinesApi::class)
@@ -177,6 +211,7 @@ class ArticleViewModel(
                                 ),
                             )
                             val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
+                            sharedData.pushAnswer(article)
                             nextAnswerFuture = viewModelScope.async {
                                 if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
                                     val url =
@@ -214,8 +249,19 @@ class ArticleViewModel(
                                         }.toMutableList()
                                 }
                                 if (sharedData.destinations.isNotEmpty()) {
-                                    sharedData.destinations.removeAt(0)
+                                    val nextFeed = sharedData.destinations.removeAt(0)
+                                    // 更新预览信息
+                                    val nextTarget = nextFeed.target
+                                    if (nextTarget is Feed.AnswerTarget) {
+                                        sharedData.nextAnswerAuthorName = nextTarget.author?.name ?: ""
+                                        sharedData.nextAnswerExcerpt = nextTarget.excerpt ?: ""
+                                        sharedData.nextAnswerAvatarUrl = nextTarget.author?.avatarUrl ?: ""
+                                    }
+                                    nextFeed
                                 } else {
+                                    sharedData.nextAnswerAuthorName = ""
+                                    sharedData.nextAnswerExcerpt = ""
+                                    sharedData.nextAnswerAvatarUrl = ""
                                     null
                                 }
                             }

@@ -8,7 +8,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
@@ -254,7 +256,38 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     val question: Question = navEntry.toRoute()
                     QuestionScreen(question)
                 }
-                composable<Article> { navEntry ->
+                composable<Article>(
+                    enterTransition = {
+                        val sharedData = try {
+                            (activity as? androidx.activity.ComponentActivity)
+                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                        } catch (_: Exception) {
+                            null
+                        }
+                        when (sharedData?.answerTransitionDirection) {
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                            else -> slideInHorizontally(tween(300)) { it }
+                        }
+                    },
+                    exitTransition = {
+                        val sharedData = try {
+                            (activity as? androidx.activity.ComponentActivity)
+                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                        } catch (_: Exception) {
+                            null
+                        }
+                        when (sharedData?.answerTransitionDirection) {
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                            else -> ExitTransition.None
+                        }
+                    },
+                ) { navEntry ->
                     val article: Article = navEntry.toRoute()
                     val viewModel: ArticleViewModel = viewModel(navEntry) {
                         ArticleViewModel(article, activity.httpClient, navEntry)
