@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -519,11 +520,6 @@ fun ArticleScreen(
         }
     }
 
-    LaunchedEffect(article.id) {
-        viewModel.loadArticle(context)
-        viewModel.loadCollections(context)
-    }
-
     // 回答切换手势系统
     val sharedData = if (context is MainActivity && article.type == ArticleType.Answer) {
         val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>()
@@ -532,9 +528,17 @@ fun ArticleScreen(
         null
     }
 
-    // 重置导航动画方向（在 transition lambda 已读取之后）
-    LaunchedEffect(Unit) {
-        sharedData?.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.DEFAULT
+    LaunchedEffect(article.id) {
+        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
+        if (sharedData != null) {
+            if (!sharedData.navigatingFromAnswerSwitch) {
+                sharedData.reset()
+            }
+            sharedData.navigatingFromAnswerSwitch = false
+            sharedData.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.DEFAULT
+        }
+        viewModel.loadArticle(context)
+        viewModel.loadCollections(context)
     }
 
     val navigateToAnswer: (Feed?) -> Unit = { dest ->
@@ -560,10 +564,13 @@ fun ArticleScreen(
         } else {
             ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS
         }
-        // 缓存当前回答内容作为下一屏的 nextAnswerContent
-        sharedData?.nextAnswerContent = viewModel.toCachedContent()
-        val prev = sharedData?.popAnswer()
+        sharedData?.navigatingFromAnswerSwitch = true
+        // 缓存当前回答内容到历史
+        sharedData?.answerContentCache?.set(article.id, viewModel.toCachedContent())
+        val prev = sharedData?.goToPrevious()
         if (prev != null) {
+            // 从历史缓存设置 pendingInitialContent，消除闪动
+            sharedData?.pendingInitialContent = sharedData?.answerContentCache?.get(prev.id)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -584,11 +591,31 @@ fun ArticleScreen(
         } else {
             ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT
         }
-        // 缓存当前回答内容作为下一屏的 previousAnswerContent
-        sharedData?.previousAnswerContent = viewModel.toCachedContent()
-        coroutineScope.launch {
-            val dest = viewModel.nextAnswerFuture.await()
-            navigateToAnswer(dest)
+        sharedData?.navigatingFromAnswerSwitch = true
+        // 缓存当前回答内容到历史
+        sharedData?.answerContentCache?.set(article.id, viewModel.toCachedContent())
+        // Bug 3: 优先使用前向历史
+        val historyNext = sharedData?.goToNext()
+        if (historyNext != null) {
+            sharedData?.pendingInitialContent = sharedData?.answerContentCache?.get(historyNext.id)
+            val activity = context as? MainActivity
+            if (activity != null) {
+                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                    activity.navController.currentBackStackEntry
+                        ?.toRoute<Article>()
+                        ?.type == ArticleType.Answer
+                ) {
+                    activity.navController.popBackStack()
+                }
+                navigator.onNavigate(historyNext)
+            }
+        } else {
+            // 没有前向历史，从 feed 加载
+            sharedData?.pendingInitialContent = sharedData?.nextAnswerContent
+            coroutineScope.launch {
+                val dest = viewModel.nextAnswerFuture.await()
+                navigateToAnswer(dest)
+            }
         }
     }
 
@@ -1045,26 +1072,8 @@ fun ArticleScreen(
         DraggableRefreshButton(
             onClick = {
                 navigatingToNextAnswer = true
-                coroutineScope.launch {
-                    val dest = viewModel.nextAnswerFuture.await()
-                    if (dest == null) {
-                        Toast.makeText(context, "没有更多回答了", Toast.LENGTH_SHORT).show()
-                        navigatingToNextAnswer = false
-                        return@launch
-                    }
-                    val activity = context as? MainActivity ?: return@launch
-                    val target = dest.target!!
-                    if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
-                        navigator.onNavigate(target.navDestination)
-                    }
-                }
+                navigateToNext()
+                navigatingToNextAnswer = false
             },
             preferenceName = "buttonSkipAnswer",
         ) {
@@ -1073,6 +1082,16 @@ fun ArticleScreen(
             } else {
                 Icon(Icons.Default.SkipNext, contentDescription = "下一个回答")
             }
+        }
+    }
+
+    // 上一个回答按钮
+    if (article.type == ArticleType.Answer && sharedData?.previousAnswer != null) {
+        DraggableRefreshButton(
+            onClick = { navigateToPrevious() },
+            preferenceName = "buttonSkipAnswerPrev",
+        ) {
+            Icon(Icons.Default.SkipPrevious, contentDescription = "上一个回答")
         }
     }
 
