@@ -295,7 +295,7 @@ fun QuestionScreen(
                                 onClick = {
                                     val shareText = getShareText(question, title)
                                     if (shareText != null) {
-                                        handleShareAction(context, question, shareText) {
+                                        handleShareAction(context, question) {
                                             showShareDialog = true
                                         }
                                     }

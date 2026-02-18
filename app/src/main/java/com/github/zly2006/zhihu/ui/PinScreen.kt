@@ -115,7 +115,7 @@ fun PinScreen(
                     onClick = {
                         val shareText = getShareText(pin)
                         if (shareText != null) {
-                            handleShareAction(context, pin, shareText) {
+                            handleShareAction(context, pin) {
                                 showShareDialog = true
                             }
                         }
