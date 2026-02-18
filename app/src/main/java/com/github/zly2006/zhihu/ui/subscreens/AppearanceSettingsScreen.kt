@@ -373,6 +373,17 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val pinAnswerDate = remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
+            SwitchSettingItem(
+                title = "置顶回答日期",
+                description = "将回答的发布日期和编辑日期移动到内容最前面显示",
+                checked = pinAnswerDate.value,
+                onCheckedChange = {
+                    pinAnswerDate.value = it
+                    preferences.edit { putBoolean("pinAnswerDate", it) }
+                },
+            )
+
             // 回答切换手势设置
             var answerSwitchExpanded by remember { mutableStateOf(false) }
             val answerSwitchMode = remember {

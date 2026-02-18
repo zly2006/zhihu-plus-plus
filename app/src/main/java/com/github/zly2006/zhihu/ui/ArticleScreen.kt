@@ -25,6 +25,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -490,6 +491,7 @@ fun ArticleScreen(
     val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     val buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     val answerSwitchMode by remember { mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical") }
+    val pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -887,6 +889,30 @@ fun ArticleScreen(
                     }
                 }
 
+                @Composable
+                fun ColumnScope.DateTexts() {
+                    Text(
+                        "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                    )
+                    if (viewModel.createdAt != viewModel.updatedAt) {
+                        Text(
+                            "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                            color = Color.Gray,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                if (pinAnswerDate) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalAlignment = Alignment.Start,
+                    ) {
+                        DateTexts()
+                    }
+                }
+
                 if (viewModel.content.isNotEmpty()) {
                     if (preferences.getBoolean("articleUseWebview", true)) {
                         WebviewComp {
@@ -970,17 +996,8 @@ fun ArticleScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.End,
                 ) {
-                    Text(
-                        "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
-                        color = Color.Gray,
-                        fontSize = 11.sp,
-                    )
-                    if (viewModel.createdAt != viewModel.updatedAt) {
-                        Text(
-                            "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
-                            color = Color.Gray,
-                            fontSize = 11.sp,
-                        )
+                    if (!pinAnswerDate) {
+                        DateTexts()
                     }
                     if (viewModel.ipInfo != null) {
                         Text(
