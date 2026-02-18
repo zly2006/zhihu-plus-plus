@@ -38,8 +38,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -179,7 +183,10 @@ fun SystemAndUpdateSettingsScreen(
             LaunchedEffect(updateState) {
                 val updateState = updateState
                 if (updateState is UpdateState.UpdateAvailable) {
-                    releaseNotes = updateState.releaseNotes?.substringAfter("## What's Changed\n")?.substringBefore("\n**Full Changelog**:")
+                    releaseNotes = updateState
+                        .releaseNotes
+                        ?.substringAfter("## What's Changed\n")
+                        ?.substringBefore("\n**Full Changelog**:")
                 }
             }
             if (releaseNotes != null) {
@@ -187,17 +194,38 @@ fun SystemAndUpdateSettingsScreen(
                 HorizontalDivider()
                 Text(
                     "更新内容",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                 )
                 SelectionContainer {
                     Text(
-                        releaseNotes!!,
-                        style = MaterialTheme.typography.bodySmall,
+                        buildAnnotatedString {
+                            val prRegex = Regex("https://github.com/zly2006/zhihu-plus-plus/pull/(\\d+)")
+                            var lastIndex = 0
+                            prRegex.findAll(releaseNotes!!).forEach { matchResult ->
+                                append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
+                                val prNumber = matchResult.groupValues[1]
+                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/pull/$prNumber")) {
+                                    withStyle(
+                                        MaterialTheme.typography.bodyMedium
+                                            .copy(color = MaterialTheme.colorScheme.primary)
+                                            .toSpanStyle(),
+                                    ) {
+                                        append("#$prNumber")
+                                    }
+                                }
+                                lastIndex = matchResult.range.last + 1
+                            }
+                            append(releaseNotes!!.substring(lastIndex))
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                Button(onClick = {
+                    luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri())
+                }) { }
             }
 
             Text(
