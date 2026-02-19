@@ -27,6 +27,15 @@ class TrySerializer<T : Any>(
 }
 
 @Serializable
+data class ZhihuMeNotifications(
+    val defaultNotificationsCount: Int = 0,
+    val followNotificationsCount: Int = 0,
+    val voteThankNotificationsCount: Int = 0,
+) {
+    val totalCount: Int get() = defaultNotificationsCount + followNotificationsCount + voteThankNotificationsCount
+}
+
+@Serializable
 data class NotificationItem(
     val id: String,
     val type: String,

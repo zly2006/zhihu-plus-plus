@@ -29,6 +29,7 @@ data class BlockedContentRecord(
 /**
  * 匹配关键词信息
  */
+@kotlinx.serialization.Serializable
 data class MatchedKeywordInfo(
     val keyword: String,
     val similarity: Double,

@@ -9,8 +9,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import com.github.zly2006.zhihu.viewmodel.filter.MatchedKeywordInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
 
 /**
  * 屏蔽词管理仓库
@@ -188,17 +187,7 @@ class BlockedKeywordRepository(
         matchedKeywords: List<MatchedKeywordInfo>,
     ) = withContext(Dispatchers.IO) {
         try {
-            // 构建匹配关键词的JSON
-            val matchedArray = JSONArray()
             val top3Matches = matchedKeywords.sortedByDescending { it.similarity }.take(3)
-
-            for (match in top3Matches) {
-                val obj = JSONObject()
-                obj.put("keyword", match.keyword)
-                obj.put("similarity", match.similarity)
-                matchedArray.put(obj)
-            }
-
             val record = BlockedContentRecord(
                 contentId = contentId,
                 contentType = contentType,
@@ -208,9 +197,11 @@ class BlockedKeywordRepository(
                 authorId = authorId,
                 blockedTime = System.currentTimeMillis(),
                 blockReason = "NLP语义匹配",
-                matchedKeywords = matchedArray.toString(),
+                matchedKeywords = Json.encodeToString(
+                    kotlinx.serialization.builtins.ListSerializer(MatchedKeywordInfo.serializer()),
+                    top3Matches,
+                ),
             )
-
             recordDao.insertRecord(record)
             // 维护记录数量限制
             recordDao.maintainRecordLimit()
@@ -245,18 +236,10 @@ class BlockedKeywordRepository(
      * 解析匹配关键词JSON
      */
     fun parseMatchedKeywords(json: String): List<MatchedKeywordInfo> = try {
-        val array = JSONArray(json)
-        val result = mutableListOf<MatchedKeywordInfo>()
-        for (i in 0 until array.length()) {
-            val obj = array.getJSONObject(i)
-            result.add(
-                MatchedKeywordInfo(
-                    keyword = obj.getString("keyword"),
-                    similarity = obj.getDouble("similarity"),
-                ),
-            )
-        }
-        result
+        Json.decodeFromString(
+            kotlinx.serialization.builtins.ListSerializer(MatchedKeywordInfo.serializer()),
+            json,
+        )
     } catch (e: Exception) {
         e.printStackTrace()
         emptyList()
