@@ -503,7 +503,7 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
                     val jojo = AccountData.fetchGet(context, collectionsUrl) {
                         signFetchRequest(context)
                     }!!

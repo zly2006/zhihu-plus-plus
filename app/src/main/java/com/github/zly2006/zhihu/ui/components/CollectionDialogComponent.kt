@@ -220,8 +220,8 @@ fun CollectionDialogComponent(
     CreateCollectionDialog(
         showDialog = showCreateDialog,
         onDismiss = { showCreateDialog = false },
-        onConfirm = { title, description ->
-            viewModel.createNewCollection(context, title, description)
+        onConfirm = { title, description, isPublic ->
+            viewModel.createNewCollection(context, title, description, isPublic)
         },
     )
 }
