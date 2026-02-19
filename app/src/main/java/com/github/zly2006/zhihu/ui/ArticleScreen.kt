@@ -1247,11 +1247,15 @@ private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
             }
             if (cached.content.isNotEmpty()) {
                 if (preferences.getBoolean("articleUseWebview", true)) {
+                    val articleId = cached.article.id.toString()
                     WebviewComp {
-                        it.loadZhihu(
-                            "https://www.zhihu.com/answer/${cached.article.id}",
-                            Jsoup.parse(cached.content),
-                        )
+                        if (it.contentId != articleId) {
+                            it.contentId = articleId
+                            it.loadZhihu(
+                                "https://www.zhihu.com/answer/${cached.article.id}",
+                                Jsoup.parse(cached.content),
+                            )
+                        }
                     }
                 } else {
                     val astNode = remember(cached.content) {
