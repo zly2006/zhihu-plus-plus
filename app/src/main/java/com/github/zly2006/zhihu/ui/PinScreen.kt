@@ -267,6 +267,7 @@ private fun PinContent(
         // Content
         if (preferences.getBoolean("articleUseWebview", true)) {
             WebviewComp {
+                it.isVerticalScrollBarEnabled = false
                 it.setupUpWebviewClient()
                 val document = Jsoup.parse(pin.contentHtml)
                 it.loadZhihu(
