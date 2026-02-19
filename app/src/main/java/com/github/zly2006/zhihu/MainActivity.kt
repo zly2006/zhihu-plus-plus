@@ -42,6 +42,7 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -138,7 +139,7 @@ class MainActivity : ComponentActivity() {
             finish()
         }
         super.onCreate(savedInstanceState)
-        SentenceEmbeddingManager.setDefaultContext(applicationContext)
+        clearShareImageCache(this)
         enableEdgeToEdgeCompat()
         history = HistoryStorage(this)
         AccountData.loadData(this)
@@ -552,7 +553,7 @@ class MainActivity : ComponentActivity() {
                     when (state) {
                         is UpdateManager.UpdateState.Downloading -> {
                             runOnUiThread {
-                                progressDialog.setMessage("正在下载版本 $version，��稍候...")
+                                progressDialog.setMessage("正在下载版本 $version，请稍候...")
                             }
                         }
                         is UpdateManager.UpdateState.Downloaded -> {
@@ -571,7 +572,7 @@ class MainActivity : ComponentActivity() {
                                     .Builder(this@MainActivity)
                                     .apply {
                                         setTitle("下载失败")
-                                        setMessage("更���下载失败：${state.message}")
+                                        setMessage("更新下载失败：${state.message}")
                                         setPositiveButton("确定", null)
                                     }.show()
                             }
@@ -599,7 +600,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 显示安����认对话框
+     * 显示安装确认对话框
      */
     private fun showInstallDialog(file: java.io.File) {
         AlertDialog

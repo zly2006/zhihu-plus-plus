@@ -1,0 +1,55 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version name (e.g. 0.17.8)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump Version and Tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ inputs.version_name }}" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: version_name must be in format X.Y.Z"
+            exit 1
+          fi
+
+      - name: Calculate version code
+        id: ver
+        run: |
+          VERSION="${{ inputs.version_name }}"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          VERSION_CODE=$((MINOR * 10 + PATCH))
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+
+      - name: Update gradle.properties
+        run: |
+          sed -i "s/^app\.versionName=.*/app.versionName=${{ inputs.version_name }}/" gradle.properties
+          sed -i "s/^app\.versionCode=.*/app.versionCode=${{ steps.ver.outputs.version_code }}/" gradle.properties
+          echo "Updated to versionName=${{ inputs.version_name }}, versionCode=${{ steps.ver.outputs.version_code }}"
+          grep "app\.version" gradle.properties
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gradle.properties
+          git commit -m "bump version"
+          git tag "${{ inputs.version_name }}"
+          git push origin master
+          git push origin "${{ inputs.version_name }}"

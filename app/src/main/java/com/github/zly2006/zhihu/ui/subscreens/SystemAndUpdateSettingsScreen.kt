@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,8 +38,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -178,7 +183,10 @@ fun SystemAndUpdateSettingsScreen(
             LaunchedEffect(updateState) {
                 val updateState = updateState
                 if (updateState is UpdateState.UpdateAvailable) {
-                    releaseNotes = updateState.releaseNotes
+                    releaseNotes = updateState
+                        .releaseNotes
+                        ?.substringAfter("## What's Changed\n")
+                        ?.substringBefore("\n\n\n**Full Changelog**:")
                 }
             }
             if (releaseNotes != null) {
@@ -186,15 +194,40 @@ fun SystemAndUpdateSettingsScreen(
                 HorizontalDivider()
                 Text(
                     "更新内容",
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                 )
-                Text(
-                    releaseNotes!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                SelectionContainer {
+                    Text(
+                        buildAnnotatedString {
+                            val prRegex = Regex("https://github.com/zly2006/zhihu-plus-plus/pull/(\\d+)")
+                            var lastIndex = 0
+                            prRegex.findAll(releaseNotes!!).forEach { matchResult ->
+                                append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
+                                val prNumber = matchResult.groupValues[1]
+                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/pull/$prNumber")) {
+                                    withStyle(
+                                        MaterialTheme.typography.bodyMedium
+                                            .copy(color = MaterialTheme.colorScheme.primary)
+                                            .toSpanStyle(),
+                                    ) {
+                                        append("#$prNumber")
+                                    }
+                                }
+                                lastIndex = matchResult.range.last + 1
+                            }
+                            append(releaseNotes!!.substring(lastIndex))
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Button(onClick = {
+                    luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri())
+                }) {
+                    Text("查看完整更新日志")
+                }
             }
 
             Text(

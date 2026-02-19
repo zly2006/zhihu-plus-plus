@@ -7,12 +7,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
+import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.ui.NotificationPreferences
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.reflect.typeOf
 
 class NotificationViewModel :
@@ -45,10 +44,7 @@ class NotificationViewModel :
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
             }!!
-            val default = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 0
-            val follow = jojo["follow_notifications_count"]?.jsonPrimitive?.int ?: 0
-            val voteThank = jojo["vote_thank_notifications_count"]?.jsonPrimitive?.int ?: 0
-            return default + follow + voteThank
+            return AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
         } catch (_: Exception) {
             // 忽略错误
             return 0

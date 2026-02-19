@@ -6,6 +6,9 @@
     <files-path
         name="files"
         path="." />
+    <files-path
+        name="internal_files"
+        path="." />
     <external-path
         name="external"
         path="." />
