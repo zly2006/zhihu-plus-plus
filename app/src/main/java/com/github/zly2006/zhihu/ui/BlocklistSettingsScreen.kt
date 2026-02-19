@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
@@ -224,6 +226,18 @@ fun BlocklistSettingsScreen(
                             try {
                                 val blocklistManager = BlocklistManager.getInstance(context)
                                 val file = blocklistManager.exportAllBlocklistToJson(context)
+                                val intent = Intent().apply {
+                                    action = Intent.ACTION_VIEW
+                                    setDataAndType(
+                                        FileProvider.getUriForFile(
+                                            context,
+                                            "${context.packageName}.provider",
+                                            file,
+                                        ),
+                                        "application/json",
+                                    )
+                                }
+                                context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
                                 Toast.makeText(context, "已导出到 ${file.absolutePath}", Toast.LENGTH_LONG).show()
                             } catch (e: Exception) {
                                 e.printStackTrace()

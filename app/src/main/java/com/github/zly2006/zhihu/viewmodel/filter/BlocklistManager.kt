@@ -271,7 +271,7 @@ class BlocklistManager private constructor(
         )
 
         val dir = context.getExternalFilesDir(null) ?: context.filesDir
-        val file = File(dir, "zhihu_blocklist.json")
+        val file = File(dir, "zhihupp_blocklist.json")
         file.writeText(json.encodeToString(BlocklistBackup.serializer(), backup))
         file
     }
