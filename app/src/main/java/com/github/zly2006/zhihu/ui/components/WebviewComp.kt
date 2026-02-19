@@ -7,8 +7,6 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Rect
-import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
 import android.util.Log
@@ -271,6 +269,14 @@ class CustomWebView : WebView {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
+        val customFontFile = java.io.File(context.filesDir, "custom_font")
+        val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
+            val base64 = android.util.Base64.encodeToString(customFontFile.readBytes(), android.util.Base64.NO_WRAP)
+            "@font-face { font-family: 'ZhihuCustomFont'; src: url('data:font/truetype;base64,$base64'); }\n" +
+                "body { font-family: 'ZhihuCustomFont', sans-serif; }"
+        } else {
+            ""
+        }
 
         loadDataWithBaseURL(
             url,
@@ -284,15 +290,7 @@ class CustomWebView : WebView {
                 font-size: $fontSize%;
                 line-height: ${lineHeight / 100f};
             }
-            ${
-                // This is a workaround for the issue where the system font family name is not available in the WebView.
-                // https://github.com/zly2006/zhihu-plus-plus/issues/9
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}"
-                } else {
-                    ""
-                }
-            }
+            $customFontCss
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
