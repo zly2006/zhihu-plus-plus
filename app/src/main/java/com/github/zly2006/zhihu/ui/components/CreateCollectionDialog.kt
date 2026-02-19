@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,7 +30,7 @@ import androidx.compose.ui.window.Dialog
 fun CreateCollectionDialog(
     showDialog: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (title: String, description: String) -> Unit,
+    onConfirm: (title: String, description: String, Boolean) -> Unit,
 ) {
     if (showDialog) {
         var title by remember { mutableStateOf("") }
@@ -73,6 +75,21 @@ fun CreateCollectionDialog(
                         maxLines = 3,
                     )
 
+                    var isPublic by remember { mutableStateOf(false) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = isPublic,
+                            onCheckedChange = { isPublic = it },
+                        )
+                        Text(
+                            text = "公开收藏夹",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
                     // 按钮行
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -85,7 +102,7 @@ fun CreateCollectionDialog(
                         Button(
                             onClick = {
                                 if (title.isNotBlank()) {
-                                    onConfirm(title.trim(), description.trim())
+                                    onConfirm(title.trim(), description.trim(), isPublic)
                                     onDismiss()
                                 }
                             },
