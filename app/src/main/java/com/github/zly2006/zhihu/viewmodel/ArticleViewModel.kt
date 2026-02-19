@@ -408,14 +408,19 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
-                    val jojo = AccountData.fetchGet(context, collectionsUrl) {
-                        signFetchRequest(context)
-                    }!!
-                    val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
+                    var url: String? = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                    val allCollections = mutableListOf<Collection>()
+                    while (url != null) {
+                        val jojo = AccountData.fetchGet(context, url) {
+                            signFetchRequest(context)
+                        }!!
+                        val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
+                        allCollections.addAll(collectionsData.data)
+                        url = if (collectionsData.paging.isEnd) null else collectionsData.paging.next
+                    }
                     collections.clear()
                     collections.addAll(
-                        collectionsData.data
+                        allCollections
                             .sortedWith { a, b ->
                                 val indexA = collectionOrder.indexOf(a.id)
                                 val indexB = collectionOrder.indexOf(b.id)

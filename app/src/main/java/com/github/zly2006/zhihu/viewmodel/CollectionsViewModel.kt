@@ -7,5 +7,5 @@ class CollectionsViewModel(
     val urlToken: String,
 ) : PaginationViewModel<Collection>(typeOf<Collection>()) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/people/$urlToken/collections"
+        get() = "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=20"
 }
