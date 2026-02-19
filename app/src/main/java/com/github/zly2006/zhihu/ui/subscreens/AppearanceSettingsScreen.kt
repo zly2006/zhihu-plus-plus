@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -339,6 +343,55 @@ fun AppearanceSettingsScreen(
                     preferences.edit { putBoolean("articleUseWebview", it) }
                 },
             )
+
+            AnimatedVisibility(visible = articleUseWebview.value) {
+                var customFontName by remember {
+                    mutableStateOf(preferences.getString("webviewCustomFontName", null))
+                }
+                val fontFilePicker = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri ->
+                    if (uri == null) return@rememberLauncherForActivityResult
+                    val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
+                    val destFile = java.io.File(context.filesDir, "custom_font")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        destFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    preferences.edit {
+                        putString("webviewCustomFontName", name)
+                    }
+                    customFontName = name
+                    Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
+                }
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text("WebView 自定义字体", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        customFontName ?: "未设置",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
+                        }) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null)
+                            Text("选择字体文件", modifier = Modifier.padding(start = 4.dp))
+                        }
+                        if (customFontName != null) {
+                            OutlinedButton(onClick = {
+                                java.io.File(context.filesDir, "custom_font").delete()
+                                preferences.edit { remove("webviewCustomFontName") }
+                                customFontName = null
+                                Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = null)
+                                Text("清除", modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                    }
+                }
+            }
 
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
