@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.ui
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -98,6 +100,25 @@ fun BlocklistSettingsScreen(
         }
     }
 
+    // 导入文件选择器
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val blocklistManager = BlocklistManager.getInstance(context)
+                    val summary = blocklistManager.importAllBlocklistFromJson(context, uri)
+                    Toast.makeText(context, "导入成功：$summary", Toast.LENGTH_LONG).show()
+                    loadData()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         loadData()
     }
@@ -184,6 +205,34 @@ fun BlocklistSettingsScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // 全局导入/导出按钮
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            ) {
+                TextButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }) {
+                    Text("导入规则")
+                }
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                val blocklistManager = BlocklistManager.getInstance(context)
+                                val file = blocklistManager.exportAllBlocklistToJson(context)
+                                Toast.makeText(context, "已导出到 ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                ) {
+                    Text("导出规则")
                 }
             }
 

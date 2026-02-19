@@ -1,8 +1,11 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
+import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import java.io.File
 
 /**
  * 屏蔽列表管理器
@@ -240,6 +243,81 @@ class BlocklistManager private constructor(
     suspend fun countBlockedTopics(topicIds: List<String>?): Int = withContext(Dispatchers.IO) {
         if (topicIds.isNullOrEmpty()) return@withContext 0
         topicDao.getBlockedTopicIds(topicIds).size
+    }
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+    }
+
+    /**
+     * 导出所有屏蔽数据（关键词、NLP短语、用户、主题）到 Downloads/zhihu_blocklist.json
+     * @return 导出文件，失败时返回 null
+     */
+    suspend fun exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
+        val allKeywords = keywordDao.getAllKeywords()
+        val users = userDao.getAllUsers()
+        val topics = topicDao.getAllTopics()
+
+        val backup = BlocklistBackup(
+            keywords = allKeywords
+                .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
+                .map { KeywordBackup(it.keyword, it.caseSensitive, it.isRegex) },
+            nlpKeywords = allKeywords
+                .filter { it.getKeywordTypeEnum() == KeywordType.NLP_SEMANTIC }
+                .map { NlpKeywordBackup(it.keyword) },
+            users = users.map { UserBackup(it.userId, it.userName, it.urlToken ?: "", it.avatarUrl ?: "") },
+            topics = topics.map { TopicBackup(it.topicId, it.topicName) },
+        )
+
+        val dir = context.getExternalFilesDir(null) ?: context.filesDir
+        val file = File(dir, "zhihu_blocklist.json")
+        file.writeText(json.encodeToString(BlocklistBackup.serializer(), backup))
+        file
+    }
+
+    /**
+     * 从 URI 导入所有屏蔽数据（追加，不清空已有数据）
+     * @return 各类导入数量的摘要字符串
+     */
+    suspend fun importAllBlocklistFromJson(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
+        val text = context.contentResolver
+            .openInputStream(uri)
+            ?.bufferedReader()
+            ?.readText()
+            ?: return@withContext "读取文件失败"
+        val backup = json.decodeFromString(BlocklistBackup.serializer(), text)
+
+        backup.keywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
+            keywordDao.insertKeyword(
+                BlockedKeyword(
+                    keyword = kw.keyword,
+                    keywordType = KeywordType.EXACT_MATCH.name,
+                    caseSensitive = kw.caseSensitive,
+                    isRegex = kw.isRegex,
+                ),
+            )
+        }
+        backup.nlpKeywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
+            keywordDao.insertKeyword(
+                BlockedKeyword(keyword = kw.keyword, keywordType = KeywordType.NLP_SEMANTIC.name),
+            )
+        }
+        backup.users.filter { it.userId.isNotBlank() }.forEach { u ->
+            userDao.insertUser(
+                BlockedUser(
+                    userId = u.userId,
+                    userName = u.userName,
+                    urlToken = u.urlToken.takeIf { it.isNotBlank() },
+                    avatarUrl = u.avatarUrl.takeIf { it.isNotBlank() },
+                ),
+            )
+        }
+        backup.topics.filter { it.topicId.isNotBlank() }.forEach { t ->
+            topicDao.insertTopic(BlockedTopic(topicId = t.topicId, topicName = t.topicName))
+        }
+
+        "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
     }
 }
 
