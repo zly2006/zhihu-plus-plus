@@ -166,9 +166,11 @@ fun HomeScreen(refreshTrigger: Int = 0) {
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
+    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
     LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger > 0) {
+        if (refreshTrigger != cachedRefreshTrigger) {
             viewModel.refresh(context)
+            cachedRefreshTrigger = refreshTrigger
         }
     }
 
