@@ -9,7 +9,6 @@ import androidx.room.TypeConverters
 @Database(
     entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class],
     version = 5, // 增加版本号，因为添加了UserBehavior表
-    exportSchema = false,
 )
 @TypeConverters(LocalDatabaseConverters::class)
 abstract class LocalContentDatabase : RoomDatabase() {

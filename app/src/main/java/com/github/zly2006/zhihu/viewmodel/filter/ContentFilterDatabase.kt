@@ -10,7 +10,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class],
     version = 4,
-    exportSchema = false,
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun contentFilterDao(): ContentFilterDao
