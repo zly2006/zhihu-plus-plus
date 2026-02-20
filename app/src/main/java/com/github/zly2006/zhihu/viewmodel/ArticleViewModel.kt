@@ -39,7 +39,10 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.ui.components.CustomWebView
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
@@ -184,6 +187,38 @@ class ArticleViewModel(
         var previousAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
         var nextAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
 
+        // 缓存的 WebView 实例，跨导航存活，避免重建闪动
+        var previousPreviewWebView: CustomWebView? = null
+            private set
+        var nextPreviewWebView: CustomWebView? = null
+            private set
+
+        fun claimPreviewWebViewAsMain(articleId: String): CustomWebView? = when {
+            nextPreviewWebView?.contentId == articleId ->
+                nextPreviewWebView.also { nextPreviewWebView = null }
+            previousPreviewWebView?.contentId == articleId ->
+                previousPreviewWebView.also { previousPreviewWebView = null }
+            else -> null
+        }
+
+        fun getOrCreatePreviewWebView(context: Context, isNext: Boolean): CustomWebView {
+            val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
+            if (existing != null) return existing
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+            return CustomWebView(context)
+                .apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
+                    setupUpWebviewClient()
+                }.also {
+                    if (isNext) nextPreviewWebView = it else previousPreviewWebView = it
+                }
+        }
+
         // 用于消除切换闪动：导航前设置，新页面用它初始化
         var pendingInitialContent: CachedAnswerContent? = null
 
@@ -255,6 +290,17 @@ class ArticleViewModel(
             nextAnswerContent = null
             pendingInitialContent = null
             navigatingFromAnswerSwitch = false
+            // 不销毁缓存 WebView，只清除 contentId 让下次重新加载
+            previousPreviewWebView?.contentId = null
+            nextPreviewWebView?.contentId = null
+        }
+
+        override fun onCleared() {
+            previousPreviewWebView?.destroy()
+            previousPreviewWebView = null
+            nextPreviewWebView?.destroy()
+            nextPreviewWebView = null
+            super.onCleared()
         }
     }
 
@@ -388,7 +434,7 @@ class ArticleViewModel(
                                             try {
                                                 val nextDetail = DataHolder.getContentDetail(context, nextDest) as? DataHolder.Answer
                                                 if (nextDetail != null) {
-                                                    sharedData.nextAnswerContent = CachedAnswerContent(
+                                                    val nextCached = CachedAnswerContent(
                                                         article = nextDest,
                                                         title = nextDetail.question.title,
                                                         authorName = nextDetail.author.name,
@@ -398,6 +444,7 @@ class ArticleViewModel(
                                                         voteUpCount = nextDetail.voteupCount,
                                                         commentCount = nextDetail.commentCount,
                                                     )
+                                                    sharedData.nextAnswerContent = nextCached
                                                 }
                                             } catch (e: Exception) {
                                                 Log.w("ArticleViewModel", "Failed to pre-load next answer content", e)

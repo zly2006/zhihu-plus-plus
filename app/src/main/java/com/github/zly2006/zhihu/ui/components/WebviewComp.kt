@@ -400,6 +400,7 @@ class OpenImageDislog(
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
+    existingWebView: CustomWebView? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -410,14 +411,19 @@ fun WebviewComp(
 
     AndroidView(
         factory = { ctx ->
-            CustomWebView(ctx).apply {
-                // 根据用户设置决定是否启用硬件加速
-                if (useHardwareAcceleration) {
-                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                } else {
-                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+            val wv = if (existingWebView != null) {
+                (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
+                existingWebView
+            } else {
+                CustomWebView(ctx).apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
                 }
-
+            }
+            wv.apply {
                 this.setupUpWebviewClient {
                 }
                 this.setHtmlClickListener(this.defaultHtmlClickListener())

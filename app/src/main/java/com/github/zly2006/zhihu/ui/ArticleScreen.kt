@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
@@ -90,6 +91,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -931,7 +933,11 @@ fun ArticleScreen(
 
                 if (viewModel.content.isNotEmpty()) {
                     if (preferences.getBoolean("articleUseWebview", true)) {
-                        WebviewComp {
+                        // 复用缓存的预览 WebView 作为主 WebView，避免导航后白屏闪动
+                        val cachedMainWebView = remember(article.id) {
+                            sharedData?.claimPreviewWebViewAsMain(article.id.toString())
+                        }
+                        WebviewComp(existingWebView = cachedMainWebView) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
                                 if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
@@ -1049,16 +1055,41 @@ fun ArticleScreen(
             answerSwitchContent()
         }
     } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+        LaunchedEffect(sharedData?.nextAnswerContent) {
+            val cached = sharedData?.nextAnswerContent ?: return@LaunchedEffect
+            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true)
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    Jsoup.parse(cached.content),
+                )
+            }
+        }
+        LaunchedEffect(sharedData?.previousAnswerContent) {
+            val cached = sharedData?.previousAnswerContent ?: return@LaunchedEffect
+            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false)
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    Jsoup.parse(cached.content),
+                )
+            }
+        }
         AnswerHorizontalOverscroll(
             canGoPrevious = sharedData?.previousAnswer != null,
             canGoNext = true,
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
             previousContent = sharedData?.previousAnswerContent?.let { cached ->
-                { CachedAnswerPreview(cached) }
+                { CachedAnswerPreview(cached, sharedData, isNext = false) }
             },
             nextContent = sharedData?.nextAnswerContent?.let { cached ->
-                { CachedAnswerPreview(cached) }
+                { CachedAnswerPreview(cached, sharedData, isNext = true) }
             },
         ) {
             answerSwitchContent()
@@ -1127,9 +1158,15 @@ fun ArticleScreen(
 /**
  * 渲染缓存的回答完整内容，用于水平滑动预览。
  * 显示标题、作者信息、HTML 内容（WebView）。
+ * sharedData: ViewModel 中的共享数据，提供缓存 WebView 实例。
+ * isNext: 标识是下一个还是上一个回答的预览。
  */
 @Composable
-private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
+private fun CachedAnswerPreview(
+    cached: ArticleViewModel.CachedAnswerContent,
+    sharedData: ArticleViewModel.ArticlesSharedData? = null,
+    isNext: Boolean = false,
+) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     Scaffold(
@@ -1203,10 +1240,11 @@ private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
     ) { innerPadding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ).verticalScroll(rememberScrollState()),
+                ),
         ) {
             Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
             Row(
@@ -1247,14 +1285,46 @@ private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
             }
             if (cached.content.isNotEmpty()) {
                 if (preferences.getBoolean("articleUseWebview", true)) {
-                    val articleId = cached.article.id.toString()
-                    WebviewComp {
-                        if (it.contentId != articleId) {
-                            it.contentId = articleId
-                            it.loadZhihu(
-                                "https://www.zhihu.com/answer/${cached.article.id}",
-                                Jsoup.parse(cached.content),
-                            )
+                    if (sharedData != null) {
+                        AndroidView(
+                            factory = { ctx ->
+                                val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
+                                (wv.parent as? ViewGroup)?.removeView(wv)
+                                wv
+                            },
+                            update = {
+                                val articleId = cached.article.id.toString()
+                                if (it.contentId != articleId) {
+                                    it.contentId = articleId
+                                    it.loadZhihu(
+                                        "https://www.zhihu.com/answer/${cached.article.id}",
+                                        Jsoup.parse(cached.content),
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            onRelease = { wv ->
+                                // Only detach if still the shared preview WebView (not claimed as main)
+                                val isStillPreview = if (isNext) {
+                                    sharedData.nextPreviewWebView === wv
+                                } else {
+                                    sharedData.previousPreviewWebView === wv
+                                }
+                                if (isStillPreview) {
+                                    (wv.parent as? ViewGroup)?.removeView(wv)
+                                }
+                            },
+                        )
+                    } else {
+                        val articleId = cached.article.id.toString()
+                        WebviewComp {
+                            if (it.contentId != articleId) {
+                                it.contentId = articleId
+                                it.loadZhihu(
+                                    "https://www.zhihu.com/answer/${cached.article.id}",
+                                    Jsoup.parse(cached.content),
+                                )
+                            }
                         }
                     }
                 } else {
