@@ -312,22 +312,6 @@ class ArticleViewModel(
                 try {
                     if (article.type == ArticleType.Answer) {
                         val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
-
-                        // Bug 1: 用缓存内容预填充，消除切换闪动
-                        val pending = sharedData.pendingInitialContent
-                        if (pending != null && pending.article.id == article.id) {
-                            title = pending.title
-                            authorName = pending.authorName
-                            authorBio = pending.authorBio
-                            authorAvatarSrc = pending.authorAvatarUrl
-                            content = pending.content
-                            voteUpCount = pending.voteUpCount
-                            commentCount = pending.commentCount
-                            sharedData.pendingInitialContent = null
-                        }
-
-                        // Bug 2 的 reset 逻辑已移至 ArticleScreen 的 LaunchedEffect（主线程）
-
                         val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
                         if (answer != null) {
                             title = answer.question.title
