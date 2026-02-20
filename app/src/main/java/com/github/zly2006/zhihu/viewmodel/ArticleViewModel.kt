@@ -172,28 +172,69 @@ class ArticleViewModel(
         var destinations = mutableStateListOf<Feed>()
 
         // 回答历史列表 + 索引式导航
-        val answerHistory = mutableStateListOf<Article>()
+        val answerHistory = mutableStateListOf<CachedAnswerContent>()
         var currentAnswerIndex by mutableIntStateOf(-1)
 
-        // 为历史条目缓存完整内容
-        val answerContentCache = mutableMapOf<Long, CachedAnswerContent>()
+        // 从 feed API 预加载的下一个回答（不在历史中时使用）
+        var nextAnswerFromFeed by mutableStateOf<CachedAnswerContent?>(null)
 
-        // 缓存的完整回答内容，用于滑动预览
-        var previousAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
-        var nextAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
+        // 上一个/下一个回答的 computed properties
+        val previousAnswer: CachedAnswerContent?
+            get() = if (currentAnswerIndex > 0) answerHistory[currentAnswerIndex - 1] else null
 
-        // 缓存的 WebView 实例，跨导航存活，避免重建闪动
+        val nextAnswer: CachedAnswerContent?
+            get() = if (currentAnswerIndex in 0 until answerHistory.size - 1) {
+                answerHistory[currentAnswerIndex + 1]
+            } else {
+                nextAnswerFromFeed
+            }
+
+        // 缓存的三个 WebView 实例，跨导航存活，避免重建闪动
+        var mainWebView: CustomWebView? = null
+            private set
         var previousPreviewWebView: CustomWebView? = null
             private set
         var nextPreviewWebView: CustomWebView? = null
             private set
 
-        fun claimPreviewWebViewAsMain(articleId: String): CustomWebView? = when {
-            nextPreviewWebView?.contentId == articleId ->
-                nextPreviewWebView.also { nextPreviewWebView = null }
-            previousPreviewWebView?.contentId == articleId ->
-                previousPreviewWebView.also { previousPreviewWebView = null }
-            else -> null
+        fun getOrCreateMainWebView(context: Context): CustomWebView {
+            mainWebView?.let { return it }
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+            return CustomWebView(context)
+                .apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
+                    setupUpWebviewClient()
+                }.also {
+                    mainWebView = it
+                }
+        }
+
+        /**
+         * 导航时旋转三个 WebView：
+         * NEXT: prev→destroy, main→prev, next→main
+         * PREVIOUS: next→destroy, main→next, prev→main
+         */
+        fun promoteForNavigation(direction: AnswerTransitionDirection) {
+            when (direction) {
+                AnswerTransitionDirection.HORIZONTAL_NEXT, AnswerTransitionDirection.VERTICAL_NEXT -> {
+                    previousPreviewWebView?.destroy()
+                    previousPreviewWebView = mainWebView
+                    mainWebView = nextPreviewWebView
+                    nextPreviewWebView = null
+                }
+                AnswerTransitionDirection.HORIZONTAL_PREVIOUS, AnswerTransitionDirection.VERTICAL_PREVIOUS -> {
+                    nextPreviewWebView?.destroy()
+                    nextPreviewWebView = mainWebView
+                    mainWebView = previousPreviewWebView
+                    previousPreviewWebView = null
+                }
+                else -> {}
+            }
         }
 
         fun getOrCreatePreviewWebView(context: Context, isNext: Boolean): CustomWebView {
@@ -224,38 +265,29 @@ class ArticleViewModel(
         // 导航动画方向
         var answerTransitionDirection = AnswerTransitionDirection.DEFAULT
 
-        val previousAnswer: Article?
-            get() = if (currentAnswerIndex > 0) answerHistory[currentAnswerIndex - 1] else null
-
-        val nextHistoryAnswer: Article?
-            get() = if (currentAnswerIndex in 0 until answerHistory.size - 1) {
-                answerHistory[currentAnswerIndex + 1]
-            } else {
-                null
-            }
-
-        fun pushAnswer(article: Article) {
-            // 历史内导航（goToPrevious/goToNext 后 loadArticle 再次调用），不需要 push
+        fun pushAnswer(cached: CachedAnswerContent) {
+            val articleId = cached.article.id
+            // 历史内导航（goToPrevious/goToNext 后 loadArticle 再次调用），更新内容
             if (currentAnswerIndex in answerHistory.indices &&
-                answerHistory[currentAnswerIndex] == article
+                answerHistory[currentAnswerIndex].article == cached.article
             ) {
+                answerHistory[currentAnswerIndex] = cached
                 return
             }
             // 新回答：截断前向历史
             if (currentAnswerIndex >= 0 && currentAnswerIndex < answerHistory.size - 1) {
                 val removeRange = (currentAnswerIndex + 1) until answerHistory.size
                 removeRange.reversed().forEach { i ->
-                    answerContentCache.remove(answerHistory[i].id)
                     answerHistory.removeAt(i)
                 }
             }
-            if (answerHistory.lastOrNull() != article) {
-                answerHistory.add(article)
+            if (answerHistory.lastOrNull()?.article?.id != articleId) {
+                answerHistory.add(cached)
             }
             currentAnswerIndex = answerHistory.size - 1
         }
 
-        fun goToPrevious(): Article? {
+        fun goToPrevious(): CachedAnswerContent? {
             if (currentAnswerIndex > 0) {
                 currentAnswerIndex--
                 return answerHistory[currentAnswerIndex]
@@ -263,7 +295,7 @@ class ArticleViewModel(
             return null
         }
 
-        fun goToNext(): Article? {
+        fun goToNext(): CachedAnswerContent? {
             if (currentAnswerIndex in 0 until answerHistory.size - 1) {
                 currentAnswerIndex++
                 return answerHistory[currentAnswerIndex]
@@ -274,20 +306,21 @@ class ArticleViewModel(
         fun reset() {
             answerHistory.clear()
             currentAnswerIndex = -1
-            answerContentCache.clear()
+            nextAnswerFromFeed = null
             destinations.clear()
             nextUrl = ""
             viewingQuestionId = 0L
-            previousAnswerContent = null
-            nextAnswerContent = null
             pendingInitialContent = null
             navigatingFromAnswerSwitch = false
             // 不销毁缓存 WebView，只清除 contentId 让下次重新加载
+            mainWebView?.contentId = null
             previousPreviewWebView?.contentId = null
             nextPreviewWebView?.contentId = null
         }
 
         override fun onCleared() {
+            mainWebView?.destroy()
+            mainWebView = null
             previousPreviewWebView?.destroy()
             previousPreviewWebView = null
             nextPreviewWebView?.destroy()
@@ -337,22 +370,12 @@ class ArticleViewModel(
                                     excerpt = answer.excerpt,
                                 ),
                             )
-                            sharedData.pushAnswer(article)
-
-                            // 缓存当前回答内容到历史
-                            sharedData.answerContentCache[article.id] = toCachedContent()
-
-                            // 从缓存更新上一个回答的预览
-                            sharedData.previousAnswerContent = sharedData.previousAnswer?.let {
-                                sharedData.answerContentCache[it.id]
-                            }
+                            sharedData.pushAnswer(toCachedContent())
 
                             nextAnswerFuture = viewModelScope.async {
                                 // Bug 3: 如果前向历史存在，使用缓存内容
-                                val nextFromHistory = sharedData.nextHistoryAnswer
-                                if (nextFromHistory != null) {
-                                    val cached = sharedData.answerContentCache[nextFromHistory.id]
-                                    sharedData.nextAnswerContent = cached
+                                val nextFromHistory = sharedData.nextAnswer
+                                if (nextFromHistory != null && sharedData.currentAnswerIndex < sharedData.answerHistory.size - 1) {
                                     null
                                 } else {
                                     // 没有前向历史，从 feed 加载
@@ -412,7 +435,7 @@ class ArticleViewModel(
                                                         voteUpCount = nextDetail.voteupCount,
                                                         commentCount = nextDetail.commentCount,
                                                     )
-                                                    sharedData.nextAnswerContent = nextCached
+                                                    sharedData.nextAnswerFromFeed = nextCached
                                                 }
                                             } catch (e: Exception) {
                                                 Log.w("ArticleViewModel", "Failed to pre-load next answer content", e)
@@ -420,7 +443,7 @@ class ArticleViewModel(
                                         }
                                         nextFeed
                                     } else {
-                                        sharedData.nextAnswerContent = null
+                                        sharedData.nextAnswerFromFeed = null
                                         null
                                     }
                                 }
