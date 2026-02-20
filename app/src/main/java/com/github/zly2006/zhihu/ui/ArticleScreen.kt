@@ -905,7 +905,7 @@ fun ArticleScreen(
 
                 if (viewModel.content.isNotEmpty()) {
                     if (preferences.getBoolean("articleUseWebview", true)) {
-                        WebviewComp {
+                        WebviewComp(scrollState = scrollState) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
                                 if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {

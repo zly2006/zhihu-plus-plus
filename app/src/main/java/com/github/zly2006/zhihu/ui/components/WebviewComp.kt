@@ -23,6 +23,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.activity.ComponentDialog
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -141,6 +142,7 @@ class CustomWebView : WebView {
         private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
+    var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -150,6 +152,11 @@ class CustomWebView : WebView {
             findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 htmlClickListener?.onElementClick(clicked)
             }
+        }
+
+        @JavascriptInterface
+        fun scrollToHeight(y: Int, maxY: Int) {
+            scrollToHeightCallback?.invoke(y, maxY)
         }
     }
 
@@ -411,6 +418,7 @@ class OpenImageDislog(
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
+    scrollState: ScrollState? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -470,8 +478,15 @@ fun WebviewComp(
                 }
             }
         },
-        update = {
-            onLoad(it)
+        update = { view ->
+            if (scrollState != null) {
+                view.scrollToHeightCallback = { elementY, maxY ->
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(elementY * scrollState.maxValue / maxY)
+                    }
+                }
+            }
+            onLoad(view)
         },
         modifier = modifier,
         onRelease = {
