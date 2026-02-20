@@ -521,6 +521,11 @@ fun ArticleScreen(
         }
     }
 
+    LaunchedEffect(article.id) {
+        viewModel.loadArticle(context)
+        viewModel.loadCollections(context)
+    }
+
     // 回答切换手势系统
     val sharedData = if (context is MainActivity && article.type == ArticleType.Answer) {
         val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>()
@@ -933,11 +938,7 @@ fun ArticleScreen(
 
                 if (viewModel.content.isNotEmpty()) {
                     if (preferences.getBoolean("articleUseWebview", true)) {
-                        // 复用缓存的预览 WebView 作为主 WebView，避免导航后白屏闪动
-                        val cachedMainWebView = remember(article.id) {
-                            sharedData?.claimPreviewWebViewAsMain(article.id.toString())
-                        }
-                        WebviewComp(existingWebView = cachedMainWebView) {
+                        WebviewComp(scrollState = scrollState) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
                                 if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {

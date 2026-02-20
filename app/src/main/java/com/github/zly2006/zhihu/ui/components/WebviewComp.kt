@@ -23,6 +23,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.activity.ComponentDialog
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -141,6 +142,7 @@ class CustomWebView : WebView {
         private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
+    var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -150,6 +152,11 @@ class CustomWebView : WebView {
             findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 htmlClickListener?.onElementClick(clicked)
             }
+        }
+
+        @JavascriptInterface
+        fun scrollToHeight(y: Int, maxY: Int) {
+            scrollToHeightCallback?.invoke(y, maxY)
         }
     }
 
@@ -411,7 +418,7 @@ class OpenImageDislog(
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
-    existingWebView: CustomWebView? = null,
+    scrollState: ScrollState? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -422,19 +429,14 @@ fun WebviewComp(
 
     AndroidView(
         factory = { ctx ->
-            val wv = if (existingWebView != null) {
-                (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
-                existingWebView
-            } else {
-                CustomWebView(ctx).apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
+            CustomWebView(ctx).apply {
+                // 根据用户设置决定是否启用硬件加速
+                if (useHardwareAcceleration) {
+                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                } else {
+                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
                 }
-            }
-            wv.apply {
+
                 this.setupUpWebviewClient {
                 }
                 this.setHtmlClickListener(this.defaultHtmlClickListener())
@@ -476,8 +478,15 @@ fun WebviewComp(
                 }
             }
         },
-        update = {
-            onLoad(it)
+        update = { view ->
+            if (scrollState != null) {
+                view.scrollToHeightCallback = { elementY, maxY ->
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(elementY * scrollState.maxValue / maxY)
+                    }
+                }
+            }
+            onLoad(view)
         },
         modifier = modifier,
         onRelease = {

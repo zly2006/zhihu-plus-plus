@@ -42,6 +42,11 @@
 - 用 `LaunchedEffect` 处理副作用，设置正确的 key
 - 用 `collectAsState()` 观察 Flow/StateFlow
 
+### 导航
+- 使用 Jetpack Navigation Compose
+- 定义 sealed interface `NavDestination` 表示不同页面，包含 route 和参数
+- 在编写导航代码前必须检查 NavDestination.kt
+
 ## Android 调试标准流程
 
 ### 应用启动与验证
