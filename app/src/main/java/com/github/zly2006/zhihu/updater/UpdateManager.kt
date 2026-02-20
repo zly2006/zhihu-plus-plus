@@ -141,7 +141,13 @@ object UpdateManager {
                 val versionString = latestVersion.toString()
                 // 检查是否是被跳过的版本
                 if (skippedVersion != versionString) {
-                    updateState.value = UpdateState.UpdateAvailable(latestVersion, false, latestResponse.body)
+                    updateState.value = UpdateState.UpdateAvailable(
+                        latestVersion,
+                        false,
+                        latestResponse.body
+                            ?.substringAfter("## What's Changed\n")
+                            ?.substringBefore("\n\n\n**Full Changelog**:"),
+                    )
                     return true // 有可用更新且未被跳过
                 } else {
                     updateState.value = UpdateState.Latest
@@ -160,6 +166,7 @@ object UpdateManager {
     suspend fun checkForUpdate(context: Context) {
         try {
             updateState.value = UpdateState.Checking
+            updateLastCheckTime(context)
 
             val client = AccountData.httpClient(context)
             val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
@@ -181,6 +188,8 @@ object UpdateManager {
                 }.body<GithubRelease>()
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             releaseNotes = latestResponse.body
+                ?.substringAfter("## What's Changed\n")
+                ?.substringBefore("\n\n\n**Full Changelog**:")
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -203,6 +212,8 @@ object UpdateManager {
                         )
                         isNightly = true
                         releaseNotes = nightlyResponse.body
+                            ?.substringAfter("## What's Changed\n")
+                            ?.substringBefore("\n\n\n**Full Changelog**:")
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本

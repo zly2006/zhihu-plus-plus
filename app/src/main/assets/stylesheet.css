@@ -59,3 +59,71 @@ body.dark-theme hr {
 body.dark-theme img {
   background-color: white;
 }
+
+/* 脚注样式 */
+#zhihu-plus-footnotes {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 14px;
+}
+
+#zhihu-plus-footnotes h4 {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+#zhihu-plus-footnotes ol {
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
+#zhihu-plus-footnotes li {
+  margin-bottom: 10px;
+  color: #555;
+  transition: background-color 0.3s ease;
+}
+
+#zhihu-plus-footnotes a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+#zhihu-plus-footnotes li a.footnote-url {
+  word-break: break-all;
+}
+
+sup[data-draft-type="reference"] {
+  cursor: pointer;
+  color: #0066cc;
+  font-size: 0.85em;
+  vertical-align: super;
+}
+
+.footnote-highlight {
+  background-color: #fff3cd;
+}
+
+/* 脚注深色模式 */
+body.dark-theme #zhihu-plus-footnotes {
+  border-top-color: #444;
+}
+
+body.dark-theme #zhihu-plus-footnotes h4 {
+  color: #ddd;
+}
+
+body.dark-theme #zhihu-plus-footnotes li {
+  color: #bbb;
+}
+
+body.dark-theme #zhihu-plus-footnotes a,
+body.dark-theme sup[data-draft-type="reference"] {
+  color: #4da3ff;
+}
+
+body.dark-theme .footnote-highlight {
+  background-color: #4a3f00;
+}
