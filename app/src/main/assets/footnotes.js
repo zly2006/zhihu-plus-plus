@@ -68,7 +68,7 @@
         // 添加脚注文本
         if (url) {
             var link = document.createElement('a');
-            link.textContent = text;
+            link.textContent = text || '打开链接';
             link.href = url;
             link.target = '_blank';
             link.className = 'footnote-url';
