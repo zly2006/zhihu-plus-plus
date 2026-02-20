@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -137,6 +138,7 @@ fun FeedCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("feed_card")
                 .alpha(1 - min(actionAlpha, 0.5f))
                 .offset(x = with(density) { animatedOffsetX.toDp() })
                 .clickable {
@@ -264,7 +266,7 @@ fun FeedCard(
                                 Box {
                                     IconButton(
                                         onClick = { showMenu = true },
-                                        modifier = Modifier.size(24.dp),
+                                        modifier = Modifier.size(24.dp).testTag("feed_card_more_btn"),
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.MoreVert,
