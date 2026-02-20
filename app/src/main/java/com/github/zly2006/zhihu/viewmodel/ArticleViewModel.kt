@@ -178,11 +178,6 @@ class ArticleViewModel(
         // 为历史条目缓存完整内容
         val answerContentCache = mutableMapOf<Long, CachedAnswerContent>()
 
-        // 下一个回答的预览信息
-        var nextAnswerAuthorName by mutableStateOf("")
-        var nextAnswerExcerpt by mutableStateOf("")
-        var nextAnswerAvatarUrl by mutableStateOf("")
-
         // 缓存的完整回答内容，用于滑动预览
         var previousAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
         var nextAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
@@ -283,9 +278,6 @@ class ArticleViewModel(
             destinations.clear()
             nextUrl = ""
             viewingQuestionId = 0L
-            nextAnswerAuthorName = ""
-            nextAnswerExcerpt = ""
-            nextAnswerAvatarUrl = ""
             previousAnswerContent = null
             nextAnswerContent = null
             pendingInitialContent = null
@@ -361,9 +353,6 @@ class ArticleViewModel(
                                 if (nextFromHistory != null) {
                                     val cached = sharedData.answerContentCache[nextFromHistory.id]
                                     sharedData.nextAnswerContent = cached
-                                    sharedData.nextAnswerAuthorName = cached?.authorName ?: ""
-                                    sharedData.nextAnswerExcerpt = ""
-                                    sharedData.nextAnswerAvatarUrl = cached?.authorAvatarUrl ?: ""
                                     null
                                 } else {
                                     // 没有前向历史，从 feed 加载
@@ -408,11 +397,6 @@ class ArticleViewModel(
                                     if (sharedData.destinations.isNotEmpty()) {
                                         val nextFeed = sharedData.destinations.removeAt(0)
                                         val nextTarget = nextFeed.target
-                                        if (nextTarget is Feed.AnswerTarget) {
-                                            sharedData.nextAnswerAuthorName = nextTarget.author?.name ?: ""
-                                            sharedData.nextAnswerExcerpt = nextTarget.excerpt ?: ""
-                                            sharedData.nextAnswerAvatarUrl = nextTarget.author?.avatarUrl ?: ""
-                                        }
                                         val nextDest = nextFeed.target?.navDestination
                                         if (nextDest is Article && nextDest.type == ArticleType.Answer) {
                                             try {
@@ -436,9 +420,6 @@ class ArticleViewModel(
                                         }
                                         nextFeed
                                     } else {
-                                        sharedData.nextAnswerAuthorName = ""
-                                        sharedData.nextAnswerExcerpt = ""
-                                        sharedData.nextAnswerAvatarUrl = ""
                                         sharedData.nextAnswerContent = null
                                         null
                                     }
