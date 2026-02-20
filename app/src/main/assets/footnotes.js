@@ -1,6 +1,14 @@
 // noinspection ES6ConvertVarToLetConst
 
 (function() {
+    function scrollToElement(element, back) {
+        if (typeof AndroidInterface !== 'undefined' && AndroidInterface.scrollToHeight) {
+            AndroidInterface.scrollToHeight(Math.round(element.getBoundingClientRect().bottom + (back ? 0 : 900)));
+        } else {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
     // 查找所有的脚注引用
     var references = document.querySelectorAll('sup[data-draft-type="reference"]');
 
@@ -35,7 +43,7 @@
             e.stopPropagation();
             var footnote = document.getElementById('footnote-' + numero);
             if (footnote) {
-                footnote.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                scrollToElement(footnote, false);
                 // 高亮动画
                 footnote.classList.add('footnote-highlight');
                 setTimeout(function() {
@@ -59,7 +67,7 @@
             e.stopPropagation();
             var refElement = document.getElementById('ref-' + numero);
             if (refElement) {
-                refElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                scrollToElement(refElement, true);
             }
         });
 
