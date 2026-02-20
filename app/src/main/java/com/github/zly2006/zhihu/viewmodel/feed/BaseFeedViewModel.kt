@@ -44,7 +44,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val authorName: String? = null,
         val isFiltered: Boolean = false,
         val content: String? = null,
-        val raw: com.github.zly2006.zhihu.data.DataHolder.Content? = null,
+        val raw: DataHolder.Content? = null,
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
@@ -260,9 +260,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
                 displayItems.removeAll {
                     val topics = when (it.raw) {
-                        is com.github.zly2006.zhihu.data.DataHolder.Answer -> it.raw.question.topics
-                        is com.github.zly2006.zhihu.data.DataHolder.Article -> it.raw.topics
-                        is com.github.zly2006.zhihu.data.DataHolder.Question -> it.raw.topics
+                        is DataHolder.Answer -> it.raw.question.topics
+                        is DataHolder.Article -> it.raw.topics
+                        is DataHolder.Question -> it.raw.topics
                         else -> null
                     }
                     topics?.any { topic -> topic.id == topicId } == true

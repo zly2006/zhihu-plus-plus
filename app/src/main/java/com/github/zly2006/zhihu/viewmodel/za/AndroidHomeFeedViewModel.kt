@@ -79,7 +79,7 @@ class AndroidHomeFeedViewModel :
 
     public override suspend fun fetchFeeds(context: Context) {
         try {
-            val response = httpClient(context).get(initialUrl)
+            val response = httpClient(context).get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
@@ -163,6 +163,12 @@ class AndroidHomeFeedViewModel :
                             }
                         }
                     }.joinAll()
+
+                lastPaging = if ("paging" in jojo) {
+                    AccountData.decodeJson(jojo["paging"]!!)
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
             if (e !is CancellationException) {
