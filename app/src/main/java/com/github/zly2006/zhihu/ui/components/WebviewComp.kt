@@ -278,6 +278,17 @@ class CustomWebView : WebView {
             ""
         }
 
+        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
+        val isDark = when (themeModeValue) {
+            "LIGHT" -> false
+            "DARK" -> true
+            else -> {
+                val nightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+        val bodyClass = if (isDark) " class=\"dark-theme\"" else ""
+
         loadDataWithBaseURL(
             url,
             """
@@ -294,7 +305,7 @@ class CustomWebView : WebView {
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
-            <body>
+            <body$bodyClass>
             ${document.body().html()}
             </body>
             """.trimIndent(),
