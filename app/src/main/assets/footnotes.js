@@ -3,7 +3,7 @@
 (function() {
     function scrollToElement(element, back) {
         if (typeof AndroidInterface !== 'undefined' && AndroidInterface.scrollToHeight) {
-            AndroidInterface.scrollToHeight(Math.round(element.getBoundingClientRect().bottom + (back ? 0 : 900)));
+            AndroidInterface.scrollToHeight(Math.round(element.getBoundingClientRect().top + (back ? 0 : 60)), Math.round(document.body.scrollHeight));
         } else {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }

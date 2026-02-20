@@ -142,7 +142,7 @@ class CustomWebView : WebView {
         private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
-    var scrollToHeightCallback: ((Int) -> Unit)? = null
+    var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -155,8 +155,8 @@ class CustomWebView : WebView {
         }
 
         @JavascriptInterface
-        fun scrollToHeight(y: Int) {
-            scrollToHeightCallback?.invoke(y)
+        fun scrollToHeight(y: Int, maxY: Int) {
+            scrollToHeightCallback?.invoke(y, maxY)
         }
     }
 
@@ -480,9 +480,9 @@ fun WebviewComp(
         },
         update = { view ->
             if (scrollState != null) {
-                view.scrollToHeightCallback = { elementY ->
+                view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
-                        scrollState.animateScrollTo(elementY)
+                        scrollState.animateScrollTo(elementY * scrollState.maxValue / maxY)
                     }
                 }
             }
