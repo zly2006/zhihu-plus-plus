@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -310,8 +311,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 composable<Article>(
                     enterTransition = {
                         val sharedData = try {
-                            (activity as? androidx.activity.ComponentActivity)
-                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
                         } catch (_: Exception) {
                             null
                         }

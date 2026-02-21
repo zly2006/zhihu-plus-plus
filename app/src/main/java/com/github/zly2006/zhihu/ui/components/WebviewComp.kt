@@ -273,6 +273,7 @@ class CustomWebView : WebView {
             // same content
             return
         }
+        Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
@@ -419,6 +420,7 @@ class OpenImageDislog(
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
     scrollState: ScrollState? = null,
+    existingWebView: CustomWebView? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -429,14 +431,19 @@ fun WebviewComp(
 
     AndroidView(
         factory = { ctx ->
-            CustomWebView(ctx).apply {
-                // 根据用户设置决定是否启用硬件加速
-                if (useHardwareAcceleration) {
-                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                } else {
-                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+            val webView = if (existingWebView != null) {
+                (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
+                existingWebView
+            } else {
+                CustomWebView(ctx).apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
                 }
-
+            }
+            webView.apply {
                 this.setupUpWebviewClient {
                 }
                 this.setHtmlClickListener(this.defaultHtmlClickListener())
@@ -490,11 +497,15 @@ fun WebviewComp(
         },
         modifier = modifier,
         onRelease = {
-            it.stopLoading()
-            it.webChromeClient = null
-            it.clearHistory()
-            it.clearCache(true)
-            it.destroy()
+            if (existingWebView != null) {
+                (it.parent as? ViewGroup)?.removeView(it)
+            } else {
+                it.stopLoading()
+                it.webChromeClient = null
+                it.clearHistory()
+                it.clearCache(true)
+                it.destroy()
+            }
         },
     )
 }
