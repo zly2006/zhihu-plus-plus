@@ -273,6 +273,7 @@ class CustomWebView : WebView {
             // same content
             return
         }
+        Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)

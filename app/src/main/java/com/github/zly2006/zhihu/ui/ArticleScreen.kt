@@ -629,8 +629,8 @@ fun ArticleScreen(
         sharedData?.pushAnswer(viewModel.toCachedContent())
         val prev = sharedData?.goToPrevious()
         if (prev != null) {
-            sharedData?.pendingInitialContent = prev
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+            sharedData.pendingInitialContent = prev
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -657,8 +657,8 @@ fun ArticleScreen(
         // Bug 3: 优先使用前向历史
         val historyNext = sharedData?.goToNext()
         if (historyNext != null) {
-            sharedData?.pendingInitialContent = historyNext
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+            sharedData.pendingInitialContent = historyNext
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -672,8 +672,8 @@ fun ArticleScreen(
             }
         } else {
             // 没有前向历史，从 feed 加载
-            sharedData?.pendingInitialContent = sharedData?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData!!.answerTransitionDirection)
+            sharedData?.pendingInitialContent = sharedData.nextAnswer
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
             coroutineScope.launch {
                 val dest = viewModel.nextAnswerFuture.await()
                 navigateToAnswer(dest)
@@ -1015,7 +1015,9 @@ fun ArticleScreen(
                             it.contentId = article.id.toString()
                             it.loadZhihu(
                                 "https://www.zhihu.com/${article.type}/${article.id}",
-                                prepareContentDocument(viewModel.content, context),
+                                prepareContentDocument(viewModel.content, context).apply {
+                                    title(viewModel.title)
+                                },
                             )
                         }
                     } else {
@@ -1083,7 +1085,9 @@ fun ArticleScreen(
                 wv.contentId = articleId
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context),
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
                 )
             }
         }
@@ -1095,7 +1099,9 @@ fun ArticleScreen(
                 wv.contentId = articleId
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context),
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
                 )
             }
         }
@@ -1308,7 +1314,7 @@ private fun CachedAnswerPreview(
                         AndroidView(
                             factory = { ctx ->
                                 val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
-                                (wv.parent as? ViewGroup)?.removeView(wv)
+//                                (wv.parent as? ViewGroup)?.removeView(wv)
                                 wv
                             },
                             update = {
@@ -1317,7 +1323,9 @@ private fun CachedAnswerPreview(
                                     it.contentId = articleId
                                     it.loadZhihu(
                                         "https://www.zhihu.com/answer/${cached.article.id}",
-                                        Jsoup.parse(cached.content),
+                                        prepareContentDocument(cached.content, context).apply {
+                                            title(cached.title)
+                                        },
                                     )
                                 }
                             },
@@ -1335,16 +1343,7 @@ private fun CachedAnswerPreview(
                             },
                         )
                     } else {
-                        val articleId = cached.article.id.toString()
-                        WebviewComp {
-                            if (it.contentId != articleId) {
-                                it.contentId = articleId
-                                it.loadZhihu(
-                                    "https://www.zhihu.com/answer/${cached.article.id}",
-                                    Jsoup.parse(cached.content),
-                                )
-                            }
-                        }
+                        // no-op
                     }
                 } else {
                     val astNode = remember(cached.content) {
