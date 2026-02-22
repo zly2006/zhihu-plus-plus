@@ -24,6 +24,7 @@ Zhihu++ LLM 自动化测试辅助脚本
 import argparse
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from typing import Optional
 
@@ -188,15 +189,22 @@ def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
         if not matches:
             print(f"[NOT FOUND] text='{args.text}' 在当前界面不存在", file=sys.stderr)
             sys.exit(1)
-        if len(matches) > 1:
+        if len(matches) > 1 and index is None:
             print(f"[AMBIGUOUS] text='{args.text}' 匹配到 {len(matches)} 个元素，必须消歧后重试：", file=sys.stderr)
             for i, n in enumerate(matches):
                 b = get_bounds(n)
                 cx, cy = center(b) if b else (0, 0)
                 print(f"  --index {i}  center=({cx:4d},{cy:4d})  desc=\"{n.get('content-desc', '')}\"", file=sys.stderr)
-            print("消歧方式：改用 --tag 或 --desc，或先运行 dump 确认目标元素", file=sys.stderr)
+            print("消歧方式：加 --index N 选取，或改用 --tag 精确定位", file=sys.stderr)
             sys.exit(2)
-        return matches[0]
+        i = index if index is not None else 0
+        if i < 0 or i >= len(matches):
+            print(
+                f"[OUT OF RANGE] index={i} 超出范围，当前共 {len(matches)} 个（有效范围 0~{len(matches)-1}）",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        return matches[i]
 
     elif args.desc:
         matches = find_all_by_content_desc(root, args.desc)
@@ -243,11 +251,33 @@ def cmd_find(args):
         if not candidates:
             print(f"未找到 tag='{args.tag}'", file=sys.stderr)
             sys.exit(1)
+
+        within_text: Optional[str] = getattr(args, "within_text", None)
+        if within_text:
+            parents = build_parent_map(root)
+            candidates = [
+                n for n in candidates
+                if find_ancestor_containing_text(n, within_text, parents) is not None
+                or node_contains_text(n, within_text)
+            ]
+            if not candidates:
+                print(f"[NOT FOUND] tag='{args.tag}' 在包含 '{within_text}' 的节点内不存在", file=sys.stderr)
+                sys.exit(1)
+
+        index: Optional[int] = getattr(args, "index", None)
+        if index is not None:
+            if index < 0 or index >= len(candidates):
+                print(
+                    f"[OUT OF RANGE] index={index} 超出范围，当前共 {len(candidates)} 个（有效范围 0~{len(candidates)-1}）",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            candidates = [candidates[index]]
+
         print(f"找到 {len(candidates)} 个 tag='{args.tag}'（index 0 = 最顶部）:")
         for i, n in enumerate(candidates):
             b = get_bounds(n)
             cx, cy = center(b) if b else (0, 0)
-            # 尝试提取附近文字供识别
             snippet = n.get("text", "") or n.get("content-desc", "")
             print(f"  [{i}] center=({cx:4d},{cy:4d})  bounds={n.get('bounds')}  {snippet}")
         return
@@ -270,8 +300,10 @@ def cmd_tap(args):
         sys.exit(1)
 
     cx, cy = center(b)
-    tag_info = f"tag={args.tag}" if args.tag else f"text={args.text}"
+    tag_info = f"tag={args.tag}" if args.tag else (f"text={args.text}" if args.text else f"desc={args.desc}")
     print(f"点击 {tag_info} → ({cx}, {cy})  bounds={node.get('bounds')}")
+    # uiautomator dump 会短暂冻结 UI，立刻 tap 会被系统丢弃，需等待 UI 恢复
+    time.sleep(0.8)
     result = adb("shell", "input", "tap", str(cx), str(cy))
     if result.returncode != 0:
         print(f"tap 失败: {result.stderr}", file=sys.stderr)
