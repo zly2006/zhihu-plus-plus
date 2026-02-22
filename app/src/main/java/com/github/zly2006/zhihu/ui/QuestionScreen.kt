@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -186,9 +187,9 @@ fun QuestionScreen(
                     }
                     item(2) {
                         val handle = LocalPinnableContainer.current?.pin()
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                            itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -268,10 +269,10 @@ fun QuestionScreen(
                                 Text(if (isFollowing) "已关注" else "关注问题")
                             }
                         }
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Button(
                                 onClick = {
