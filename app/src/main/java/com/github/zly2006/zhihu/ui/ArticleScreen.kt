@@ -1314,7 +1314,7 @@ private fun CachedAnswerPreview(
                         AndroidView(
                             factory = { ctx ->
                                 val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
-//                                (wv.parent as? ViewGroup)?.removeView(wv)
+                                (wv.parent as? ViewGroup)?.removeView(wv)
                                 wv
                             },
                             update = {
