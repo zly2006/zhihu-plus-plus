@@ -1,7 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,8 +34,7 @@ fun OnlineHistoryScreen() {
             topContent = {
                 item(0) {
                     Row {
-                        Text("您正在查看在线阅读历史，点击查看")
-                        Button(
+                        FilledTonalButton(
                             onClick = {
                                 navigator.onNavigate(History)
                             },
