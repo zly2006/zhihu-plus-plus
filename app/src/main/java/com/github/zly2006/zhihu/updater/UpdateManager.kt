@@ -16,10 +16,6 @@ import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.URI
 
@@ -137,16 +133,21 @@ object UpdateManager {
                             append(HttpHeaders.Authorization, "Bearer $token")
                         }
                     }
-                }.body<JsonObject>()
+                }.body<GithubRelease>()
             Log.i("UpdateManager", "Latest version response: $latestResponse")
-            latestVersion = latestResponse["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
+            latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 val versionString = latestVersion.toString()
                 // 检查是否是被跳过的版本
                 if (skippedVersion != versionString) {
-                    val releaseNotes = latestResponse["body"]?.jsonPrimitive?.content
-                    updateState.value = UpdateState.UpdateAvailable(latestVersion, false, releaseNotes)
+                    updateState.value = UpdateState.UpdateAvailable(
+                        latestVersion,
+                        false,
+                        latestResponse.body
+                            ?.substringAfter("## What's Changed\n")
+                            ?.substringBefore("\n\n\n**Full Changelog**:"),
+                    )
                     return true // 有可用更新且未被跳过
                 } else {
                     updateState.value = UpdateState.Latest
@@ -165,6 +166,7 @@ object UpdateManager {
     suspend fun checkForUpdate(context: Context) {
         try {
             updateState.value = UpdateState.Checking
+            updateLastCheckTime(context)
 
             val client = AccountData.httpClient(context)
             val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
@@ -183,9 +185,11 @@ object UpdateManager {
                             append(HttpHeaders.Authorization, "Bearer $token")
                         }
                     }
-                }.body<JsonObject>()
-            latestVersion = latestResponse["tag_name"]?.jsonPrimitive?.content?.let { SchematicVersion.fromString(it) }
-            releaseNotes = latestResponse["body"]?.jsonPrimitive?.content
+                }.body<GithubRelease>()
+            latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
+            releaseNotes = latestResponse.body
+                ?.substringAfter("## What's Changed\n")
+                ?.substringBefore("\n\n\n**Full Changelog**:")
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -197,18 +201,19 @@ object UpdateManager {
                                     append(HttpHeaders.Authorization, "Bearer $token")
                                 }
                             }
-                        }.body<JsonObject>()
-                    val nightlyVersion = nightlyResponse["tag_name"]?.jsonPrimitive?.content
+                        }.body<GithubRelease>()
 
                     // 如果nightly版本比正式版本新，则使用nightly版本
-                    if (nightlyVersion == "nightly") {
+                    if (nightlyResponse.tagName == "nightly") {
                         latestVersion = SchematicVersion(
                             allComponents = listOf(999, 0, 0),
                             preRelease = "nightly",
                             build = "",
                         )
                         isNightly = true
-                        releaseNotes = nightlyResponse["body"]?.jsonPrimitive?.content
+                        releaseNotes = nightlyResponse.body
+                            ?.substringAfter("## What's Changed\n")
+                            ?.substringBefore("\n\n\n**Full Changelog**:")
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -243,40 +248,29 @@ object UpdateManager {
             // 根据版本类型选择API端点
             val apiUrl = if (state.isNightly) GITHUB_API_NIGHTLY else GITHUB_API_LATEST
 
-            val response = client
+            val release = client
                 .get(apiUrl) {
                     getGitHubToken(context)?.let { token ->
                         headers {
                             append(HttpHeaders.Authorization, "Bearer $token")
                         }
                     }
-                }.body<JsonObject>()
-            val assets = response["assets"]?.jsonArray
-            val apkAssets = assets
-                ?.map { it.jsonObject }
-                ?.filter {
-                    it["content_type"]?.jsonPrimitive?.content == "application/vnd.android.package-archive"
-                } ?: emptyList()
+                }.body<GithubRelease>()
+            val apkAssets = release.assets.filter {
+                it.contentType == "application/vnd.android.package-archive"
+            }
 
             @Suppress("KotlinConstantConditions")
             val selectedAsset = if (BuildConfig.IS_LITE) {
                 // Lite version: strictly look for "lite" in filename
-                apkAssets.firstOrNull {
-                    it["name"]?.jsonPrimitive?.content?.contains("lite", ignoreCase = true) == true
-                }
+                apkAssets.firstOrNull { it.name.contains("lite", ignoreCase = true) }
             } else {
                 // Full version: prefer "full" in filename, fallback to non-lite (legacy)
-                apkAssets.firstOrNull {
-                    it["name"]?.jsonPrimitive?.content?.contains("full", ignoreCase = true) == true
-                } ?: apkAssets.firstOrNull {
-                    it["name"]?.jsonPrimitive?.content?.contains("lite", ignoreCase = true) != true
-                }
+                apkAssets.firstOrNull { it.name.contains("full", ignoreCase = true) }
+                    ?: apkAssets.firstOrNull { !it.name.contains("lite", ignoreCase = true) }
             }
 
-            val downloadUrl = selectedAsset
-                ?.get("browser_download_url")
-                ?.jsonPrimitive
-                ?.content
+            val downloadUrl = selectedAsset?.browserDownloadUrl
 
             if (downloadUrl != null) {
                 val file = withContext(Dispatchers.IO) {

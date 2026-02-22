@@ -7,8 +7,6 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Rect
-import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.util.AttributeSet
 import android.util.Log
@@ -25,6 +23,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.activity.ComponentDialog
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -143,6 +142,7 @@ class CustomWebView : WebView {
         private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
+    var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -152,6 +152,11 @@ class CustomWebView : WebView {
             findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 htmlClickListener?.onElementClick(clicked)
             }
+        }
+
+        @JavascriptInterface
+        fun scrollToHeight(y: Int, maxY: Int) {
+            scrollToHeightCallback?.invoke(y, maxY)
         }
     }
 
@@ -271,6 +276,25 @@ class CustomWebView : WebView {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
+        val customFontFile = java.io.File(context.filesDir, "custom_font")
+        val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
+            val base64 = android.util.Base64.encodeToString(customFontFile.readBytes(), android.util.Base64.NO_WRAP)
+            "@font-face { font-family: 'ZhihuCustomFont'; src: url('data:font/truetype;base64,$base64'); }\n" +
+                "body { font-family: 'ZhihuCustomFont', sans-serif; }"
+        } else {
+            ""
+        }
+
+        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
+        val isDark = when (themeModeValue) {
+            "LIGHT" -> false
+            "DARK" -> true
+            else -> {
+                val nightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+        val bodyClass = if (isDark) " class=\"dark-theme\"" else ""
 
         loadDataWithBaseURL(
             url,
@@ -284,19 +308,11 @@ class CustomWebView : WebView {
                 font-size: $fontSize%;
                 line-height: ${lineHeight / 100f};
             }
-            ${
-                // This is a workaround for the issue where the system font family name is not available in the WebView.
-                // https://github.com/zly2006/zhihu-plus-plus/issues/9
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    "body {font-family: \"${Typeface.DEFAULT.systemFontFamilyName}\", sans-serif;}"
-                } else {
-                    ""
-                }
-            }
+            $customFontCss
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
-            <body>
+            <body$bodyClass>
             ${document.body().html()}
             </body>
             """.trimIndent(),
@@ -402,6 +418,7 @@ class OpenImageDislog(
 @Composable
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
+    scrollState: ScrollState? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -461,8 +478,15 @@ fun WebviewComp(
                 }
             }
         },
-        update = {
-            onLoad(it)
+        update = { view ->
+            if (scrollState != null) {
+                view.scrollToHeightCallback = { elementY, maxY ->
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(elementY * scrollState.maxValue / maxY)
+                    }
+                }
+            }
+            onLoad(view)
         },
         modifier = modifier,
         onRelease = {

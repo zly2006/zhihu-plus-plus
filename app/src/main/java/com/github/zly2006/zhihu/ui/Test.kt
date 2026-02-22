@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.collection.mutableObjectFloatMapOf
 import androidx.compose.animation.AnimatedContent
@@ -174,6 +175,9 @@ public fun NavHost(
 
     var progress by remember { mutableFloatStateOf(0f) }
     var inPredictiveBack by remember { mutableStateOf(false) }
+    BackHandler(disableOnBackEvent && currentBackStack.size > 1) {
+        composeNavigator.popBackStack(currentBackStack.last(), false)
+    }
     PredictiveBackHandler(!disableOnBackEvent && currentBackStack.size > 1) { backEvent ->
         var currentBackStackEntry: NavBackStackEntry? = null
         if (currentBackStack.size > 1) {

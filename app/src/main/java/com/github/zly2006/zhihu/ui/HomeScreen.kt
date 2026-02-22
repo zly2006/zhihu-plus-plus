@@ -51,6 +51,7 @@ import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
@@ -73,8 +74,6 @@ import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -166,9 +165,11 @@ fun HomeScreen(refreshTrigger: Int = 0) {
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
+    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
     LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger > 0) {
+        if (refreshTrigger != cachedRefreshTrigger) {
             viewModel.refresh(context)
+            cachedRefreshTrigger = refreshTrigger
         }
     }
 
@@ -179,10 +180,7 @@ fun HomeScreen(refreshTrigger: Int = 0) {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
             }!!
-            val default = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 0
-            val follow = jojo["follow_notifications_count"]?.jsonPrimitive?.int ?: 0
-            val voteThank = jojo["vote_thank_notifications_count"]?.jsonPrimitive?.int ?: 0
-            unreadCount = default + follow + voteThank
+            unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
         } catch (_: Exception) {
             // 忽略错误
         }

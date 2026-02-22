@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.resolveContent
@@ -348,6 +349,7 @@ suspend fun downloadAndSaveImage(
 
 /**
  * 分享图片
+ * 图片临时保存到 externalCacheDir/share_images/，应用启动时自动清空
  */
 suspend fun shareImage(
     context: Context,
@@ -355,17 +357,19 @@ suspend fun shareImage(
     imageUrl: String,
 ) {
     try {
-        val fileName = "share_${System.currentTimeMillis()}.jpg"
-        val imageUri = downloadAndSaveImage(context, httpClient, imageUrl, fileName)
-        if (imageUri != null) {
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, imageUri)
-                type = "image/jpeg"
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+        val response = httpClient.get(imageUrl)
+        val bytes = response.readRawBytes()
+        val shareDir = java.io.File(context.externalCacheDir, "share_images").apply { mkdirs() }
+        val file = java.io.File(shareDir, "share_${System.currentTimeMillis()}.jpg")
+        file.writeBytes(bytes)
+        val imageUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            type = "image/jpeg"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
     } catch (e: Exception) {
         Toast
             .makeText(
@@ -374,6 +378,13 @@ suspend fun shareImage(
                 Toast.LENGTH_SHORT,
             ).show()
     }
+}
+
+/**
+ * 清空分享图片缓存目录
+ */
+fun clearShareImageCache(context: Context) {
+    java.io.File(context.externalCacheDir, "share_images").deleteRecursively()
 }
 
 /**
