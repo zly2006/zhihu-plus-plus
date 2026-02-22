@@ -39,7 +39,10 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
+import com.github.zly2006.zhihu.ui.components.CustomWebView
+import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
@@ -166,38 +169,163 @@ class ArticleViewModel(
     class ArticlesSharedData : ViewModel() {
         var viewingQuestionId: Long = 0L
         var nextUrl: String = ""
-        var destinations = mutableListOf<Feed>()
+        var destinations = mutableStateListOf<Feed>()
 
-        // 回答历史栈，用于"上一个回答"导航
-        val answerHistory = mutableListOf<Article>()
+        // 回答历史列表 + 索引式导航
+        val answerHistory = mutableStateListOf<CachedAnswerContent>()
+        var currentAnswerIndex by mutableIntStateOf(-1)
 
-        // 下一个回答的预览信息
-        var nextAnswerAuthorName by mutableStateOf("")
-        var nextAnswerExcerpt by mutableStateOf("")
-        var nextAnswerAvatarUrl by mutableStateOf("")
+        // 从 feed API 预加载的下一个回答（不在历史中时使用）
+        var nextAnswerFromFeed by mutableStateOf<CachedAnswerContent?>(null)
 
-        // 缓存的完整回答内容，用于水平滑动预览
-        var previousAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
-        var nextAnswerContent by mutableStateOf<CachedAnswerContent?>(null)
+        // 上一个/下一个回答的 computed properties
+        val previousAnswer: CachedAnswerContent?
+            get() = if (currentAnswerIndex > 0) answerHistory[currentAnswerIndex - 1] else null
+
+        val nextAnswer: CachedAnswerContent?
+            get() = if (currentAnswerIndex in 0 until answerHistory.size - 1) {
+                answerHistory[currentAnswerIndex + 1]
+            } else {
+                nextAnswerFromFeed
+            }
+
+        // 缓存的三个 WebView 实例，跨导航存活，避免重建闪动
+        var mainWebView: CustomWebView? = null
+            private set
+        var previousPreviewWebView: CustomWebView? = null
+            private set
+        var nextPreviewWebView: CustomWebView? = null
+            private set
+
+        fun getOrCreateMainWebView(context: Context): CustomWebView {
+            mainWebView?.let { return it }
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+            return CustomWebView(context)
+                .apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
+                    setupUpWebviewClient()
+                }.also {
+                    mainWebView = it
+                }
+        }
+
+        /**
+         * 导航时旋转三个 WebView：
+         * NEXT: prev→destroy, main→prev, next→main
+         * PREVIOUS: next→destroy, main→next, prev→main
+         */
+        fun promoteForNavigation(direction: AnswerTransitionDirection) {
+            when (direction) {
+                AnswerTransitionDirection.HORIZONTAL_NEXT, AnswerTransitionDirection.VERTICAL_NEXT -> {
+                    previousPreviewWebView?.destroy()
+                    previousPreviewWebView = mainWebView
+                    mainWebView = nextPreviewWebView
+                    nextPreviewWebView = null
+                }
+                AnswerTransitionDirection.HORIZONTAL_PREVIOUS, AnswerTransitionDirection.VERTICAL_PREVIOUS -> {
+                    nextPreviewWebView?.destroy()
+                    nextPreviewWebView = mainWebView
+                    mainWebView = previousPreviewWebView
+                    previousPreviewWebView = null
+                }
+                else -> {}
+            }
+        }
+
+        fun getOrCreatePreviewWebView(context: Context, isNext: Boolean): CustomWebView {
+            val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
+            if (existing != null) return existing
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+            return CustomWebView(context)
+                .apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
+                    setupUpWebviewClient()
+                }.also {
+                    if (isNext) nextPreviewWebView = it else previousPreviewWebView = it
+                }
+        }
+
+        // 用于消除切换闪动：导航前设置，新页面用它初始化
+        var pendingInitialContent: CachedAnswerContent? = null
+
+        // 标记是否从回答切换导航进入（避免被 LaunchedEffect 重置方向后误判）
+        @Volatile
+        var navigatingFromAnswerSwitch = false
 
         // 导航动画方向
         var answerTransitionDirection = AnswerTransitionDirection.DEFAULT
 
-        val previousAnswer: Article?
-            get() = if (answerHistory.size >= 2) answerHistory[answerHistory.size - 2] else null
-
-        fun pushAnswer(article: Article) {
-            if (answerHistory.lastOrNull() != article) {
-                answerHistory.add(article)
+        fun pushAnswer(cached: CachedAnswerContent) {
+            val articleId = cached.article.id
+            // 历史内导航（goToPrevious/goToNext 后 loadArticle 再次调用），更新内容
+            if (currentAnswerIndex in answerHistory.indices &&
+                answerHistory[currentAnswerIndex].article == cached.article
+            ) {
+                answerHistory[currentAnswerIndex] = cached
+                return
             }
+            // 新回答：截断前向历史
+            if (currentAnswerIndex >= 0 && currentAnswerIndex < answerHistory.size - 1) {
+                val removeRange = (currentAnswerIndex + 1) until answerHistory.size
+                removeRange.reversed().forEach { i ->
+                    answerHistory.removeAt(i)
+                }
+            }
+            if (answerHistory.lastOrNull()?.article?.id != articleId) {
+                answerHistory.add(cached)
+            }
+            currentAnswerIndex = answerHistory.size - 1
         }
 
-        fun popAnswer(): Article? {
-            if (answerHistory.size >= 2) {
-                answerHistory.removeAt(answerHistory.size - 1)
-                return answerHistory.lastOrNull()
+        fun goToPrevious(): CachedAnswerContent? {
+            if (currentAnswerIndex > 0) {
+                currentAnswerIndex--
+                return answerHistory[currentAnswerIndex]
             }
             return null
+        }
+
+        fun goToNext(): CachedAnswerContent? {
+            if (currentAnswerIndex in 0 until answerHistory.size - 1) {
+                currentAnswerIndex++
+                return answerHistory[currentAnswerIndex]
+            }
+            return null
+        }
+
+        fun reset() {
+            answerHistory.clear()
+            currentAnswerIndex = -1
+            nextAnswerFromFeed = null
+            destinations.clear()
+            nextUrl = ""
+            viewingQuestionId = 0L
+            pendingInitialContent = null
+            navigatingFromAnswerSwitch = false
+            // 不销毁缓存 WebView，只清除 contentId 让下次重新加载
+            mainWebView?.contentId = null
+            previousPreviewWebView?.contentId = null
+            nextPreviewWebView?.contentId = null
+        }
+
+        override fun onCleared() {
+            mainWebView?.destroy()
+            mainWebView = null
+            previousPreviewWebView?.destroy()
+            previousPreviewWebView = null
+            nextPreviewWebView?.destroy()
+            nextPreviewWebView = null
+            super.onCleared()
         }
     }
 
@@ -208,6 +336,7 @@ class ArticleViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     if (article.type == ArticleType.Answer) {
+                        val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
                         val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
                         if (answer != null) {
                             title = answer.question.title
@@ -241,81 +370,82 @@ class ArticleViewModel(
                                     excerpt = answer.excerpt,
                                 ),
                             )
-                            val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
-                            sharedData.pushAnswer(article)
+                            sharedData.pushAnswer(toCachedContent())
+
                             nextAnswerFuture = viewModelScope.async {
-                                if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
-                                    val url =
-                                        if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
-                                            sharedData.nextUrl
-                                        } else {
-                                            "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
-                                        }
-                                    val jojo =
-                                        AccountData.fetchGet(context, url) {
-                                            signFetchRequest(context)
-                                        }!!
-                                    if ("data" !in jojo) {
-                                        Log.e("ArticleViewModel", "No data found in response: $jojo")
-                                        context.mainExecutor.execute {
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
-                                                    Toast.LENGTH_LONG,
-                                                ).show()
-                                        }
-                                    }
-                                    val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
-                                    sharedData.nextUrl =
-                                        jojo["paging"]
-                                            ?.jsonObject
-                                            ?.get("next")
-                                            ?.jsonPrimitive
-                                            ?.content ?: ""
-                                    sharedData.viewingQuestionId = questionId
-                                    sharedData.destinations = data
-                                        .filter {
-                                            it.target?.navDestination is Article && it != article // filter out the current article
-                                        }.toMutableList()
-                                }
-                                if (sharedData.destinations.isNotEmpty()) {
-                                    val nextFeed = sharedData.destinations.removeAt(0)
-                                    // 更新预览信息
-                                    val nextTarget = nextFeed.target
-                                    if (nextTarget is Feed.AnswerTarget) {
-                                        sharedData.nextAnswerAuthorName = nextTarget.author?.name ?: ""
-                                        sharedData.nextAnswerExcerpt = nextTarget.excerpt ?: ""
-                                        sharedData.nextAnswerAvatarUrl = nextTarget.author?.avatarUrl ?: ""
-                                    }
-                                    // 预加载下一个回答的完整内容（用于水平滑动预览）
-                                    val nextDest = nextFeed.target?.navDestination
-                                    if (nextDest is Article && nextDest.type == ArticleType.Answer) {
-                                        try {
-                                            val nextDetail = DataHolder.getContentDetail(context, nextDest) as? DataHolder.Answer
-                                            if (nextDetail != null) {
-                                                sharedData.nextAnswerContent = CachedAnswerContent(
-                                                    article = nextDest,
-                                                    title = nextDetail.question.title,
-                                                    authorName = nextDetail.author.name,
-                                                    authorBio = nextDetail.author.headline,
-                                                    authorAvatarUrl = nextDetail.author.avatarUrl,
-                                                    content = nextDetail.content,
-                                                    voteUpCount = nextDetail.voteupCount,
-                                                    commentCount = nextDetail.commentCount,
-                                                )
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.w("ArticleViewModel", "Failed to pre-load next answer content", e)
-                                        }
-                                    }
-                                    nextFeed
-                                } else {
-                                    sharedData.nextAnswerAuthorName = ""
-                                    sharedData.nextAnswerExcerpt = ""
-                                    sharedData.nextAnswerAvatarUrl = ""
-                                    sharedData.nextAnswerContent = null
+                                // Bug 3: 如果前向历史存在，使用缓存内容
+                                val nextFromHistory = sharedData.nextAnswer
+                                if (nextFromHistory != null && sharedData.currentAnswerIndex < sharedData.answerHistory.size - 1) {
                                     null
+                                } else {
+                                    // 没有前向历史，从 feed 加载
+                                    if (sharedData.destinations.isEmpty() || sharedData.viewingQuestionId != questionId) {
+                                        val url =
+                                            if (questionId == sharedData.viewingQuestionId && sharedData.nextUrl.isNotEmpty()) {
+                                                sharedData.nextUrl
+                                            } else {
+                                                "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2"
+                                            }
+                                        val jojo =
+                                            AccountData.fetchGet(context, url) {
+                                                signFetchRequest(context)
+                                            }!!
+                                        if ("data" !in jojo) {
+                                            Log.e("ArticleViewModel", "No data found in response: $jojo")
+                                            context.mainExecutor.execute {
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "获取回答列表失败: ${jojo["message"]?.jsonPrimitive?.content ?: "未知错误"}",
+                                                        Toast.LENGTH_LONG,
+                                                    ).show()
+                                            }
+                                        }
+                                        val data = AccountData.decodeJson<List<Feed>>(jojo["data"]!!)
+                                        sharedData.nextUrl =
+                                            jojo["paging"]
+                                                ?.jsonObject
+                                                ?.get("next")
+                                                ?.jsonPrimitive
+                                                ?.content ?: ""
+                                        sharedData.viewingQuestionId = questionId
+                                        sharedData.destinations.clear()
+                                        sharedData.destinations.addAll(
+                                            data.filter {
+                                                val dest = it.target?.navDestination
+                                                dest is Article && dest.id != article.id
+                                            },
+                                        )
+                                    }
+                                    if (sharedData.destinations.isNotEmpty()) {
+                                        val nextFeed = sharedData.destinations.removeAt(0)
+                                        val nextTarget = nextFeed.target
+                                        val nextDest = nextFeed.target?.navDestination
+                                        if (nextDest is Article && nextDest.type == ArticleType.Answer) {
+                                            try {
+                                                val nextDetail = DataHolder.getContentDetail(context, nextDest) as? DataHolder.Answer
+                                                if (nextDetail != null) {
+                                                    val nextCached = CachedAnswerContent(
+                                                        article = nextDest,
+                                                        title = nextDetail.question.title,
+                                                        authorName = nextDetail.author.name,
+                                                        authorBio = nextDetail.author.headline,
+                                                        authorAvatarUrl = nextDetail.author.avatarUrl,
+                                                        content = nextDetail.content,
+                                                        voteUpCount = nextDetail.voteupCount,
+                                                        commentCount = nextDetail.commentCount,
+                                                    )
+                                                    sharedData.nextAnswerFromFeed = nextCached
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.w("ArticleViewModel", "Failed to pre-load next answer content", e)
+                                            }
+                                        }
+                                        nextFeed
+                                    } else {
+                                        sharedData.nextAnswerFromFeed = null
+                                        null
+                                    }
                                 }
                             }
                         } else {

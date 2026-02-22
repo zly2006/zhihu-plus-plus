@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
@@ -90,6 +91,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -125,6 +127,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import kotlin.math.abs
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
@@ -454,6 +457,46 @@ fun ArticleActionsMenu(
     }
 }
 
+/**
+ * 修复 noscript 标签中的图片加载问题。
+ * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
+ */
+private fun prepareContentDocument(content: String, context: Context): Document =
+    Jsoup.parse(content).apply {
+        select("noscript").forEach { noscript ->
+            noscript.nextSibling()?.let { actualImg ->
+                if (actualImg.nodeName() == "img") {
+                    if (actualImg.attr("data-actualsrc").isNotEmpty()) {
+                        actualImg.attr("src", actualImg.attr("data-actualsrc"))
+                        actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
+                        noscript.remove()
+                        return@forEach
+                    }
+                }
+            }
+            if (noscript.childrenSize() > 0) {
+                val node = noscript.child(0)
+                if (node.tagName() == "img") {
+                    if (node.attr("class").contains("content_image")) {
+                        node.attr("src", node.attr("data-thumbnail"))
+                    }
+                    if (node.attr("src").isEmpty()) {
+                        if (node.attr("data-default-watermark-src").isNotEmpty()) {
+                            node.attr("src", node.attr("data-default-watermark-src"))
+                        } else {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                context.mainExecutor.execute {
+                                    Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                }
+                noscript.after(node)
+            }
+        }
+    }
+
 @Composable
 fun ArticleScreen(
     article: Article,
@@ -532,9 +575,30 @@ fun ArticleScreen(
         null
     }
 
-    // 重置导航动画方向（在 transition lambda 已读取之后）
-    LaunchedEffect(Unit) {
-        sharedData?.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.DEFAULT
+    LaunchedEffect(article.id) {
+        // Bug 2: 在主线程检查标志并重置（避免跨线程可见性问题）
+        if (sharedData != null) {
+            if (!sharedData.navigatingFromAnswerSwitch) {
+                sharedData.reset()
+            }
+            sharedData.navigatingFromAnswerSwitch = false
+            sharedData.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.DEFAULT
+
+            // 从 pendingInitialContent 预填充 viewModel，消除空白帧
+            val pending = sharedData.pendingInitialContent
+            if (pending != null) {
+                viewModel.title = pending.title
+                viewModel.authorName = pending.authorName
+                viewModel.authorBio = pending.authorBio
+                viewModel.authorAvatarSrc = pending.authorAvatarUrl
+                viewModel.content = pending.content
+                viewModel.voteUpCount = pending.voteUpCount
+                viewModel.commentCount = pending.commentCount
+                sharedData.pendingInitialContent = null
+            }
+        }
+        viewModel.loadArticle(context)
+        viewModel.loadCollections(context)
     }
 
     val navigateToAnswer: (Feed?) -> Unit = { dest ->
@@ -560,10 +624,13 @@ fun ArticleScreen(
         } else {
             ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS
         }
-        // 缓存当前回答内容作为下一屏的 nextAnswerContent
-        sharedData?.nextAnswerContent = viewModel.toCachedContent()
-        val prev = sharedData?.popAnswer()
+        sharedData?.navigatingFromAnswerSwitch = true
+        // 更新当前回答内容到历史
+        sharedData?.pushAnswer(viewModel.toCachedContent())
+        val prev = sharedData?.goToPrevious()
         if (prev != null) {
+            sharedData.pendingInitialContent = prev
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -573,7 +640,7 @@ fun ArticleScreen(
                 ) {
                     activity.navController.popBackStack()
                 }
-                navigator.onNavigate(prev)
+                navigator.onNavigate(prev.article)
             }
         }
     }
@@ -584,11 +651,33 @@ fun ArticleScreen(
         } else {
             ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT
         }
-        // 缓存当前回答内容作为下一屏的 previousAnswerContent
-        sharedData?.previousAnswerContent = viewModel.toCachedContent()
-        coroutineScope.launch {
-            val dest = viewModel.nextAnswerFuture.await()
-            navigateToAnswer(dest)
+        sharedData?.navigatingFromAnswerSwitch = true
+        // 更新当前回答内容到历史
+        sharedData?.pushAnswer(viewModel.toCachedContent())
+        // Bug 3: 优先使用前向历史
+        val historyNext = sharedData?.goToNext()
+        if (historyNext != null) {
+            sharedData.pendingInitialContent = historyNext
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
+            val activity = context as? MainActivity
+            if (activity != null) {
+                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                    activity.navController.currentBackStackEntry
+                        ?.toRoute<Article>()
+                        ?.type == ArticleType.Answer
+                ) {
+                    activity.navController.popBackStack()
+                }
+                navigator.onNavigate(historyNext.article)
+            }
+        } else {
+            // 没有前向历史，从 feed 加载
+            sharedData?.pendingInitialContent = sharedData.nextAnswer
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+            coroutineScope.launch {
+                val dest = viewModel.nextAnswerFuture.await()
+                navigateToAnswer(dest)
+            }
         }
     }
 
@@ -905,7 +994,10 @@ fun ArticleScreen(
 
                 if (viewModel.content.isNotEmpty()) {
                     if (preferences.getBoolean("articleUseWebview", true)) {
-                        WebviewComp(scrollState = scrollState) {
+                        WebviewComp(
+                            scrollState = scrollState,
+                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                        ) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
                                 if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
@@ -923,47 +1015,8 @@ fun ArticleScreen(
                             it.contentId = article.id.toString()
                             it.loadZhihu(
                                 "https://www.zhihu.com/${article.type}/${article.id}",
-                                Jsoup.parse(viewModel.content).apply {
-                                    select("noscript").forEach { noscript ->
-                                    /*
-                                     * 已修复的图片异常:
-                                     * https://www.zhihu.com/question/263764510/answer/273310677
-                                     * https://www.zhihu.com/question/21725193/answer/1931362214
-                                     * https://www.zhihu.com/question/419720398/answer/3155540572
-                                     */
-                                        noscript.nextSibling()?.let { actualImg ->
-                                            if (actualImg.nodeName() == "img") {
-                                                if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                                                    actualImg.attr("src", actualImg.attr("data-actualsrc"))
-                                                    actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
-                                                    noscript.remove()
-                                                    return@forEach
-                                                }
-                                            }
-                                        }
-
-                                        if (noscript.childrenSize() > 0) {
-                                            val node = noscript.child(0)
-                                            if (node.tagName() == "img") {
-                                                if (node.attr("class").contains("content_image")) {
-                                                    // GIF 优化
-                                                    node.attr("src", node.attr("data-thumbnail"))
-                                                }
-                                                if (node.attr("src").isEmpty()) {
-                                                    if (node.attr("data-default-watermark-src").isNotEmpty()) {
-                                                        node.attr("src", node.attr("data-default-watermark-src"))
-                                                    } else {
-                                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                                            context.mainExecutor.execute {
-                                                                Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            noscript.after(node)
-                                        }
-                                    }
+                                prepareContentDocument(viewModel.content, context).apply {
+                                    title(viewModel.title)
                                 },
                             )
                         }
@@ -1009,11 +1062,11 @@ fun ArticleScreen(
             canGoPrevious = sharedData?.previousAnswer != null,
             canGoNext = true,
             previousAuthorName = sharedData?.previousAnswer?.authorName ?: "",
-            previousExcerpt = sharedData?.previousAnswer?.excerpt ?: "",
-            previousAvatarUrl = sharedData?.previousAnswer?.avatarSrc ?: "",
-            nextAuthorName = sharedData?.nextAnswerAuthorName ?: "",
-            nextExcerpt = sharedData?.nextAnswerExcerpt ?: "",
-            nextAvatarUrl = sharedData?.nextAnswerAvatarUrl ?: "",
+            previousExcerpt = sharedData?.previousAnswer?.article?.excerpt ?: "",
+            previousAvatarUrl = sharedData?.previousAnswer?.authorAvatarUrl ?: "",
+            nextAuthorName = sharedData?.nextAnswer?.authorName ?: "",
+            nextExcerpt = sharedData?.nextAnswer?.article?.excerpt ?: "",
+            nextAvatarUrl = sharedData?.nextAnswer?.authorAvatarUrl ?: "",
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
             isAtTop = { scrollState.value == 0 },
@@ -1023,16 +1076,45 @@ fun ArticleScreen(
             answerSwitchContent()
         }
     } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+        LaunchedEffect(sharedData?.nextAnswer) {
+            val cached = sharedData?.nextAnswer ?: return@LaunchedEffect
+            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true)
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
+                )
+            }
+        }
+        LaunchedEffect(sharedData?.previousAnswer) {
+            val cached = sharedData?.previousAnswer ?: return@LaunchedEffect
+            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false)
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
+                )
+            }
+        }
         AnswerHorizontalOverscroll(
             canGoPrevious = sharedData?.previousAnswer != null,
             canGoNext = true,
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
-            previousContent = sharedData?.previousAnswerContent?.let { cached ->
-                { CachedAnswerPreview(cached) }
+            previousContent = sharedData?.previousAnswer?.let { cached ->
+                { CachedAnswerPreview(cached, sharedData, isNext = false) }
             },
-            nextContent = sharedData?.nextAnswerContent?.let { cached ->
-                { CachedAnswerPreview(cached) }
+            nextContent = sharedData?.nextAnswer?.let { cached ->
+                { CachedAnswerPreview(cached, sharedData, isNext = true) }
             },
         ) {
             answerSwitchContent()
@@ -1046,26 +1128,8 @@ fun ArticleScreen(
         DraggableRefreshButton(
             onClick = {
                 navigatingToNextAnswer = true
-                coroutineScope.launch {
-                    val dest = viewModel.nextAnswerFuture.await()
-                    if (dest == null) {
-                        Toast.makeText(context, "没有更多回答了", Toast.LENGTH_SHORT).show()
-                        navigatingToNextAnswer = false
-                        return@launch
-                    }
-                    val activity = context as? MainActivity ?: return@launch
-                    val target = dest.target!!
-                    if (target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
-                        navigator.onNavigate(target.navDestination)
-                    }
-                }
+                navigateToNext()
+                navigatingToNextAnswer = false
             },
             preferenceName = "buttonSkipAnswer",
         ) {
@@ -1119,9 +1183,15 @@ fun ArticleScreen(
 /**
  * 渲染缓存的回答完整内容，用于水平滑动预览。
  * 显示标题、作者信息、HTML 内容（WebView）。
+ * sharedData: ViewModel 中的共享数据，提供缓存 WebView 实例。
+ * isNext: 标识是下一个还是上一个回答的预览。
  */
 @Composable
-private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
+private fun CachedAnswerPreview(
+    cached: ArticleViewModel.CachedAnswerContent,
+    sharedData: ArticleViewModel.ArticlesSharedData? = null,
+    isNext: Boolean = false,
+) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     Scaffold(
@@ -1195,10 +1265,11 @@ private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
     ) { innerPadding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ).verticalScroll(rememberScrollState()),
+                ),
         ) {
             Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
             Row(
@@ -1239,11 +1310,40 @@ private fun CachedAnswerPreview(cached: ArticleViewModel.CachedAnswerContent) {
             }
             if (cached.content.isNotEmpty()) {
                 if (preferences.getBoolean("articleUseWebview", true)) {
-                    WebviewComp {
-                        it.loadZhihu(
-                            "https://www.zhihu.com/answer/${cached.article.id}",
-                            Jsoup.parse(cached.content),
+                    if (sharedData != null) {
+                        AndroidView(
+                            factory = { ctx ->
+                                val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
+                                (wv.parent as? ViewGroup)?.removeView(wv)
+                                wv
+                            },
+                            update = {
+                                val articleId = cached.article.id.toString()
+                                if (it.contentId != articleId) {
+                                    it.contentId = articleId
+                                    it.loadZhihu(
+                                        "https://www.zhihu.com/answer/${cached.article.id}",
+                                        prepareContentDocument(cached.content, context).apply {
+                                            title(cached.title)
+                                        },
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            onRelease = { wv ->
+                                // Only detach if still the shared preview WebView (not claimed as main)
+                                val isStillPreview = if (isNext) {
+                                    sharedData.nextPreviewWebView === wv
+                                } else {
+                                    sharedData.previousPreviewWebView === wv
+                                }
+                                if (isStillPreview) {
+                                    (wv.parent as? ViewGroup)?.removeView(wv)
+                                }
+                            },
                         )
+                    } else {
+                        // no-op
                     }
                 } else {
                     val astNode = remember(cached.content) {
