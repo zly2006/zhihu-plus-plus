@@ -207,6 +207,8 @@ fun AccountSettingScreen(
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+
             Button(
                 onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                 contentPadding = PaddingValues(horizontal = 8.dp),
