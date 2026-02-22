@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -67,6 +68,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,17 +88,14 @@ fun AppearanceSettingsScreen(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    // 用于存储各个设置项的位置
-    var shareActionPosition by remember { mutableIntStateOf(0) }
+    val itemPositions = remember { mutableMapOf<String, Int>() }
+    var scrollColumnRootY by remember { mutableIntStateOf(0) }
 
-    // 当 setting 参数不为空时，滚动到指定位置
-    LaunchedEffect(setting, shareActionPosition) {
-        if (setting.isNotEmpty() && shareActionPosition > 0) {
-            when (setting) {
-                "shareAction" -> {
-                    kotlinx.coroutines.delay(100) // 等待布局完成
-                    scrollState.animateScrollTo(shareActionPosition)
-                }
+    LaunchedEffect(setting, itemPositions[setting]) {
+        if (setting.isNotEmpty()) {
+            kotlinx.coroutines.delay(200)
+            itemPositions[setting]?.let { itemRootY ->
+                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
             }
         }
     }
@@ -119,6 +118,7 @@ fun AppearanceSettingsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
                 .verticalScroll(scrollState),
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
@@ -515,13 +515,11 @@ fun AppearanceSettingsScreen(
                 "share" to "Android分享",
             )
 
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 8.dp)
-                    .onGloballyPositioned { coordinates ->
-                        // 存储设置项的 Y 位置
-                        shareActionPosition = coordinates.size.height
-                    },
+            HighlightableSettingContainer(
+                settingKey = "shareAction",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["shareAction"] = it },
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
             ) {
                 Text(
                     "分享操作",

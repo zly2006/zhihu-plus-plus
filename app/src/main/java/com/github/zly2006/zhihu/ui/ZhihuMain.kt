@@ -435,7 +435,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     )
                 }
                 composable<Account.RecommendSettings> {
+                    val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
+                        setting = args.setting,
                         onNavigateBack = { navController.popBackStack() },
                     )
                 }
