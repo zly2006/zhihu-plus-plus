@@ -319,6 +319,15 @@ fun FeedCard(
                                                 navigator.onNavigate(Account.AppearanceSettings())
                                             },
                                         )
+                                        if (item.isFiltered) {
+                                            DropdownMenuItem(
+                                                text = { Text("不再屏蔽低赞内容") },
+                                                onClick = {
+                                                    showMenu = false
+                                                    navigator.onNavigate(Account.RecommendSettings("enableQualityFilter"))
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }

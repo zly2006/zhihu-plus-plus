@@ -261,7 +261,7 @@ fun AccountSettingScreen(
             headlineContent = { Text("推荐系统与内容过滤") },
             supportingContent = { Text("推荐、智能过滤、关键词屏蔽等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { navigator.onNavigate(Account.RecommendSettings) },
+            modifier = Modifier.clickable { navigator.onNavigate(Account.RecommendSettings()) },
         )
 
         ListItem(
