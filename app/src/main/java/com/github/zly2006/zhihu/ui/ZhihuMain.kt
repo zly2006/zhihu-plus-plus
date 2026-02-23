@@ -44,6 +44,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -80,6 +83,7 @@ import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
+import com.github.zly2006.zhihu.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
@@ -203,6 +207,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     Scaffold(
+        modifier = modifier.semantics { testTagsAsResourceId = true },
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
@@ -228,8 +233,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             label: String,
                             icon: ImageVector,
                         ) {
+                            val tag = "nav_tab_${(destination as? TopLevelDestination)?.name?.lowercase() ?: label.lowercase()}"
                             NavigationBarItem(
                                 navEntry.hasRoute(destination::class),
+                                modifier = Modifier.testTag(tag),
                                 onClick = {
                                     if (!navEntry.hasRoute(destination::class)) {
                                         navController.navigate(destination) {
