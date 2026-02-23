@@ -194,26 +194,8 @@ class CustomWebView : WebView {
         }
     }
 
-    /**
-     * 应用主题样式到WebView
-     * 根据应用的主题设置为body添加或移除dark-theme类
-     */
     fun applyThemeStyle() {
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-
-        // 判断是否应该应用暗色主题
-        val shouldApplyDarkTheme = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> { // SYSTEM
-                // 检查系统是否为暗色模式
-                val currentNightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-
-        val jsCode = if (shouldApplyDarkTheme) {
+        val jsCode = if (ThemeManager.isDarkTheme) {
             "document.body.classList.add('dark-theme');"
         } else {
             "document.body.classList.remove('dark-theme');"
@@ -287,16 +269,7 @@ class CustomWebView : WebView {
             ""
         }
 
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-        val isDark = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> {
-                val nightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-        val bodyClass = if (isDark) " class=\"dark-theme\"" else ""
+        val bodyClass = if (ThemeManager.isDarkTheme) " class=\"dark-theme\" " else ""
 
         loadDataWithBaseURL(
             url,
@@ -314,7 +287,7 @@ class CustomWebView : WebView {
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
-            <body$bodyClass>
+            <body $bodyClass>
             ${document.body().html()}
             </body>
             """.trimIndent(),

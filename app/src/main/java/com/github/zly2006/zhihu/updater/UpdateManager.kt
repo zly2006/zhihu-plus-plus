@@ -108,6 +108,11 @@ object UpdateManager {
         preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
     }
 
+    private fun String.extractReleaseNotes() = this
+        .replace("\r\n", "\n")
+        .substringAfter("## What's Changed\n")
+        .substringBefore("\n\n\n**Full Changelog**:")
+
     /**
      * 自动检查更新（在应用启动时调用）
      */
@@ -144,9 +149,7 @@ object UpdateManager {
                     updateState.value = UpdateState.UpdateAvailable(
                         latestVersion,
                         false,
-                        latestResponse.body
-                            ?.substringAfter("## What's Changed\n")
-                            ?.substringBefore("\n\n\n**Full Changelog**:"),
+                        latestResponse.body?.extractReleaseNotes(),
                     )
                     return true // 有可用更新且未被跳过
                 } else {
@@ -187,9 +190,7 @@ object UpdateManager {
                     }
                 }.body<GithubRelease>()
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            releaseNotes = latestResponse.body
-                ?.substringAfter("## What's Changed\n")
-                ?.substringBefore("\n\n\n**Full Changelog**:")
+            releaseNotes = latestResponse.body?.extractReleaseNotes()
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -211,9 +212,7 @@ object UpdateManager {
                             build = "",
                         )
                         isNightly = true
-                        releaseNotes = nightlyResponse.body
-                            ?.substringAfter("## What's Changed\n")
-                            ?.substringBefore("\n\n\n**Full Changelog**:")
+                        releaseNotes = nightlyResponse.body?.extractReleaseNotes()
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
