@@ -279,8 +279,9 @@ class CustomWebView : WebView {
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
-            val base64 = android.util.Base64.encodeToString(customFontFile.readBytes(), android.util.Base64.NO_WRAP)
-            "@font-face { font-family: 'ZhihuCustomFont'; src: url('data:font/truetype;base64,$base64'); }\n" +
+            val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+            val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
+            "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
                 "body { font-family: 'ZhihuCustomFont', sans-serif; }"
         } else {
             ""
@@ -510,6 +511,35 @@ fun WebviewComp(
     )
 }
 
+/**
+ * Serves files from the app's internal filesDir via WebViewAssetLoader.
+ * Used to serve the custom font without base64-encoding it into the HTML.
+ */
+private class UserFilesPathHandler(
+    private val context: Context,
+) : WebViewAssetLoader.PathHandler {
+    override fun handle(path: String): android.webkit.WebResourceResponse? {
+        val file = java.io.File(context.filesDir, path)
+        if (!file.exists() || !file.isFile) return null
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val mimeType = when {
+            path == "custom_font" -> {
+                val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+                if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
+            }
+            else -> "application/octet-stream"
+        }
+        return android.webkit.WebResourceResponse(
+            mimeType,
+            null,
+            200,
+            "OK",
+            mapOf("Access-Control-Allow-Origin" to "*"),
+            file.inputStream(),
+        )
+    }
+}
+
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
     val context = this.context
@@ -517,6 +547,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
         .Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+        .addPathHandler("/user-files/", UserFilesPathHandler(context))
         .build()
 
     // 设置WebChromeClient来监控控制台消息和加载进度
