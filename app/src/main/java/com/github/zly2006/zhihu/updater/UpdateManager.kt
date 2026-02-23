@@ -278,7 +278,7 @@ object UpdateManager {
                         .toURL()
                         .openConnection()
                         .getInputStream()
-                        .copyTo(apkFile.outputStream())
+                        .use { input -> apkFile.outputStream().use { output -> input.copyTo(output) } }
                     apkFile
                 }
                 updateState.value = UpdateState.Downloaded(file)
