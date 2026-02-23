@@ -63,14 +63,6 @@ object UpdateManager {
     }
 
     /**
-     * 检查是否启用自动更新检查
-     */
-    private fun isAutoCheckEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)
-    }
-
-    /**
      * 获取跳过的版本
      */
     private fun getSkippedVersion(context: Context): String? {
@@ -90,14 +82,14 @@ object UpdateManager {
      * 检查是否需要进行自动更新检查（避免频繁检查）
      */
     private fun shouldPerformAutoCheck(context: Context): Boolean {
-        if (!isAutoCheckEnabled(context)) return false
-
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        if (!preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)) return false
+
         val lastCheck = preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)
         val now = System.currentTimeMillis()
-        val dayInMillis = 24 * 60 * 60 * 1000L
+        val dayInMillis = 3 * 60 * 60 * 1000L
 
-        return (now - lastCheck) > dayInMillis // 每天最多检查一次
+        return (now - lastCheck) > dayInMillis // 每3h最多检查一次
     }
 
     /**
