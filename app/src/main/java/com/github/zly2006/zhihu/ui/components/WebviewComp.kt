@@ -194,26 +194,8 @@ class CustomWebView : WebView {
         }
     }
 
-    /**
-     * 应用主题样式到WebView
-     * 根据应用的主题设置为body添加或移除dark-theme类
-     */
     fun applyThemeStyle() {
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-
-        // 判断是否应该应用暗色主题
-        val shouldApplyDarkTheme = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> { // SYSTEM
-                // 检查系统是否为暗色模式
-                val currentNightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-
-        val jsCode = if (shouldApplyDarkTheme) {
+        val jsCode = if (ThemeManager.isDarkTheme) {
             "document.body.classList.add('dark-theme');"
         } else {
             "document.body.classList.remove('dark-theme');"
@@ -279,23 +261,15 @@ class CustomWebView : WebView {
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
-            val base64 = android.util.Base64.encodeToString(customFontFile.readBytes(), android.util.Base64.NO_WRAP)
-            "@font-face { font-family: 'ZhihuCustomFont'; src: url('data:font/truetype;base64,$base64'); }\n" +
+            val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+            val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
+            "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
                 "body { font-family: 'ZhihuCustomFont', sans-serif; }"
         } else {
             ""
         }
 
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-        val isDark = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> {
-                val nightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-        val bodyClass = if (isDark) " class=\"dark-theme\"" else ""
+        val bodyClass = if (ThemeManager.isDarkTheme) " class=\"dark-theme\" " else ""
 
         loadDataWithBaseURL(
             url,
@@ -313,7 +287,7 @@ class CustomWebView : WebView {
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
-            <body$bodyClass>
+            <body $bodyClass>
             ${document.body().html()}
             </body>
             """.trimIndent(),
@@ -510,6 +484,35 @@ fun WebviewComp(
     )
 }
 
+/**
+ * Serves files from the app's internal filesDir via WebViewAssetLoader.
+ * Used to serve the custom font without base64-encoding it into the HTML.
+ */
+private class UserFilesPathHandler(
+    private val context: Context,
+) : WebViewAssetLoader.PathHandler {
+    override fun handle(path: String): android.webkit.WebResourceResponse? {
+        val file = java.io.File(context.filesDir, path)
+        if (!file.exists() || !file.isFile) return null
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val mimeType = when {
+            path == "custom_font" -> {
+                val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+                if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
+            }
+            else -> "application/octet-stream"
+        }
+        return android.webkit.WebResourceResponse(
+            mimeType,
+            null,
+            200,
+            "OK",
+            mapOf("Access-Control-Allow-Origin" to "*"),
+            file.inputStream(),
+        )
+    }
+}
+
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
     val context = this.context
@@ -517,6 +520,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
         .Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+        .addPathHandler("/user-files/", UserFilesPathHandler(context))
         .build()
 
     // 设置WebChromeClient来监控控制台消息和加载进度
