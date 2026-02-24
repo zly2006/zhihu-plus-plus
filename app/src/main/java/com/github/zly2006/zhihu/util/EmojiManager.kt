@@ -13,10 +13,9 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -24,6 +23,23 @@ import java.net.URL
 /**
  * 管理知乎emoji表情的加载和缓存
  */
+@Serializable
+private data class EmojiApiResponse(
+    val data: EmojiData? = null,
+)
+
+@Serializable
+private data class EmojiData(
+    val stickers: List<StickerItem> = emptyList(),
+)
+
+@Serializable
+private data class StickerItem(
+    val id: String,
+    val placeholder: String,
+    @SerialName("static_image_url") val staticImageUrl: String,
+)
+
 object EmojiManager {
     private const val TAG = "EmojiManager"
     private const val EMOJI_API_URL = "https://www.zhihu.com/api/v4/sticker-groups/1114161698310770688"
@@ -108,25 +124,19 @@ object EmojiManager {
 
             val response = connection.inputStream.bufferedReader().use { it.readText() }
             val json = Json { ignoreUnknownKeys = true }
-            val jsonObject = json.parseToJsonElement(response).jsonObject
-            val stickers = jsonObject["data"]?.jsonObject?.get("stickers")?.jsonArray
+            val stickers = json.decodeFromString<EmojiApiResponse>(response).data?.stickers
                 ?: throw Exception("Invalid response format")
 
             val newMapping = mutableMapOf<String, String>()
             var downloadCount = 0
 
-            stickers.forEach { stickerElement ->
-                val sticker = stickerElement.jsonObject
-                val id = sticker["id"]?.jsonPrimitive?.content ?: return@forEach
-                val placeholder = sticker["placeholder"]?.jsonPrimitive?.content ?: return@forEach
-                val staticImageUrl = sticker["static_image_url"]?.jsonPrimitive?.content ?: return@forEach
-
-                val fileName = "emoji_$id.png"
-                newMapping[placeholder] = fileName
+            stickers.forEach { sticker ->
+                val fileName = "emoji_${sticker.id}.png"
+                newMapping[sticker.placeholder] = fileName
 
                 // 解析base64图片数据
-                if (staticImageUrl.startsWith("data:image/png;base64,")) {
-                    val base64Data = staticImageUrl.substring("data:image/png;base64,".length)
+                if (sticker.staticImageUrl.startsWith("data:image/png;base64,")) {
+                    val base64Data = sticker.staticImageUrl.substring("data:image/png;base64,".length)
                     val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
 
                     val targetFile = File(emojiDir, fileName)

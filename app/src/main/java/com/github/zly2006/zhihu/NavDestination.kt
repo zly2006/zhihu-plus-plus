@@ -53,7 +53,9 @@ data object Account : NavDestination, TopLevelDestination {
     ) : NavDestination
 
     @Serializable
-    data object RecommendSettings : NavDestination {
+    data class RecommendSettings(
+        val setting: String = "",
+    ) : NavDestination {
         @Serializable
         data object Blocklist : NavDestination
     }

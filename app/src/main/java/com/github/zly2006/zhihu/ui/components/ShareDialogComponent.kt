@@ -55,13 +55,11 @@ import com.github.zly2006.zhihu.util.clipboardManager
  * 根据用户设置处理分享操作
  * @param context Android Context
  * @param content 要分享的内容
- * @param shareText 分享的文本
  * @param onShowDialog 当需要显示对话框时调用
  */
 fun handleShareAction(
     context: Context,
     content: NavDestination,
-    shareText: String,
     onShowDialog: () -> Unit,
 ) {
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -75,7 +73,7 @@ fun handleShareAction(
         "copy" -> {
             // 直接复制链接
             (context as? MainActivity)?.sharedData?.clipboardDestination = content
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
+            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content)))
             Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
         }
         "share" -> {
@@ -83,7 +81,8 @@ fun handleShareAction(
             val shareIntent = Intent().apply {
                 action = Intent.ACTION_SEND
                 type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, shareText)
+                putExtra(Intent.EXTRA_TEXT, getShareText(content))
+                putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
             }
             val chooserIntent = Intent.createChooser(shareIntent, "分享到")
             chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -260,4 +259,13 @@ fun getShareText(content: NavDestination, title: String = "", authorName: String
         "https://www.zhihu.com/pin/${content.id}"
     }
     else -> null
+}
+
+fun getShareTitle(content: NavDestination): String = when (content) {
+    is Article -> content.title + when (content.type) {
+        ArticleType.Answer -> " - ${content.authorName} 的回答"
+        ArticleType.Article -> " - ${content.authorName} 的文章"
+    }
+    is Question -> content.title
+    else -> "分享内容"
 }

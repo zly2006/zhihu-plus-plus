@@ -1,193 +1,99 @@
 # Zhihu++ Copilot Instructions
 
-This is a privacy-focused Zhihu (知乎) Android client with local recommendation algorithms, ad-blocking, and content filtering.
+隐私增强的知乎 Android 客户端，支持本地推荐算法、广告屏蔽、内容过滤。
 
-## Build, Test, and Lint
+## 构建与测试
 
-### Build Commands
 ```bash
-# Build lite debug variant (use this to verify changes)
-./gradlew assembleLiteDebug
-
-# Build full debug variant (includes NLP features)
-./gradlew assembleFullDebug
-
-# Build release variants
-./gradlew assembleLiteRelease
-./gradlew assembleFullRelease
-
-# Build all variants
-./gradlew assemble
+# 验证修改（必须按顺序执行）
+./gradlew assembleLiteDebug  # 构建 lite 变体
+./gradlew ktlintFormat        # 格式化代码
 ```
 
-### Testing
-```bash
-# Run unit tests
-./gradlew test
+**重要**: 修改后必须先构建验证，再格式化，最后提交。
 
-# Run tests for specific variant
-./gradlew testLiteDebugUnitTest
-./gradlew testFullDebugUnitTest
+## 项目结构
 
-# Run instrumented tests (requires device/emulator)
-./gradlew connectedAndroidTest
-./gradlew connectedLiteDebugAndroidTest
-```
-
-Test files are located in `app/src/test/java/com/github/zly2006/zhihu/`
-
-### Code Formatting
-```bash
-# Format all Kotlin code with ktlint
-./gradlew ktlintFormat
-
-# Check code style without fixing
-./gradlew ktlintCheck
-```
-
-**IMPORTANT**: Always run `./gradlew assembleLiteDebug` to verify changes, then `./gradlew ktlintFormat` before committing.
-
-## Project Architecture
-
-### Module Structure
-- **app**: Main Android application with Jetpack Compose UI
-  - `src/main`: Shared code for all variants
-  - `src/full`: Full variant-specific code (includes NLP features)
-  - `src/lite`: Lite variant-specific code (lightweight, no ML features)
-- **sentence_embeddings**: Android AAR library with Rust-based HuggingFace tokenizer (full variant only)
-- **rs-hf-tokenizer**: Rust library for tokenization (builds native libraries for Android)
+- **app**: 主应用（Jetpack Compose UI）
+    - `src/main`: 共享代码
+    - `src/full`: Full variant（含 NLP）
+    - `src/lite`: Lite variant（轻量级）
+- **Module**: `sentence_embeddings`（Rust tokenizer，仅 full variant）
 
 ### Build Variants
-The app has two product flavors:
-- **lite**: Lightweight version (~3MB) without ML/NLP features
-- **full**: Complete version with HanLP NLP and sentence embedding support
+- **lite**: 轻量版 (~3MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
+- **full**: 完整版，含 HanLP NLP，包名 `com.github.zly2006.zhplus`
 
-### Key Components
+## 关键约定
 
-#### Data Layer
-- **AccountData** (`data/AccountData.kt`): Manages authentication, HTTP client, cookie storage, and all network requests
-  - Contains `httpClient()` for creating configured Ktor clients
-  - Handles snake_case to camelCase conversion for Zhihu API responses
-  - Methods: `fetch()`, `fetchGet()`, `fetchPost()`, `decodeJson()`, `snake_case2camelCase()`
-  
-- **DataHolder** (`data/DataHolder.kt`): Provides data models and content fetching utilities
-  - `getContentDetail()` fetches article/answer details from Zhihu API
-  
-- **HistoryStorage**: Manages local reading history using Room database
+### 数据序列化
+- **DataHolder** 和 data classes 使用 `camelCase`
+- **知乎 API** 返回 `snake_case`
+- **自动转换**: `AccountData.fetch*()` 和 `decodeJson()` 内部自动调用 `snake_case2camelCase()`
+- 不要手动转换或在 data class 中使用 snake_case
 
-#### UI Layer
-- Jetpack Compose-based UI with Material 3
-- Screens in `ui/` directory (e.g., `HomeScreen.kt`, `ArticleScreen.kt`, `CommentScreen.kt`)
-- Reusable components in `ui/components/` (e.g., `FeedCard.kt`, `PaginatedList.kt`)
-- Settings screens in `ui/subscreens/`
+### HTTP 客户端
+- 使用 `AccountData.httpClient(context)` 获取配置好的客户端
+- Web API 需要 `signFetchRequest(context)` 用于 zse96 v2 签名
+- Android API 使用 `AccountData.ANDROID_HEADERS` 和 `ANDROID_USER_AGENT`
 
-#### Navigation
-- Type-safe navigation using sealed interface `NavDestination` (`NavDestination.kt`)
-- Top-level destinations: Home, Follow, HotList, History, OnlineHistory, Account
-- Nested destinations for articles, questions, comments, etc.
+### Compose
+- Material 3 组件
+- 用 `LaunchedEffect` 处理副作用，设置正确的 key
+- 用 `collectAsState()` 观察 Flow/StateFlow
 
-#### ViewModels
-- Located in `viewmodel/` package with subdirectories:
-  - `feed/`: Feed-related ViewModels
-  - `comment/`: Comment ViewModels (RootCommentViewModel, ChildCommentViewModel)
-  - `filter/`: Content filtering logic
-  - `local/`: Local recommendation algorithms
-  - `za/`: Zhihu API interaction
+### 导航
+- 使用 Jetpack Navigation Compose
+- 定义 sealed interface `NavDestination` 表示不同页面，包含 route 和参数
+- 在编写导航代码前必须检查 NavDestination.kt
 
-#### Theme & Styling
-- `theme/ThemeManager.kt`: Manages dynamic Material You theming
-- `theme/Theme.kt`: Theme definitions
+## Android 调试标准流程
 
-#### Utilities
-- `util/`: Helper classes for HTML rendering, power save mode, telemetry, etc.
-- `updater/`: App update checking and management
+### 应用启动与验证
+```bash
+# 1. 检查包名（必须先做）
+grep "applicationId" app/build.gradle.kts
+# lite variant: com.github.zly2006.zhplus.lite
 
-## Key Conventions
+# 2. 构建并安装
+./gradlew assembleLiteDebug
+adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-### Data Serialization
-- **DataHolder** and data classes use `camelCase` for property names
-- **Zhihu API** returns `snake_case` JSON
-- **Conversion is automatic** when using `AccountData.fetch*()` and `AccountData.decodeJson()` methods
-  - These methods internally call `snake_case2camelCase()` before deserialization
-  - Never manually convert or expect snake_case in data classes
+# 3. 启动
+adb shell am force-stop com.github.zly2006.zhplus.lite
+adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
 
-Example:
-```kotlin
-// Zhihu API returns: {"answer_count": 10, "user_name": "Alice"}
-// DataHolder defines: data class Question(val answerCount: Int, val userName: String)
-// Conversion happens automatically in AccountData.decodeJson()
+# 4. 等待加载（关键！）
+sleep 10
+
+# 5. 截图验证
+adb shell screencap -p /sdcard/screenshot.png
+adb pull /sdcard/screenshot.png /tmp/screenshot.png
+# 使用 view 工具查看
+
+# 6. 测试交互
+adb shell input swipe 350 800 350 400  # 上滑
+sleep 1
+adb shell screencap -p /sdcard/screenshot2.png
+adb pull /sdcard/screenshot2.png /tmp/screenshot2.png
 ```
 
-### Kotlin Serialization
-- Use `@Serializable` annotation for data classes
-- Use `@SerialName` only when property name differs from both camelCase and snake_case
-- Json configuration in `AccountData.json`: `ignoreUnknownKeys = true`, `isLenient = true`
+### UI 调试强制清单
+修改 UI 代码后**必须**：
+1. ✅ 构建 + 格式化
+2. ✅ 安装到设备
+3. ✅ 正确启动应用（检查包名！）
+4. ✅ 等待加载完成（至少 8-10 秒）
+5. ✅ 截图并 adb pull 到本地，注意不要在一个response中同时包括截图和第七步的Read命令，因为截图需要时间，此时要read的文件还不存在。
+6. ✅ 使用 Read 工具查看，记得要用ls检查文件是否存在，路径是否正确
+7. ✅ 测试交互（滚动、点击）
+8. ✅ 再次截图验证
+9. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
 
-### Ktor HTTP Client
-- Always use `AccountData.httpClient(context)` to get properly configured clients
-- Web API requests require `signFetchRequest(context)` for zse96 v2 signatures
-- Android API requests use headers from `AccountData.ANDROID_HEADERS` and `AccountData.ANDROID_USER_AGENT`
-
-### Jetpack Compose
-- Use `@Composable` functions for UI components
-- Prefer `LaunchedEffect` for side effects with proper keys
-- Use `collectAsState()` for Flow/StateFlow observation
-- Material 3 components throughout the app
-
-### Code Reuse
-When asked to check for duplicate code:
-1. Identify modified code snippets
-2. Use `grep` tool to search for similar patterns elsewhere
-3. Extract common logic into functions, data classes, or interfaces
-4. Prefer creating utility functions in `util/` package
-
-### File Operations
-- **Do NOT** use `rm` or delete commands when encountering "Path already exists" errors
-- **Always use `edit` tool** to precisely replace text content in existing files
-- Never retry file creation multiple times; switch to editing immediately
-
-### Room Database
-- Use KSP annotation processor (not kapt)
-- Entities and DAOs follow standard Room conventions
-
-### ProGuard/R8
-- Release builds enable minification and resource shrinking
-- ProGuard rules in `app/proguard-rules.pro`
-
-### Build Features
-- ViewBinding: Enabled
-- BuildConfig: Enabled (includes `GIT_HASH`, `BUILD_TIME`, `IS_LITE`)
-- Compose: Enabled
-
-## Development Dependencies
-
-### Core Libraries
-- Kotlin 2.2.21 with Compose Compiler
-- Ktor 3.3.3 for networking
-- Kotlinx Serialization for JSON
-- Jetpack Compose with Material 3
-- AndroidX Navigation Compose
-- Room 2.8.4 with KSP
-- Coil 3.3.0 for image loading
-
-### Full Variant Only
-- HanLP 1.8.4 (Chinese NLP)
-- sentence_embeddings (custom module with Rust tokenizer)
-
-### Tools
-- ktlint 14.0.1 for code formatting
-- Android Gradle Plugin 8.12.3
-- Grgit 5.3.3 for Git integration
-
-## Native Development (Full Variant)
-
-The `sentence_embeddings` module requires Rust toolchain:
-- Install Rust targets for Android: `aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`
-- Install `cargo-ndk`: `cargo install cargo-ndk`
-- Android NDK 29.0.14206865 required
-- Build script: `rs-hf-tokenizer/build-android.sh`
-
-See `sentence_embeddings/README.md` for detailed setup instructions.
+## 代码风格
+- Kotlin Serialization with `@Serializable`
+- 只在必要时注释，不过度注释
+- ktlint 格式化（14.0.1）
 
 ## License
-Custom license (not free software) - see LICENSE.md. Allows use and modification with restrictions on commercial use and naming.
+自定义许可证（非自由软件）- 见 LICENSE.md

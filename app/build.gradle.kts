@@ -24,6 +24,14 @@ ktlint {
     }
 }
 
+ksp {
+    // Fix cache invalidation by stabilizing inputs
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    // Stabilize logLevel to prevent cache invalidation
+    arg("logging.level", "WARN")
+}
+
 android {
     namespace = "com.github.zly2006.zhihu"
     compileSdk = 36
@@ -83,18 +91,12 @@ android {
         val gitHash = grgit.head().abbreviatedId
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
         }
         release {
-            if (System.getenv("GITHUB_ACTIONS") == null ||
-                System.getenv("CI_BUILD_MINIFY").toBoolean()
-            ) {
-                isMinifyEnabled = true
-                isShrinkResources = true
-                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            buildConfigField("long", "BUILD_TIME", "${System.currentTimeMillis()}L")
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }
@@ -127,6 +129,21 @@ android {
                     "DebugProbesKt.bin",
 //                    "META-INF/*.kotlin_module",
                 )
+        }
+    }
+
+    androidComponents {
+        beforeVariants(selector().all()) { variantBuilder ->
+            val flavorName = variantBuilder.flavorName
+            if (variantBuilder.buildType == "release") {
+                val minify =
+                    when (flavorName) {
+                        "lite" -> true
+                        else -> false
+                    }
+                variantBuilder.isMinifyEnabled = minify
+                variantBuilder.shrinkResources = minify
+            }
         }
     }
 }

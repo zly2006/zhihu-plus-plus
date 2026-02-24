@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -50,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -63,6 +68,7 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,17 +88,14 @@ fun AppearanceSettingsScreen(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    // 用于存储各个设置项的位置
-    var shareActionPosition by remember { mutableIntStateOf(0) }
+    val itemPositions = remember { mutableMapOf<String, Int>() }
+    var scrollColumnRootY by remember { mutableIntStateOf(0) }
 
-    // 当 setting 参数不为空时，滚动到指定位置
-    LaunchedEffect(setting, shareActionPosition) {
-        if (setting.isNotEmpty() && shareActionPosition > 0) {
-            when (setting) {
-                "shareAction" -> {
-                    kotlinx.coroutines.delay(100) // 等待布局完成
-                    scrollState.animateScrollTo(shareActionPosition)
-                }
+    LaunchedEffect(setting, itemPositions[setting]) {
+        if (setting.isNotEmpty()) {
+            kotlinx.coroutines.delay(200)
+            itemPositions[setting]?.let { itemRootY ->
+                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
             }
         }
     }
@@ -115,6 +118,7 @@ fun AppearanceSettingsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
                 .verticalScroll(scrollState),
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
@@ -340,6 +344,55 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            AnimatedVisibility(visible = articleUseWebview.value) {
+                var customFontName by remember {
+                    mutableStateOf(preferences.getString("webviewCustomFontName", null))
+                }
+                val fontFilePicker = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri ->
+                    if (uri == null) return@rememberLauncherForActivityResult
+                    val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
+                    val destFile = java.io.File(context.filesDir, "custom_font")
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        destFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    preferences.edit {
+                        putString("webviewCustomFontName", name)
+                    }
+                    customFontName = name
+                    Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
+                }
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Text("WebView 自定义字体", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        customFontName ?: "未设置",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
+                        }) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null)
+                            Text("选择字体文件", modifier = Modifier.padding(start = 4.dp))
+                        }
+                        if (customFontName != null) {
+                            OutlinedButton(onClick = {
+                                java.io.File(context.filesDir, "custom_font").delete()
+                                preferences.edit { remove("webviewCustomFontName") }
+                                customFontName = null
+                                Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = null)
+                                Text("清除", modifier = Modifier.padding(start = 4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
             val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
             SwitchSettingItem(
                 title = "WebView 硬件加速",
@@ -373,6 +426,73 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val pinAnswerDate = remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
+            SwitchSettingItem(
+                title = "置顶回答日期",
+                description = "将回答的发布日期和编辑日期移动到内容最前面显示",
+                checked = pinAnswerDate.value,
+                onCheckedChange = {
+                    pinAnswerDate.value = it
+                    preferences.edit { putBoolean("pinAnswerDate", it) }
+                },
+            )
+
+            // 回答切换手势设置
+            var answerSwitchExpanded by remember { mutableStateOf(false) }
+            val answerSwitchMode = remember {
+                mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
+            }
+            val answerSwitchOptions = listOf(
+                "off" to "关闭",
+                "vertical" to "上下滑动切换",
+                "horizontal" to "左右滑动切换",
+            )
+
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "回答切换手势",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "在回答页面通过手势切换同一问题下的其他回答",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = answerSwitchExpanded,
+                    onExpandedChange = { answerSwitchExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = answerSwitchExpanded,
+                        onDismissRequest = { answerSwitchExpanded = false },
+                    ) {
+                        answerSwitchOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    answerSwitchMode.value = mode
+                                    preferences.edit { putString("answerSwitchMode", mode) }
+                                    answerSwitchExpanded = false
+                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
             SwitchSettingItem(
                 title = "显示 Feed 卡片缩略图",
@@ -395,13 +515,11 @@ fun AppearanceSettingsScreen(
                 "share" to "Android分享",
             )
 
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 8.dp)
-                    .onGloballyPositioned { coordinates ->
-                        // 存储设置项的 Y 位置
-                        shareActionPosition = coordinates.size.height
-                    },
+            HighlightableSettingContainer(
+                settingKey = "shareAction",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["shareAction"] = it },
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
             ) {
                 Text(
                     "分享操作",
@@ -446,6 +564,35 @@ fun AppearanceSettingsScreen(
                     }
                 }
             }
+
+            Text(
+                "交互设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
+            SwitchSettingItem(
+                title = "点击底部导航栏刷新",
+                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
+                checked = tapToRefresh.value,
+                onCheckedChange = {
+                    tapToRefresh.value = it
+                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
+                },
+            )
+
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SwitchSettingItem(
+                title = "显示刷新FAB按钮",
+                description = "在页面上显示可拖动的刷新按钮",
+                checked = showRefreshFab.value,
+                onCheckedChange = {
+                    showRefreshFab.value = it
+                    preferences.edit { putBoolean("showRefreshFab", it) }
+                },
+            )
 
             Text(
                 "底部栏设置",

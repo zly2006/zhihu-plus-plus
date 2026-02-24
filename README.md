@@ -24,6 +24,8 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 [下载最新开发版本](https://github.com/zly2006/zhihu-plus-plus/releases/tag/nightly)
 
+[更新日志（Beta）](CHANGELOG.md)
+
 ## 路线图
 
 ### 已经实现的功能
@@ -50,6 +52,7 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 - NLP屏蔽词（基于LLM embedding和向量相似度匹配）
 - 屏蔽用户
 - 屏蔽话题
+- **导出屏蔽词** & **导入屏蔽词**（支持跨设备迁移）
 - 评论区
 - 通知
 - 表情包

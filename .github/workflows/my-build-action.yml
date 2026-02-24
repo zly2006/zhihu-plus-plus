@@ -105,7 +105,8 @@ jobs:
       - name: Build App
         # Build .apk
         run: |
-          bash ./gradlew ${{inputs.args}} assembleFullRelease assembleLiteRelease
+          bash ./gradlew ${{inputs.args}} assembleFullRelease
+          bash ./gradlew ${{inputs.args}} assembleLiteRelease
         env:
           signingKey: ${{ secrets.ANDROID_SIGNING_KEY }}
           keyAlias: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -127,15 +128,6 @@ jobs:
           APKSIGNER_PATH: /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner
         run: |
           cd apk-recompress
-          echo "Building Rust tool"
-          cargo build --release 2> /dev/null
-          echo "Recompressing Full APK with Rust tool"
-          cargo run --release -- \
-            -i ../app/build/upload/zhihu++-full.apk \
-            -o ./zhihu++-full.apk
-          echo "Moving recompressed Full APK to upload directory"
-          mv ./zhihu++-full.apk ../app/build/upload/zhihu++-full.apk
-          
           echo "Recompressing Lite APK with Rust tool"
           cargo run --release -- \
             -i ../app/build/upload/zhihu++-lite.apk \
@@ -143,18 +135,11 @@ jobs:
           echo "Moving recompressed Lite APK to upload directory"
           mv ./zhihu++-lite.apk ../app/build/upload/zhihu++-lite.apk
 
-      - name: Compress mapping file
+      - name: Compress lite mapping file
         if: ${{ inputs.minify }}
         run: |
-          # Full mapping
-          cd app/build/outputs/mapping/fullRelease
-          zip mapping-full.zip mapping.txt
-          mv mapping-full.zip ../../../upload/mapping-full.zip
-          
-          # Lite mapping
-          cd ../../../../../app/build/outputs/mapping/liteRelease
-          zip mapping-lite.zip mapping.txt
-          mv mapping-lite.zip ../../../upload/mapping-lite.zip
+          mkdir -p app/build/upload
+          zip app/build/upload/mapping-lite.zip app/build/outputs/mapping/liteRelease/mapping.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -187,8 +172,23 @@ jobs:
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
-            app/build/upload/mapping-full.zip
+          fail_on_unmatched_files: true
           prerelease: true
+      - name: Generate release notes
+        if: ${{ inputs.release && startsWith(github.ref, 'refs/tags/') }}
+        id: release_notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+            });
+            console.log(data.body);
+            return data.body;
+          result-encoding: string
+
       - name: Create Release
         if: ${{ inputs.release && startsWith(github.ref, 'refs/tags/') }}
         id: release
@@ -197,13 +197,14 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           body: |
-            Release ${{ github.ref_name }}
             如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
             Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有 3 MB 的大小。
+
+            ${{ steps.release_notes.outputs.result }}
           files: |
             app/build/upload/zhihu++-lite.apk
             app/build/upload/mapping-lite.zip
             app/build/upload/zhihu++-full.apk
-            app/build/upload/mapping-full.zip
+          fail_on_unmatched_files: true
           prerelease: false
 

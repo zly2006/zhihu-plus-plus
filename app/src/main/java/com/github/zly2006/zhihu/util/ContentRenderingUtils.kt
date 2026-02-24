@@ -19,8 +19,12 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.resolveContent
@@ -43,6 +47,63 @@ fun extractImageUrl(imgElement: Element): String? = imgElement.attr("data-origin
     ?: imgElement.attr("data-actualsrc").takeIf { it.isNotBlank() }
     ?: imgElement.attr("data-thumbnail").takeIf { it.isNotBlank() }
     ?: imgElement.attr("src").takeIf { it.isNotBlank() }
+
+/**
+ * 内容块类型，用于Column渲染
+ */
+sealed class ContentBlock {
+    /** 文本块，包含富文本和emoji */
+    data class TextBlock(
+        val text: AnnotatedString,
+        // 行内公式或emoji等组件使用的key集合
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 图片块 */
+    data class ImageBlock(
+        val url: String,
+        val isGif: Boolean = false,
+    ) : ContentBlock()
+
+    /** 公式块 */
+    data class FormulaBlock(
+        val imageUrl: String,
+        val formula: String,
+    ) : ContentBlock()
+
+    /** 标题块 */
+    data class HeaderBlock(
+        val text: AnnotatedString,
+        val level: Int,
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 列表块 */
+    data class ListBlock(
+        val items: List<ListItem>,
+        val isOrdered: Boolean,
+    ) : ContentBlock() {
+        data class ListItem(
+            val text: AnnotatedString,
+            val componentUsed: Set<String> = emptySet(),
+        )
+    }
+
+    /** 引用块 */
+    data class QuoteBlock(
+        val text: AnnotatedString,
+        val componentUsed: Set<String> = emptySet(),
+    ) : ContentBlock()
+
+    /** 代码块 */
+    data class CodeBlock(
+        val code: String,
+        val language: String = "",
+    ) : ContentBlock()
+
+    /** 分割线 */
+    data object DividerBlock : ContentBlock()
+}
 
 /**
  * 处理文本节点中的emoji，提取emoji占位符并添加到AnnotatedString
@@ -288,6 +349,7 @@ suspend fun downloadAndSaveImage(
 
 /**
  * 分享图片
+ * 图片临时保存到 externalCacheDir/share_images/，应用启动时自动清空
  */
 suspend fun shareImage(
     context: Context,
@@ -295,17 +357,19 @@ suspend fun shareImage(
     imageUrl: String,
 ) {
     try {
-        val fileName = "share_${System.currentTimeMillis()}.jpg"
-        val imageUri = downloadAndSaveImage(context, httpClient, imageUrl, fileName)
-        if (imageUri != null) {
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, imageUri)
-                type = "image/jpeg"
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+        val response = httpClient.get(imageUrl)
+        val bytes = response.readRawBytes()
+        val shareDir = java.io.File(context.externalCacheDir, "share_images").apply { mkdirs() }
+        val file = java.io.File(shareDir, "share_${System.currentTimeMillis()}.jpg")
+        file.writeBytes(bytes)
+        val imageUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_STREAM, imageUri)
+            type = "image/jpeg"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
     } catch (e: Exception) {
         Toast
             .makeText(
@@ -313,5 +377,217 @@ suspend fun shareImage(
                 "分享失败: ${e.message}",
                 Toast.LENGTH_SHORT,
             ).show()
+    }
+}
+
+/**
+ * 清空分享图片缓存目录
+ */
+fun clearShareImageCache(context: Context) {
+    java.io.File(context.externalCacheDir, "share_images").deleteRecursively()
+}
+
+/**
+ * 解析HTML节点为ContentBlock列表，用于Column渲染
+ * 每个<p>标签解析成一个独立的TextBlock
+ */
+private fun parseArticleContentBlocks(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+    blocks: MutableList<ContentBlock>,
+) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "noscript" -> { }
+
+                "img" -> {
+                    // 提取图片URL
+                    val src = node.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
+                        "https://pic1.zhimg.com/$it"
+                    } ?: node.attr("data-original").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-actualsrc").takeIf { it.isNotBlank() }
+                        ?: node.attr("data-thumbnail").takeIf { it.isNotBlank() }
+                        ?: node.attr("src").takeIf { it.isNotBlank() }
+
+                    if (src != null) {
+                        if (node.hasAttr("data-formula")) {
+                            // 公式
+                            blocks.add(ContentBlock.FormulaBlock(src, node.attr("data-formula")))
+                        } else {
+                            // 普通图片或GIF
+                            val isGif = node.attr("class").contains("content_image")
+                            blocks.add(ContentBlock.ImageBlock(src, isGif))
+                        }
+                    }
+                }
+
+                "p" -> {
+                    // 每个<p>标签作为一个独立的TextBlock
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.TextBlock(text, componentUsed))
+                    }
+                }
+
+                "h1", "h2", "h3", "h4", "h5", "h6" -> {
+                    val level = node.tagName().substring(1).toIntOrNull() ?: 1
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.HeaderBlock(text, level, componentUsed))
+                    }
+                }
+
+                "ul", "ol" -> {
+                    val isOrdered = node.tagName() == "ol"
+                    val listItems = mutableListOf<ContentBlock.ListBlock.ListItem>()
+
+                    node.children().forEach { li ->
+                        if (li.tagName() == "li") {
+                            val componentUsed = mutableSetOf<String>()
+                            val text = buildAnnotatedString {
+                                li.childNodes().forEach { child ->
+                                    buildParagraphText(child, onNavigate, context, this, componentUsed)
+                                }
+                            }
+                            if (text.isNotEmpty()) {
+                                listItems.add(ContentBlock.ListBlock.ListItem(text, componentUsed))
+                            }
+                        }
+                    }
+
+                    if (listItems.isNotEmpty()) {
+                        blocks.add(ContentBlock.ListBlock(listItems, isOrdered))
+                    }
+                }
+
+                "blockquote" -> {
+                    val componentUsed = mutableSetOf<String>()
+                    val text = buildAnnotatedString {
+                        node.childNodes().forEach { child ->
+                            buildParagraphText(child, onNavigate, context, this, componentUsed)
+                        }
+                    }
+                    if (text.isNotEmpty()) {
+                        blocks.add(ContentBlock.QuoteBlock(text, componentUsed))
+                    }
+                }
+
+                "pre" -> {
+                    val codeNode = node.getElementsByTag("code").firstOrNull() ?: node
+                    val language = codeNode
+                        .attr("class")
+                        .split(" ")
+                        .find { it.startsWith("language-") }
+                        ?.removePrefix("language-") ?: ""
+                    val code = codeNode.wholeText() // Use wholeText to preserve newlines
+                    if (code.isNotBlank()) {
+                        blocks.add(ContentBlock.CodeBlock(code, language))
+                    }
+                }
+
+                "hr" -> {
+                    blocks.add(ContentBlock.DividerBlock)
+                }
+
+                else -> {
+                    // 递归处理其他元素
+                    node.childNodes().forEach {
+                        parseArticleContentBlocks(it, onNavigate, context, blocks)
+                    }
+                }
+            }
+        }
+
+        else -> {
+            // 其他节点类型递归处理
+        }
+    }
+}
+
+/**
+ * 构建段落内的文本内容（用于单个TextBlock内部）
+ */
+private fun buildParagraphText(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    context: Context,
+    builder: AnnotatedString.Builder,
+    componentUsed: MutableSet<String>? = null,
+) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "br" -> {
+                    builder.append("\n")
+                }
+
+                "a" -> {
+                    val href = node.attr("href")
+                    val linkText = node.text()
+                    if (linkText.isNotEmpty()) {
+                        builder.withLink(
+                            LinkAnnotation.Clickable(
+                                href,
+                                TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
+                            ) {
+                                resolveContent(href.toUri())?.let(onNavigate)
+                                    ?: luoTianYiUrlLauncher(context, href.toUri())
+                            },
+                        ) {
+                            append(linkText)
+                        }
+                    }
+                }
+
+                "b", "strong" -> {
+                    builder.pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                    builder.pop()
+                }
+
+                "i", "em" -> {
+                    builder.pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                    builder.pop()
+                }
+
+                "img" -> {
+                    // 段落内的图片忽略或显示占位符
+                    builder.append("[图片]")
+                }
+
+                else -> {
+                    node.childNodes().forEach { child ->
+                        buildParagraphText(child, onNavigate, context, builder, componentUsed)
+                    }
+                }
+            }
+        }
+
+        is TextNode -> {
+            // 处理emoji
+            builder.processTextWithEmoji(node.text(), componentUsed)
+        }
+
+        else -> {
+            builder.append(node.outerHtml())
+        }
     }
 }

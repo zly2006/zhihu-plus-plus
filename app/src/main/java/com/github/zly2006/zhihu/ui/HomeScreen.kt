@@ -39,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +51,7 @@ import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
+import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
@@ -74,8 +74,6 @@ import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -145,10 +143,9 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(refreshTrigger: Int = 0) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    val coroutineScope = rememberCoroutineScope()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -168,6 +165,14 @@ fun HomeScreen() {
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
+    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger != cachedRefreshTrigger) {
+            viewModel.refresh(context)
+            cachedRefreshTrigger = refreshTrigger
+        }
+    }
+
     // 通知 ViewModel
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -175,7 +180,7 @@ fun HomeScreen() {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                 signFetchRequest(context)
             }!!
-            unreadCount = jojo["default_notifications_count"]?.jsonPrimitive?.int ?: 99
+            unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
         } catch (_: Exception) {
             // 忽略错误
         }
@@ -342,15 +347,18 @@ fun HomeScreen() {
                     }
                 }
 
-                DraggableRefreshButton(
-                    onClick = {
-                        viewModel.refresh(context)
-                    },
-                ) {
-                    if (viewModel.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                if (showRefreshFab) {
+                    DraggableRefreshButton(
+                        onClick = {
+                            viewModel.refresh(context)
+                        },
+                    ) {
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             }

@@ -115,7 +115,7 @@ fun PinScreen(
                     onClick = {
                         val shareText = getShareText(pin)
                         if (shareText != null) {
-                            handleShareAction(context, pin, shareText) {
+                            handleShareAction(context, pin) {
                                 showShareDialog = true
                             }
                         }
@@ -267,6 +267,7 @@ private fun PinContent(
         // Content
         if (preferences.getBoolean("articleUseWebview", true)) {
             WebviewComp {
+                it.isVerticalScrollBarEnabled = false
                 it.setupUpWebviewClient()
                 val document = Jsoup.parse(pin.contentHtml)
                 it.loadZhihu(

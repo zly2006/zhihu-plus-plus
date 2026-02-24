@@ -8,7 +8,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
@@ -28,10 +31,15 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,6 +48,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
+import androidx.core.net.toUri
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -86,6 +97,55 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
+
+    val keySurveyDone = "survey_feedback_done"
+    val surveyUrl = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
+    var showSurveyDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!preferences.getBoolean(keySurveyDone, false)) {
+            val installTime = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+            } catch (_: Exception) {
+                System.currentTimeMillis()
+            }
+            if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
+                showSurveyDialog = true
+            }
+        }
+    }
+    if (showSurveyDialog) {
+        AlertDialog(
+            onDismissRequest = { showSurveyDialog = false },
+            title = { Text("希望听到您的声音") },
+            text = {
+                Text("我们诚挚地邀请您填写一份简短的调查问卷，帮助我们了解您的使用体验和需求，以便为您带来更好的产品。只需 1~2 分钟，非常感谢您的支持！")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSurveyDialog = false
+                    preferences.edit { putBoolean(keySurveyDone, true) }
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        surveyUrl.toUri(),
+                    )
+                    context.startActivity(intent)
+                }) { Text("去填写") }
+            },
+            dismissButton = {
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = { showSurveyDialog = false }) { Text("取消") }
+                    TextButton(onClick = {
+                        showSurveyDialog = false
+                        preferences.edit { putBoolean(keySurveyDone, true) }
+                    }) { Text("我已填写") }
+                }
+            },
+        )
+    }
+
+    // 底部导航栏刷新功能
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -177,6 +237,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    } else if (tapToRefreshEnabled) {
+                                        // 已经在当前页面，触发刷新
+                                        refreshTrigger++
                                     }
                                 },
                                 label = {
@@ -239,13 +302,51 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<Home> {
-                    HomeScreen()
+                    HomeScreen(refreshTrigger = refreshTrigger)
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
                     QuestionScreen(question)
                 }
-                composable<Article> { navEntry ->
+                composable<Article>(
+                    enterTransition = {
+                        val sharedData = try {
+                            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
+                        } catch (_: Exception) {
+                            null
+                        }
+                        when (sharedData?.answerTransitionDirection) {
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                            else -> slideInHorizontally(tween(300)) { it }
+                        }
+                    },
+                    exitTransition = {
+                        val sharedData = try {
+                            (activity as? androidx.activity.ComponentActivity)
+                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                        } catch (_: Exception) {
+                            null
+                        }
+                        when (sharedData?.answerTransitionDirection) {
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                            else -> ExitTransition.None
+                        }
+                    },
+                ) { navEntry ->
                     val article: Article = navEntry.toRoute()
                     val viewModel: ArticleViewModel = viewModel(navEntry) {
                         ArticleViewModel(article, activity.httpClient, navEntry)
@@ -334,7 +435,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     )
                 }
                 composable<Account.RecommendSettings> {
+                    val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
+                        setting = args.setting,
                         onNavigateBack = { navController.popBackStack() },
                     )
                 }

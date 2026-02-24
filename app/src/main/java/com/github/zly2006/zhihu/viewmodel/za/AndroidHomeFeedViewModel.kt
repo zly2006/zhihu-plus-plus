@@ -25,6 +25,7 @@ import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
@@ -78,7 +79,7 @@ class AndroidHomeFeedViewModel :
 
     public override suspend fun fetchFeeds(context: Context) {
         try {
-            val response = httpClient(context).get(initialUrl)
+            val response = httpClient(context).get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
@@ -162,11 +163,19 @@ class AndroidHomeFeedViewModel :
                             }
                         }
                     }.joinAll()
+
+                lastPaging = if ("paging" in jojo) {
+                    AccountData.decodeJson(jojo["paging"]!!)
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
-            Log.e(this::class.simpleName, "Failed to fetch feeds", e)
-            context.mainExecutor.execute {
-                Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            if (e !is CancellationException) {
+                Log.e(this::class.simpleName, "Failed to fetch feeds", e)
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
             throw e
         } finally {

@@ -3,11 +3,14 @@ package com.github.zly2006.zhihu.ui.subscreens
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -25,6 +29,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +38,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -168,6 +177,54 @@ fun SystemAndUpdateSettingsScreen(
                         is UpdateState.Error -> "检查更新失败，点击重试"
                     },
                 )
+            }
+
+            var releaseNotes: String? by remember { mutableStateOf(null) }
+            LaunchedEffect(updateState) {
+                val updateState = updateState
+                if (updateState is UpdateState.UpdateAvailable) {
+                    releaseNotes = updateState.releaseNotes
+                }
+            }
+            if (releaseNotes != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider()
+                Text(
+                    "更新内容",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                )
+                SelectionContainer {
+                    Text(
+                        buildAnnotatedString {
+                            val prRegex = Regex("https://github.com/zly2006/zhihu-plus-plus/pull/(\\d+)")
+                            var lastIndex = 0
+                            prRegex.findAll(releaseNotes!!).forEach { matchResult ->
+                                append(releaseNotes!!.substring(lastIndex, matchResult.range.first))
+                                val prNumber = matchResult.groupValues[1]
+                                withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/pull/$prNumber")) {
+                                    withStyle(
+                                        MaterialTheme.typography.bodyMedium
+                                            .copy(color = MaterialTheme.colorScheme.primary)
+                                            .toSpanStyle(),
+                                    ) {
+                                        append("#$prNumber")
+                                    }
+                                }
+                                lastIndex = matchResult.range.last + 1
+                            }
+                            append(releaseNotes!!.substring(lastIndex))
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Button(onClick = {
+                    luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri())
+                }) {
+                    Text("查看完整更新日志")
+                }
             }
 
             Text(
