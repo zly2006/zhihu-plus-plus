@@ -87,6 +87,7 @@ class LoginActivity : ComponentActivity() {
                                         CookieManager
                                             .getInstance()
                                             .getCookie("https://www.zhihu.com/")
+                                            .orEmpty()
                                             .split(";")
                                             .associate {
                                                 it.substringBefore("=").trim() to it.substringAfter("=")
