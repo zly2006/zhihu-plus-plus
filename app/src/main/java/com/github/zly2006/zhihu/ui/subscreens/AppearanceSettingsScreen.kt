@@ -504,6 +504,60 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            // 信息流样式设置
+            var feedCardStyleExpanded by remember { mutableStateOf(false) }
+            val feedCardStyle = remember {
+                mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
+            }
+            val feedCardStyleOptions = listOf(
+                "card" to "卡片样式",
+                "divider" to "分割线样式",
+            )
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "信息流样式",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = feedCardStyleExpanded,
+                    onExpandedChange = { feedCardStyleExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = feedCardStyleExpanded,
+                        onDismissRequest = { feedCardStyleExpanded = false },
+                    ) {
+                        feedCardStyleOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    feedCardStyle.value = mode
+                                    preferences.edit { putString("feedCardStyle", mode) }
+                                    feedCardStyleExpanded = false
+                                    Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
             // 分享操作设置
             var shareActionExpanded by remember { mutableStateOf(false) }
             val shareActionMode = remember {
