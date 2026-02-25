@@ -165,7 +165,7 @@ dependencies {
     implementation("androidx.browser:browser:1.8.0")
 
     // LaTeX rendering
-    val latex = "1.0.4"
+    val latex = "1.1.1"
     implementation("io.github.huarangmeng:latex-base:$latex")
     implementation("io.github.huarangmeng:latex-parser:$latex")
     implementation("io.github.huarangmeng:latex-renderer:$latex")
