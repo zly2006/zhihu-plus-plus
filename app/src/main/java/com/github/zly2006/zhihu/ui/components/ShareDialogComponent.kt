@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Pin
@@ -98,8 +99,9 @@ fun ShareDialog(
     showDialog: Boolean,
     onDismissRequest: () -> Unit,
     context: Context,
-    onNavigate: ((NavDestination) -> Unit)? = null,
 ) {
+    val navigator = LocalNavigator.current
+
     @Composable
     fun MenuActionButton(
         icon: ImageVector,
@@ -220,18 +222,16 @@ fun ShareDialog(
                             },
                         )
 
-                        if (onNavigate != null) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                            MenuActionButton(
-                                icon = Icons.Filled.Settings,
-                                text = "分享设置",
-                                onClick = {
-                                    onDismissRequest()
-                                    onNavigate(Account.AppearanceSettings(setting = "shareAction"))
-                                },
-                            )
-                        }
+                        MenuActionButton(
+                            icon = Icons.Filled.Settings,
+                            text = "分享设置",
+                            onClick = {
+                                onDismissRequest()
+                                navigator.onNavigate(Account.AppearanceSettings(setting = "shareAction"))
+                            },
+                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
                     }

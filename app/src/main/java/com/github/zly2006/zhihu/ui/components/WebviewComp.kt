@@ -66,7 +66,6 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -356,28 +355,26 @@ class OpenImageDislog(
 ) : ComponentDialog(context) {
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
-        setContentView(
-            PhotoView(context).apply {
-                GlobalScope.launch {
-                    httpClient
-                        .get(url)
-                        .bodyAsChannel()
-                        .toInputStream()
-                        .buffered()
-                        .use {
-                            val bitmap = BitmapFactory.decodeStream(it)
-                            withContext(Dispatchers.Main) {
-                                setImageBitmap(bitmap)
-                            }
-                        }
-                }
-                setImageURI(url.toUri())
-                setBackgroundColor(Color.BLACK)
-                setOnClickListener { dismiss() }
-            },
-        )
+        val photoView = PhotoView(context).apply {
+            setBackgroundColor(Color.BLACK)
+            setOnClickListener { dismiss() }
+        }
+        setContentView(photoView)
         window?.setBackgroundDrawable(Color.BLACK.toDrawable())
         setCanceledOnTouchOutside(true)
+        lifecycleScope.launch {
+            httpClient
+                .get(url)
+                .bodyAsChannel()
+                .toInputStream()
+                .buffered()
+                .use {
+                    val bitmap = BitmapFactory.decodeStream(it)
+                    withContext(Dispatchers.Main) {
+                        photoView.setImageBitmap(bitmap)
+                    }
+                }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -52,7 +52,6 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
@@ -594,10 +593,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { collection ->
-                            CollectionListItem(
-                                collection = collection,
-                                onNavigate = navigator.onNavigate,
-                            )
+                            CollectionListItem(collection)
                         }
                     }
 
@@ -669,7 +665,6 @@ fun PeopleScreen(
 @Composable
 private fun CollectionListItem(
     collection: DataHolder.Collection,
-    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     Column(
