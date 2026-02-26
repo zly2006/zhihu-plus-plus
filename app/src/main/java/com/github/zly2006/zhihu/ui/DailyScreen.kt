@@ -80,51 +80,45 @@ fun DailyScreen() {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<DailyViewModel>()
-    val sections = viewModel.sections
-    val isLoading = viewModel.isLoading
-    val isLoadingMore = viewModel.isLoadingMore
-    val error = viewModel.error
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // Update current viewing date based on scroll position
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { index ->
-                var itemCount = 0
-                for (section in viewModel.sections) {
-                    // +1 for the date header
-                    if (index < itemCount + 1 + section.stories.size) {
-                        currentViewingDate = formatDate(section.date)
-                        break
+        // 日期追踪：同时观察滚动位置和 sections，数据到了也能立即更新
+        launch {
+            snapshotFlow { listState.firstVisibleItemIndex to viewModel.sections }
+                .collect { (index, sections) ->
+                    var count = 0
+                    for (section in sections) {
+                        if (index < count + 1 + section.stories.size) {
+                            currentViewingDate = formatDate(section.date)
+                            break
+                        }
+                        count += 1 + section.stories.size
                     }
-                    itemCount += 1 + section.stories.size
                 }
-            }
-    }
-
-    // Load more when approaching the end
-    LaunchedEffect(listState) {
+        }
+        // 滚动到底部时加载更多
         snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem to totalItems
-        }.collect { (lastVisibleItem, totalItems) ->
-            if (lastVisibleItem >= totalItems - 3 && !viewModel.isLoadingMore && !viewModel.isLoading) {
-                viewModel.loadMore(context.httpClient)
-            }
+            val info = listState.layoutInfo
+            (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
+        }.collect { (last, total) ->
+            if (total > 0 && last >= total - 3) viewModel.loadMore(context.httpClient)
         }
     }
 
     LaunchedEffect(Unit) {
-        // Only load if data isn't already available (e.g., returning from an article)
-        if (viewModel.sections.isEmpty()) {
-            viewModel.loadLatest(context.httpClient) { date ->
-                currentViewingDate = formatDate(date)
-            }
+        if (viewModel.sections.isEmpty()) viewModel.loadLatest(context.httpClient)
+    }
+
+    val doRefresh: () -> Unit = {
+        scope.launch {
+            isRefreshing = true
+            viewModel.loadLatest(context.httpClient)
+            isRefreshing = false
+            listState.scrollToItem(0)
         }
     }
 
@@ -150,22 +144,8 @@ fun DailyScreen() {
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                isRefreshing = true
-                                viewModel.loadLatest(context.httpClient) { date ->
-                                    currentViewingDate = formatDate(date)
-                                }
-                                isRefreshing = false
-                                listState.scrollToItem(0)
-                            }
-                        },
-                    ) {
-                        Icon(
-                            Icons.Filled.Refresh,
-                            contentDescription = "刷新",
-                        )
+                    IconButton(onClick = doRefresh) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "刷新")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -178,22 +158,13 @@ fun DailyScreen() {
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    viewModel.loadLatest(context.httpClient) { date ->
-                        currentViewingDate = formatDate(date)
-                    }
-                    isRefreshing = false
-                    listState.scrollToItem(0)
-                }
-            },
+            onRefresh = doRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
             when {
-                isLoading -> {
+                viewModel.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -213,19 +184,19 @@ fun DailyScreen() {
                     }
                 }
 
-                error != null -> {
+                viewModel.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            error ?: "未知错误",
+                            viewModel.error ?: "未知错误",
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
 
-                sections.isEmpty() -> {
+                viewModel.sections.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -244,7 +215,7 @@ fun DailyScreen() {
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        sections.forEach { section ->
+                        viewModel.sections.forEach { section ->
                             // Date header
                             item(key = "header_${section.date}") {
                                 DateHeader(date = formatDate(section.date))
@@ -274,7 +245,7 @@ fun DailyScreen() {
                         }
 
                         // Loading indicator at the bottom
-                        if (isLoadingMore) {
+                        if (viewModel.isLoadingMore) {
                             item(key = "loading_more") {
                                 Box(
                                     modifier = Modifier
