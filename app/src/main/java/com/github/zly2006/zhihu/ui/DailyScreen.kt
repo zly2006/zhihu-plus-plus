@@ -53,17 +53,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DailyStoriesResponse
 import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.resolveContent
-import io.ktor.client.call.body
-import io.ktor.client.request.get
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
@@ -81,61 +79,22 @@ data class DailySection(
 fun DailyScreen() {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    var sections by remember { mutableStateOf<List<DailySection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val viewModel = viewModel<DailyViewModel>()
+    val sections = viewModel.sections
+    val isLoading = viewModel.isLoading
+    val isLoadingMore = viewModel.isLoadingMore
+    val error = viewModel.error
     var isRefreshing by remember { mutableStateOf(false) }
-    var isLoadingMore by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     var currentViewingDate by remember { mutableStateOf("") }
-    var nextDate by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
-
-    val json = remember {
-        Json {
-            ignoreUnknownKeys = true
-            coerceInputValues = true
-        }
-    }
-
-    suspend fun loadLatestStories() {
-        try {
-            val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/latest")
-            val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
-            sections = listOf(DailySection(data.date, data.stories))
-            nextDate = data.date
-            currentViewingDate = formatDate(data.date)
-            error = null
-        } catch (e: Exception) {
-            error = "加载失败: ${e.message}"
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-            isRefreshing = false
-        }
-    }
-
-    suspend fun loadMoreStories() {
-        if (isLoadingMore || nextDate == null) return
-        isLoadingMore = true
-        try {
-            val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$nextDate")
-            val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
-            sections = sections + DailySection(data.date, data.stories)
-            nextDate = data.date
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoadingMore = false
-        }
-    }
 
     // Update current viewing date based on scroll position
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { index ->
                 var itemCount = 0
-                for (section in sections) {
+                for (section in viewModel.sections) {
                     // +1 for the date header
                     if (index < itemCount + 1 + section.stories.size) {
                         currentViewingDate = formatDate(section.date)
@@ -154,14 +113,19 @@ fun DailyScreen() {
             val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             lastVisibleItem to totalItems
         }.collect { (lastVisibleItem, totalItems) ->
-            if (lastVisibleItem >= totalItems - 3 && !isLoadingMore && !isLoading) {
-                loadMoreStories()
+            if (lastVisibleItem >= totalItems - 3 && !viewModel.isLoadingMore && !viewModel.isLoading) {
+                viewModel.loadMore(context.httpClient)
             }
         }
     }
 
     LaunchedEffect(Unit) {
-        loadLatestStories()
+        // Only load if data isn't already available (e.g., returning from an article)
+        if (viewModel.sections.isEmpty()) {
+            viewModel.loadLatest(context.httpClient) { date ->
+                currentViewingDate = formatDate(date)
+            }
+        }
     }
 
     Scaffold(
@@ -190,7 +154,10 @@ fun DailyScreen() {
                         onClick = {
                             scope.launch {
                                 isRefreshing = true
-                                loadLatestStories()
+                                viewModel.loadLatest(context.httpClient) { date ->
+                                    currentViewingDate = formatDate(date)
+                                }
+                                isRefreshing = false
                                 listState.scrollToItem(0)
                             }
                         },
@@ -214,7 +181,10 @@ fun DailyScreen() {
             onRefresh = {
                 scope.launch {
                     isRefreshing = true
-                    loadLatestStories()
+                    viewModel.loadLatest(context.httpClient) { date ->
+                        currentViewingDate = formatDate(date)
+                    }
+                    isRefreshing = false
                     listState.scrollToItem(0)
                 }
             },
