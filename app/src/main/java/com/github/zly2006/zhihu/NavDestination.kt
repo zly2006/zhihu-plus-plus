@@ -232,7 +232,7 @@ fun resolveContent(uri: Uri): NavDestination? {
             } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "pin") {
                 val pinId = uri.pathSegments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
-            } else if (uri.pathSegments.size == 2 &&
+            } else if (uri.pathSegments.size == 1 &&
                 uri.pathSegments[0] == "search"
             ) {
                 val query = uri.getQueryParameter("q") ?: ""
