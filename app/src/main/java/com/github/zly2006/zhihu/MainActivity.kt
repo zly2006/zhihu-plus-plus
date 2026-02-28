@@ -393,7 +393,7 @@ class MainActivity : ComponentActivity() {
                 if (clip != null && clip.itemCount > 0) {
                     val text = clip.getItemAt(0).text
                     if (text != null) {
-                        val regex = Regex("""https?://[-a-zA-Z0-9()@:%_+.~#?&/=]*""")
+                        val regex = Regex("""https?://[-a-zA-Z0-9@:%_+.~#?&/=]*""")
                         val destination = regex.findAll(text).firstNotNullOfOrNull {
                             resolveContent(it.value.toUri())
                         }
