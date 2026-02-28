@@ -21,7 +21,7 @@
 - **Module**: `sentence_embeddings`（Rust tokenizer，仅 full variant）
 
 ### Build Variants
-- **lite**: 轻量版 (~3MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
+- **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
 - **full**: 完整版，含 HanLP NLP，包名 `com.github.zly2006.zhplus`
 
 ## 关键约定

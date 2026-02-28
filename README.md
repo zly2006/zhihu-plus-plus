@@ -18,7 +18,7 @@ Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为�
 
 ## 下载
 
-告别知乎 110MB+ 的客户端，只要 3 MB！
+告别知乎 110MB+ 的客户端，只要不到 4 MB！
 
 [点我下载](https://github.com/zly2006/zhihu-plus-plus/releases)
 
