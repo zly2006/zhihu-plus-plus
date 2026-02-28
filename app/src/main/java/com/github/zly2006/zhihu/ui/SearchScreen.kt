@@ -3,10 +3,9 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -76,7 +74,7 @@ private data class HotSearchItem(
     val label: String = "",
 )
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     search: com.github.zly2006.zhihu.Search,
@@ -274,21 +272,39 @@ fun SearchScreen(
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            hotSearchItems.forEach { item ->
-                                SuggestionChip(
-                                    onClick = {
+                        hotSearchItems.forEachIndexed { index, item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
                                         keyboardController?.hide()
                                         navigator.onNavigate(
                                             com.github.zly2006.zhihu
                                                 .Search(query = item.query),
                                         )
-                                    },
-                                    label = { Text(item.query, style = MaterialTheme.typography.bodySmall) },
+                                    }.padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "${index + 1}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (index < 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(28.dp),
                                 )
+                                Text(
+                                    text = item.query,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 8.dp),
+                                )
+                                if (item.hotShow.isNotEmpty()) {
+                                    Text(
+                                        text = item.hotShow,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
