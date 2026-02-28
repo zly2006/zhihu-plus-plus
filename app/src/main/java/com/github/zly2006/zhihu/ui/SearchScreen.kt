@@ -325,15 +325,18 @@ fun SearchScreen(
                         }
                     }
 
-                    DraggableRefreshButton(
-                        onClick = {
-                            viewModel.refresh(context)
-                        },
-                    ) {
-                        if (viewModel.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                    if (showRefreshFab) {
+                        DraggableRefreshButton(
+                            onClick = {
+                                viewModel.refresh(context)
+                            },
+                        ) {
+                            if (viewModel.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                            } else {
+                                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                            }
                         }
                     }
                 }

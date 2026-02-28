@@ -333,22 +333,22 @@ fun HomeScreen(refreshTrigger: Int = 0) {
                     }
                 }
 
-                if (BuildConfig.DEBUG) {
-                    DraggableRefreshButton(
-                        onClick = {
-                            val data = Json.encodeToString(viewModel.debugData)
-                            val clip = ClipData.newPlainText("data", data)
-                            context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                        },
-                        preferenceName = "copyAll",
-                    ) {
-                        Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                    }
-                }
-
                 val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
                 if (showRefreshFab) {
+                    if (BuildConfig.DEBUG) {
+                        DraggableRefreshButton(
+                            onClick = {
+                                val data = Json.encodeToString(viewModel.debugData)
+                                val clip = ClipData.newPlainText("data", data)
+                                context.clipboardManager.setPrimaryClip(clip)
+                                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                            },
+                            preferenceName = "copyAll",
+                        ) {
+                            Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                        }
+                    }
+
                     DraggableRefreshButton(
                         onClick = {
                             viewModel.refresh(context)

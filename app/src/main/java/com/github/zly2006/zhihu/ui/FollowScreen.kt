@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
@@ -103,6 +104,10 @@ fun FollowDynamicScreen() {
     val context = LocalActivity.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowViewModel by context.viewModels()
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    }
+    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -158,15 +163,17 @@ fun FollowDynamicScreen() {
                 }
             }
 
-            DraggableRefreshButton(
-                onClick = {
-                    viewModel.refresh(context)
-                },
-            ) {
-                if (viewModel.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            if (showRefreshFab) {
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                 }
             }
         }
@@ -196,6 +203,10 @@ fun FollowRecommendScreen() {
     val context = LocalActivity.current as MainActivity
     val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowRecommendViewModel by context.viewModels()
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    }
+    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -252,15 +263,17 @@ fun FollowRecommendScreen() {
                 }
             }
 
-            DraggableRefreshButton(
-                onClick = {
-                    viewModel.refresh(context)
-                },
-            ) {
-                if (viewModel.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            if (showRefreshFab) {
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                 }
             }
         }
