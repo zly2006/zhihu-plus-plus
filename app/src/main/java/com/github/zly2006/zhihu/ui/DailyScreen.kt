@@ -23,23 +23,19 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -86,7 +82,6 @@ fun DailyScreen() {
     val viewModel = viewModel<DailyViewModel>()
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
-    var showDatePicker by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -127,33 +122,6 @@ fun DailyScreen() {
         }
     }
 
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = System.currentTimeMillis(),
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDatePicker = false
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-                        val dateStr = sdf.format(Date(millis))
-                        scope.launch {
-                            viewModel.loadDate(context.httpClient, dateStr)
-                            listState.scrollToItem(0)
-                        }
-                    }
-                }) { Text("确认") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -176,8 +144,8 @@ fun DailyScreen() {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDatePicker = true }) {
-                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                    IconButton(onClick = doRefresh) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "刷新")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

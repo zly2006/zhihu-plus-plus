@@ -10,9 +10,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.serialization.json.Json
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
 
 class DailyViewModel : ViewModel() {
     var sections by mutableStateOf<List<DailySection>>(emptyList())
@@ -34,26 +31,6 @@ class DailyViewModel : ViewModel() {
         isLoading = true
         try {
             val data = httpClient.get("https://news-at.zhihu.com/api/4/stories/latest").body<DailyStoriesResponse>()
-            sections = listOf(DailySection(data.date, data.stories))
-            nextDate = data.date
-            error = null
-        } catch (e: Exception) {
-            error = "加载失败: ${e.message}"
-        } finally {
-            isLoading = false
-        }
-    }
-
-    suspend fun loadDate(httpClient: HttpClient, date: String) {
-        isLoading = true
-        sections = emptyList()
-        try {
-            val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-            val cal = Calendar.getInstance()
-            cal.time = sdf.parse(date)!!
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-            val nextDay = sdf.format(cal.time)
-            val data = httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$nextDay").body<DailyStoriesResponse>()
             sections = listOf(DailySection(data.date, data.stories))
             nextDate = data.date
             error = null
