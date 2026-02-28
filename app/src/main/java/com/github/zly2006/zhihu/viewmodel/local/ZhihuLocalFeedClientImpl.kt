@@ -4,14 +4,10 @@ import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 
 class ZhihuLocalFeedClientImpl(
     private val context: Context,
@@ -44,10 +40,7 @@ class ZhihuLocalFeedClientImpl(
     }
 
     private suspend fun executeFollowingCrawl(task: CrawlingTask): List<CrawlingResult> {
-        val httpClient = AccountData.httpClient(context)
-        val response = httpClient.get(task.url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+        val feedArray = AccountData.fetchGet(context, task.url)?.get("data")?.jsonArray ?: JsonArray(emptyList())
 
         return feedArray.mapNotNull { feedElement ->
             try {
@@ -79,10 +72,7 @@ class ZhihuLocalFeedClientImpl(
     }
 
     private suspend fun executeTrendingCrawl(task: CrawlingTask): List<CrawlingResult> {
-        val httpClient = AccountData.httpClient(context)
-        val response = httpClient.get(task.url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+        val feedArray = AccountData.fetchGet(context, task.url)?.get("data")?.jsonArray ?: JsonArray(emptyList())
 
         return feedArray.mapNotNull { feedElement ->
             try {
@@ -114,10 +104,7 @@ class ZhihuLocalFeedClientImpl(
     }
 
     private suspend fun executeUpvotedQuestionCrawl(task: CrawlingTask): List<CrawlingResult> {
-        val httpClient = AccountData.httpClient(context)
-        val response = httpClient.get(task.url)
-        val jsonData = Json.parseToJsonElement(response.bodyAsText())
-        val feedArray = jsonData.jsonObject["data"]?.jsonArray ?: JsonArray(emptyList())
+        val feedArray = AccountData.fetchGet(context, task.url)?.get("data")?.jsonArray ?: JsonArray(emptyList())
 
         return feedArray.mapNotNull { feedElement ->
             try {
