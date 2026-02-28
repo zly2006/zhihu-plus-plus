@@ -649,6 +649,30 @@ fun AppearanceSettingsScreen(
             )
 
             Text(
+                "搜索设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+            HighlightableSettingContainer(
+                settingKey = "showSearchHotSearch",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["showSearchHotSearch"] = it },
+            ) {
+                SwitchSettingItem(
+                    title = "搜索界面显示热搜",
+                    description = "在搜索界面空白时显示知乎热搜关键词",
+                    checked = showSearchHotSearch.value,
+                    onCheckedChange = {
+                        showSearchHotSearch.value = it
+                        preferences.edit { putBoolean("showSearchHotSearch", it) }
+                    },
+                )
+            }
+
+            Text(
                 "底部栏设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
