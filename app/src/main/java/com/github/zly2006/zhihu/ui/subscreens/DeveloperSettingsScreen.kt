@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.SentenceSimilarityTest
@@ -173,6 +174,10 @@ fun DeveloperSettingsScreen(
                 Button(onClick = {
                     navigator.onNavigate(SentenceSimilarityTest)
                 }) { Text("句子相似度") }
+
+                Button(onClick = {
+                    navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
+                }) { Text("Color Scheme") }
             }
 
             // TTS引擎信息显示

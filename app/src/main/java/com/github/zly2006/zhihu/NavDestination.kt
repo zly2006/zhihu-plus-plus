@@ -64,7 +64,10 @@ data object Account : NavDestination, TopLevelDestination {
     data object SystemAndUpdateSettings : NavDestination
 
     @Serializable
-    data object DeveloperSettings : NavDestination
+    data object DeveloperSettings : NavDestination {
+        @Serializable
+        data object ColorScheme : NavDestination
+    }
 }
 
 @Serializable
