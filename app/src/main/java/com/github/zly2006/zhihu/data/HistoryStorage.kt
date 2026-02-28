@@ -1,8 +1,6 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.NavDestination
 import kotlinx.serialization.encodeToString
