@@ -104,9 +104,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.Person
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
 import com.github.zly2006.zhihu.markdown.Render
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
@@ -601,23 +599,6 @@ fun ArticleScreen(
         viewModel.loadCollections(context)
     }
 
-    val navigateToAnswer: (Feed?) -> Unit = { dest ->
-        if (dest != null) {
-            val activity = context as? MainActivity
-            val target = dest.target
-            if (activity != null && target is Feed.AnswerTarget && target.question.id == viewModel.questionId) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
-                }
-                navigator.onNavigate(target.navDestination)
-            }
-        }
-    }
-
     val navigateToPrevious: () -> Unit = {
         sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
             ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS
@@ -626,11 +607,11 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.pushAnswer(viewModel.toCachedContent())
-        val prev = sharedData?.goToPrevious()
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
-            sharedData.pendingInitialContent = prev
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
+            sharedData?.pendingInitialContent = prev
+            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -641,6 +622,27 @@ fun ArticleScreen(
                     activity.navController.popBackStack()
                 }
                 navigator.onNavigate(prev.article)
+            }
+        } else {
+            // 无历史时尝试从来源（如收藏夹）向前加载
+            sharedData?.pendingInitialContent = sharedData?.navigator?.previousAnswerPreview
+            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            coroutineScope.launch {
+                val prevCached = sharedData?.navigator?.loadPrevious(context)
+                if (prevCached != null) {
+                    sharedData?.pendingInitialContent = prevCached
+                    val activity = context as? MainActivity
+                    if (activity != null) {
+                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                            activity.navController.currentBackStackEntry
+                                ?.toRoute<Article>()
+                                ?.type == ArticleType.Answer
+                        ) {
+                            activity.navController.popBackStack()
+                        }
+                        navigator.onNavigate(prevCached.article)
+                    }
+                }
             }
         }
     }
@@ -653,12 +655,12 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.pushAnswer(viewModel.toCachedContent())
-        // Bug 3: 优先使用前向历史
-        val historyNext = sharedData?.goToNext()
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        // 优先使用前向历史
+        val historyNext = sharedData?.navigator?.goToNext()
         if (historyNext != null) {
-            sharedData.pendingInitialContent = historyNext
-            sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
+            sharedData?.pendingInitialContent = historyNext
+            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -671,12 +673,24 @@ fun ArticleScreen(
                 navigator.onNavigate(historyNext.article)
             }
         } else {
-            // 没有前向历史，从 feed 加载
-            sharedData?.pendingInitialContent = sharedData.nextAnswer
-            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
+            // 没有前向历史，从导航器加载
+            sharedData?.pendingInitialContent = sharedData?.navigator?.nextAnswer
+            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
-                val dest = viewModel.nextAnswerFuture.await()
-                navigateToAnswer(dest)
+                val nextArticle = sharedData?.navigator?.loadNext(context)
+                if (nextArticle != null) {
+                    val activity = context as? MainActivity
+                    if (activity != null) {
+                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                            activity.navController.currentBackStackEntry
+                                ?.toRoute<Article>()
+                                ?.type == ArticleType.Answer
+                        ) {
+                            activity.navController.popBackStack()
+                        }
+                        navigator.onNavigate(nextArticle)
+                    }
+                }
             }
         }
     }
@@ -1058,28 +1072,34 @@ fun ArticleScreen(
 
     // 根据模式渲染
     if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+        val nav = sharedData?.navigator
+        val prevSourceLabel = nav?.previousAnswer?.sourceLabel ?: "此问题"
+        val nextSourceLabel = nav?.nextAnswer?.sourceLabel ?: nav?.sourceName ?: "此问题"
         AnswerVerticalOverscroll(
-            canGoPrevious = sharedData?.previousAnswer != null,
+            canGoPrevious = nav?.previousAnswer != null,
             canGoNext = true,
-            previousAuthorName = sharedData?.previousAnswer?.authorName ?: "",
-            previousExcerpt = sharedData?.previousAnswer?.article?.excerpt ?: "",
-            previousAvatarUrl = sharedData?.previousAnswer?.authorAvatarUrl ?: "",
-            nextAuthorName = sharedData?.nextAnswer?.authorName ?: "",
-            nextExcerpt = sharedData?.nextAnswer?.article?.excerpt ?: "",
-            nextAvatarUrl = sharedData?.nextAnswer?.authorAvatarUrl ?: "",
+            previousAuthorName = nav?.previousAnswer?.authorName ?: "",
+            previousExcerpt = nav?.previousAnswer?.article?.excerpt ?: "",
+            previousAvatarUrl = nav?.previousAnswer?.authorAvatarUrl ?: "",
+            nextAuthorName = nav?.nextAnswer?.authorName ?: "",
+            nextExcerpt = nav?.nextAnswer?.article?.excerpt ?: "",
+            nextAvatarUrl = nav?.nextAnswer?.authorAvatarUrl ?: "",
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
             isAtTop = { scrollState.value == 0 },
             isAtBottom = { scrollState.value >= scrollState.maxValue },
             scrollState = scrollState,
+            previousLabel = "${prevSourceLabel}的上一个回答",
+            nextLabel = "${nextSourceLabel}的下一个回答",
         ) {
             answerSwitchContent()
         }
     } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        val nav = sharedData?.navigator
         // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
-        LaunchedEffect(sharedData?.nextAnswer) {
-            val cached = sharedData?.nextAnswer ?: return@LaunchedEffect
-            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true)
+        LaunchedEffect(nav?.nextAnswer) {
+            val cached = nav?.nextAnswer ?: return@LaunchedEffect
+            val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true) ?: return@LaunchedEffect
             val articleId = cached.article.id.toString()
             if (wv.contentId != articleId) {
                 wv.contentId = articleId
@@ -1091,8 +1111,8 @@ fun ArticleScreen(
                 )
             }
         }
-        LaunchedEffect(sharedData?.previousAnswer) {
-            val cached = sharedData?.previousAnswer ?: return@LaunchedEffect
+        LaunchedEffect(nav?.previousAnswer) {
+            val cached = nav?.previousAnswer ?: return@LaunchedEffect
             val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false)
             val articleId = cached.article.id.toString()
             if (wv.contentId != articleId) {
@@ -1106,14 +1126,14 @@ fun ArticleScreen(
             }
         }
         AnswerHorizontalOverscroll(
-            canGoPrevious = sharedData?.previousAnswer != null,
+            canGoPrevious = nav?.previousAnswer != null,
             canGoNext = true,
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
-            previousContent = sharedData?.previousAnswer?.let { cached ->
+            previousContent = nav?.previousAnswer?.let { cached ->
                 { CachedAnswerPreview(cached, sharedData, isNext = false) }
             },
-            nextContent = sharedData?.nextAnswer?.let { cached ->
+            nextContent = nav?.nextAnswer?.let { cached ->
                 { CachedAnswerPreview(cached, sharedData, isNext = true) }
             },
         ) {
