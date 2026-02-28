@@ -8,7 +8,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -30,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -55,7 +53,7 @@ class FollowScreenData : ViewModel() {
 @Composable
 fun FollowScreen() {
     val viewModel = viewModel<FollowScreenData>()
-    val titles = listOf("动态", "推荐")
+    val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val coroutineScope = rememberCoroutineScope()
 
@@ -91,8 +89,8 @@ fun FollowScreen() {
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> FollowDynamicScreen()
-                1 -> FollowRecommendScreen()
+                0 -> FollowRecommendScreen()
+                1 -> FollowDynamicScreen()
             }
         }
     }
@@ -201,7 +199,6 @@ fun FollowDynamicScreen() {
 fun FollowRecommendScreen() {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    val coroutineScope = rememberCoroutineScope()
     val viewModel: FollowRecommendViewModel by context.viewModels()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -229,13 +226,6 @@ fun FollowRecommendScreen() {
             PaginatedList(
                 items = viewModel.displayItems,
                 topContent = {
-                    item {
-                        Text(
-                            "提示：此 API 已不再在知乎官网使用，未来有可能被移除。",
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
