@@ -185,7 +185,7 @@ fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
 
 @Composable
 fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = MaterialTheme.colorScheme.secondaryContainer, // MaterialTheme.colorScheme.background.blend(voteUpNeutralContent(), 0.1f),
+    containerColor = MaterialTheme.colorScheme.secondaryContainer,
     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
 )
 
