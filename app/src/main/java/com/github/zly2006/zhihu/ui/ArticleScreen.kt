@@ -185,8 +185,8 @@ fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
 
 @Composable
 fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = MaterialTheme.colorScheme.surfaceVariant, // MaterialTheme.colorScheme.background.blend(voteUpNeutralContent(), 0.1f),
-    contentColor = voteUpNeutralContent(),
+    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
 )
 
 @Composable
@@ -772,7 +772,7 @@ fun ArticleScreen(
                                         color = if (viewModel.voteUpState == VoteUpState.Neutral) {
                                             voteUpNeutralContent().copy(alpha = 0.1f)
                                         } else {
-                                            VoteUpNeutralContent
+                                            voteUpNeutralContent()
                                         },
                                     ),
                                 horizontalArrangement = Arrangement.Start,

@@ -82,6 +82,7 @@ import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
@@ -448,6 +449,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Account.DeveloperSettings> {
                     DeveloperSettingsScreen(
+                        onNavigateBack = { navController.popBackStack() },
+                    )
+                }
+                composable<Account.DeveloperSettings.ColorScheme> {
+                    ColorSchemeScreen(
                         onNavigateBack = { navController.popBackStack() },
                     )
                 }
