@@ -62,10 +62,9 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
 
 @Serializable
 private data class HotSearchItem(
@@ -92,18 +91,17 @@ fun SearchScreen(
     val hotSearchItems = remember { mutableStateListOf<HotSearchItem>() }
     var moreMenuExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        if (showHotSearch.value && hotSearchItems.isEmpty()) {
-            runCatching {
-                val client = AccountData.httpClient(context)
-                val json = client.get("https://www.zhihu.com/api/v4/search/hot_search").body<kotlinx.serialization.json.JsonObject>()
-                val queries = json["hot_search_queries"] as? kotlinx.serialization.json.JsonArray ?: return@runCatching
-                queries.take(15).forEach { item ->
-                    val converted = AccountData.decodeJson<HotSearchItem>(item)
-                    hotSearchItems.add(converted)
-                }
-            }
+    suspend fun fetchHotSearch() {
+        val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/search/hot_search") ?: return
+        val queries = json["hot_search_queries"] as? JsonArray ?: return
+        hotSearchItems.clear()
+        queries.take(15).forEach { item ->
+            hotSearchItems.add(AccountData.decodeJson(item))
         }
+    }
+
+    LaunchedEffect(Unit) {
+        if (showHotSearch.value) runCatching { fetchHotSearch() }
     }
 
     // Load search results when query is not empty
@@ -232,19 +230,7 @@ fun SearchScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
                                     onClick = {
-                                        coroutineScope.launch {
-                                            hotSearchItems.clear()
-                                            runCatching {
-                                                val client = AccountData.httpClient(context)
-                                                val json = client
-                                                    .get("https://www.zhihu.com/api/v4/search/hot_search")
-                                                    .body<kotlinx.serialization.json.JsonObject>()
-                                                val queries = json["hot_search_queries"] as? kotlinx.serialization.json.JsonArray ?: return@runCatching
-                                                queries.take(15).forEach { item ->
-                                                    hotSearchItems.add(AccountData.decodeJson(item))
-                                                }
-                                            }
-                                        }
+                                        coroutineScope.launch { runCatching { fetchHotSearch() } }
                                     },
                                     modifier = Modifier.size(32.dp),
                                 ) {
