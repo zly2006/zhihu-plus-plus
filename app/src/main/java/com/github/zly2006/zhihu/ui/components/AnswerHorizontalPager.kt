@@ -49,8 +49,8 @@ fun AnswerHorizontalOverscroll(
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.dp.toPx() }
-    val triggerThresholdPx = with(density) { HORIZONTAL_TRIGGER_THRESHOLD_DP.dp.toPx() }
+    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.toPx() }
+    val triggerThresholdPx = with(density) { HORIZONTAL_TRIGGER_THRESHOLD_DP.toPx() }
 
     val overscrollOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
@@ -171,6 +171,6 @@ fun AnswerHorizontalOverscroll(
     }
 }
 
-private const val MAX_HORIZONTAL_OVERSCROLL_DP = 300f
-private const val HORIZONTAL_TRIGGER_THRESHOLD_DP = 120f
+private val MAX_HORIZONTAL_OVERSCROLL_DP = 300.dp
+private val HORIZONTAL_TRIGGER_THRESHOLD_DP = 60.dp
 private const val HORIZONTAL_DAMPING_FACTOR = 1.2f
