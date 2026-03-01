@@ -164,6 +164,12 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
+    // LaTeX rendering
+    val latex = "1.1.1"
+    implementation("io.github.huarangmeng:latex-base:$latex")
+    implementation("io.github.huarangmeng:latex-parser:$latex")
+    implementation("io.github.huarangmeng:latex-renderer:$latex")
+
     implementation("io.coil-kt.coil3:coil-compose:3.3.0")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.3.0")
     implementation("io.coil-kt.coil3:coil-gif:3.3.0")
