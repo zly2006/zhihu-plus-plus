@@ -47,6 +47,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -56,10 +57,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemAndUpdateSettingsScreen(
-    onNavigateBack: () -> Unit,
-) {
+fun SystemAndUpdateSettingsScreen() {
     val context = LocalContext.current
+    val navigator = LocalNavigator.current
     val preferences = remember {
         context.getSharedPreferences(
             PREFERENCE_NAME,
@@ -72,7 +72,7 @@ fun SystemAndUpdateSettingsScreen(
             TopAppBar(
                 title = { Text("系统与更新") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -252,6 +252,13 @@ fun SystemAndUpdateSettingsScreen(
                 supportingContent = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
                 trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
                 modifier = Modifier.clickable { luoTianYiUrlLauncher(context, "https://t.me/+_A1Yto6EpyIyODA1".toUri()) },
+            )
+
+            ListItem(
+                headlineContent = { Text("Github issue") },
+                supportingContent = { Text("欢迎提交 issue 讨论功能和反馈问题") },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/issues".toUri()) },
             )
         }
     }

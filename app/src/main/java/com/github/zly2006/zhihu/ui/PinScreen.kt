@@ -71,8 +71,8 @@ import java.util.Locale
 @Composable
 fun PinScreen(
     pin: Pin,
-    onNavigateBack: () -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val httpClient = remember { AccountData.httpClient(context) }
@@ -103,7 +103,7 @@ fun PinScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onNavigateBack) {
+                IconButton(onClick = navigator.onNavigateBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
                 Text(

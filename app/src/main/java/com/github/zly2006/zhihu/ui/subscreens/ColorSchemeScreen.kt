@@ -26,10 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.LocalNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ColorSchemeScreen(onNavigateBack: () -> Unit) {
+fun ColorSchemeScreen() {
+    val navigator = LocalNavigator.current
     val cs = MaterialTheme.colorScheme
 
     Scaffold(
@@ -37,7 +39,7 @@ fun ColorSchemeScreen(onNavigateBack: () -> Unit) {
             TopAppBar(
                 title = { Text("Color Scheme") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

@@ -65,9 +65,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DeveloperSettingsScreen(
-    onNavigateBack: () -> Unit,
-) {
+fun DeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -88,7 +86,7 @@ fun DeveloperSettingsScreen(
             TopAppBar(
                 title = { Text("开发者选项") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -112,7 +110,7 @@ fun DeveloperSettingsScreen(
                         putBoolean("developer", it)
                     }
                     if (!it) {
-                        onNavigateBack()
+                        navigator.onNavigateBack()
                     }
                 },
             )

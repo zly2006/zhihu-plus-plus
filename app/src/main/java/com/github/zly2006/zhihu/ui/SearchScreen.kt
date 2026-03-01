@@ -55,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -76,8 +77,7 @@ private data class HotSearchItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    search: com.github.zly2006.zhihu.Search,
-    onBack: () -> Unit,
+    search: Search,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
@@ -160,8 +160,7 @@ fun SearchScreen(
                                             keyboardController?.hide()
                                             if (searchText.isNotBlank()) {
                                                 navigator.onNavigate(
-                                                    com.github.zly2006.zhihu
-                                                        .Search(query = searchText),
+                                                    Search(query = searchText),
                                                 )
                                             }
                                         },
@@ -196,7 +195,7 @@ fun SearchScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -265,8 +264,7 @@ fun SearchScreen(
                                     .clickable {
                                         keyboardController?.hide()
                                         navigator.onNavigate(
-                                            com.github.zly2006.zhihu
-                                                .Search(query = item.query),
+                                            Search(query = item.query),
                                         )
                                     }.padding(vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,

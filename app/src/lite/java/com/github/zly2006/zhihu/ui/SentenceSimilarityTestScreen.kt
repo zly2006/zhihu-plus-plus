@@ -8,7 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun SentenceSimilarityTestScreen(onBack: () -> Unit) {
+fun SentenceSimilarityTestScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text("AI features are not available in this version.")
     }

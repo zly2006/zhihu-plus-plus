@@ -47,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +62,7 @@ import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
@@ -75,7 +75,6 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 @Composable
 fun AppearanceSettingsScreen(
     setting: String = "",
-    onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val preferences = remember {
@@ -86,7 +85,7 @@ fun AppearanceSettingsScreen(
     }
 
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+    val navigator = LocalNavigator.current
 
     val itemPositions = remember { mutableMapOf<String, Int>() }
     var scrollColumnRootY by remember { mutableIntStateOf(0) }
@@ -105,7 +104,7 @@ fun AppearanceSettingsScreen(
             TopAppBar(
                 title = { Text("外观与阅读体验") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

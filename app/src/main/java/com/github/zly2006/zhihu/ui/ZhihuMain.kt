@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -87,9 +88,10 @@ import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
+
+const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -100,7 +102,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
 
     val keySurveyDone = "survey_feedback_done"
-    val surveyUrl = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
     var showSurveyDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!preferences.getBoolean(keySurveyDone, false)) {
@@ -125,9 +126,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 TextButton(onClick = {
                     showSurveyDialog = false
                     preferences.edit { putBoolean(keySurveyDone, true) }
-                    val intent = android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        surveyUrl.toUri(),
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        SURVEY_URL.toUri(),
                     )
                     context.startActivity(intent)
                 }) { Text("去填写") }
@@ -374,9 +375,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(search) {
-                        navController.popBackStack()
-                    }
+                    SearchScreen(search)
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
@@ -392,70 +391,42 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(
-                        pin,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    PinScreen(pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
                     BlocklistSettingsScreen(
                         innerPadding = innerPadding,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        },
                     )
                 }
                 composable<Notification> {
-                    val viewModel = viewModel<NotificationViewModel>()
-                    NotificationScreen(
-                        viewModel = viewModel,
-                        onBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    NotificationScreen()
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen(
-                        onBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    NotificationSettingsScreen()
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen {
-                        navController.popBackStack()
-                    }
+                    SentenceSimilarityTestScreen()
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
                     AppearanceSettingsScreen(
                         setting = args.setting,
-                        onNavigateBack = { navController.popBackStack() },
                     )
                 }
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
                         setting = args.setting,
-                        onNavigateBack = { navController.popBackStack() },
                     )
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                    )
+                    SystemAndUpdateSettingsScreen()
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                    )
+                    DeveloperSettingsScreen()
                 }
                 composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                    )
+                    ColorSchemeScreen()
                 }
             }
         }
