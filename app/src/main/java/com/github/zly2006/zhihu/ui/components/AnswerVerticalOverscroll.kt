@@ -78,6 +78,8 @@ fun AnswerVerticalOverscroll(
     isAtTop: () -> Boolean,
     isAtBottom: () -> Boolean,
     scrollState: ScrollState,
+    previousLabel: String = "上一个回答",
+    nextLabel: String = "下一个回答",
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -263,7 +265,7 @@ fun AnswerVerticalOverscroll(
                 authorName = previousAuthorName,
                 excerpt = previousExcerpt,
                 avatarUrl = previousAvatarUrl,
-                label = "上一个回答",
+                label = previousLabel,
                 icon = Icons.Filled.ArrowUpward,
                 isTriggered = overscrollOffset.value >= triggerThresholdPx,
                 progress = progress,
@@ -281,7 +283,7 @@ fun AnswerVerticalOverscroll(
                 authorName = nextAuthorName,
                 excerpt = nextExcerpt,
                 avatarUrl = nextAvatarUrl,
-                label = "下一个回答",
+                label = nextLabel,
                 icon = Icons.Filled.ArrowDownward,
                 isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
                 progress = progress,
