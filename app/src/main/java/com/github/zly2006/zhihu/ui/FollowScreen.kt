@@ -151,7 +151,12 @@ fun FollowingUsersRow() {
                         modifier = Modifier
                             .clickable {
                                 navigator.onNavigate(
-                                    Person(id = user.actor.id, urlToken = user.actor.urlToken, name = user.actor.name),
+                                    Person(
+                                        id = user.actor.id,
+                                        urlToken = user.actor.urlToken,
+                                        name = user.actor.name,
+                                        jumpTo = "动态",
+                                    ),
                                 )
                             }.padding(vertical = 4.dp),
                     ) {

@@ -155,6 +155,7 @@ data class Person(
      */
     var urlToken: String,
     val name: String = "loading...",
+    val jumpTo: String = "",
 ) : NavDestination {
     override fun hashCode(): Int {
         if (id != EMPTY_ID) {
