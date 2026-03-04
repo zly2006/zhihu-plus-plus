@@ -22,6 +22,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
@@ -455,8 +456,10 @@ fun WebviewComp(
                     }
                 }
             }
+            FrameLayout(ctx).apply { addView(webView) }
         },
-        update = { view ->
+        update = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as CustomWebView
             if (scrollState != null) {
                 view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
@@ -467,28 +470,25 @@ fun WebviewComp(
             onLoad(view)
         },
         modifier = modifier,
-        onRelease = {
+        onRelease = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
             if (existingWebView != null) {
-                (it.parent as? ViewGroup)?.removeView(it)
+                (view.parent as? ViewGroup)?.removeView(view)
             } else {
-                it.stopLoading()
-                it.webChromeClient = null
-                it.clearHistory()
-                it.clearCache(true)
-                it.destroy()
+                view.stopLoading()
+                view.webChromeClient = null
+                view.clearHistory()
+                view.clearCache(true)
+                view.destroy()
             }
         },
     )
 }
 
-/**
- * Serves files from the app's internal filesDir via WebViewAssetLoader.
- * Used to serve the custom font without base64-encoding it into the HTML.
- */
 private class UserFilesPathHandler(
     private val context: Context,
 ) : WebViewAssetLoader.PathHandler {
-    override fun handle(path: String): android.webkit.WebResourceResponse? {
+    override fun handle(path: String): WebResourceResponse? {
         val file = java.io.File(context.filesDir, path)
         if (!file.exists() || !file.isFile) return null
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -499,7 +499,7 @@ private class UserFilesPathHandler(
             }
             else -> "application/octet-stream"
         }
-        return android.webkit.WebResourceResponse(
+        return WebResourceResponse(
             mimeType,
             null,
             200,
