@@ -459,7 +459,59 @@ fun WebviewComp(
             FrameLayout(ctx).apply { addView(webView) }
         },
         update = { frameLayout ->
-            val view = frameLayout.getChildAt(0) as CustomWebView
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: run {
+                frameLayout.removeAllViews()
+                val newWebView = CustomWebView(frameLayout.context).apply {
+                    if (useHardwareAcceleration) {
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
+                    } else {
+                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
+                    }
+                }
+                newWebView.apply {
+                    this.setupUpWebviewClient {
+                    }
+                    this.setHtmlClickListener(this.defaultHtmlClickListener())
+                    onLoad(this)
+                    setOnLongClickListener { view ->
+                        view.showContextMenu()
+                    }
+                    setOnCreateContextMenuListener { menu, v, _ ->
+                        val result = hitTestResult
+                        if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
+                            result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+                        ) {
+                            val imgElement = document?.select("img[src='${result.extra}']")?.first()
+                            val url = imgElement?.let { extractImageUrl(it) }
+                                ?: result.extra?.takeIf { !it.startsWith("data") }
+                            if (url != null) {
+                                menu.add("查看图片").setOnMenuItemClickListener {
+                                    openImage(httpClient, url)
+                                    true
+                                }
+                                menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                                    luoTianYiUrlLauncher(context, url.toUri())
+                                    true
+                                }
+                                menu.add("保存图片").setOnMenuItemClickListener {
+                                    coroutineScope.launch {
+                                        saveImageToGallery(context, httpClient, url)
+                                    }
+                                    true
+                                }
+                                menu.add("分享图片").setOnMenuItemClickListener {
+                                    coroutineScope.launch {
+                                        shareImage(context, httpClient, url)
+                                    }
+                                    true
+                                }
+                            }
+                        }
+                    }
+                }
+                frameLayout.addView(newWebView)
+                newWebView
+            }
             if (scrollState != null) {
                 view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
