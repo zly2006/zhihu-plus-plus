@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -163,10 +164,12 @@ fun FeedCard(
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
+                shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .alpha(1 - min(actionAlpha, 0.5f))
                     .offset(x = with(density) { animatedOffsetX.toDp() })
+                    .clip(RoundedCornerShape(24.dp))
                     .clickable {
                         if (!isDragging && abs(animatedOffsetX) < 10f) {
                             onClick(item)
@@ -206,12 +209,9 @@ fun FeedCard(
                             it
                         }
                     },
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = if (isDragging) 8.dp else 2.dp,
-                ),
             ) {
                 Column(
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 16.dp),
                 ) {
                     FeedCardContent(
                         item = item,
@@ -322,64 +322,82 @@ private fun FeedCardContent(
             ) {
                 Text(
                     text = parseHtmlTextWithTheme(item.title),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        if (item.avatarSrc != null && item.authorName != null) {
-            Spacer(Modifier.height(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {},
-            ) {
-                item.avatarSrc.let {
-                    AsyncImage(
-                        model = it,
-                        contentDescription = "Avatar",
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .size(20.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(
-                    text = item.authorName,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
 
-    Row {
-        Column(
-            modifier = Modifier.weight(2f),
-        ) {
+
+    Column() {
+        Row() {
             Text(
                 text = parseHtmlTextWithTheme(item.summary ?: ""),
-                fontSize = 14.sp,
-                maxLines = 3,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(
-                    top = if (item.isFiltered) 0.dp else 3.dp,
-                ),
+                modifier = Modifier
+                    .padding(top = if (item.isFiltered) 0.dp else 8.dp)
+                    .weight(1f),
             )
 
-            if (item.details.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+            if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
+                Spacer(modifier = Modifier.width(8.dp))
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = "Thumbnail",
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .sizeIn(maxHeight = 80.dp, maxWidth = 128.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.FillHeight,
+                )
+            }
+        }
+
+
+        if ((item.details.isNotEmpty()) or (item.avatarSrc != null && item.authorName != null)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+
+                if (item.avatarSrc != null && item.authorName != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {},
+                    ) {
+                        item.avatarSrc.let {
+                            AsyncImage(
+                                model = it,
+                                contentDescription = "Avatar",
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .size(24.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = item.authorName,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                }
+
+                if (item.details.isNotEmpty()) {
                     Text(
                         text = item.details,
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     Box {
@@ -452,18 +470,6 @@ private fun FeedCardContent(
                     }
                 }
             }
-        }
-
-        if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
-            Spacer(modifier = Modifier.width(8.dp))
-            AsyncImage(
-                model = thumbnailUrl,
-                contentDescription = "Thumbnail",
-                modifier = Modifier
-                    .weight(1f)
-                    .sizeIn(maxWidth = 60.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-            )
         }
     }
 }
