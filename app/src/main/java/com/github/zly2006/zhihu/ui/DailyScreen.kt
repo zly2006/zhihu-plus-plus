@@ -76,7 +76,7 @@ data class DailySection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyScreen() {
+fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<DailyViewModel>()
@@ -152,16 +152,15 @@ fun DailyScreen() {
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
-                windowInsets = WindowInsets(0.dp),
             )
         },
-    ) { paddingValues ->
+    ) { scaffoldPadding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = doRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
             when {
                 viewModel.isLoading -> {
@@ -213,7 +212,7 @@ fun DailyScreen() {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + innerPadding.calculateBottomPadding()),
                     ) {
                         viewModel.sections.forEach { section ->
                             // Date header

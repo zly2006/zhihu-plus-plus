@@ -96,7 +96,6 @@ const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 @SuppressLint("RestrictedApi")
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
-    val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val activity = LocalActivity.current as MainActivity
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
@@ -145,9 +144,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         )
     }
 
-    // 底部导航栏刷新功能
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
+    // 底部导航栏双击回到顶部功能
+    var scrollToTopTrigger by remember { mutableIntStateOf(0) }
+    val tapToScrollToTopEnabled = remember { preferences.getBoolean("bottomBarTapScrollToTop", true) }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -210,17 +209,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             if (navEntry != null) {
                 if (isTopLevelDest(navEntry)) {
                     NavigationBar(
-                        modifier = modifier.height(56.dp + bottomPadding),
+                        modifier = modifier,
                     ) {
                         val allItems = listOf(
                             Triple(Home, "主页", Icons.Filled.Home),
                             Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
                             Triple(HotList, "热榜", Icons.Filled.Whatshot),
                             Triple(Daily, "日报", Icons.Filled.Newspaper),
-                            Triple(OnlineHistory, "历史", Icons.Filled.History),
-                            Triple(Account, "账号", Icons.Filled.ManageAccounts),
                         )
-                        val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
+                        val defaultKeys = setOf(Home.name, Follow.name, Daily.name)
                         val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
                         val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
 
@@ -239,25 +236,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    } else if (tapToRefreshEnabled) {
-                                        // 已经在当前页面，触发刷新
-                                        refreshTrigger++
+                                    } else if (tapToScrollToTopEnabled) {
+                                        // 已经在当前页面，触发回到顶部
+                                        scrollToTopTrigger++
                                     }
                                 },
                                 label = {
                                     Text(
                                         label,
-                                        style = TextStyle(
-                                            fontSize = 9.sp,
-                                            color = LocalContentColor.current.copy(alpha = 0.6f),
-                                        ),
                                     )
                                 },
-                                alwaysShowLabel = false,
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xff66ccff),
-                                    indicatorColor = Color.Transparent,
-                                ),
                                 icon = {
                                     Icon(icon, contentDescription = label)
                                 },
@@ -280,7 +268,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         ) {
             MyNavHost(
                 navController,
-                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+                modifier = Modifier,
                 startDestination = Home,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
@@ -304,7 +292,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<Home> {
-                    HomeScreen(refreshTrigger = refreshTrigger)
+                    HomeScreen(
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        innerPadding = innerPadding,
+                    )
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
@@ -356,19 +347,19 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel)
                 }
                 composable<HotList> {
-                    HotListScreen()
+                    HotListScreen(innerPadding = innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen()
+                    FollowScreen(innerPadding = innerPadding)
                 }
                 composable<Daily> {
-                    DailyScreen()
+                    DailyScreen(innerPadding = innerPadding)
                 }
                 composable<History> {
                     HistoryScreen()
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen()
+                    OnlineHistoryScreen(innerPadding = innerPadding)
                 }
                 composable<Account> {
                     AccountSettingScreen(innerPadding)

@@ -5,9 +5,14 @@ import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,7 +38,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen() {
+fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
@@ -61,10 +66,11 @@ fun HotListScreen() {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
+                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 onLoadMore = { viewModel.loadMore(context) },
                 topContent = {
                     item {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp))
                     }
                 },
                 footer = ProgressIndicatorFooter,
