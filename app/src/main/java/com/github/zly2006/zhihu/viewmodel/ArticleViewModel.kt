@@ -425,7 +425,7 @@ class ArticleViewModel(
                                             }!!
                                         if ("data" !in jojo) {
                                             Log.e("ArticleViewModel", "No data found in response: $jojo")
-                                            context.mainExecutor.execute {
+                                            withContext(Dispatchers.Main) {
                                                 Toast
                                                     .makeText(
                                                         context,

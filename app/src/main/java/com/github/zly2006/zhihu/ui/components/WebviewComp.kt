@@ -67,6 +67,7 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -137,6 +138,57 @@ class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+
+    /**
+     * Constructs a CustomWebView and prepare everything for displaying content, then call onLoad callback when ready.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    constructor(context: Context, onLoad: (CustomWebView) -> Unit, useHardwareAcceleration: Boolean) : this(context) {
+        if (useHardwareAcceleration) {
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+        } else {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+        }
+        this.setupUpWebviewClient {
+        }
+        this.setHtmlClickListener(this.defaultHtmlClickListener())
+        onLoad(this)
+        setOnLongClickListener { view ->
+            view.showContextMenu()
+        }
+        setOnCreateContextMenuListener { menu, v, _ ->
+            val result = hitTestResult
+            if (result.type == HitTestResult.IMAGE_TYPE ||
+                result.type == HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+            ) {
+                val imgElement = document?.select("img[src='${result.extra}']")?.first()
+                val url = imgElement?.let { extractImageUrl(it) }
+                    ?: result.extra?.takeIf { !it.startsWith("data") }
+                if (url != null) {
+                    menu.add("查看图片").setOnMenuItemClickListener {
+                        openImage(AccountData.httpClient(context), url)
+                        true
+                    }
+                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                        luoTianYiUrlLauncher(context, url.toUri())
+                        true
+                    }
+                    menu.add("保存图片").setOnMenuItemClickListener {
+                        GlobalScope.launch {
+                            saveImageToGallery(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                    menu.add("分享图片").setOnMenuItemClickListener {
+                        GlobalScope.launch {
+                            shareImage(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                }
+            }
+        }
+    }
 
     var document: Document? = null
         private set
@@ -407,108 +459,14 @@ fun WebviewComp(
                 (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
                 existingWebView
             } else {
-                CustomWebView(ctx).apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
-                }
-            }
-            webView.apply {
-                this.setupUpWebviewClient {
-                }
-                this.setHtmlClickListener(this.defaultHtmlClickListener())
-                onLoad(this)
-                setOnLongClickListener { view ->
-                    view.showContextMenu()
-                }
-                setOnCreateContextMenuListener { menu, v, _ ->
-                    val result = hitTestResult
-                    if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                        result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                    ) {
-                        val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val url = imgElement?.let { extractImageUrl(it) }
-                            ?: result.extra?.takeIf { !it.startsWith("data") }
-                        if (url != null) {
-                            menu.add("查看图片").setOnMenuItemClickListener {
-                                openImage(httpClient, url)
-                                true
-                            }
-                            menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                luoTianYiUrlLauncher(context, url.toUri())
-                                true
-                            }
-                            menu.add("保存图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    saveImageToGallery(context, httpClient, url)
-                                }
-                                true
-                            }
-                            menu.add("分享图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    shareImage(context, httpClient, url)
-                                }
-                                true
-                            }
-                        }
-                    }
-                }
+                CustomWebView(ctx, onLoad, useHardwareAcceleration)
             }
             FrameLayout(ctx).apply { addView(webView) }
         },
         update = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: run {
                 frameLayout.removeAllViews()
-                val newWebView = CustomWebView(frameLayout.context).apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
-                }
-                newWebView.apply {
-                    this.setupUpWebviewClient {
-                    }
-                    this.setHtmlClickListener(this.defaultHtmlClickListener())
-                    onLoad(this)
-                    setOnLongClickListener { view ->
-                        view.showContextMenu()
-                    }
-                    setOnCreateContextMenuListener { menu, v, _ ->
-                        val result = hitTestResult
-                        if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                            result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                        ) {
-                            val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                            val url = imgElement?.let { extractImageUrl(it) }
-                                ?: result.extra?.takeIf { !it.startsWith("data") }
-                            if (url != null) {
-                                menu.add("查看图片").setOnMenuItemClickListener {
-                                    openImage(httpClient, url)
-                                    true
-                                }
-                                menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                    luoTianYiUrlLauncher(context, url.toUri())
-                                    true
-                                }
-                                menu.add("保存图片").setOnMenuItemClickListener {
-                                    coroutineScope.launch {
-                                        saveImageToGallery(context, httpClient, url)
-                                    }
-                                    true
-                                }
-                                menu.add("分享图片").setOnMenuItemClickListener {
-                                    coroutineScope.launch {
-                                        shareImage(context, httpClient, url)
-                                    }
-                                    true
-                                }
-                            }
-                        }
-                    }
-                }
+                val newWebView = CustomWebView(frameLayout.context, onLoad, useHardwareAcceleration)
                 frameLayout.addView(newWebView)
                 newWebView
             }
