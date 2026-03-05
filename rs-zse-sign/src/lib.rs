@@ -172,6 +172,7 @@ fn encrypt_zse_v4(input: &str, now_ms: i64) -> String {
     custom_encode(cipher)
 }
 
+#[allow(non_snake_case)]
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_github_zly2006_zhihu_util_ZseRustSigner_encrypt(
     mut env: JNIEnv,
