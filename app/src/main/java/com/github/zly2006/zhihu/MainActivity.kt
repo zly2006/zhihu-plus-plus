@@ -469,7 +469,7 @@ class MainActivity : ComponentActivity() {
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
         val nowMs = System.currentTimeMillis()
         val rustSign = ZseRustSigner.encryptOrNull(md5, nowMs) ?: throw RuntimeException(
-            "zse96签名失败！请向开发者反馈"
+            "zse96签名失败！请向开发者反馈",
         )
 
         return "2.0_$rustSign"

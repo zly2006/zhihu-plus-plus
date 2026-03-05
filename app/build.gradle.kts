@@ -160,9 +160,10 @@ val rustZseCargoToml = rustZseProjectDir.resolve("Cargo.toml")
 val rustZseCargoLock = rustZseProjectDir.resolve("Cargo.lock")
 val rustZseJniLibsDir = file("src/main/jniLibs")
 
-val rustZseTargets = mapOf(
-    "aarch64-linux-android" to "arm64-v8a",
-)
+val rustZseTargets =
+    mapOf(
+        "aarch64-linux-android" to "arm64-v8a",
+    )
 
 tasks.register<Exec>("buildRustZseSigner") {
     description = "Build Rust zse signer JNI library"
