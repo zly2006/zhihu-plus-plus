@@ -52,17 +52,11 @@ jobs:
       - name: Setup rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          target: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
           override: true
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk || true
-
-      - name: Add Android Rust targets
-        run: |
-          rustup target add aarch64-linux-android
-          rustup target add armv7-linux-androideabi
-          rustup target add i686-linux-android
-          rustup target add x86_64-linux-android
 
       - name: Change wrapper permissions
         run: chmod +x ./gradlew

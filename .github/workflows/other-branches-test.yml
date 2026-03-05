@@ -26,6 +26,15 @@ jobs:
           distribution: 'zulu' # See 'Supported distributions' for available options
           java-version: '17'
           cache: 'gradle'
+      - name: Setup rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          override: true
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk || true
+
       - name: Change wrapper permissions
         run: chmod +x ./gradlew
       - name: Cache Gradle
@@ -42,6 +51,10 @@ jobs:
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      - name: Install Android NDK
+        run: |
+          echo "y" | sdkmanager --install "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/29.0.14206865" >> $GITHUB_ENV
       # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
