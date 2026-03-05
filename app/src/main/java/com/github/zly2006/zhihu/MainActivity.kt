@@ -66,7 +66,6 @@ class MainActivity : ComponentActivity() {
 
     val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
-    lateinit var webview: WebView
     lateinit var history: HistoryStorage
     val httpClient by lazy {
         AccountData.httpClient(this)
@@ -197,12 +196,6 @@ class MainActivity : ComponentActivity() {
                 Log.e(TAG, "Failed to initialize emoji manager", e)
             }
         }
-
-        webview = WebView(this)
-        Log.i(TAG, "Webview created")
-        webview.setupUpWebviewClient()
-        webview.settings.javaScriptEnabled = true
-        webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
         setContent {
             navController = rememberNavController()
