@@ -42,13 +42,13 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.ZseRustSigner
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -457,7 +457,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    suspend fun signRequest96(url: String, body: String?): String {
+    fun signRequest96(url: String, body: String?): String {
         val dc0 = AccountData.data.cookies["d_c0"] ?: ""
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
         val signSource = listOfNotNull(
@@ -467,22 +467,12 @@ class MainActivity : ComponentActivity() {
             body,
         ).joinToString("+")
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-        val timeStart = System.currentTimeMillis()
-        val future = CompletableDeferred<String>()
-        runOnUiThread {
-            webview.evaluateJavascript("exports.encrypt('$md5')") {
-                if (BuildConfig.DEBUG) {
-                    val time = System.currentTimeMillis() - timeStart
-                    Log.i(TAG, "Sign request: $url")
-                    Log.i(TAG, "Sign source: $signSource")
-                    Log.i(TAG, "Sign input: $md5")
-                    Log.i(TAG, "Sign result: $it")
-                    Log.i(TAG, "Sign time: $time ms")
-                }
-                future.complete(it.trim('"'))
-            }
-        }
-        return "2.0_" + future.await()
+        val nowMs = System.currentTimeMillis()
+        val rustSign = ZseRustSigner.encryptOrNull(md5, nowMs) ?: throw RuntimeException(
+            "zse96签名失败！请向开发者反馈"
+        )
+
+        return "2.0_$rustSign"
     }
 
     fun postHistory(dest: NavDestination) {
