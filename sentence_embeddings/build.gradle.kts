@@ -91,30 +91,45 @@ tasks.register<Exec>("buildRustLib") {
         // Windows: use batch commands with proper path handling
         val jniLibsPath = jniLibsDir.absolutePath.replace("\\", "/")
         val buildCommands = androidTargets.entries.joinToString(" && ") { (rustTarget, androidAbi) ->
-            """echo Building for $androidAbi... && cargo ndk --target $androidAbi --platform 24 build --release && if not exist "$jniLibsPath\\$androidAbi" mkdir "$jniLibsPath\\$androidAbi" && copy /Y target\\$rustTarget\\release\\libhftokenizer.so "$jniLibsPath\\$androidAbi\\" """
+            listOf(
+                "echo Building for $androidAbi...",
+                "cargo ndk --target $androidAbi --platform 24 build --release",
+                "if not exist \"$jniLibsPath\\$androidAbi\" mkdir \"$jniLibsPath\\$androidAbi\"",
+                "copy /Y target\\$rustTarget\\release\\libhftokenizer.so \"$jniLibsPath\\$androidAbi\\\""
+            ).joinToString(" && ")
         }
-        commandLine("cmd", "/c", "echo Rust build starting... && $buildCommands && echo Rust build completed successfully!")
+        commandLine(
+            "cmd", "/c",
+            listOf(
+                "echo Rust build starting...",
+                buildCommands,
+                "echo Rust build completed successfully!"
+            ).joinToString(" && ")
+        )
     } else {
         // Unix/macOS: use shell commands
         val jniLibsPath = jniLibsDir.absolutePath
         val buildCommands = androidTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
-            """
-            echo "Building for $androidAbi..."
-            cargo ndk --target $androidAbi --platform 24 build --release
-            mkdir -p "$jniLibsPath/$androidAbi"
-            cp target/$rustTarget/release/libhftokenizer.so "$jniLibsPath/$androidAbi/"
-            """
+            listOf(
+                "echo \"Building for $androidAbi...\"",
+                "cargo ndk --target $androidAbi --platform 24 build --release",
+                "mkdir -p \"$jniLibsPath/$androidAbi\"",
+                "cp target/$rustTarget/release/libhftokenizer.so \"$jniLibsPath/$androidAbi/\""
+            ).joinToString("\n")
         }
-        commandLine("sh", "-c", """
-            set -e
-            # Add Android targets if not already added
-            ${androidTargets.keys.joinToString("\n") { "rustup target add $it 2>/dev/null || true" }}
-
-            # Build for each target
-            $buildCommands
-
-            echo "Rust build completed successfully!"
-        """.trimIndent())
+        val addTargetCommands = androidTargets.keys.joinToString("\n") {
+            "rustup target add $it 2>/dev/null || true"
+        }
+        commandLine("sh", "-c", listOf(
+            "set -e",
+            "# Add Android targets if not already added",
+            addTargetCommands,
+            "",
+            "# Build for each target",
+            buildCommands,
+            "",
+            "echo \"Rust build completed successfully!\""
+        ).joinToString("\n"))
     }
 }
 
