@@ -115,12 +115,6 @@ android {
         compose = true
     }
 
-    sourceSets {
-        getByName("main") {
-            jniLibs.srcDirs("src/main/jniLibs")
-        }
-    }
-
     packaging {
         resources {
             excludes +=
@@ -152,57 +146,6 @@ android {
             }
         }
     }
-}
-
-val rustZseProjectDir = file("../rs-zse-sign")
-val rustZseSrcDir = rustZseProjectDir.resolve("src")
-val rustZseCargoToml = rustZseProjectDir.resolve("Cargo.toml")
-val rustZseCargoLock = rustZseProjectDir.resolve("Cargo.lock")
-val rustZseJniLibsDir = file("src/main/jniLibs")
-
-val rustZseTargets =
-    mapOf(
-        "aarch64-linux-android" to "arm64-v8a",
-    )
-
-tasks.register<Exec>("buildRustZseSigner") {
-    description = "Build Rust zse signer JNI library"
-    group = "rust"
-    workingDir = rustZseProjectDir
-
-    inputs.dir(rustZseSrcDir)
-    inputs.file(rustZseCargoToml)
-    if (rustZseCargoLock.exists()) {
-        inputs.file(rustZseCargoLock)
-    }
-    outputs.dir(rustZseJniLibsDir)
-
-    commandLine(
-        "sh",
-        "-c",
-        """
-        set -e
-        if ! command -v cargo-ndk &> /dev/null; then
-            echo "cargo-ndk not found. Installing..."
-            cargo install cargo-ndk
-        fi
-
-        ${rustZseTargets.keys.joinToString("\n") { "rustup target add $it 2>/dev/null || true" }}
-
-        ${rustZseTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
-            """
-            echo "Building zsesigner for $androidAbi..."
-            cargo ndk --target $androidAbi --platform 24 build --release
-            mkdir -p ${rustZseJniLibsDir.absolutePath}/$androidAbi
-            cp target/$rustTarget/release/libzsesigner.so ${rustZseJniLibsDir.absolutePath}/$androidAbi/
-            """
-        }}
-        """.trimIndent(),
-    )
-}
-
-tasks.matching { it.name.startsWith("preBuild") }.configureEach {
-    dependsOn("buildRustZseSigner")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
