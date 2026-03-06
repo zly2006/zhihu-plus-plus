@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context.MODE_PRIVATE
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
@@ -36,6 +37,9 @@ fun HotListScreen() {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -76,15 +80,18 @@ fun HotListScreen() {
                 }
             }
 
-            DraggableRefreshButton(
-                onClick = {
-                    viewModel.refresh(context)
-                },
-            ) {
-                if (viewModel.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+            if (showRefreshFab) {
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                 }
             }
         }

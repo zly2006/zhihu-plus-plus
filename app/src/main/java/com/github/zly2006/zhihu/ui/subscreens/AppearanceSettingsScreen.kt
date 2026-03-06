@@ -47,7 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +62,7 @@ import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
@@ -75,7 +75,6 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 @Composable
 fun AppearanceSettingsScreen(
     setting: String = "",
-    onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val preferences = remember {
@@ -86,7 +85,7 @@ fun AppearanceSettingsScreen(
     }
 
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+    val navigator = LocalNavigator.current
 
     val itemPositions = remember { mutableMapOf<String, Int>() }
     var scrollColumnRootY by remember { mutableIntStateOf(0) }
@@ -105,7 +104,7 @@ fun AppearanceSettingsScreen(
             TopAppBar(
                 title = { Text("外观与阅读体验") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -647,6 +646,41 @@ fun AppearanceSettingsScreen(
                     preferences.edit { putBoolean("showRefreshFab", it) }
                 },
             )
+
+            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
+            SwitchSettingItem(
+                title = "评论区标题上下留白",
+                description = "为评论区卡片顶部“评论/回复”标题增加间距，提升视觉层次感",
+                checked = commentTopTextExtraSpacing.value,
+                onCheckedChange = {
+                    commentTopTextExtraSpacing.value = it
+                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
+                },
+            )
+
+            Text(
+                "搜索设置",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+            HighlightableSettingContainer(
+                settingKey = "showSearchHotSearch",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["showSearchHotSearch"] = it },
+            ) {
+                SwitchSettingItem(
+                    title = "搜索界面显示热搜",
+                    description = "在搜索界面空白时显示知乎热搜关键词",
+                    checked = showSearchHotSearch.value,
+                    onCheckedChange = {
+                        showSearchHotSearch.value = it
+                        preferences.edit { putBoolean("showSearchHotSearch", it) }
+                    },
+                )
+            }
 
             Text(
                 "底部栏设置",

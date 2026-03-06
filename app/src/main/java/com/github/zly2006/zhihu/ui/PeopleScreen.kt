@@ -405,7 +405,7 @@ fun PeopleScreen(
         "关注",
     )
 
-    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val pagerState = rememberPagerState(initialPage = if (person.jumpTo.isNotEmpty()) titles.indexOf(person.jumpTo) else 0, pageCount = { titles.size })
 
     LaunchedEffect(viewModel) {
         try {

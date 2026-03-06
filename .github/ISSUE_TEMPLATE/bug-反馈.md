@@ -7,25 +7,28 @@ assignees: zly2006
 
 ---
 
+⚠️注意：请务必按照本模板完整填写。
+
 **描述**
-A clear and concise description of what the bug is.
+清晰的描述这个bug。
 
 **如何复现**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+如何处罚这个bug:
+1. 点击 '...'
+2. 打开 '....'
+3. 前往 '....'
+4. ...
 
 **预期的表现**
-A clear and concise description of what you expected to happen.
+你觉得应该发生什么行为？请详细的描述
 
 **截图**
-If applicable, add screenshots to help explain your problem.
+
+相关截图。
 
 **设备信息**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Version [e.g. 22] （可以在账号设置页面长按版本号复制）
+ - 手机设备及型号: [e.g. iPhone6]
+ - 操作系统OS版本: [e.g. iOS8.1]
+ - 知乎++版本: [e.g. 22] （可以在账号设置页面长按版本号复制）
 
 **其他**

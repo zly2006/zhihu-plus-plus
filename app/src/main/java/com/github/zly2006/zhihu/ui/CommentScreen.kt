@@ -751,21 +751,37 @@ fun CommentScreen(
 @Composable
 @Preview(showBackground = true)
 fun CommentTopText(content: NavDestination? = null) {
-    Text(
-        if (content is CommentHolder) {
-            "回复"
-        } else {
-            "评论"
-        },
-        style = Typography.bodyMedium.copy(
-            fontWeight = FontWeight.Bold,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(26.dp),
-        textAlign = TextAlign.Center,
-        fontSize = 18.sp,
-    )
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    }
+    val commentTopTextExtraSpacing = remember {
+        preferences.getBoolean("commentTopTextExtraSpacing", false)
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (commentTopTextExtraSpacing) {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        Text(
+            if (content is CommentHolder) {
+                "回复"
+            } else {
+                "评论"
+            },
+            style = Typography.bodyMedium.copy(
+                fontWeight = FontWeight.Bold,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(26.dp),
+            textAlign = TextAlign.Center,
+            fontSize = 18.sp,
+        )
+        if (commentTopTextExtraSpacing) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

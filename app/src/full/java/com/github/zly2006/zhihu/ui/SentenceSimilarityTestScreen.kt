@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import kotlinx.coroutines.Dispatchers
@@ -51,9 +52,8 @@ import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SentenceSimilarityTestScreen(
-    onBack: () -> Unit,
-) {
+fun SentenceSimilarityTestScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val modelState by SentenceEmbeddingManager.state.collectAsState()
@@ -107,7 +107,7 @@ fun SentenceSimilarityTestScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

@@ -23,19 +23,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,17 +57,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DailyStoriesResponse
 import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.resolveContent
-import io.ktor.client.call.body
-import io.ktor.client.request.get
+import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
@@ -81,87 +83,75 @@ data class DailySection(
 fun DailyScreen() {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    var sections by remember { mutableStateOf<List<DailySection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val viewModel = viewModel<DailyViewModel>()
     var isRefreshing by remember { mutableStateOf(false) }
-    var isLoadingMore by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     var currentViewingDate by remember { mutableStateOf("") }
-    var nextDate by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    val json = remember {
-        Json {
-            ignoreUnknownKeys = true
-            coerceInputValues = true
-        }
-    }
-
-    suspend fun loadLatestStories() {
-        try {
-            val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/latest")
-            val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
-            sections = listOf(DailySection(data.date, data.stories))
-            nextDate = data.date
-            currentViewingDate = formatDate(data.date)
-            error = null
-        } catch (e: Exception) {
-            error = "加载失败: ${e.message}"
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-            isRefreshing = false
-        }
-    }
-
-    suspend fun loadMoreStories() {
-        if (isLoadingMore || nextDate == null) return
-        isLoadingMore = true
-        try {
-            val response = context.httpClient.get("https://news-at.zhihu.com/api/4/stories/before/$nextDate")
-            val data = json.decodeFromString<DailyStoriesResponse>(response.body<String>())
-            sections = sections + DailySection(data.date, data.stories)
-            nextDate = data.date
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoadingMore = false
-        }
-    }
-
-    // Update current viewing date based on scroll position
     LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { index ->
-                var itemCount = 0
-                for (section in sections) {
-                    // +1 for the date header
-                    if (index < itemCount + 1 + section.stories.size) {
-                        currentViewingDate = formatDate(section.date)
-                        break
+        // 日期追踪：同时观察滚动位置和 sections，数据到了也能立即更新
+        launch {
+            snapshotFlow { listState.firstVisibleItemIndex to viewModel.sections }
+                .collect { (index, sections) ->
+                    var count = 0
+                    for (section in sections) {
+                        if (index < count + 1 + section.stories.size) {
+                            currentViewingDate = formatDate(section.date)
+                            break
+                        }
+                        count += 1 + section.stories.size
                     }
-                    itemCount += 1 + section.stories.size
                 }
-            }
-    }
-
-    // Load more when approaching the end
-    LaunchedEffect(listState) {
+        }
+        // 滚动到底部时加载更多
         snapshotFlow {
-            val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleItem to totalItems
-        }.collect { (lastVisibleItem, totalItems) ->
-            if (lastVisibleItem >= totalItems - 3 && !isLoadingMore && !isLoading) {
-                loadMoreStories()
-            }
+            val info = listState.layoutInfo
+            (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
+        }.collect { (last, total) ->
+            if (total > 0 && last >= total - 3) viewModel.loadMore(context.httpClient)
         }
     }
 
     LaunchedEffect(Unit) {
-        loadLatestStories()
+        if (viewModel.sections.isEmpty()) viewModel.loadLatest(context.httpClient)
+    }
+
+    val doRefresh: () -> Unit = {
+        scope.launch {
+            isRefreshing = true
+            viewModel.loadLatest(context.httpClient)
+            isRefreshing = false
+            listState.scrollToItem(0)
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDatePicker = false
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+                        val dateStr = sdf.format(Date(millis))
+                        scope.launch {
+                            viewModel.loadDate(context.httpClient, dateStr)
+                            listState.scrollToItem(0)
+                        }
+                    }
+                }) { Text("确认") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     Scaffold(
@@ -186,19 +176,8 @@ fun DailyScreen() {
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                isRefreshing = true
-                                loadLatestStories()
-                                listState.scrollToItem(0)
-                            }
-                        },
-                    ) {
-                        Icon(
-                            Icons.Filled.Refresh,
-                            contentDescription = "刷新",
-                        )
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -211,19 +190,13 @@ fun DailyScreen() {
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
-            onRefresh = {
-                scope.launch {
-                    isRefreshing = true
-                    loadLatestStories()
-                    listState.scrollToItem(0)
-                }
-            },
+            onRefresh = doRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
             when {
-                isLoading -> {
+                viewModel.isLoading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -243,19 +216,19 @@ fun DailyScreen() {
                     }
                 }
 
-                error != null -> {
+                viewModel.error != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            error ?: "未知错误",
+                            viewModel.error ?: "未知错误",
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
 
-                sections.isEmpty() -> {
+                viewModel.sections.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -274,7 +247,7 @@ fun DailyScreen() {
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        sections.forEach { section ->
+                        viewModel.sections.forEach { section ->
                             // Date header
                             item(key = "header_${section.date}") {
                                 DateHeader(date = formatDate(section.date))
@@ -304,7 +277,7 @@ fun DailyScreen() {
                         }
 
                         // Loading indicator at the bottom
-                        if (isLoadingMore) {
+                        if (viewModel.isLoadingMore) {
                             item(key = "loading_more") {
                                 Box(
                                     modifier = Modifier

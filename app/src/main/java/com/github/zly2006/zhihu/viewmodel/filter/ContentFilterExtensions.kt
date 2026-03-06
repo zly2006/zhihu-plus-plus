@@ -153,23 +153,6 @@ object ContentFilterExtensions {
     }
 
     /**
-     * 获取过滤统计信息
-     */
-    suspend fun getFilterStatistics(context: Context): FilterStats? {
-        if (!isContentFilterEnabled(context)) return null
-
-        return withContext(Dispatchers.IO) {
-            try {
-                val filterManager = ContentFilterManager.getInstance(context)
-                filterManager.getFilterStats()
-            } catch (e: Exception) {
-                Log.e("ContentFilterExtensions", "Failed to get filter statistics", e)
-                null
-            }
-        }
-    }
-
-    /**
      * 对FeedDisplayItem列表应用内容过滤
      * 包括广告检测、关键词屏蔽、NLP语义屏蔽和用户屏蔽
      */
@@ -278,19 +261,7 @@ object ContentFilterExtensions {
                 }
             }
 
-            // 6. 应用用户屏蔽
-            filteredItems = if (isUserBlockingEnabled(context)) {
-                val blocklistManager = BlocklistManager.getInstance(context)
-                (followedUserItems + filteredOtherItems).filter { item ->
-                    val authorId = item.feed
-                        ?.target
-                        ?.author
-                        ?.id
-                    !blocklistManager.isUserBlocked(authorId)
-                }
-            } else {
-                followedUserItems + filteredOtherItems
-            }
+            filteredItems = followedUserItems + filteredOtherItems
 
             filteredItems
         } catch (e: Exception) {
@@ -307,14 +278,16 @@ object ContentFilterExtensions {
             val isAd = "xg.zhihu.com" in raw.content
             val isEdu = "data-edu-card-id" in raw.content
             val isPaid = raw.paidInfo != null
-            isAd || isEdu || isPaid
+            val isWeixin = "mp.weixin.qq.com" in raw.content
+            isAd || isEdu || isPaid || isWeixin
         }
 
         is DataHolder.Article -> {
             val isAd = "xg.zhihu.com" in raw.content
             val isEdu = "data-edu-card-id" in raw.content
             val isPaid = raw.paidInfo != null
-            isAd || isEdu || isPaid
+            val isWeixin = "mp.weixin.qq.com" in raw.content
+            isAd || isEdu || isPaid || isWeixin
         }
 
         else -> {
@@ -323,7 +296,7 @@ object ContentFilterExtensions {
     }
 
     /**
-     * 对FilterableContent列表应用过滤逻辑
+     * 对FilterableContent列表进行用户自定义规则屏蔽
      */
     private suspend fun filterContents(
         context: Context,
@@ -342,6 +315,14 @@ object ContentFilterExtensions {
                 // 保留条件：(关注了作者) 或 (未看过)
                 // 过滤条件：(未关注作者) 且 (已看过)
                 content.isFollowing || !isViewed
+            }
+        }
+
+        // 应用作者屏蔽
+        if (isUserBlockingEnabled(context)) {
+            val blocklistManager = BlocklistManager.getInstance(context)
+            filteredContents = filteredContents.filter {
+                !blocklistManager.isUserBlocked(it.authorId)
             }
         }
 
