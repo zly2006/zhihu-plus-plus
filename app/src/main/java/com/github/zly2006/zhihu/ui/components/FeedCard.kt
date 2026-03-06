@@ -38,6 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -64,6 +65,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -164,6 +166,13 @@ fun FeedCard(
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
+                colors = CardDefaults.cardColors().copy(
+                    containerColor = if (ThemeManager.isDarkTheme()) {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
+                ),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -337,6 +346,7 @@ private fun FeedCardContent(
             Text(
                 text = parseHtmlTextWithTheme(item.summary ?: ""),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier

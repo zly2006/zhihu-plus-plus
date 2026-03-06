@@ -23,9 +23,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,6 +61,8 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.Notification
+import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.QRCodeScanActivity
 import com.github.zly2006.zhihu.WebviewActivity
@@ -72,6 +78,8 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 @Composable
 fun AccountSettingScreen(
     @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
+    unreadCount: Int = 0,
+    onDismissRequest: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -252,6 +260,36 @@ fun AccountSettingScreen(
         Spacer(Modifier.height(8.dp))
 
         ListItem(
+            headlineContent = { Text("通知") },
+            supportingContent = { Text("查看通知及回复") },
+            leadingContent = { Icon(Icons.Default.Notifications, null) },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (unreadCount > 0) {
+                        Badge { Text("$unreadCount") }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                }
+            },
+            modifier = Modifier.clickable {
+                onDismissRequest()
+                navigator.onNavigate(Notification)
+            },
+        )
+        
+        ListItem(
+            headlineContent = { Text("在线浏览历史") },
+            supportingContent = { Text("查看在线阅读历史记录") },
+            leadingContent = { Icon(Icons.Default.History, null) },
+            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+            modifier = Modifier.clickable {
+                onDismissRequest()
+                navigator.onNavigate(OnlineHistory)
+            },
+        )
+
+        ListItem(
             headlineContent = { Text("外观与阅读体验") },
             supportingContent = { Text("主题颜色、字体大小等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
@@ -348,5 +386,6 @@ fun AccountSettingScreen(
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
         innerPadding = PaddingValues(16.dp),
+        unreadCount = 5
     )
 }

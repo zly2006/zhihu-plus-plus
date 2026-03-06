@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
@@ -213,7 +214,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ) {
                         val allItems = listOf(
                             Triple(Home, "主页", Icons.Filled.Home),
-                            Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
+                            Triple(Follow, "关注", Icons.Filled.Group),
                             Triple(HotList, "热榜", Icons.Filled.Whatshot),
                             Triple(Daily, "日报", Icons.Filled.Newspaper),
                         )

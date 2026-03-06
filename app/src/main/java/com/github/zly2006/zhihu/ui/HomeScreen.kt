@@ -8,6 +8,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,8 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ManageAccounts
@@ -36,9 +39,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,7 +53,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
@@ -61,6 +70,7 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -156,6 +166,8 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
+    
+    var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
     val currentRecommendationMode = remember {
@@ -227,24 +239,38 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
 
+    val containerColor =
+        if (ThemeManager.isDarkTheme()) {
+            MaterialTheme.colorScheme.background
+        } else {
+            MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        }
+
     Scaffold(
+        containerColor = containerColor,
         topBar = {
-            Surface(
-                shadowElevation = 4.dp,
-            ) {
+            Box() {
+                Surface(
+                    color = containerColor,
+                    modifier = Modifier
+                        .height(
+                            WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp
+                        )
+                        .fillMaxWidth()
+                ) { }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(16.dp, 8.dp, 16.dp, 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                            .height(64.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(16.dp),
                         onClick = {
                             navigator.onNavigate(
                                 com.github.zly2006.zhihu
@@ -255,7 +281,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                                .padding(start = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
@@ -265,75 +291,79 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "搜索内容",
+                                text = "搜索",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
                             )
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                            // 头像按钮 (带通知红点)
 
-                    // 历史按钮
-                    IconButton(
-                        onClick = {
-                            navigator.onNavigate(OnlineHistory)
-                        },
-                    ) {
-                        Icon(
-                            Icons.Default.History,
-                            contentDescription = "历史",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
-                    // 账号按钮
-                    IconButton(
-                        onClick = {
-                            navigator.onNavigate(Account)
-                        },
-                    ) {
-                        Icon(
-                            Icons.Default.ManageAccounts,
-                            contentDescription = "账号",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-
-                    // 通知按钮
-                    IconButton(
-                        onClick = {
-                            navigator.onNavigate(Notification)
-                        },
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (unreadCount > 0) {
-                                    Badge {
-                                        Text("$unreadCount")
+                            IconButton(
+                                onClick = { showAccountBottomSheet = true },
+                                modifier = Modifier.size(64.dp)
+                            ) {
+                                Box(Modifier.padding(12.dp)) {
+                                    BadgedBox(
+                                        badge = {
+                                            if (unreadCount > 0) {
+                                                Badge {
+                                                    // Text("$unreadCount") // 可选：只显示红点或也显示数字
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        val avatarUrl = AccountData.data.self?.avatarUrl
+                                        if (avatarUrl != null) {
+                                            AsyncImage(
+                                                model = avatarUrl,
+                                                contentDescription = "账号",
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                                    .clip(CircleShape)
+                                            )
+                                        } else {
+                                            Icon(
+                                                Icons.Default.AccountCircle,
+                                                contentDescription = "账号",
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                                modifier = Modifier.size(40.dp)
+                                            )
+                                        }
                                     }
                                 }
-                            },
-                        ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = "通知",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
+                            }
                         }
                     }
                 }
             }
         },
     ) { scaffoldPadding ->
+        if (showAccountBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAccountBottomSheet = false },
+            ) {
+                AccountSettingScreen(
+                    innerPadding = PaddingValues(0.dp),
+                    unreadCount = unreadCount,
+                    onDismissRequest = { showAccountBottomSheet = false }
+                )
+            }
+        }
+
         Box(
-            modifier = Modifier.padding(top = scaffoldPadding.calculateTopPadding()),
+            //modifier = Modifier.padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
-            FeedPullToRefresh(viewModel) {
+            FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
-                    contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                    contentPadding = PaddingValues(
+                        top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                        bottom = innerPadding.calculateBottomPadding()
+                    ),
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
                 ) { item ->
