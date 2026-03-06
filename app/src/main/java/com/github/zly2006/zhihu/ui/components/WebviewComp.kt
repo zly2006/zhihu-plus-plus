@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -520,8 +521,10 @@ private class UserFilesPathHandler(
     }
 }
 
+@SuppressLint("SetJavaScriptEnabled")
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
+    settings.javaScriptEnabled = true
     val context = this.context
     val assetLoader = WebViewAssetLoader
         .Builder()
