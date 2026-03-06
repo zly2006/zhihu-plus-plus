@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
@@ -115,6 +116,7 @@ import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -1007,7 +1009,7 @@ fun ArticleScreen(
                     if (preferences.getBoolean("articleUseWebview", true)) {
                         WebviewComp(
                             scrollState = scrollState,
-                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                         ) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
@@ -1326,13 +1328,16 @@ private fun CachedAnswerPreview(
                             factory = { ctx ->
                                 val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
                                 (wv.parent as? ViewGroup)?.removeView(wv)
-                                wv
+                                FrameLayout(ctx).apply { addView(wv) }
                             },
-                            update = {
+                            update = { frameLayout ->
+                                val tag = if (isNext) sharedData.nextTag else sharedData.prevTag
+                                val wv = frameLayout.findViewWithTag<CustomWebView>(tag)
+                                    ?: return@AndroidView
                                 val articleId = cached.article.id.toString()
-                                if (it.contentId != articleId) {
-                                    it.contentId = articleId
-                                    it.loadZhihu(
+                                if (wv.contentId != articleId) {
+                                    wv.contentId = articleId
+                                    wv.loadZhihu(
                                         "https://www.zhihu.com/answer/${cached.article.id}",
                                         prepareContentDocument(cached.content, context).apply {
                                             title(cached.title)
@@ -1341,7 +1346,8 @@ private fun CachedAnswerPreview(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().weight(1f),
-                            onRelease = { wv ->
+                            onRelease = { frameLayout ->
+                                val wv = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
                                 // Only detach if still the shared preview WebView (not claimed as main)
                                 val isStillPreview = if (isNext) {
                                     sharedData.nextPreviewWebView === wv

@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -22,6 +23,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,6 +68,7 @@ import io.ktor.http.contentType
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -136,6 +139,57 @@ class CustomWebView : WebView {
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+
+    /**
+     * Constructs a CustomWebView and prepare everything for displaying content, then call onLoad callback when ready.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    constructor(context: Context, onLoad: (CustomWebView) -> Unit, useHardwareAcceleration: Boolean) : this(context) {
+        if (useHardwareAcceleration) {
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+        } else {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+        }
+        this.setupUpWebviewClient {
+        }
+        this.setHtmlClickListener(this.defaultHtmlClickListener())
+        onLoad(this)
+        setOnLongClickListener { view ->
+            view.showContextMenu()
+        }
+        setOnCreateContextMenuListener { menu, v, _ ->
+            val result = hitTestResult
+            if (result.type == HitTestResult.IMAGE_TYPE ||
+                result.type == HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+            ) {
+                val imgElement = document?.select("img[src='${result.extra}']")?.first()
+                val url = imgElement?.let { extractImageUrl(it) }
+                    ?: result.extra?.takeIf { !it.startsWith("data") }
+                if (url != null) {
+                    menu.add("查看图片").setOnMenuItemClickListener {
+                        openImage(AccountData.httpClient(context), url)
+                        true
+                    }
+                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                        luoTianYiUrlLauncher(context, url.toUri())
+                        true
+                    }
+                    menu.add("保存图片").setOnMenuItemClickListener {
+                        GlobalScope.launch {
+                            saveImageToGallery(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                    menu.add("分享图片").setOnMenuItemClickListener {
+                        GlobalScope.launch {
+                            shareImage(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                }
+            }
+        }
+    }
 
     var document: Document? = null
         private set
@@ -406,57 +460,17 @@ fun WebviewComp(
                 (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
                 existingWebView
             } else {
-                CustomWebView(ctx).apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
-                }
+                CustomWebView(ctx, onLoad, useHardwareAcceleration)
             }
-            webView.apply {
-                this.setupUpWebviewClient {
-                }
-                this.setHtmlClickListener(this.defaultHtmlClickListener())
-                onLoad(this)
-                setOnLongClickListener { view ->
-                    view.showContextMenu()
-                }
-                setOnCreateContextMenuListener { menu, v, _ ->
-                    val result = hitTestResult
-                    if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                        result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                    ) {
-                        val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val url = imgElement?.let { extractImageUrl(it) }
-                            ?: result.extra?.takeIf { !it.startsWith("data") }
-                        if (url != null) {
-                            menu.add("查看图片").setOnMenuItemClickListener {
-                                openImage(httpClient, url)
-                                true
-                            }
-                            menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                luoTianYiUrlLauncher(context, url.toUri())
-                                true
-                            }
-                            menu.add("保存图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    saveImageToGallery(context, httpClient, url)
-                                }
-                                true
-                            }
-                            menu.add("分享图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    shareImage(context, httpClient, url)
-                                }
-                                true
-                            }
-                        }
-                    }
-                }
-            }
+            FrameLayout(ctx).apply { addView(webView) }
         },
-        update = { view ->
+        update = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: run {
+                frameLayout.removeAllViews()
+                val newWebView = CustomWebView(frameLayout.context, onLoad, useHardwareAcceleration)
+                frameLayout.addView(newWebView)
+                newWebView
+            }
             if (scrollState != null) {
                 view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
@@ -467,28 +481,25 @@ fun WebviewComp(
             onLoad(view)
         },
         modifier = modifier,
-        onRelease = {
+        onRelease = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
             if (existingWebView != null) {
-                (it.parent as? ViewGroup)?.removeView(it)
+                (view.parent as? ViewGroup)?.removeView(view)
             } else {
-                it.stopLoading()
-                it.webChromeClient = null
-                it.clearHistory()
-                it.clearCache(true)
-                it.destroy()
+                view.stopLoading()
+                view.webChromeClient = null
+                view.clearHistory()
+                view.clearCache(true)
+                view.destroy()
             }
         },
     )
 }
 
-/**
- * Serves files from the app's internal filesDir via WebViewAssetLoader.
- * Used to serve the custom font without base64-encoding it into the HTML.
- */
 private class UserFilesPathHandler(
     private val context: Context,
 ) : WebViewAssetLoader.PathHandler {
-    override fun handle(path: String): android.webkit.WebResourceResponse? {
+    override fun handle(path: String): WebResourceResponse? {
         val file = java.io.File(context.filesDir, path)
         if (!file.exists() || !file.isFile) return null
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -499,7 +510,7 @@ private class UserFilesPathHandler(
             }
             else -> "application/octet-stream"
         }
-        return android.webkit.WebResourceResponse(
+        return WebResourceResponse(
             mimeType,
             null,
             200,
@@ -510,8 +521,10 @@ private class UserFilesPathHandler(
     }
 }
 
+@SuppressLint("SetJavaScriptEnabled")
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
+    settings.javaScriptEnabled = true
     val context = this.context
     val assetLoader = WebViewAssetLoader
         .Builder()
