@@ -109,6 +109,7 @@ tasks.register<Exec>("buildRustLib") {
     } else {
         // Unix/macOS: use shell commands
         val jniLibsPath = jniLibsDir.absolutePath
+        environment("DEVELOPER_DIR", "/Library/Developer/CommandLineTools")
         val buildCommands = androidTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
             listOf(
                 "echo \"Building for $androidAbi...\"",

@@ -1,0 +1,15 @@
+[package]
+name = "zse_signer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "zsesigner"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "zse_test"
+path = "src/main.rs"
+
+[dependencies]
+jni = "0.21.1"
