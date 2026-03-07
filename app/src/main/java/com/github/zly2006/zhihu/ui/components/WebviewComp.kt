@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -174,13 +175,13 @@ class CustomWebView : WebView {
                         true
                     }
                     menu.add("保存图片").setOnMenuItemClickListener {
-                        GlobalScope.launch {
+                        GlobalScope.launch(Dispatchers.Main) {
                             saveImageToGallery(context, AccountData.httpClient(context), url)
                         }
                         true
                     }
                     menu.add("分享图片").setOnMenuItemClickListener {
-                        GlobalScope.launch {
+                        GlobalScope.launch(Dispatchers.Main) {
                             shareImage(context, AccountData.httpClient(context), url)
                         }
                         true
@@ -520,8 +521,10 @@ private class UserFilesPathHandler(
     }
 }
 
+@SuppressLint("SetJavaScriptEnabled")
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
+    settings.javaScriptEnabled = true
     val context = this.context
     val assetLoader = WebViewAssetLoader
         .Builder()

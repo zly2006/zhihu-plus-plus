@@ -1009,7 +1009,7 @@ fun ArticleScreen(
                     if (preferences.getBoolean("articleUseWebview", true)) {
                         WebviewComp(
                             scrollState = scrollState,
-                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                         ) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
