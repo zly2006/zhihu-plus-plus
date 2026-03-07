@@ -333,6 +333,65 @@ fun AppearanceSettingsScreen(
                 )
             }
 
+            // ── 阅读 ────────────────────────────────────────────────────────────
+            Text(
+                "阅读",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("字号", style = MaterialTheme.typography.bodyLarge)
+                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = fontSize.toFloat(),
+                    onValueChange = {
+                        fontSize = it.toInt()
+                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
+                    },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+            }
+
+            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("行高", style = MaterialTheme.typography.bodyLarge)
+                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = lineHeight.toFloat(),
+                    onValueChange = {
+                        lineHeight = it.toInt()
+                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
+                    },
+                    valueRange = 100f..300f,
+                    steps = 19,
+                )
+            }
+
+            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
+            SwitchSettingItem(
+                title = "评论区标题上下留白",
+                description = "为评论区卡片顶部\"评论/回复\"标题增加间距，提升视觉层次感",
+                checked = commentTopTextExtraSpacing.value,
+                onCheckedChange = {
+                    commentTopTextExtraSpacing.value = it
+                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
+                },
+            )
+
             // ── 信息流 ──────────────────────────────────────────────────────────
             Text(
                 "信息流",
@@ -349,6 +408,17 @@ fun AppearanceSettingsScreen(
                 onCheckedChange = {
                     showFeedThumbnail.value = it
                     preferences.edit { putBoolean("showFeedThumbnail", it) }
+                },
+            )
+
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SwitchSettingItem(
+                title = "显示刷新 FAB 按钮",
+                description = "在页面上显示可拖动的刷新按钮",
+                checked = showRefreshFab.value,
+                onCheckedChange = {
+                    showRefreshFab.value = it
+                    preferences.edit { putBoolean("showRefreshFab", it) }
                 },
             )
 
@@ -583,65 +653,6 @@ fun AppearanceSettingsScreen(
                 }
             }
 
-            // ── 阅读 ────────────────────────────────────────────────────────────
-            Text(
-                "阅读",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-            )
-
-            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("字号", style = MaterialTheme.typography.bodyLarge)
-                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
-                }
-                Slider(
-                    value = fontSize.toFloat(),
-                    onValueChange = {
-                        fontSize = it.toInt()
-                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
-                    },
-                    valueRange = 50f..200f,
-                    steps = 14,
-                )
-            }
-
-            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("行高", style = MaterialTheme.typography.bodyLarge)
-                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
-                }
-                Slider(
-                    value = lineHeight.toFloat(),
-                    onValueChange = {
-                        lineHeight = it.toInt()
-                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
-                    },
-                    valueRange = 100f..300f,
-                    steps = 19,
-                )
-            }
-
-            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
-            SwitchSettingItem(
-                title = "评论区标题上下留白",
-                description = "为评论区卡片顶部\"评论/回复\"标题增加间距，提升视觉层次感",
-                checked = commentTopTextExtraSpacing.value,
-                onCheckedChange = {
-                    commentTopTextExtraSpacing.value = it
-                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
-                },
-            )
-
             // ── 底部导航栏 ──────────────────────────────────────────────────────
             Text(
                 "底部导航栏",
@@ -744,17 +755,6 @@ fun AppearanceSettingsScreen(
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
-            SwitchSettingItem(
-                title = "显示刷新 FAB 按钮",
-                description = "在页面上显示可拖动的刷新按钮",
-                checked = showRefreshFab.value,
-                onCheckedChange = {
-                    showRefreshFab.value = it
-                    preferences.edit { putBoolean("showRefreshFab", it) }
-                },
-            )
-
             HighlightableSettingContainer(
                 settingKey = "shareAction",
                 highlightedKey = setting,
@@ -841,7 +841,7 @@ fun AppearanceSettingsScreen(
 
             // ── 导航 ────────────────────────────────────────────────────────────
             Text(
-                "导航",
+                "技术性导航设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
