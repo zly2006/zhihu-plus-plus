@@ -175,13 +175,13 @@ class CustomWebView : WebView {
                         true
                     }
                     menu.add("保存图片").setOnMenuItemClickListener {
-                        GlobalScope.launch {
+                        GlobalScope.launch(Dispatchers.Main) {
                             saveImageToGallery(context, AccountData.httpClient(context), url)
                         }
                         true
                     }
                     menu.add("分享图片").setOnMenuItemClickListener {
-                        GlobalScope.launch {
+                        GlobalScope.launch(Dispatchers.Main) {
                             shareImage(context, AccountData.httpClient(context), url)
                         }
                         true
