@@ -15,6 +15,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -83,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -532,6 +534,7 @@ fun ArticleScreen(
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     val buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
+    val autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
     val answerSwitchMode by remember { mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical") }
     val pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
@@ -1138,11 +1141,21 @@ fun ArticleScreen(
 
     if (article.type == ArticleType.Answer && buttonSkipAnswer) {
         var navigatingToNextAnswer by remember { mutableStateOf(false) }
+        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+        val skipButtonAlpha by animateFloatAsState(
+            targetValue = if (showSkipButton) 1f else 0f,
+            animationSpec = tween(200),
+            label = "skipButtonAlpha",
+        )
         DraggableRefreshButton(
+            // graphicsLayer 在 offset 之前，确保 alpha 动画作用在正确位置
+            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
             onClick = {
-                navigatingToNextAnswer = true
-                navigateToNext()
-                navigatingToNextAnswer = false
+                if (showSkipButton) {
+                    navigatingToNextAnswer = true
+                    navigateToNext()
+                    navigatingToNextAnswer = false
+                }
             },
             preferenceName = "buttonSkipAnswer",
         ) {
