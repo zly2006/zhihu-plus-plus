@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.markdown
 
+import android.util.Log
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -56,7 +57,6 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.resolveContent
-import com.github.zly2006.zhihu.theme.LatinModernMathFontFamily
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -207,7 +207,7 @@ fun AnnotatedString.Builder.RenderInline(
             val density = LocalDensity.current
 
             // 生成唯一的内联内容 ID
-            val inlineContentId = "math_${d.math.hashCode()}"
+            val inlineContentId = "math_${d.math.hashCode().toHexString()}"
 
             // 使用 SubcomposeLayout 精确测量 Latex 组件的大小
             val measuredWidthSp = remember { mutableStateOf(0.sp) }
@@ -228,7 +228,9 @@ fun AnnotatedString.Builder.RenderInline(
                 }.first().measure(constraints)
 
                 with(density) {
-                    if (measurable.width != 0) {
+                    // 13 is a magic number from our library.
+                    if (measurable.width != 0 && measurable.width != 13) {
+                        Log.d("RenderInline", "Measured inline math $inlineContentId size: ${measurable.width}x${measurable.height}")
                         measuredWidthSp.value = measurable.width.toSp()
                         measuredHeightSp.value = measurable.height.toSp()
                     }
@@ -249,7 +251,6 @@ fun AnnotatedString.Builder.RenderInline(
                     Latex(
                         latex = d.math,
                         config = LatexConfig(
-                            baseFontFamily = LatinModernMathFontFamily,
                             fontSize = fontSize.value.sp,
                             color = MaterialTheme.colorScheme.onBackground,
                             darkColor = MaterialTheme.colorScheme.onBackground,
