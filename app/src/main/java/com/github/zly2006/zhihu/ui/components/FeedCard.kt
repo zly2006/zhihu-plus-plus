@@ -335,6 +335,7 @@ private fun FeedCardContent(
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
         }
@@ -349,9 +350,7 @@ private fun FeedCardContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .padding(top = if (item.isFiltered) 0.dp else 8.dp)
-                    .weight(1f),
+                modifier = Modifier.weight(1f),
             )
 
             if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
