@@ -84,31 +84,53 @@ tasks.register<Exec>("buildRustLib") {
     // Note: commented out for performance
     //outputs.dir(rustProjectDir.resolve("target"))
     outputs.dir(jniLibsDir)
-    
-    // Check if cargo-ndk is available
-    commandLine("sh", "-c", """
-        set -e
-        if ! command -v cargo-ndk &> /dev/null; then
-            echo "cargo-ndk not found. Installing..."
-            cargo install cargo-ndk
-        fi
-        
-        export DEVELOPER_DIR=/Library/Developer/CommandLineTools
-        # Add Android targets if not already added
-        ${androidTargets.keys.joinToString("\n") { "rustup target add $it 2>/dev/null || true" }}
-        
-        # Build for each target
-        ${androidTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
-            """
-            echo "Building for $androidAbi..."
-            cargo ndk --target $androidAbi --platform 24 build --release
-            mkdir -p ${jniLibsDir.absolutePath}/$androidAbi
-            cp target/$rustTarget/release/libhftokenizer.so ${jniLibsDir.absolutePath}/$androidAbi/
-            """
-        }}
-        
-        echo "Rust build completed successfully!"
-    """.trimIndent())
+
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+
+    if (isWindows) {
+        // Windows: use batch commands with proper path handling
+        val jniLibsPath = jniLibsDir.absolutePath.replace("\\", "/")
+        val buildCommands = androidTargets.entries.joinToString(" && ") { (rustTarget, androidAbi) ->
+            listOf(
+                "echo Building for $androidAbi...",
+                "cargo ndk --target $androidAbi --platform 24 build --release",
+                "if not exist \"$jniLibsPath\\$androidAbi\" mkdir \"$jniLibsPath\\$androidAbi\"",
+                "copy /Y target\\$rustTarget\\release\\libhftokenizer.so \"$jniLibsPath\\$androidAbi\\\""
+            ).joinToString(" && ")
+        }
+        commandLine(
+            "cmd", "/c",
+            listOf(
+                "echo Rust build starting...",
+                buildCommands,
+                "echo Rust build completed successfully!"
+            ).joinToString(" && ")
+        )
+    } else {
+        // Unix/macOS: use shell commands
+        val jniLibsPath = jniLibsDir.absolutePath
+        val buildCommands = androidTargets.entries.joinToString("\n") { (rustTarget, androidAbi) ->
+            listOf(
+                "echo \"Building for $androidAbi...\"",
+                "cargo ndk --target $androidAbi --platform 24 build --release",
+                "mkdir -p \"$jniLibsPath/$androidAbi\"",
+                "cp target/$rustTarget/release/libhftokenizer.so \"$jniLibsPath/$androidAbi/\""
+            ).joinToString("\n")
+        }
+        val addTargetCommands = androidTargets.keys.joinToString("\n") {
+            "rustup target add $it 2>/dev/null || true"
+        }
+        commandLine("sh", "-c", listOf(
+            "set -e",
+            "# Add Android targets if not already added",
+            addTargetCommands,
+            "",
+            "# Build for each target",
+            buildCommands,
+            "",
+            "echo \"Rust build completed successfully!\""
+        ).joinToString("\n"))
+    }
 }
 
 // Clean Rust build artifacts
