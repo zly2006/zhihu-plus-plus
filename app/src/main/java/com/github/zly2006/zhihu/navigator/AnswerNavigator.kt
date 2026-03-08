@@ -312,3 +312,138 @@ class CollectionAnswerNavigator(
         return queue.removeFirstOrNull()
     }
 }
+
+/**
+ * 基于回答详情中 [DataHolder.Answer.PaginationInfo] 导航。
+ * 利用 nextAnswerIds 作为前进队列，prevAnswerIds 作为后退队列。
+ * 每次加载新回答后调用 [updateFromPaginationInfo] 补充队列并去重。
+ *
+ * @param questionId 问题 ID，用于保持问题上下文
+ * @param initialPaginationInfo 当前回答的分页信息
+ */
+class PaginationInfoNavigator(
+    val questionId: Long,
+    initialPaginationInfo: DataHolder.Answer.PaginationInfo,
+) : AnswerNavigator("此问题") {
+    // 前进队列（有序，无重复）
+    private val nextQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
+
+    // 后退队列：API 返回的 prevAnswerIds 已是最近优先顺序，直接使用，firstOrNull() 为最近的上一个回答
+    private val prevQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.prevAnswerIds) }
+
+    // 续链用：记录最后已知的 answerId，下次 nextQueue 耗尽时从此续链
+    private var lastKnownNextId: Long? = initialPaginationInfo.nextAnswerIds.lastOrNull()
+
+    // 已知所有 id 的集合（用于去重）
+    private val seenIds = mutableSetOf<Long>().also {
+        it.addAll(initialPaginationInfo.nextAnswerIds)
+        it.addAll(initialPaginationInfo.prevAnswerIds)
+    }
+
+    // 仅有 id，无标题和作者信息；完整数据需 loadPrevious() 后从 answerHistory 取
+    override val previousAnswerPreview: CachedAnswerContent?
+        get() {
+            val id = prevQueue.firstOrNull() ?: return null
+            return CachedAnswerContent(
+                article = Article(id = id, type = ArticleType.Answer),
+                title = "加载中...",
+                authorName = "",
+                authorBio = "",
+                authorAvatarUrl = "",
+                content = "",
+                voteUpCount = 0,
+                commentCount = 0,
+                sourceLabel = sourceName,
+            )
+        }
+
+    /**
+     * 每次成功加载回答后调用，将新的 paginationInfo 中的 ids 去重后追加进队列。
+     */
+    fun updateFromPaginationInfo(info: DataHolder.Answer.PaginationInfo) {
+        info.nextAnswerIds.forEach { id ->
+            if (seenIds.add(id)) nextQueue.addLast(id)
+        }
+        lastKnownNextId = info.nextAnswerIds.lastOrNull() ?: lastKnownNextId
+        // prevAnswerIds 追加到后退队列末尾（新获得的"更远的"prev），去重
+        info.prevAnswerIds.forEach { id ->
+            if (seenIds.add(id)) prevQueue.addLast(id)
+        }
+    }
+
+    private suspend fun ensureNextQueue(context: Context) {
+        val id = lastKnownNextId ?: return
+        if (nextQueue.isNotEmpty()) return
+        val dest = Article(id = id, type = ArticleType.Answer)
+        val detail = DataHolder.getContentDetail(context, dest) as? DataHolder.Answer ?: return
+        val pagination = detail.paginationInfo ?: return
+        pagination.nextAnswerIds.forEach { newId ->
+            if (seenIds.add(newId)) nextQueue.addLast(newId)
+        }
+        lastKnownNextId = pagination.nextAnswerIds.lastOrNull() ?: lastKnownNextId
+        pagination.prevAnswerIds.forEach { newId ->
+            if (seenIds.add(newId)) prevQueue.addLast(newId)
+        }
+    }
+
+    private suspend fun fetchCached(context: Context, answerId: Long): CachedAnswerContent? {
+        val dest = Article(id = answerId, type = ArticleType.Answer)
+        val detail = DataHolder.getContentDetail(context, dest) as? DataHolder.Answer ?: return null
+        return CachedAnswerContent(
+            article = dest,
+            title = detail.question.title,
+            authorName = detail.author.name,
+            authorBio = detail.author.headline,
+            authorAvatarUrl = detail.author.avatarUrl,
+            content = detail.content,
+            voteUpCount = detail.voteupCount,
+            commentCount = detail.commentCount,
+            sourceLabel = sourceName,
+        )
+    }
+
+    override suspend fun loadPrevious(context: Context): CachedAnswerContent? {
+        val id = prevQueue.removeFirstOrNull() ?: return null
+        val cached = try {
+            fetchCached(context, id)
+        } catch (e: Exception) {
+            Log.w("PaginationInfoNavigator", "Failed to load previous answer content", e)
+            null
+        }
+        if (cached == null) {
+            prevQueue.addFirst(id)
+            return null
+        }
+        answerHistory.add(0, cached)
+        if (currentAnswerIndex >= 0) currentAnswerIndex++
+        return cached
+    }
+
+    override suspend fun loadNext(context: Context): Article? {
+        if (nextAnswerContent != null) {
+            val article = nextAnswerContent!!.article
+            nextAnswerContent = null
+            // prefetchNext 使用 firstOrNull() 不弹出队列，此处消费时统一弹出
+            val dequeued = nextQueue.removeFirstOrNull()
+            if (dequeued != null && dequeued != article.id) {
+                Log.w("PaginationInfoNavigator", "Queue head $dequeued != prefetched ${article.id}, possible state mismatch")
+            }
+            return article
+        }
+        ensureNextQueue(context)
+        val id = nextQueue.removeFirstOrNull() ?: return null
+        return Article(id = id, type = ArticleType.Answer)
+    }
+
+    // currentArticleId 未使用：队列来自 API，无需过滤当前回答
+    override suspend fun prefetchNext(context: Context, currentArticleId: Long) {
+        if (nextAnswerContent != null) return
+        ensureNextQueue(context)
+        val id = nextQueue.firstOrNull() ?: return
+        try {
+            nextAnswerContent = fetchCached(context, id)
+        } catch (e: Exception) {
+            Log.w("PaginationInfoNavigator", "Failed to pre-load next answer content", e)
+        }
+    }
+}

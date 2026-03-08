@@ -1115,7 +1115,7 @@ fun ArticleScreen(
         // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
         LaunchedEffect(nav?.nextAnswer) {
             val cached = nav?.nextAnswer ?: return@LaunchedEffect
-            val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true) ?: return@LaunchedEffect
+            val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
             val articleId = cached.article.id.toString()
             if (wv.contentId != articleId) {
                 wv.contentId = articleId
@@ -1129,7 +1129,7 @@ fun ArticleScreen(
         }
         LaunchedEffect(nav?.previousAnswer) {
             val cached = nav?.previousAnswer ?: return@LaunchedEffect
-            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false)
+            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
             val articleId = cached.article.id.toString()
             if (wv.contentId != articleId) {
                 wv.contentId = articleId
@@ -1359,7 +1359,7 @@ private fun CachedAnswerPreview(
                     if (sharedData != null) {
                         AndroidView(
                             factory = { ctx ->
-                                val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
+                                val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext, cached.article.id)
                                 (wv.parent as? ViewGroup)?.removeView(wv)
                                 FrameLayout(ctx).apply { addView(wv) }
                             },

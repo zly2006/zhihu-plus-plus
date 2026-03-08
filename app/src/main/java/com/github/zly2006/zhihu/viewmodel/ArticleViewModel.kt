@@ -187,13 +187,7 @@ class ArticleViewModel(
         var nextTag: String? = null
             private set
 
-        companion object {
-            private var tagCounter = 0
-
-            private fun nextWebViewTag() = "zhihu_wv_${tagCounter++}"
-        }
-
-        fun getOrCreateMainWebView(context: Context): CustomWebView {
+        fun getOrCreateMainWebView(context: Context, answerId: Long): CustomWebView {
             mainWebView?.let { return it }
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
@@ -207,7 +201,7 @@ class ArticleViewModel(
                     setupUpWebviewClient()
                 }.also {
                     mainWebView = it
-                    mainTag = nextWebViewTag()
+                    mainTag = "wv_main_$answerId"
                     it.tag = mainTag
                 }
         }
@@ -241,7 +235,7 @@ class ArticleViewModel(
             }
         }
 
-        fun getOrCreatePreviewWebView(context: Context, isNext: Boolean): CustomWebView {
+        fun getOrCreatePreviewWebView(context: Context, isNext: Boolean, answerId: Long): CustomWebView {
             val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
             if (existing != null) return existing
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -257,11 +251,11 @@ class ArticleViewModel(
                 }.also {
                     if (isNext) {
                         nextPreviewWebView = it
-                        nextTag = nextWebViewTag()
+                        nextTag = "wv_next_$answerId"
                         it.tag = nextTag
                     } else {
                         previousPreviewWebView = it
-                        prevTag = nextWebViewTag()
+                        prevTag = "wv_prev_$answerId"
                         it.tag = prevTag
                     }
                 }
@@ -345,9 +339,21 @@ class ArticleViewModel(
                             )
                             // 设置问题回答导航器（如果当前不是收藏夹导航器）
                             if (sharedData.navigator !is com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator) {
-                                val nav = sharedData.navigator as? com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator
-                                if (nav == null || nav.questionId != questionId) {
-                                    sharedData.navigator = com.github.zly2006.zhihu.navigator
+                                val existingNav = sharedData.navigator
+                                val isSameQuestion = when (existingNav) {
+                                    is com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator -> existingNav.questionId == questionId
+                                    is com.github.zly2006.zhihu.navigator.PaginationInfoNavigator -> existingNav.questionId == questionId
+                                    else -> false
+                                }
+                                if (isSameQuestion) {
+                                    // 同一问题内导航：更新队列，补充新回答的 prev/next ids
+                                    (existingNav as? com.github.zly2006.zhihu.navigator.PaginationInfoNavigator)
+                                        ?.let { nav -> answer.paginationInfo?.let { nav.updateFromPaginationInfo(it) } }
+                                } else {
+                                    sharedData.navigator = answer.paginationInfo?.let {
+                                        com.github.zly2006.zhihu.navigator
+                                            .PaginationInfoNavigator(questionId, it)
+                                    } ?: com.github.zly2006.zhihu.navigator
                                         .QuestionAnswerNavigator(questionId)
                                 }
                             }
