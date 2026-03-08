@@ -63,7 +63,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun ContentFilterSettingsScreen(
     setting: String = "",
-    onNavigateBack: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -93,7 +92,7 @@ fun ContentFilterSettingsScreen(
             TopAppBar(
                 title = { Text("推荐系统与内容过滤") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

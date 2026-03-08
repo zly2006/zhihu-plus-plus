@@ -1,7 +1,9 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -41,8 +43,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -82,13 +88,15 @@ import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
+
+const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 @SuppressLint("RestrictedApi")
 @Composable
@@ -99,7 +107,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
 
     val keySurveyDone = "survey_feedback_done"
-    val surveyUrl = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
     var showSurveyDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!preferences.getBoolean(keySurveyDone, false)) {
@@ -124,9 +131,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 TextButton(onClick = {
                     showSurveyDialog = false
                     preferences.edit { putBoolean(keySurveyDone, true) }
-                    val intent = android.content.Intent(
-                        android.content.Intent.ACTION_VIEW,
-                        surveyUrl.toUri(),
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        SURVEY_URL.toUri(),
                     )
                     context.startActivity(intent)
                 }) { Text("去填写") }
@@ -146,6 +153,21 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     // 底部导航栏刷新功能
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
+
+    // 滚动时自动隐藏底部导航栏
+    val autoHideBottomBar = remember { preferences.getBoolean("autoHideBottomBar", false) }
+    var isBottomBarVisible by remember { mutableStateOf(true) }
+    val bottomBarScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                when {
+                    available.y < -3f -> isBottomBarVisible = false
+                    available.y > 3f -> isBottomBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -203,10 +225,17 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(bottomBarScrollConnection),
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
-                if (isTopLevelDest(navEntry)) {
+                // 页面切换时重置底部导航栏可见状态
+                LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                AnimatedVisibility(
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    enter = slideInVertically(tween(200)) { it },
+                    exit = slideOutVertically(tween(200)) { it },
+                ) {
                     NavigationBar(
                         modifier = modifier.height(56.dp + bottomPadding),
                     ) {
@@ -373,9 +402,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(search) {
-                        navController.popBackStack()
-                    }
+                    SearchScreen(search)
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
@@ -391,65 +418,42 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(
-                        pin,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    PinScreen(pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
                     BlocklistSettingsScreen(
                         innerPadding = innerPadding,
-                        onNavigateBack = {
-                            navController.popBackStack()
-                        },
                     )
                 }
                 composable<Notification> {
-                    val viewModel = viewModel<NotificationViewModel>()
-                    NotificationScreen(
-                        viewModel = viewModel,
-                        onBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    NotificationScreen()
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen(
-                        onBack = {
-                            navController.popBackStack()
-                        },
-                    )
+                    NotificationSettingsScreen()
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen {
-                        navController.popBackStack()
-                    }
+                    SentenceSimilarityTestScreen()
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
                     AppearanceSettingsScreen(
                         setting = args.setting,
-                        onNavigateBack = { navController.popBackStack() },
                     )
                 }
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
                         setting = args.setting,
-                        onNavigateBack = { navController.popBackStack() },
                     )
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                    )
+                    SystemAndUpdateSettingsScreen()
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen(
-                        onNavigateBack = { navController.popBackStack() },
-                    )
+                    DeveloperSettingsScreen()
+                }
+                composable<Account.DeveloperSettings.ColorScheme> {
+                    ColorSchemeScreen()
                 }
             }
         }

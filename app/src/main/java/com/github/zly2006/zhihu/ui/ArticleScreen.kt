@@ -8,12 +8,14 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -82,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -108,10 +111,12 @@ import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
 import com.github.zly2006.zhihu.markdown.Render
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -167,6 +172,24 @@ enum class VoteUpState(
     Down("down"),
     Neutral("neutral"),
 }
+
+private val VoteUpNeutralContent = Color(0xFF3671EE)
+private val VoteUpNeutralContentDark = Color(0xFF628DF7)
+
+@Composable
+fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
+
+@Composable
+fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
+    containerColor = voteUpNeutralContent(),
+    contentColor = Color.White,
+)
+
+@Composable
+fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
+    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+)
 
 @Composable
 fun ArticleActionsMenu(
@@ -436,7 +459,7 @@ fun ArticleActionsMenu(
 
                         MenuActionButton(
                             icon = Icons.Outlined.DesktopWindows,
-                            text = "在浏览器中打开",
+                            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
                             onClick = {
                                 coroutineScope.launch {
                                     OpenInBrowser.openUrlInBrowser(context, article)
@@ -509,6 +532,7 @@ fun ArticleScreen(
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     val buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
+    val autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
     val answerSwitchMode by remember { mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical") }
     val pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
@@ -764,7 +788,11 @@ fun ArticleScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50))
                                     .background(
-                                        color = Color(0xFF40B6F6),
+                                        color = if (viewModel.voteUpState == VoteUpState.Neutral) {
+                                            voteUpNeutralContent().copy(alpha = 0.1f)
+                                        } else {
+                                            voteUpNeutralContent()
+                                        },
                                     ),
                                 horizontalArrangement = Arrangement.Start,
                             ) {
@@ -772,10 +800,7 @@ fun ArticleScreen(
                                     VoteUpState.Neutral -> {
                                         Button(
                                             onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF40B6F6),
-                                                contentColor = Color.Black,
-                                            ),
+                                            colors = voteUpNeutralButtonColors(),
                                             shape = RectangleShape,
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
@@ -786,10 +811,7 @@ fun ArticleScreen(
                                         }
                                         Button(
                                             onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF40B6F6),
-                                                contentColor = Color.Black,
-                                            ),
+                                            colors = voteUpNeutralButtonColors(),
                                             shape = RectangleShape,
                                             modifier = Modifier
                                                 .height(ButtonDefaults.MinHeight)
@@ -803,10 +825,7 @@ fun ArticleScreen(
                                     VoteUpState.Up -> {
                                         Button(
                                             onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF0D47A1),
-                                                contentColor = Color.White,
-                                            ),
+                                            colors = voteUpActiveButtonColors(),
                                             shape = RectangleShape,
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
@@ -821,10 +840,7 @@ fun ArticleScreen(
                                     VoteUpState.Down -> {
                                         Button(
                                             onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color(0xFF0D47A1),
-                                                contentColor = Color.White,
-                                            ),
+                                            colors = voteUpActiveButtonColors(),
                                             shape = RectangleShape,
                                             modifier = Modifier.height(ButtonDefaults.MinHeight),
                                             contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1010,7 +1026,7 @@ fun ArticleScreen(
                     if (preferences.getBoolean("articleUseWebview", true)) {
                         WebviewComp(
                             scrollState = scrollState,
-                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                         ) {
                             it.isVerticalScrollBarEnabled = false
                             it.setupUpWebviewClient {
@@ -1145,11 +1161,21 @@ fun ArticleScreen(
 
     if (article.type == ArticleType.Answer && buttonSkipAnswer) {
         var navigatingToNextAnswer by remember { mutableStateOf(false) }
+        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+        val skipButtonAlpha by animateFloatAsState(
+            targetValue = if (showSkipButton) 1f else 0f,
+            animationSpec = tween(200),
+            label = "skipButtonAlpha",
+        )
         DraggableRefreshButton(
+            // graphicsLayer 在 offset 之前，确保 alpha 动画作用在正确位置
+            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
             onClick = {
-                navigatingToNextAnswer = true
-                navigateToNext()
-                navigatingToNextAnswer = false
+                if (showSkipButton) {
+                    navigatingToNextAnswer = true
+                    navigateToNext()
+                    navigatingToNextAnswer = false
+                }
             },
             preferenceName = "buttonSkipAnswer",
         ) {
@@ -1335,13 +1361,16 @@ private fun CachedAnswerPreview(
                             factory = { ctx ->
                                 val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext)
                                 (wv.parent as? ViewGroup)?.removeView(wv)
-                                wv
+                                FrameLayout(ctx).apply { addView(wv) }
                             },
-                            update = {
+                            update = { frameLayout ->
+                                val tag = if (isNext) sharedData.nextTag else sharedData.prevTag
+                                val wv = frameLayout.findViewWithTag<CustomWebView>(tag)
+                                    ?: return@AndroidView
                                 val articleId = cached.article.id.toString()
-                                if (it.contentId != articleId) {
-                                    it.contentId = articleId
-                                    it.loadZhihu(
+                                if (wv.contentId != articleId) {
+                                    wv.contentId = articleId
+                                    wv.loadZhihu(
                                         "https://www.zhihu.com/answer/${cached.article.id}",
                                         prepareContentDocument(cached.content, context).apply {
                                             title(cached.title)
@@ -1350,7 +1379,8 @@ private fun CachedAnswerPreview(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().weight(1f),
-                            onRelease = { wv ->
+                            onRelease = { frameLayout ->
+                                val wv = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
                                 // Only detach if still the shared preview WebView (not claimed as main)
                                 val isStillPreview = if (isNext) {
                                     sharedData.nextPreviewWebView === wv

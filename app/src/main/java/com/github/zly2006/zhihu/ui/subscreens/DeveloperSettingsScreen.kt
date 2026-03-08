@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.SentenceSimilarityTest
@@ -64,9 +65,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DeveloperSettingsScreen(
-    onNavigateBack: () -> Unit,
-) {
+fun DeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -87,7 +86,7 @@ fun DeveloperSettingsScreen(
             TopAppBar(
                 title = { Text("开发者选项") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -111,7 +110,7 @@ fun DeveloperSettingsScreen(
                         putBoolean("developer", it)
                     }
                     if (!it) {
-                        onNavigateBack()
+                        navigator.onNavigateBack()
                     }
                 },
             )
@@ -173,6 +172,10 @@ fun DeveloperSettingsScreen(
                 Button(onClick = {
                     navigator.onNavigate(SentenceSimilarityTest)
                 }) { Text("句子相似度") }
+
+                Button(onClick = {
+                    navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
+                }) { Text("Color Scheme") }
             }
 
             // TTS引擎信息显示

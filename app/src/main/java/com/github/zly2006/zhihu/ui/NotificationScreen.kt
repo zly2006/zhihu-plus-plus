@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -70,12 +71,10 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationScreen(
-    viewModel: NotificationViewModel,
-    onBack: () -> Unit,
-) {
+fun NotificationScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val viewModel = viewModel<NotificationViewModel>()
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -95,7 +94,7 @@ fun NotificationScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

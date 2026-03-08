@@ -40,8 +40,7 @@ class HomeFeedViewModel :
     }
 
     public override suspend fun fetchFeeds(context: Context) {
-        val httpClient = AccountData.httpClient(context)
-        markItemsAsTouched(context, httpClient)
+        markItemsAsTouched(context)
         super.fetchFeeds(context)
     }
 

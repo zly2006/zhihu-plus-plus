@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.LocalNavigator
 
 enum class NotificationType(
     val displayName: String,
@@ -76,9 +77,8 @@ object NotificationPreferences {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NotificationSettingsScreen(
-    onBack: () -> Unit,
-) {
+fun NotificationSettingsScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
 
     var systemNotificationSettings by remember {
@@ -102,7 +102,7 @@ fun NotificationSettingsScreen(
             TopAppBar(
                 title = { Text("通知设置") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

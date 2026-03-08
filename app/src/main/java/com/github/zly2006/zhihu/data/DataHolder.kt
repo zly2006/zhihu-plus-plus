@@ -21,7 +21,7 @@ object DataHolder {
     ): Content? {
         val apiUrl = when (dest.type) {
             ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,ip_info,question.topics,reaction.relation.voting"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting"
             // ^ question.topics 后面的字段可能有点bug。
         }
 
@@ -298,7 +298,15 @@ object DataHolder {
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
-    ) : Content
+        val paginationInfo: PaginationInfo? = null,
+    ) : Content {
+        @Serializable
+        data class PaginationInfo(
+            val index: Int,
+            val prevAnswerIds: List<Long> = emptyList(),
+            val nextAnswerIds: List<Long> = emptyList(),
+        )
+    }
 
     @Serializable
     data class Article(

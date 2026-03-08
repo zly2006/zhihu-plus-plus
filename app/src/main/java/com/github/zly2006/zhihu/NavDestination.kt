@@ -64,7 +64,10 @@ data object Account : NavDestination, TopLevelDestination {
     data object SystemAndUpdateSettings : NavDestination
 
     @Serializable
-    data object DeveloperSettings : NavDestination
+    data object DeveloperSettings : NavDestination {
+        @Serializable
+        data object ColorScheme : NavDestination
+    }
 }
 
 @Serializable
@@ -152,6 +155,7 @@ data class Person(
      */
     var urlToken: String,
     val name: String = "loading...",
+    val jumpTo: String = "",
 ) : NavDestination {
     override fun hashCode(): Int {
         if (id != EMPTY_ID) {

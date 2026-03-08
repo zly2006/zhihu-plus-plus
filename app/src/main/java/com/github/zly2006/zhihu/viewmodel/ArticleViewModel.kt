@@ -35,6 +35,8 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -49,11 +51,16 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
@@ -179,6 +186,20 @@ class ArticleViewModel(
         var nextPreviewWebView: CustomWebView? = null
             private set
 
+        // 与 WebView 实例绑定的 tag，用于 FrameLayout 包装模式中定位子 WebView
+        var mainTag: String? = null
+            private set
+        var prevTag: String? = null
+            private set
+        var nextTag: String? = null
+            private set
+
+        companion object {
+            private var tagCounter = 0
+
+            private fun nextWebViewTag() = "zhihu_wv_${tagCounter++}"
+        }
+
         fun getOrCreateMainWebView(context: Context): CustomWebView {
             mainWebView?.let { return it }
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -193,6 +214,8 @@ class ArticleViewModel(
                     setupUpWebviewClient()
                 }.also {
                     mainWebView = it
+                    mainTag = nextWebViewTag()
+                    it.tag = mainTag
                 }
         }
 
@@ -206,14 +229,20 @@ class ArticleViewModel(
                 AnswerTransitionDirection.HORIZONTAL_NEXT, AnswerTransitionDirection.VERTICAL_NEXT -> {
                     previousPreviewWebView?.destroy()
                     previousPreviewWebView = mainWebView
+                    prevTag = mainTag
                     mainWebView = nextPreviewWebView
+                    mainTag = nextTag
                     nextPreviewWebView = null
+                    nextTag = null
                 }
                 AnswerTransitionDirection.HORIZONTAL_PREVIOUS, AnswerTransitionDirection.VERTICAL_PREVIOUS -> {
                     nextPreviewWebView?.destroy()
                     nextPreviewWebView = mainWebView
+                    nextTag = mainTag
                     mainWebView = previousPreviewWebView
+                    mainTag = prevTag
                     previousPreviewWebView = null
+                    prevTag = null
                 }
                 else -> {}
             }
@@ -233,7 +262,15 @@ class ArticleViewModel(
                     }
                     setupUpWebviewClient()
                 }.also {
-                    if (isNext) nextPreviewWebView = it else previousPreviewWebView = it
+                    if (isNext) {
+                        nextPreviewWebView = it
+                        nextTag = nextWebViewTag()
+                        it.tag = nextTag
+                    } else {
+                        previousPreviewWebView = it
+                        prevTag = nextWebViewTag()
+                        it.tag = prevTag
+                    }
                 }
         }
 
@@ -261,10 +298,13 @@ class ArticleViewModel(
         override fun onCleared() {
             mainWebView?.destroy()
             mainWebView = null
+            mainTag = null
             previousPreviewWebView?.destroy()
             previousPreviewWebView = null
+            prevTag = null
             nextPreviewWebView?.destroy()
             nextPreviewWebView = null
+            nextTag = null
             super.onCleared()
         }
     }
