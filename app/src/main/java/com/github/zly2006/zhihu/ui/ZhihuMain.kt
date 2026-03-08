@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -43,8 +44,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -149,6 +154,21 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     val tapToScrollToTopEnabled = remember { preferences.getBoolean("bottomBarTapScrollToTop", true) }
 
+    // 滚动时自动隐藏底部导航栏
+    val autoHideBottomBar = remember { preferences.getBoolean("autoHideBottomBar", false) }
+    var isBottomBarVisible by remember { mutableStateOf(true) }
+    val bottomBarScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                when {
+                    available.y < -3f -> isBottomBarVisible = false
+                    available.y > 3f -> isBottomBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
         route.hasRoute<Home>() -> 0
@@ -205,10 +225,17 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(bottomBarScrollConnection),
         bottomBar = {
             val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
-                if (isTopLevelDest(navEntry)) {
+                // 页面切换时重置底部导航栏可见状态
+                LaunchedEffect(navEntry) { isBottomBarVisible = true }
+                AnimatedVisibility(
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    enter = slideInVertically(tween(200)) { it },
+                    exit = slideOutVertically(tween(200)) { it },
+                ) {
                     NavigationBar(
                         modifier = modifier,
                     ) {

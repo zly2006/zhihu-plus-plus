@@ -123,8 +123,9 @@ fun AppearanceSettingsScreen(
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
 
+            // ── 主题 ────────────────────────────────────────────────────────────
             Text(
-                "主题设置",
+                "主题",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
@@ -332,6 +333,156 @@ fun AppearanceSettingsScreen(
                 )
             }
 
+            // ── 阅读 ────────────────────────────────────────────────────────────
+            Text(
+                "阅读",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("字号", style = MaterialTheme.typography.bodyLarge)
+                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = fontSize.toFloat(),
+                    onValueChange = {
+                        fontSize = it.toInt()
+                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
+                    },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+            }
+
+            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("行高", style = MaterialTheme.typography.bodyLarge)
+                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = lineHeight.toFloat(),
+                    onValueChange = {
+                        lineHeight = it.toInt()
+                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
+                    },
+                    valueRange = 100f..300f,
+                    steps = 19,
+                )
+            }
+
+            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
+            SwitchSettingItem(
+                title = "评论区标题上下留白",
+                description = "为评论区卡片顶部\"评论/回复\"标题增加间距，提升视觉层次感",
+                checked = commentTopTextExtraSpacing.value,
+                onCheckedChange = {
+                    commentTopTextExtraSpacing.value = it
+                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
+                },
+            )
+
+            // ── 信息流 ──────────────────────────────────────────────────────────
+            Text(
+                "信息流",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
+            SwitchSettingItem(
+                title = "显示 Feed 卡片缩略图",
+                description = "在信息流卡片中显示文章缩略图",
+                checked = showFeedThumbnail.value,
+                onCheckedChange = {
+                    showFeedThumbnail.value = it
+                    preferences.edit { putBoolean("showFeedThumbnail", it) }
+                },
+            )
+
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SwitchSettingItem(
+                title = "显示刷新 FAB 按钮",
+                description = "在页面上显示可拖动的刷新按钮",
+                checked = showRefreshFab.value,
+                onCheckedChange = {
+                    showRefreshFab.value = it
+                    preferences.edit { putBoolean("showRefreshFab", it) }
+                },
+            )
+
+            var feedCardStyleExpanded by remember { mutableStateOf(false) }
+            val feedCardStyle = remember {
+                mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
+            }
+            val feedCardStyleOptions = listOf(
+                "card" to "卡片样式",
+                "divider" to "分割线样式",
+            )
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "信息流样式",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = feedCardStyleExpanded,
+                    onExpandedChange = { feedCardStyleExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = feedCardStyleExpanded,
+                        onDismissRequest = { feedCardStyleExpanded = false },
+                    ) {
+                        feedCardStyleOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    feedCardStyle.value = mode
+                                    preferences.edit { putString("feedCardStyle", mode) }
+                                    feedCardStyleExpanded = false
+                                    Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── 回答页 ──────────────────────────────────────────────────────────
+            Text(
+                "回答页",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
             val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
             SwitchSettingItem(
                 title = "使用 WebView 显示文章",
@@ -405,8 +556,8 @@ fun AppearanceSettingsScreen(
 
             val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
             SwitchSettingItem(
-                title = "标题栏自动隐藏",
-                description = "滚动时自动隐藏标题栏",
+                title = "回答标题自动隐藏",
+                description = "滚动时自动隐藏回答标题栏",
                 checked = isTitleAutoHide.value,
                 onCheckedChange = {
                     isTitleAutoHide.value = it
@@ -417,11 +568,23 @@ fun AppearanceSettingsScreen(
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
             SwitchSettingItem(
                 title = "显示跳转下一个回答按钮",
-                description = "在回答页面显示快速跳转按钮",
+                description = "在回答页面显示可拖动的快速跳转按钮",
                 checked = buttonSkipAnswer.value,
                 onCheckedChange = {
                     buttonSkipAnswer.value = it
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
+                },
+            )
+
+            val autoHideSkipAnswerButton = remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+            SwitchSettingItem(
+                title = "滚动时自动隐藏跳转按钮",
+                description = "上划时淡出[下一个回答]按钮，下划时淡入显示",
+                checked = autoHideSkipAnswerButton.value,
+                enabled = buttonSkipAnswer.value,
+                onCheckedChange = {
+                    autoHideSkipAnswerButton.value = it
+                    preferences.edit { putBoolean("autoHideSkipAnswerButton", it) }
                 },
             )
 
@@ -436,7 +599,6 @@ fun AppearanceSettingsScreen(
                 },
             )
 
-            // 回答切换手势设置
             var answerSwitchExpanded by remember { mutableStateOf(false) }
             val answerSwitchMode = remember {
                 mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
@@ -446,7 +608,6 @@ fun AppearanceSettingsScreen(
                 "vertical" to "上下滑动切换",
                 "horizontal" to "左右滑动切换",
             )
-
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text(
                     "回答切换手势",
@@ -492,198 +653,9 @@ fun AppearanceSettingsScreen(
                 }
             }
 
-            val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
-            SwitchSettingItem(
-                title = "显示 Feed 卡片缩略图",
-                description = "在信息流卡片中显示文章缩略图",
-                checked = showFeedThumbnail.value,
-                onCheckedChange = {
-                    showFeedThumbnail.value = it
-                    preferences.edit { putBoolean("showFeedThumbnail", it) }
-                },
-            )
-
-            // 信息流样式设置
-            var feedCardStyleExpanded by remember { mutableStateOf(false) }
-            val feedCardStyle = remember {
-                mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
-            }
-            val feedCardStyleOptions = listOf(
-                "card" to "卡片样式",
-                "divider" to "分割线样式",
-            )
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(
-                    "信息流样式",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-                Text(
-                    "卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = feedCardStyleExpanded,
-                    onExpandedChange = { feedCardStyleExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = feedCardStyleExpanded,
-                        onDismissRequest = { feedCardStyleExpanded = false },
-                    ) {
-                        feedCardStyleOptions.forEach { (mode, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    feedCardStyle.value = mode
-                                    preferences.edit { putString("feedCardStyle", mode) }
-                                    feedCardStyleExpanded = false
-                                    Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-
-            // 分享操作设置
-            var shareActionExpanded by remember { mutableStateOf(false) }
-            val shareActionMode = remember {
-                mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
-            }
-            val shareActionOptions = listOf(
-                "ask" to "询问",
-                "copy" to "复制链接",
-                "share" to "Android分享",
-            )
-
-            HighlightableSettingContainer(
-                settingKey = "shareAction",
-                highlightedKey = setting,
-                onPositioned = { itemPositions["shareAction"] = it },
-                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
-            ) {
-                Text(
-                    "分享操作",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-                Text(
-                    "点击分享按钮时的默认行为",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = shareActionExpanded,
-                    onExpandedChange = { shareActionExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = shareActionExpanded,
-                        onDismissRequest = { shareActionExpanded = false },
-                    ) {
-                        shareActionOptions.forEach { (mode, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    shareActionMode.value = mode
-                                    preferences.edit { putString("shareActionMode", mode) }
-                                    shareActionExpanded = false
-                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-
+            // ── 底部导航栏 ──────────────────────────────────────────────────────
             Text(
-                "交互设置",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-            )
-
-            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
-            SwitchSettingItem(
-                title = "点击底部导航栏刷新",
-                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
-                checked = tapToRefresh.value,
-                onCheckedChange = {
-                    tapToRefresh.value = it
-                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
-                },
-            )
-
-            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
-            SwitchSettingItem(
-                title = "显示刷新FAB按钮",
-                description = "在页面上显示可拖动的刷新按钮",
-                checked = showRefreshFab.value,
-                onCheckedChange = {
-                    showRefreshFab.value = it
-                    preferences.edit { putBoolean("showRefreshFab", it) }
-                },
-            )
-
-            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
-            SwitchSettingItem(
-                title = "评论区标题上下留白",
-                description = "为评论区卡片顶部“评论/回复”标题增加间距，提升视觉层次感",
-                checked = commentTopTextExtraSpacing.value,
-                onCheckedChange = {
-                    commentTopTextExtraSpacing.value = it
-                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
-                },
-            )
-
-            Text(
-                "搜索设置",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-            )
-
-            val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
-            HighlightableSettingContainer(
-                settingKey = "showSearchHotSearch",
-                highlightedKey = setting,
-                onPositioned = { itemPositions["showSearchHotSearch"] = it },
-            ) {
-                SwitchSettingItem(
-                    title = "搜索界面显示热搜",
-                    description = "在搜索界面空白时显示知乎热搜关键词",
-                    checked = showSearchHotSearch.value,
-                    onCheckedChange = {
-                        showSearchHotSearch.value = it
-                        preferences.edit { putBoolean("showSearchHotSearch", it) }
-                    },
-                )
-            }
-
-            Text(
-                "底部栏设置",
+                "底部导航栏",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -746,62 +718,130 @@ fun AppearanceSettingsScreen(
                         )
                         Checkbox(
                             checked = isChecked,
-                            onCheckedChange = null, // Handled by Row click
+                            onCheckedChange = null,
                             enabled = isEnabled,
                         )
                     }
                 }
             }
 
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
+            SwitchSettingItem(
+                title = "点击底部导航栏刷新",
+                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
+                checked = tapToRefresh.value,
+                onCheckedChange = {
+                    tapToRefresh.value = it
+                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
+                },
+            )
+
+            val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+            SwitchSettingItem(
+                title = "滚动时自动隐藏底部导航栏",
+                description = "上划时隐藏底部导航栏，下划时重新显示",
+                checked = autoHideBottomBar.value,
+                onCheckedChange = {
+                    autoHideBottomBar.value = it
+                    preferences.edit { putBoolean("autoHideBottomBar", it) }
+                },
+            )
+
+            // ── 交互 ────────────────────────────────────────────────────────────
             Text(
-                "阅读设置",
+                "交互",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("字号", style = MaterialTheme.typography.bodyLarge)
-                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
+            HighlightableSettingContainer(
+                settingKey = "shareAction",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["shareAction"] = it },
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+            ) {
+                var shareActionExpanded by remember { mutableStateOf(false) }
+                val shareActionMode = remember {
+                    mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
                 }
-                Slider(
-                    value = fontSize.toFloat(),
-                    onValueChange = {
-                        fontSize = it.toInt()
-                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
-                    },
-                    valueRange = 50f..200f,
-                    steps = 14,
+                val shareActionOptions = listOf(
+                    "ask" to "询问",
+                    "copy" to "复制链接",
+                    "share" to "Android分享",
                 )
+                Text(
+                    "分享操作",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "点击分享按钮时的默认行为",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = shareActionExpanded,
+                    onExpandedChange = { shareActionExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = shareActionExpanded,
+                        onDismissRequest = { shareActionExpanded = false },
+                    ) {
+                        shareActionOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    shareActionMode.value = mode
+                                    preferences.edit { putString("shareActionMode", mode) }
+                                    shareActionExpanded = false
+                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
-            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("行高", style = MaterialTheme.typography.bodyLarge)
-                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
-                }
-                Slider(
-                    value = lineHeight.toFloat(),
-                    onValueChange = {
-                        lineHeight = it.toInt()
-                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
-                    },
-                    valueRange = 100f..300f,
-                    steps = 19,
-                )
-            }
-
+            // ── 搜索 ────────────────────────────────────────────────────────────
             Text(
-                "导航设置",
+                "搜索",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+            HighlightableSettingContainer(
+                settingKey = "showSearchHotSearch",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["showSearchHotSearch"] = it },
+            ) {
+                SwitchSettingItem(
+                    title = "搜索界面显示热搜",
+                    description = "在搜索界面空白时显示知乎热搜关键词",
+                    checked = showSearchHotSearch.value,
+                    onCheckedChange = {
+                        showSearchHotSearch.value = it
+                        preferences.edit { putBoolean("showSearchHotSearch", it) }
+                    },
+                )
+            }
+
+            // ── 导航 ────────────────────────────────────────────────────────────
+            Text(
+                "技术性导航设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),

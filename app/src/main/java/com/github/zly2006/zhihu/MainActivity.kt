@@ -10,13 +10,13 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
-import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
@@ -38,26 +38,28 @@ import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
+import com.github.zly2006.zhihu.util.ZseSigner
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.system.measureNanoTime
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
@@ -66,7 +68,6 @@ class MainActivity : ComponentActivity() {
 
     val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
-    lateinit var webview: WebView
     lateinit var history: HistoryStorage
     val httpClient by lazy {
         AccountData.httpClient(this)
@@ -175,7 +176,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        preferences.edit().putLong(KEY_LAST_LAUNCH_TIMESTAMP, now).apply()
+        preferences.edit { putLong(KEY_LAST_LAUNCH_TIMESTAMP, now) }
 
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
@@ -190,19 +191,13 @@ class MainActivity : ComponentActivity() {
         // 初始化emoji管理器
         lifecycleScope.launch {
             try {
-                com.github.zly2006.zhihu.util.EmojiManager
+                EmojiManager
                     .initialize(this@MainActivity)
                 Log.i(TAG, "Emoji manager initialized")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize emoji manager", e)
             }
         }
-
-        webview = WebView(this)
-        Log.i(TAG, "Webview created")
-        webview.setupUpWebviewClient()
-        webview.settings.javaScriptEnabled = true
-        webview.loadUrl("https://zhihu-plus.internal/assets/zse.html")
 
         setContent {
             navController = rememberNavController()
@@ -457,7 +452,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    suspend fun signRequest96(url: String, body: String?): String {
+    fun signRequest96(url: String, body: String?): String {
         val dc0 = AccountData.data.cookies["d_c0"] ?: ""
         val pathname = "/" + url.substringAfter("//").substringAfter('/')
         val signSource = listOfNotNull(
@@ -467,22 +462,13 @@ class MainActivity : ComponentActivity() {
             body,
         ).joinToString("+")
         val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-        val timeStart = System.currentTimeMillis()
-        val future = CompletableDeferred<String>()
-        runOnUiThread {
-            webview.evaluateJavascript("exports.encrypt('$md5')") {
-                if (BuildConfig.DEBUG) {
-                    val time = System.currentTimeMillis() - timeStart
-                    Log.i(TAG, "Sign request: $url")
-                    Log.i(TAG, "Sign source: $signSource")
-                    Log.i(TAG, "Sign input: $md5")
-                    Log.i(TAG, "Sign result: $it")
-                    Log.i(TAG, "Sign time: $time ms")
-                }
-                future.complete(it.trim('"'))
-            }
+        val kotlinSign: String
+        val kotlinTime = measureNanoTime {
+            kotlinSign = ZseSigner.encryptZseV4(md5)
         }
-        return "2.0_" + future.await()
+        Log.i("signRequest96", "Kotlin signing time: ${kotlinTime / 1_000_000.0} ms")
+
+        return "2.0_$kotlinSign"
     }
 
     fun postHistory(dest: NavDestination) {
@@ -588,7 +574,7 @@ class MainActivity : ComponentActivity() {
                                                     // 无需延迟, Sherpa 本身不会太快
                                                 }
                                                 else -> {
-                                                    kotlinx.coroutines.delay(500)
+                                                    delay(500)
                                                 }
                                             }
                                             runOnUiThread {
