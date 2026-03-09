@@ -565,6 +565,19 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val autoHideArticleBottomBar = remember {
+                mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
+            }
+            SwitchSettingItem(
+                title = "回答底部按钮自动隐藏",
+                description = "上划时隐藏回答底部操作按钮，下划时重新显示",
+                checked = autoHideArticleBottomBar.value,
+                onCheckedChange = {
+                    autoHideArticleBottomBar.value = it
+                    preferences.edit { putBoolean("autoHideArticleBottomBar", it) }
+                },
+            )
+
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
             SwitchSettingItem(
                 title = "显示跳转下一个回答按钮",
