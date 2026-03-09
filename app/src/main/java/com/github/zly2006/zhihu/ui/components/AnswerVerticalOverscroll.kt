@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +94,13 @@ fun AnswerVerticalOverscroll(
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
     var rawDragAccumulator by remember { mutableFloatStateOf(0f) }
 
+    // rememberUpdatedState ensures nestedScrollConnection always reads the latest values
+    // even though it is `remember`-ed without keys.
+    val currentCanGoPrevious by rememberUpdatedState(canGoPrevious)
+    val currentCanGoNext by rememberUpdatedState(canGoNext)
+    val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
+    val currentOnNavigateNext by rememberUpdatedState(onNavigateNext)
+
     fun dampedOffset(rawDelta: Float): Float {
         val sign = if (rawDelta >= 0) 1f else -1f
         return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * DAMPING_FACTOR)).toFloat()
@@ -135,8 +143,8 @@ fun AnswerVerticalOverscroll(
 
                 val atTop = isAtTop()
                 val atBottom = isAtBottom()
-                val canOverscrollDown = delta > 0 && atTop && canGoPrevious
-                val canOverscrollUp = delta < 0 && atBottom && canGoNext
+                val canOverscrollDown = delta > 0 && atTop && currentCanGoPrevious
+                val canOverscrollUp = delta < 0 && atBottom && currentCanGoNext
                 if (canOverscrollDown ||
                     canOverscrollUp ||
                     (overscrollOffset.value > 0 && delta > 0) ||
@@ -158,10 +166,10 @@ fun AnswerVerticalOverscroll(
                 if (overscrollOffset.value != 0f) {
                     val currentOffset = overscrollOffset.value
                     if (abs(currentOffset) >= triggerThresholdPx) {
-                        if (currentOffset > 0 && canGoPrevious) {
-                            onNavigatePrevious()
-                        } else if (currentOffset < 0 && canGoNext) {
-                            onNavigateNext()
+                        if (currentOffset > 0 && currentCanGoPrevious) {
+                            currentOnNavigatePrevious()
+                        } else if (currentOffset < 0 && currentCanGoNext) {
+                            currentOnNavigateNext()
                         }
                     }
                     rawDragAccumulator = 0f
@@ -191,7 +199,9 @@ fun AnswerVerticalOverscroll(
             .nestedScroll(nestedScrollConnection)
             .then(
                 if (isContentNonScrollable) {
-                    Modifier.pointerInput(canGoPrevious, canGoNext) {
+                    // Use Unit key so the gesture handler is never rebuilt mid-gesture;
+                    // current* refs (rememberUpdatedState) handle live value updates.
+                    Modifier.pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragStart = {
                                 rawDragAccumulator = 0f
@@ -200,10 +210,10 @@ fun AnswerVerticalOverscroll(
                             onDragEnd = {
                                 val currentOffset = overscrollOffset.value
                                 if (abs(currentOffset) >= triggerThresholdPx) {
-                                    if (currentOffset > 0 && canGoPrevious) {
-                                        onNavigatePrevious()
-                                    } else if (currentOffset < 0 && canGoNext) {
-                                        onNavigateNext()
+                                    if (currentOffset > 0 && currentCanGoPrevious) {
+                                        currentOnNavigatePrevious()
+                                    } else if (currentOffset < 0 && currentCanGoNext) {
+                                        currentOnNavigateNext()
                                     }
                                 }
                                 rawDragAccumulator = 0f
@@ -224,8 +234,8 @@ fun AnswerVerticalOverscroll(
                                 coroutineScope.launch { overscrollOffset.snapTo(0f) }
                             },
                         ) { _, dragAmount ->
-                            val canDragDown = dragAmount > 0 && canGoPrevious
-                            val canDragUp = dragAmount < 0 && canGoNext
+                            val canDragDown = dragAmount > 0 && currentCanGoPrevious
+                            val canDragUp = dragAmount < 0 && currentCanGoNext
                             val continuing = (overscrollOffset.value > 0 && dragAmount > 0) ||
                                 (overscrollOffset.value < 0 && dragAmount < 0)
                             val reversing = (overscrollOffset.value > 0 && dragAmount < 0) ||
@@ -234,8 +244,8 @@ fun AnswerVerticalOverscroll(
                             if (canDragDown || canDragUp || continuing || reversing) {
                                 rawDragAccumulator += dragAmount
                                 // Clamp to zero crossing
-                                if ((rawDragAccumulator > 0 && !canGoPrevious) ||
-                                    (rawDragAccumulator < 0 && !canGoNext)
+                                if ((rawDragAccumulator > 0 && !currentCanGoPrevious) ||
+                                    (rawDragAccumulator < 0 && !currentCanGoNext)
                                 ) {
                                     rawDragAccumulator = 0f
                                 }

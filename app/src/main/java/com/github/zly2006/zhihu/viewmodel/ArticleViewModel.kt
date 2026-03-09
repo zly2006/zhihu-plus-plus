@@ -163,7 +163,7 @@ class ArticleViewModel(
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {
         /** 活跃的导航器：管理来源、历史记录和预取 */
-        var navigator: com.github.zly2006.zhihu.navigator.AnswerNavigator? = null
+        var navigator: com.github.zly2006.zhihu.navigator.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
 
         /**
          * 导航前由来源界面设置（如 CollectionContentScreen）。

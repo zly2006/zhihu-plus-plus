@@ -197,6 +197,35 @@ class CustomWebView : WebView {
     private var htmlClickListener: HtmlClickListener? = null
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
 
+    private var touchStartY = 0f
+
+    /**
+     * 在 WebView 内容已到达顶部/底部边界时，不 disallow 父 View 拦截触摸事件，
+     * 使 Compose 的 nestedScroll/overscroll 能接管剩余的拖动。
+     * 使用从 ACTION_DOWN 开始的累积位移判断方向，避免逐帧增量在触摸初始时误判。
+     */
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                touchStartY = event.y
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            android.view.MotionEvent.ACTION_MOVE -> {
+                val totalDy = event.y - touchStartY
+                val atTop = scrollY == 0
+                val maxScroll = computeVerticalScrollRange() - computeVerticalScrollExtent()
+                val atBottom = maxScroll <= 0 || scrollY >= maxScroll
+                if ((totalDy > 8f && atTop) || (totalDy < -8f && atBottom)) {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                } else if (totalDy > 8f || totalDy < -8f) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                // 位移未超过阈值时不修改 disallow 状态，保持 ACTION_DOWN 时的 false
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
     // JavaScript 接口类
     inner class JsInterface {
         @JavascriptInterface
