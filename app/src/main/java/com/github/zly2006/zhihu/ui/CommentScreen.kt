@@ -107,6 +107,7 @@ import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -319,6 +320,15 @@ private fun ClickableImageWithMenu(
                         saveImageToGallery(context, httpClient, imageUrl)
                     }
                     showContextMenu = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("分享图片") },
+                onClick = {
+                    showContextMenu = false
+                    coroutineScope.launch {
+                        shareImage(context, httpClient, imageUrl)
+                    }
                 },
             )
         }
