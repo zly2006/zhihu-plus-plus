@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.layout.Box
@@ -23,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-val ProgressIndicatorFooter: @Composable (() -> Unit)? = {
+val ProgressIndicatorFooter: @Composable () -> Unit = {
     Box(
         modifier = Modifier
             .fillMaxWidth()

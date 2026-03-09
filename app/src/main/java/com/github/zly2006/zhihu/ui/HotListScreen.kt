@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -67,10 +68,12 @@ fun HotListScreen() {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 },
+                isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
                     item,
+                    thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
                 ) {
                     if (navDestination != null) {
                         navigator.onNavigate(navDestination)
