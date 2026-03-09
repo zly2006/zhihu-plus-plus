@@ -328,17 +328,17 @@ class PaginationInfoNavigator(
     // 前进队列（有序，无重复）
     private val nextQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
 
-    // 后退队列：API 返回的 prevAnswerIds 已是最近优先顺序，直接使用，firstOrNull() 为最近的上一个回答
+    // 后退队列：firstOrNull() 为最近的上一个回答
     private val prevQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.prevAnswerIds) }
 
     // 续链用：记录最后已知的 answerId，下次 nextQueue 耗尽时从此续链
     private var lastKnownNextId: Long? = initialPaginationInfo.nextAnswerIds.lastOrNull()
 
-    // 已知所有 id 的集合（用于去重）
-    private val seenIds = mutableSetOf<Long>().also {
-        it.addAll(initialPaginationInfo.nextAnswerIds)
-        it.addAll(initialPaginationInfo.prevAnswerIds)
-    }
+    // 仅用于 nextQueue 去重，与 prevQueue 无关
+    private val enqueuedNextIds = mutableSetOf<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
+
+    // 用于 prevQueue 去重
+    private val enqueuedPrevIds = mutableSetOf<Long>().also { it.addAll(initialPaginationInfo.prevAnswerIds) }
 
     // 仅有 id，无标题和作者信息；完整数据需 loadPrevious() 后从 answerHistory 取
     override val previousAnswerPreview: CachedAnswerContent?
@@ -359,15 +359,22 @@ class PaginationInfoNavigator(
 
     /**
      * 每次成功加载回答后调用，将新的 paginationInfo 中的 ids 去重后追加进队列。
+     * nextAnswerIds 追加到队尾；prevAnswerIds 逆序插入队头（最近的排最前）。
      */
     fun updateFromPaginationInfo(info: DataHolder.Answer.PaginationInfo) {
+        // nextQueue：追加尾部，去重
         info.nextAnswerIds.forEach { id ->
-            if (seenIds.add(id)) nextQueue.addLast(id)
+            if (enqueuedNextIds.add(id)) nextQueue.addLast(id)
         }
         lastKnownNextId = info.nextAnswerIds.lastOrNull() ?: lastKnownNextId
-        // prevAnswerIds 追加到后退队列末尾（新获得的"更远的"prev），去重
-        info.prevAnswerIds.forEach { id ->
-            if (seenIds.add(id)) prevQueue.addLast(id)
+
+        // prevQueue：逆序插入头部（prevAnswerIds[0] 是最近的，应排最前）
+        // 同时过滤已在 answerHistory 中的 id，避免重复导航
+        val historyIds = answerHistory.map { it.article.id }.toSet()
+        info.prevAnswerIds.asReversed().forEach { id ->
+            if (enqueuedPrevIds.add(id) && id !in historyIds) {
+                prevQueue.addFirst(id)
+            }
         }
     }
 
@@ -378,11 +385,15 @@ class PaginationInfoNavigator(
         val detail = DataHolder.getContentDetail(context, dest) as? DataHolder.Answer ?: return
         val pagination = detail.paginationInfo ?: return
         pagination.nextAnswerIds.forEach { newId ->
-            if (seenIds.add(newId)) nextQueue.addLast(newId)
+            if (enqueuedNextIds.add(newId)) nextQueue.addLast(newId)
         }
         lastKnownNextId = pagination.nextAnswerIds.lastOrNull() ?: lastKnownNextId
-        pagination.prevAnswerIds.forEach { newId ->
-            if (seenIds.add(newId)) prevQueue.addLast(newId)
+        // 续链时同步填充 prevQueue
+        val historyIds = answerHistory.map { it.article.id }.toSet()
+        pagination.prevAnswerIds.asReversed().forEach { newId ->
+            if (enqueuedPrevIds.add(newId) && newId !in historyIds) {
+                prevQueue.addFirst(newId)
+            }
         }
     }
 
