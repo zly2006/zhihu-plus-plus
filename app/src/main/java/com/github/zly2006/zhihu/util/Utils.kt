@@ -17,14 +17,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.Url
 import io.ktor.http.contentType
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.serializer
 import java.security.MessageDigest
 
-suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
+fun HttpRequestBuilder.signFetchRequest(context: Context) {
     val url = url.buildString()
     val body = if (contentType() == ContentType.Application.Json) {
         body as? String
@@ -34,14 +32,12 @@ suspend fun HttpRequestBuilder.signFetchRequest(context: Context) {
     } else {
         null
     }
-    withContext(Dispatchers.Main) {
-        header("x-zse-93", MainActivity.ZSE93)
-        header(
-            "x-zse-96",
-            (context as? MainActivity)?.signRequest96(url, body),
-        )
-        header("x-requested-with", "fetch")
-    }
+    header("x-zse-93", MainActivity.ZSE93)
+    header(
+        "x-zse-96",
+        (context as? MainActivity)?.signRequest96(url, body),
+    )
+    header("x-requested-with", "fetch")
 }
 
 @OptIn(DelicateCoroutinesApi::class)
