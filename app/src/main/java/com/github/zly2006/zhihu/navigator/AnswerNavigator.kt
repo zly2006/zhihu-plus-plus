@@ -104,11 +104,21 @@ abstract class AnswerNavigator(
     abstract suspend fun prefetchNext(context: Context, currentArticleId: Long)
 
     /**
-     * 从来源加载上一个回答（非历史），在 history 为空时由 navigateToPrevious 调用。
+     * 从来源加载上一个回答（非历史），在 [currentAnswerIndex] == 0（即 [goToPrevious] 返回 null）时由
+     * navigateToPrevious 调用。
      * 加载成功后将内容插入 history 开头（index 0），返回内容以供 pendingInitialContent。
      * 默认实现返回 null（问题导航器无此能力）。
      */
     open suspend fun loadPrevious(context: Context): CachedAnswerContent? = null
+
+    /**
+     * 将 [cached] 插入 history 开头并返回，供 [loadPrevious] 实现共用。
+     * insert at [0] 后 currentAnswerIndex 保持 0，恰好指向新插入条目。
+     */
+    protected fun insertPrevious(cached: CachedAnswerContent): CachedAnswerContent {
+        answerHistory.add(0, cached)
+        return cached
+    }
 }
 
 /**
@@ -264,11 +274,9 @@ class CollectionAnswerNavigator(
             previousQueue.add(0, article)
             return null
         }
-        // 插入到 history 开头，使向后导航可从 goToPrevious() 返回
-        answerHistory.add(0, cached)
-        // currentAnswerIndex 从 0 变为指向同一条目（insertedAt=0，原index+1）
-        if (currentAnswerIndex >= 0) currentAnswerIndex++
-        return cached
+        // 插入到 history 开头：insert at [0] 后 currentAnswerIndex 自动指向新条目（同为 index 0）
+        // 无需调整 currentAnswerIndex
+        return insertPrevious(cached)
     }
 
     override suspend fun prefetchNext(context: Context, currentArticleId: Long) {
@@ -425,9 +433,7 @@ class PaginationInfoNavigator(
             prevQueue.addFirst(id)
             return null
         }
-        answerHistory.add(0, cached)
-        if (currentAnswerIndex >= 0) currentAnswerIndex++
-        return cached
+        return insertPrevious(cached)
     }
 
     override suspend fun loadNext(context: Context): Article? {
