@@ -68,6 +68,7 @@ fun HotListScreen() {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 },
+                isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
