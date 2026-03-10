@@ -35,6 +35,9 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator
+import com.github.zly2006.zhihu.navigator.PaginationInfoNavigator
+import com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -338,23 +341,26 @@ class ArticleViewModel(
                                 ),
                             )
                             // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                            if (sharedData.navigator !is com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator) {
+                            if (sharedData.navigator !is CollectionAnswerNavigator) {
                                 val existingNav = sharedData.navigator
                                 val isSameQuestion = when (existingNav) {
-                                    is com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator -> existingNav.questionId == questionId
-                                    is com.github.zly2006.zhihu.navigator.PaginationInfoNavigator -> existingNav.questionId == questionId
+                                    is QuestionAnswerNavigator -> existingNav.questionId == questionId
+                                    is PaginationInfoNavigator -> existingNav.questionId == questionId
                                     else -> false
                                 }
                                 if (isSameQuestion) {
                                     // 同一问题内导航：更新队列，补充新回答的 prev/next ids
-                                    (existingNav as? com.github.zly2006.zhihu.navigator.PaginationInfoNavigator)
+                                    (existingNav as? PaginationInfoNavigator)
                                         ?.let { nav -> answer.paginationInfo?.let { nav.updateFromPaginationInfo(it) } }
                                 } else {
                                     sharedData.navigator = answer.paginationInfo?.let {
-                                        com.github.zly2006.zhihu.navigator
-                                            .PaginationInfoNavigator(questionId, it)
-                                    } ?: com.github.zly2006.zhihu.navigator
-                                        .QuestionAnswerNavigator(questionId)
+                                        PaginationInfoNavigator(questionId, it)
+                                    } ?: run {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "【回答切换】无法获取分页信息，使用默认回答排序", Toast.LENGTH_SHORT).show()
+                                        }
+                                        QuestionAnswerNavigator(questionId)
+                                    }
                                 }
                             }
                             sharedData.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
