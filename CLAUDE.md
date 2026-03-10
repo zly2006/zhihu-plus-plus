@@ -1,6 +1,6 @@
-# Zhihu++ Copilot Instructions
+# Zhihu++ Agent Instructions
 
-隐私增强的知乎 Android 客户端，支持本地推荐算法、广告屏蔽、内容过滤。
+本项目是隐私增强的知乎 Android 客户端，支持本地推荐算法、广告屏蔽、内容过滤。
 
 ## 构建与测试
 

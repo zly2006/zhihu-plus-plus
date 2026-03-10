@@ -123,6 +123,8 @@ abstract class AnswerNavigator(
 
 /**
  * 从知乎问题的回答列表中导航。
+ *
+ * 由于默认从最高赞开始，而非上次阅读开始，不建议使用，做fallback。
  */
 class QuestionAnswerNavigator(
     val questionId: Long,
