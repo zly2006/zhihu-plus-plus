@@ -347,13 +347,13 @@ class CustomWebView : WebView {
                 var pending = imgs.length;
                 if (pending === 0) return;
                 function onImgDone() {
-                    pending--;
-                    if (pending <= 0) report();
+                    report();
                 }
                 imgs.forEach(function(img) {
                     if (img.complete) { onImgDone(); }
                     else { img.addEventListener('load', onImgDone); img.addEventListener('error', onImgDone); }
                 });
+                setTimeout(report, 3000); // 3秒后强制上报一次，防止有些图片既不触发 load 也不触发 error
             })();
             """.trimIndent()
         evaluateJavascript(js, null)
