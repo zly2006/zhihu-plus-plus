@@ -702,20 +702,22 @@ class ArticleViewModel(
                     val plainText = Jsoup.parse(content).text()
                     val contentLines = breakTextIntoLines(plainText, paint, maxWidth)
 
+                    var currentPage = page
                     for (line in contentLines) {
                         if (yPosition > 800f) { // 如果页面快满了，创建新页面
-                            pdfDocument.finishPage(page)
-                            val newPage = pdfDocument.startPage(pageInfo)
-                            val newCanvas = newPage.canvas
+                            pdfDocument.finishPage(currentPage)
+                            val newPage = pdfDocument.startPage(
+                                PdfDocument.PageInfo.Builder(595, 842, pdfDocument.pages.size + 1).create(),
+                            )
+                            canvas = newPage.canvas
+                            currentPage = newPage
                             yPosition = 50f
-                            // 继续绘制剩余内容到新页面
-                            canvas = newCanvas
                         }
                         canvas.drawText(line, 25f, yPosition, paint)
                         yPosition += lineHeight
                     }
 
-                    pdfDocument.finishPage(page)
+                    pdfDocument.finishPage(currentPage)
 
                     // 保存PDF文件到应用专属目录
                     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -754,83 +756,7 @@ class ArticleViewModel(
             }
             return
         }
-        try {
-            withContext(Dispatchers.Main) {
-                // 在主线程中创建和配置WebView
-                val webView = WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.useWideViewPort = true
-                    settings.loadWithOverviewMode = true
-                    settings.builtInZoomControls = false
-                    settings.displayZoomControls = false
-                }
-
-                // 创建HTML内容
-                val htmlContent = createHtmlContent(includeComments = false, commentCount = 0)
-
-                // 设置WebViewClient来监听加载完成
-                var isLoaded = false
-                val timeoutRunnable = Runnable {
-                    if (!isLoaded) {
-                        webView.destroy()
-                        Toast.makeText(context, "图片导出超时", Toast.LENGTH_SHORT).show()
-                        onComplete(false)
-                    }
-                }
-                webView.postDelayed(timeoutRunnable, 10000) // 10秒超时
-                webView.webViewClient = object : android.webkit.WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        if (!isLoaded) {
-                            //   = true
-                            webView.removeCallbacks(timeoutRunnable)
-                            // 确保 WebView 测量出足以容纳所有内容的尺寸
-                            val contentWidth = webView.measuredWidth // 使用当前的宽度（通常是屏幕宽度）
-                            // 获取整个网页内容的实际高度（很重要）
-                            val contentHeight = (webView.contentHeight * webView.scale).toInt()
-
-                            if (contentWidth > 0 && contentHeight > 0) {
-                                // 1. 手动测量
-                                webView.measure(
-                                    View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
-                                    View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY),
-                                )
-
-                                // 2. 手动布局
-                                webView.layout(0, 0, contentWidth, contentHeight)
-                            }
-                            // 页面加载完成后，延迟一下确保渲染完成，然后截图
-                            view?.postDelayed({
-                                viewModelScope.launch {
-                                    captureWebViewToImage(webView, context, onComplete)
-                                }
-                            }, 1000)
-                        }
-                    }
-
-                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                        super.onReceivedError(view, request, error)
-                        if (!isLoaded) {
-                            isLoaded = true
-                            webView.removeCallbacks(timeoutRunnable)
-                            webView.destroy()
-                            Toast.makeText(context, "图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
-                            onComplete(false)
-                        }
-                    }
-                }
-
-                // 加载HTML内容
-                webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
-            }
-        } catch (e: Exception) {
-            Log.e("ArticleViewModel", "Image export failed", e)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-        }
+        exportToImageInternal(context, includeComments = false, commentCount = 0, suffix = "", onComplete)
     }
 
     // 导出为带评论的图片 - 使用WebView渲染
@@ -844,68 +770,105 @@ class ArticleViewModel(
             }
             return
         }
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    // 在主线程中创建和配置WebView
-                    val webView = WebView(context).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.useWideViewPort = true
-                        settings.loadWithOverviewMode = true
-                        settings.builtInZoomControls = false
-                        settings.displayZoomControls = false
+        exportToImageInternal(context, includeComments = true, commentCount = commentCount, suffix = "with_comments", onComplete)
+    }
+
+    // 内部通用导出图片实现：将 WebView attach 到 Activity DecorView，截图后 detach
+    private suspend fun exportToImageInternal(
+        context: Context,
+        includeComments: Boolean,
+        commentCount: Int,
+        suffix: String,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        try {
+            withContext(Dispatchers.Main) {
+                val activity = context as Activity
+                val decorView = activity.window.decorView as android.widget.FrameLayout
+                val displayMetrics = context.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels
+
+                // 创建 WebView 并 attach 到 DecorView（不可见），以获得真实 Window
+                val webView = WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.useWideViewPort = true
+                    settings.loadWithOverviewMode = false
+                    settings.builtInZoomControls = false
+                    settings.displayZoomControls = false
+                    // 软件渲染层，draw() 才能输出到 Canvas
+                    setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
+                    visibility = android.view.View.INVISIBLE
+                }
+                val lp = android.widget.FrameLayout.LayoutParams(
+                    screenWidth,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                )
+                decorView.addView(webView, lp)
+
+                val htmlContent = createHtmlContent(includeComments = includeComments, commentCount = commentCount)
+
+                var isLoaded = false
+                val timeoutMs = if (includeComments) 20000L else 12000L
+                val timeoutRunnable = Runnable {
+                    if (!isLoaded) {
+                        isLoaded = true
+                        decorView.removeView(webView)
+                        webView.destroy()
+                        Toast.makeText(context, "图片导出超时", Toast.LENGTH_SHORT).show()
+                        onComplete(false)
+                    }
+                }
+                webView.postDelayed(timeoutRunnable, timeoutMs)
+
+                webView.webViewClient = object : android.webkit.WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        if (!isLoaded) {
+                            isLoaded = true
+                            webView.removeCallbacks(timeoutRunnable)
+
+                            // 页面加载完，用实际内容高度重新 layout
+                            val contentHeight = (webView.contentHeight * webView.scale).toInt()
+                            val finalHeight = if (contentHeight > 0) contentHeight else 1920
+                            webView.layoutParams = android.widget.FrameLayout.LayoutParams(screenWidth, finalHeight)
+                            webView.measure(
+                                View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY),
+                                View.MeasureSpec.makeMeasureSpec(finalHeight, View.MeasureSpec.EXACTLY),
+                            )
+                            webView.layout(0, 0, screenWidth, finalHeight)
+
+                            // 延迟确保渲染完成后截图
+                            view?.postDelayed({
+                                viewModelScope.launch {
+                                    captureWebViewToImage(webView, context, onComplete, suffix) {
+                                        decorView.removeView(webView)
+                                    }
+                                }
+                            }, 800)
+                        }
                     }
 
-                    // 创建包含评论的HTML内容
-                    val htmlContent = createHtmlContent(includeComments = true, commentCount = commentCount)
-
-                    // 设置WebViewClient来监听加载完成
-                    var isLoaded = false
-                    val timeoutRunnable = Runnable {
+                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                        super.onReceivedError(view, request, error)
                         if (!isLoaded) {
+                            isLoaded = true
+                            webView.removeCallbacks(timeoutRunnable)
+                            decorView.removeView(webView)
                             webView.destroy()
-                            Toast.makeText(context, "带评论图片导出超时", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
                             onComplete(false)
                         }
                     }
-                    webView.postDelayed(timeoutRunnable, 15000) // 15秒超时，给更多时间加载评论
-                    webView.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            if (!isLoaded) {
-                                isLoaded = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                // 页面加载完成后，延迟一下确保渲染完成，然后截图
-                                view?.postDelayed({
-                                    viewModelScope.launch {
-                                        captureWebViewToImage(webView, context, onComplete, "with_comments")
-                                    }
-                                }, 1500) // 给更多时间加载评论
-                            }
-                        }
-
-                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                            super.onReceivedError(view, request, error)
-                            if (!isLoaded) {
-                                isLoaded = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                webView.destroy()
-                                Toast.makeText(context, "带评论图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
-                                onComplete(false)
-                            }
-                        }
-                    }
-
-                    // 加载HTML内容
-                    webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
                 }
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Image with comments export failed", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "带评论图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    onComplete(false)
-                }
+
+                webView.loadDataWithBaseURL("about:blank", htmlContent, "text/html", "UTF-8", null)
+            }
+        } catch (e: Exception) {
+            Log.e("ArticleViewModel", "Image export failed", e)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
             }
         }
     }
@@ -1042,38 +1005,50 @@ class ArticleViewModel(
     }
 
     // 捕获WebView内容为图片
-    private suspend fun captureWebViewToImage(webView: WebView, context: Context, onComplete: (Boolean) -> Unit, suffix: String = "") {
+    private suspend fun captureWebViewToImage(
+        webView: WebView,
+        context: Context,
+        onComplete: (Boolean) -> Unit,
+        suffix: String = "",
+        onCleanup: (() -> Unit)? = null,
+    ) {
         try {
-            // 获取WebView的实际内容高度
-            val contentHeight = (webView.contentHeight * webView.scale).toInt()
-            val width = webView.width
-            val height = if (contentHeight > 0) contentHeight else 1920 // 默认高度
+            // draw(canvas) 必须在主线程执行
+            val bitmap = withContext(Dispatchers.Main) {
+                val contentHeight = (webView.contentHeight * webView.scale).toInt()
+                val width = webView.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
+                val height = if (contentHeight > 0) contentHeight else 1920
 
-            // 创建足够大的位图
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
+                // 创建足够大的位图
+                val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
 
-            // 设置白色背景
-            canvas.drawColor(android.graphics.Color.WHITE)
+                // 设置白色背景
+                canvas.drawColor(android.graphics.Color.WHITE)
 
-            // 让WebView绘制到Canvas上
-            webView.draw(canvas)
+                // 让WebView绘制到Canvas上（需要软件渲染层）
+                webView.draw(canvas)
+                bmp
+            }
 
-            // 使用MediaStore保存图片到公共目录
-            saveImageToMediaStore(context, bitmap, suffix)
+            // IO线程保存图片
+            withContext(Dispatchers.IO) {
+                saveImageToMediaStore(context, bitmap, suffix)
+            }
 
             bitmap.recycle()
-            webView.destroy()
-
             withContext(Dispatchers.Main) {
+                onCleanup?.invoke()
+                webView.destroy()
                 val message = if (suffix.isNotEmpty()) "带评论图片已保存到相册" else "图片已保存到相册"
                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Capture WebView failed", e)
-            webView.destroy()
             withContext(Dispatchers.Main) {
+                onCleanup?.invoke()
+                webView.destroy()
                 Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
@@ -1107,26 +1082,37 @@ class ArticleViewModel(
         } ?: throw Exception("Failed to create MediaStore entry")
     }
 
-    // 辅助方法：将文本按宽度分割成行
+    // 辅助方法：将文本按宽度分割成行（支持中文逐字换行）
     private fun breakTextIntoLines(text: String, paint: android.graphics.Paint, maxWidth: Float): List<String> {
         val lines = mutableListOf<String>()
-        val words = text.split(" ", limit = 4)
         var currentLine = ""
 
-        for (word in words) {
-            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
-            if (paint.measureText(testLine) <= maxWidth) {
-                currentLine = testLine
-            } else {
-                if (currentLine.isNotEmpty()) {
-                    lines.add(currentLine)
+        // 先按换行符分段，每段内再按宽度折行
+        for (paragraph in text.split("\n")) {
+            var i = 0
+            val chars = paragraph
+            while (i < chars.length) {
+                val char = chars[i].toString()
+                val testLine = currentLine + char
+                if (paint.measureText(testLine) <= maxWidth) {
+                    currentLine = testLine
+                    i++
+                } else {
+                    if (currentLine.isNotEmpty()) {
+                        lines.add(currentLine)
+                        currentLine = ""
+                    } else {
+                        // 单个字符就超宽（极端情况），强制加入
+                        lines.add(char)
+                        i++
+                    }
                 }
-                currentLine = word
             }
-        }
-
-        if (currentLine.isNotEmpty()) {
-            lines.add(currentLine)
+            // 段落结束，换行
+            if (currentLine.isNotEmpty()) {
+                lines.add(currentLine)
+                currentLine = ""
+            }
         }
 
         return lines
