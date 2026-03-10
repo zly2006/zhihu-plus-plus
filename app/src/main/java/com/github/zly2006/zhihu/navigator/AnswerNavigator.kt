@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
@@ -40,7 +41,11 @@ abstract class AnswerNavigator(
         get() = null
 
     val previousAnswer: CachedAnswerContent?
-        get() = if (currentAnswerIndex > 0) answerHistory[currentAnswerIndex - 1] else previousAnswerPreview
+        get() = if (currentAnswerIndex > 0) {
+            answerHistory[currentAnswerIndex - 1]
+        } else {
+            previousAnswerContent ?: previousAnswerPreview
+        }
 
     val nextAnswer: CachedAnswerContent?
         get() = if (currentAnswerIndex in 0 until answerHistory.size - 1) {
@@ -91,6 +96,9 @@ abstract class AnswerNavigator(
     /** 预取的下一个回答内容，供预览卡片使用（Compose 状态，自动触发重组）。 */
     var nextAnswerContent: CachedAnswerContent? by mutableStateOf(null)
 
+    /** 预取的上一个回答内容（来源队列中，非历史），供预览卡片使用。 */
+    var previousAnswerContent: CachedAnswerContent? by mutableStateOf(null)
+
     /**
      * 用户触发"下一个回答"时调用。返回导航目标 [Article]，
      * 若已无更多回答则返回 null。
@@ -102,6 +110,12 @@ abstract class AnswerNavigator(
      * [currentArticleId] 用于跳过当前已显示的回答。
      */
     abstract suspend fun prefetchNext(context: Context, currentArticleId: Long)
+
+    /**
+     * 在后台预取上一个回答的内容，填充 [previousAnswerContent]，供预览卡片显示完整信息。
+     * 默认不预取（问题导航器无上一个来源）。
+     */
+    open suspend fun prefetchPrevious(context: Context, currentArticleId: Long) {}
 
     /**
      * 从来源加载上一个回答（非历史），在 [currentAnswerIndex] == 0（即 [goToPrevious] 返回 null）时由
@@ -168,7 +182,7 @@ class QuestionAnswerNavigator(
         val nextDest = nextFeed.target?.navDestination as? Article ?: return
         if (nextDest.type != ArticleType.Answer) return
         try {
-            val detail = DataHolder.getContentDetail(context, nextDest) as? DataHolder.Answer ?: return
+            val detail = ContentDetailCache.getOrFetch(context, nextDest) as? DataHolder.Answer ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = nextDest,
                 title = detail.question.title,
@@ -251,9 +265,16 @@ class CollectionAnswerNavigator(
     }
 
     override suspend fun loadPrevious(context: Context): CachedAnswerContent? {
+        // 如果已预取，直接消费
+        val prefetched = previousAnswerContent
+        if (prefetched != null) {
+            previousAnswerContent = null
+            previousQueue.removeFirstOrNull() // 消费队头（prefetchPrevious 使用 firstOrNull 不弹出）
+            return insertPrevious(prefetched)
+        }
         val article = previousQueue.removeFirstOrNull() ?: return null
         val cached = try {
-            val detail = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
+            val detail = ContentDetailCache.getOrFetch(context, article) as? DataHolder.Answer
             if (detail != null) {
                 CachedAnswerContent(
                     article = article,
@@ -281,6 +302,27 @@ class CollectionAnswerNavigator(
         return insertPrevious(cached)
     }
 
+    override suspend fun prefetchPrevious(context: Context, currentArticleId: Long) {
+        if (previousAnswerContent != null) return
+        val article = previousQueue.firstOrNull() ?: return
+        try {
+            val detail = ContentDetailCache.getOrFetch(context, article) as? DataHolder.Answer ?: return
+            previousAnswerContent = CachedAnswerContent(
+                article = article,
+                title = detail.question.title,
+                authorName = detail.author.name,
+                authorBio = detail.author.headline,
+                authorAvatarUrl = detail.author.avatarUrl,
+                content = detail.content,
+                voteUpCount = detail.voteupCount,
+                commentCount = detail.commentCount,
+                sourceLabel = sourceName,
+            )
+        } catch (e: Exception) {
+            Log.w("CollectionAnswerNavigator", "Failed to pre-load previous answer content", e)
+        }
+    }
+
     override suspend fun prefetchNext(context: Context, currentArticleId: Long) {
         if (nextAnswerContent != null) return
         ensureQueue(context)
@@ -289,7 +331,7 @@ class CollectionAnswerNavigator(
             prefetchedArticle = queue.removeFirstOrNull()
         }
         try {
-            val detail = DataHolder.getContentDetail(context, article) as? DataHolder.Answer ?: return
+            val detail = ContentDetailCache.getOrFetch(context, article) as? DataHolder.Answer ?: return
             nextAnswerContent = CachedAnswerContent(
                 article = article,
                 title = detail.question.title,
@@ -392,7 +434,7 @@ class PaginationInfoNavigator(
         val id = lastKnownNextId ?: return
         if (nextQueue.isNotEmpty()) return
         val dest = Article(id = id, type = ArticleType.Answer)
-        val detail = DataHolder.getContentDetail(context, dest) as? DataHolder.Answer ?: return
+        val detail = ContentDetailCache.getOrFetch(context, dest) as? DataHolder.Answer ?: return
         val pagination = detail.paginationInfo ?: return
         pagination.nextAnswerIds.forEach { newId ->
             if (enqueuedNextIds.add(newId)) nextQueue.addLast(newId)
@@ -409,7 +451,7 @@ class PaginationInfoNavigator(
 
     private suspend fun fetchCached(context: Context, answerId: Long): CachedAnswerContent? {
         val dest = Article(id = answerId, type = ArticleType.Answer)
-        val detail = DataHolder.getContentDetail(context, dest) as? DataHolder.Answer ?: return null
+        val detail = ContentDetailCache.getOrFetch(context, dest) as? DataHolder.Answer ?: return null
         return CachedAnswerContent(
             article = dest,
             title = detail.question.title,
@@ -424,6 +466,13 @@ class PaginationInfoNavigator(
     }
 
     override suspend fun loadPrevious(context: Context): CachedAnswerContent? {
+        // 如果已预取，直接消费
+        val prefetched = previousAnswerContent
+        if (prefetched != null) {
+            previousAnswerContent = null
+            prevQueue.removeFirstOrNull() // 消费队头 id（prefetchPrevious 使用 firstOrNull 不弹出）
+            return insertPrevious(prefetched)
+        }
         val id = prevQueue.removeFirstOrNull() ?: return null
         val cached = try {
             fetchCached(context, id)
@@ -463,6 +512,16 @@ class PaginationInfoNavigator(
             nextAnswerContent = fetchCached(context, id)
         } catch (e: Exception) {
             Log.w("PaginationInfoNavigator", "Failed to pre-load next answer content", e)
+        }
+    }
+
+    override suspend fun prefetchPrevious(context: Context, currentArticleId: Long) {
+        if (previousAnswerContent != null) return
+        val id = prevQueue.firstOrNull() ?: return
+        try {
+            previousAnswerContent = fetchCached(context, id)
+        } catch (e: Exception) {
+            Log.w("PaginationInfoNavigator", "Failed to pre-load previous answer content", e)
         }
     }
 }

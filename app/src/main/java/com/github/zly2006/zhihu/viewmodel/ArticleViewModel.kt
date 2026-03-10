@@ -370,6 +370,7 @@ class ArticleViewModel(
                                 if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
                                     nav.prefetchNext(context, article.id)
                                 }
+                                nav.prefetchPrevious(context, article.id)
                             }
                         } else {
                             content = "<h1>回答不存在</h1>"

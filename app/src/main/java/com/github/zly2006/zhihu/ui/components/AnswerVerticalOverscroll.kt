@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -66,21 +67,13 @@ import kotlin.math.tanh
  */
 @Composable
 fun AnswerVerticalOverscroll(
-    canGoPrevious: Boolean,
-    canGoNext: Boolean,
-    previousAuthorName: String,
-    previousExcerpt: String,
-    previousAvatarUrl: String,
-    nextAuthorName: String,
-    nextExcerpt: String,
-    nextAvatarUrl: String,
+    previousAnswer: CachedAnswerContent?,
+    nextAnswer: CachedAnswerContent?,
     onNavigatePrevious: () -> Unit,
     onNavigateNext: () -> Unit,
     isAtTop: () -> Boolean,
     isAtBottom: () -> Boolean,
     scrollState: ScrollState,
-    previousLabel: String = "上一个回答",
-    nextLabel: String = "下一个回答",
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -96,8 +89,8 @@ fun AnswerVerticalOverscroll(
 
     // rememberUpdatedState ensures nestedScrollConnection always reads the latest values
     // even though it is `remember`-ed without keys.
-    val currentCanGoPrevious by rememberUpdatedState(canGoPrevious)
-    val currentCanGoNext by rememberUpdatedState(canGoNext)
+    val currentCanGoPrevious by rememberUpdatedState(previousAnswer != null)
+    val currentCanGoNext by rememberUpdatedState(nextAnswer != null)
     val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
     val currentOnNavigateNext by rememberUpdatedState(onNavigateNext)
 
@@ -269,13 +262,13 @@ fun AnswerVerticalOverscroll(
         // 预览卡片在底层，被主内容覆盖，主内容滑动时露出
 
         // 上方预览卡片（上一个回答）—— 固定在顶部
-        if (overscrollOffset.value > 0 && canGoPrevious) {
+        if (overscrollOffset.value > 0 && previousAnswer != null) {
             val progress = (overscrollOffset.value / triggerThresholdPx).coerceIn(0f, 1.5f)
             AnswerPreviewCard(
-                authorName = previousAuthorName,
-                excerpt = previousExcerpt,
-                avatarUrl = previousAvatarUrl,
-                label = previousLabel,
+                authorName = previousAnswer.authorName,
+                excerpt = previousAnswer.title,
+                avatarUrl = previousAnswer.authorAvatarUrl,
+                label = "${previousAnswer.sourceLabel}的上一个回答",
                 icon = Icons.Filled.ArrowUpward,
                 isTriggered = overscrollOffset.value >= triggerThresholdPx,
                 progress = progress,
@@ -287,13 +280,13 @@ fun AnswerVerticalOverscroll(
         }
 
         // 下方预览卡片（下一个回答）—— 固定在底部，内容顺序反转
-        if (overscrollOffset.value < 0 && canGoNext) {
+        if (overscrollOffset.value < 0 && nextAnswer != null) {
             val progress = (abs(overscrollOffset.value) / triggerThresholdPx).coerceIn(0f, 1.5f)
             AnswerPreviewCard(
-                authorName = nextAuthorName,
-                excerpt = nextExcerpt,
-                avatarUrl = nextAvatarUrl,
-                label = nextLabel,
+                authorName = nextAnswer.authorName,
+                excerpt = nextAnswer.title,
+                avatarUrl = nextAnswer.authorAvatarUrl,
+                label = "${nextAnswer.sourceLabel}的下一个回答",
                 icon = Icons.Filled.ArrowDownward,
                 isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
                 progress = progress,

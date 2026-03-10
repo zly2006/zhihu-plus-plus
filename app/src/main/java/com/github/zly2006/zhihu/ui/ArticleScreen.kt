@@ -1148,24 +1148,14 @@ fun ArticleScreen(
     // 根据模式渲染
     if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
         val nav = sharedData?.navigator
-        val prevSourceLabel = nav?.previousAnswer?.sourceLabel ?: "此问题"
-        val nextSourceLabel = nav?.nextAnswer?.sourceLabel ?: nav?.sourceName ?: "此问题"
         AnswerVerticalOverscroll(
-            canGoPrevious = nav?.previousAnswer != null,
-            canGoNext = true,
-            previousAuthorName = nav?.previousAnswer?.authorName ?: "",
-            previousExcerpt = nav?.previousAnswer?.article?.excerpt ?: "",
-            previousAvatarUrl = nav?.previousAnswer?.authorAvatarUrl ?: "",
-            nextAuthorName = nav?.nextAnswer?.authorName ?: "",
-            nextExcerpt = nav?.nextAnswer?.article?.excerpt ?: "",
-            nextAvatarUrl = nav?.nextAnswer?.authorAvatarUrl ?: "",
+            previousAnswer = nav?.previousAnswer,
+            nextAnswer = nav?.nextAnswer,
             onNavigatePrevious = navigateToPrevious,
             onNavigateNext = navigateToNext,
             isAtTop = { scrollState.value == 0 },
             isAtBottom = { scrollState.value >= scrollState.maxValue },
             scrollState = scrollState,
-            previousLabel = "${prevSourceLabel}的上一个回答",
-            nextLabel = "${nextSourceLabel}的下一个回答",
         ) {
             answerSwitchContent()
         }
