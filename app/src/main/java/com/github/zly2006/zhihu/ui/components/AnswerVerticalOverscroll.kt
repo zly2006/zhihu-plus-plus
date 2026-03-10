@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -65,14 +67,8 @@ import kotlin.math.tanh
  */
 @Composable
 fun AnswerVerticalOverscroll(
-    canGoPrevious: Boolean,
-    canGoNext: Boolean,
-    previousAuthorName: String,
-    previousExcerpt: String,
-    previousAvatarUrl: String,
-    nextAuthorName: String,
-    nextExcerpt: String,
-    nextAvatarUrl: String,
+    previousAnswer: CachedAnswerContent?,
+    nextAnswer: CachedAnswerContent?,
     onNavigatePrevious: () -> Unit,
     onNavigateNext: () -> Unit,
     isAtTop: () -> Boolean,
@@ -90,6 +86,13 @@ fun AnswerVerticalOverscroll(
     val overscrollOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
     var rawDragAccumulator by remember { mutableFloatStateOf(0f) }
+
+    // rememberUpdatedState ensures nestedScrollConnection always reads the latest values
+    // even though it is `remember`-ed without keys.
+    val currentCanGoPrevious by rememberUpdatedState(previousAnswer != null)
+    val currentCanGoNext by rememberUpdatedState(nextAnswer != null)
+    val currentOnNavigatePrevious by rememberUpdatedState(onNavigatePrevious)
+    val currentOnNavigateNext by rememberUpdatedState(onNavigateNext)
 
     fun dampedOffset(rawDelta: Float): Float {
         val sign = if (rawDelta >= 0) 1f else -1f
@@ -133,8 +136,8 @@ fun AnswerVerticalOverscroll(
 
                 val atTop = isAtTop()
                 val atBottom = isAtBottom()
-                val canOverscrollDown = delta > 0 && atTop && canGoPrevious
-                val canOverscrollUp = delta < 0 && atBottom && canGoNext
+                val canOverscrollDown = delta > 0 && atTop && currentCanGoPrevious
+                val canOverscrollUp = delta < 0 && atBottom && currentCanGoNext
                 if (canOverscrollDown ||
                     canOverscrollUp ||
                     (overscrollOffset.value > 0 && delta > 0) ||
@@ -156,10 +159,10 @@ fun AnswerVerticalOverscroll(
                 if (overscrollOffset.value != 0f) {
                     val currentOffset = overscrollOffset.value
                     if (abs(currentOffset) >= triggerThresholdPx) {
-                        if (currentOffset > 0 && canGoPrevious) {
-                            onNavigatePrevious()
-                        } else if (currentOffset < 0 && canGoNext) {
-                            onNavigateNext()
+                        if (currentOffset > 0 && currentCanGoPrevious) {
+                            currentOnNavigatePrevious()
+                        } else if (currentOffset < 0 && currentCanGoNext) {
+                            currentOnNavigateNext()
                         }
                     }
                     rawDragAccumulator = 0f
@@ -189,7 +192,9 @@ fun AnswerVerticalOverscroll(
             .nestedScroll(nestedScrollConnection)
             .then(
                 if (isContentNonScrollable) {
-                    Modifier.pointerInput(canGoPrevious, canGoNext) {
+                    // Use Unit key so the gesture handler is never rebuilt mid-gesture;
+                    // current* refs (rememberUpdatedState) handle live value updates.
+                    Modifier.pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onDragStart = {
                                 rawDragAccumulator = 0f
@@ -198,10 +203,10 @@ fun AnswerVerticalOverscroll(
                             onDragEnd = {
                                 val currentOffset = overscrollOffset.value
                                 if (abs(currentOffset) >= triggerThresholdPx) {
-                                    if (currentOffset > 0 && canGoPrevious) {
-                                        onNavigatePrevious()
-                                    } else if (currentOffset < 0 && canGoNext) {
-                                        onNavigateNext()
+                                    if (currentOffset > 0 && currentCanGoPrevious) {
+                                        currentOnNavigatePrevious()
+                                    } else if (currentOffset < 0 && currentCanGoNext) {
+                                        currentOnNavigateNext()
                                     }
                                 }
                                 rawDragAccumulator = 0f
@@ -222,8 +227,8 @@ fun AnswerVerticalOverscroll(
                                 coroutineScope.launch { overscrollOffset.snapTo(0f) }
                             },
                         ) { _, dragAmount ->
-                            val canDragDown = dragAmount > 0 && canGoPrevious
-                            val canDragUp = dragAmount < 0 && canGoNext
+                            val canDragDown = dragAmount > 0 && currentCanGoPrevious
+                            val canDragUp = dragAmount < 0 && currentCanGoNext
                             val continuing = (overscrollOffset.value > 0 && dragAmount > 0) ||
                                 (overscrollOffset.value < 0 && dragAmount < 0)
                             val reversing = (overscrollOffset.value > 0 && dragAmount < 0) ||
@@ -232,8 +237,8 @@ fun AnswerVerticalOverscroll(
                             if (canDragDown || canDragUp || continuing || reversing) {
                                 rawDragAccumulator += dragAmount
                                 // Clamp to zero crossing
-                                if ((rawDragAccumulator > 0 && !canGoPrevious) ||
-                                    (rawDragAccumulator < 0 && !canGoNext)
+                                if ((rawDragAccumulator > 0 && !currentCanGoPrevious) ||
+                                    (rawDragAccumulator < 0 && !currentCanGoNext)
                                 ) {
                                     rawDragAccumulator = 0f
                                 }
@@ -257,13 +262,13 @@ fun AnswerVerticalOverscroll(
         // 预览卡片在底层，被主内容覆盖，主内容滑动时露出
 
         // 上方预览卡片（上一个回答）—— 固定在顶部
-        if (overscrollOffset.value > 0 && canGoPrevious) {
+        if (overscrollOffset.value > 0 && previousAnswer != null) {
             val progress = (overscrollOffset.value / triggerThresholdPx).coerceIn(0f, 1.5f)
             AnswerPreviewCard(
-                authorName = previousAuthorName,
-                excerpt = previousExcerpt,
-                avatarUrl = previousAvatarUrl,
-                label = "上一个回答",
+                authorName = previousAnswer.authorName,
+                excerpt = previousAnswer.title,
+                avatarUrl = previousAnswer.authorAvatarUrl,
+                label = "${previousAnswer.sourceLabel}的上一个回答",
                 icon = Icons.Filled.ArrowUpward,
                 isTriggered = overscrollOffset.value >= triggerThresholdPx,
                 progress = progress,
@@ -275,13 +280,13 @@ fun AnswerVerticalOverscroll(
         }
 
         // 下方预览卡片（下一个回答）—— 固定在底部，内容顺序反转
-        if (overscrollOffset.value < 0 && canGoNext) {
+        if (overscrollOffset.value < 0 && nextAnswer != null) {
             val progress = (abs(overscrollOffset.value) / triggerThresholdPx).coerceIn(0f, 1.5f)
             AnswerPreviewCard(
-                authorName = nextAuthorName,
-                excerpt = nextExcerpt,
-                avatarUrl = nextAvatarUrl,
-                label = "下一个回答",
+                authorName = nextAnswer.authorName,
+                excerpt = nextAnswer.title,
+                avatarUrl = nextAnswer.authorAvatarUrl,
+                label = "${nextAnswer.sourceLabel}的下一个回答",
                 icon = Icons.Filled.ArrowDownward,
                 isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
                 progress = progress,

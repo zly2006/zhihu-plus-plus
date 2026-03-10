@@ -103,7 +103,8 @@ object UpdateManager {
     private fun String.extractReleaseNotes() = this
         .replace("\r\n", "\n")
         .substringAfter("## What's Changed\n")
-        .substringBefore("\n\n\n**Full Changelog**:")
+        .substringBefore("\n**Full Changelog**:")
+        .trimEnd('\n')
 
     /**
      * 自动检查更新（在应用启动时调用）
