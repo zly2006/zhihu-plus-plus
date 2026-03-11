@@ -925,6 +925,27 @@ fun AppearanceSettingsScreen(
                 buttonSkipAnswer.value = false
             }
 
+            fun disableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", false)
+                    putBoolean("duo3_home_scroll_top", false)
+                    putBoolean("duo3_home_no_fab", false)
+                    putBoolean("duo3_nav_style", false)
+                    putBoolean("duo3_card_appearance", false)
+                    putBoolean("duo3_card_layout", false)
+                    putBoolean("duo3_article_bar", false)
+                    putBoolean("duo3_article_actions", false)
+                }
+                duo3HomeAccount.value = false
+                duo3HomeScrollTop.value = false
+                duo3HomeNoFab.value = false
+                duo3NavStyle.value = false
+                duo3CardAppearance.value = false
+                duo3CardLayout.value = false
+                duo3ArticleBar.value = false
+                duo3ArticleActions.value = false
+            }
+
             SwitchSettingItem(
                 title = "启用 123duo3 的所有 UI 修改",
                 description = "总开关：开启后强制启用下方全部子选项；关闭后下方子选项一并隐藏，恢复默认 UI",
@@ -932,19 +953,22 @@ fun AppearanceSettingsScreen(
                 onCheckedChange = {
                     duo3All.value = it
                     preferences.edit { putBoolean("duo3_all", it) }
-                    if (it) enableAllSubs()
+                    if (it) {
+                        enableAllSubs()
+                    } else {
+                        disableAllSubs()
+                    }
                 },
             )
 
             SwitchSettingItem(
                 title = "主页：账号入口迁移至顶部头像",
-                description = "搜索栏升级、通知铃铛改为账号头像（带未读红点）、点击弹出账号面板；底部导航同步移除\"账号\"和\"历史\" Tab，通知与历史入口整合进账号设置页",
+                description = "搜索栏升级、通知铃铛改为账号头像、点击弹出账号面板；底部导航同步移除\"账号\"和\"历史\" Tab，通知与历史入口整合进账号设置页",
                 checked = duo3HomeAccount.value,
                 onCheckedChange = {
                     duo3HomeAccount.value = it
                     preferences.edit { putBoolean("duo3_home_account", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
