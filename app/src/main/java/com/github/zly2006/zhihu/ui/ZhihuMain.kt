@@ -133,8 +133,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             text = {
                 Text(
                     "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                            "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                            "获取数据需要时间，所以他们会闪一下然后消失。",
+                        "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
+                        "获取数据需要时间，所以他们会闪一下然后消失。",
                 )
             },
             confirmButton = {
