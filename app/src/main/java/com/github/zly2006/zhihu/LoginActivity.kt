@@ -20,6 +20,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.delay
@@ -56,11 +57,7 @@ class LoginActivity : ComponentActivity() {
                                 }
                                 if (request.url.host == "graph.qq.com") {
                                     // QQ login
-                                    CustomTabsIntent
-                                        .Builder()
-                                        .setToolbarColor(0xff66CCFF.toInt())
-                                        .build()
-                                        .launchUrl(this@LoginActivity, request.url)
+                                    luoTianYiUrlLauncher(this@LoginActivity, request.url)
                                     return true
                                 }
                                 if (request.url?.scheme == "zhihu") {
