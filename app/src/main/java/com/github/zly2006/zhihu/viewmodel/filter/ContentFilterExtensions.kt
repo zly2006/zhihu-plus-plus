@@ -273,25 +273,18 @@ object ContentFilterExtensions {
     /**
      * 检测内容是否为广告或付费内容
      */
-    private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
-        is DataHolder.Answer -> {
-            val isAd = "xg.zhihu.com" in raw.content
-            val isEdu = "data-edu-card-id" in raw.content
-            val isPaid = raw.paidInfo != null
-            val isWeixin = "mp.weixin.qq.com" in raw.content
-            isAd || isEdu || isPaid || isWeixin
-        }
-
-        is DataHolder.Article -> {
-            val isAd = "xg.zhihu.com" in raw.content
-            val isEdu = "data-edu-card-id" in raw.content
-            val isPaid = raw.paidInfo != null
-            val isWeixin = "mp.weixin.qq.com" in raw.content
-            isAd || isEdu || isPaid || isWeixin
-        }
-
-        else -> {
-            false
+    private fun checkForAd(content: FilterableContent): Boolean {
+        val blocklist = listOf(
+            "xg.zhihu.com", // 知乎广告平台域名，常见于广告内容中
+            "d.zhihu.com", // 知乎学堂
+            "data-edu-card-id", // 知乎学堂
+            "mp.weixin.qq.com", // 微信公众号文章链接，常见于被推广的内容中
+        )
+        return when (val raw = content.raw) {
+            is DataHolder.Answer -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
+            is DataHolder.Article -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
+            is DataHolder.Pin -> blocklist.any { blockWord -> blockWord in raw.contentHtml }
+            else -> false
         }
     }
 
