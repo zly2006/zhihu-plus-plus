@@ -7,11 +7,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,7 +67,7 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 onLoadMore = { viewModel.loadMore(context) },
                 topContent = {
                     item {
-                        Spacer(modifier = Modifier.height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp))
+                        Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding() + 8.dp))
                     }
                 },
                 isEnd = { viewModel.isEnd },

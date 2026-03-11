@@ -11,13 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -93,9 +91,7 @@ fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
         PrimaryTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
             modifier = Modifier.padding(
-                top = androidx.compose.foundation.layout.WindowInsets.statusBars
-                    .asPaddingValues()
-                    .calculateTopPadding(),
+                top = innerPadding.calculateTopPadding(),
             ),
         ) {
             titles.forEachIndexed { index, title ->

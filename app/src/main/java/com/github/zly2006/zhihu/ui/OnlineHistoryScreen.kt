@@ -2,10 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +40,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 item(0) {
                     Row(
                         modifier = Modifier
-                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+                            .padding(top = innerPadding.calculateTopPadding()),
                     ) {
                         FilledTonalButton(
                             onClick = {

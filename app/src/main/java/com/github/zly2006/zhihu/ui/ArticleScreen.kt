@@ -575,7 +575,6 @@ fun ArticleScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
     val useDuo3ArticleBar = remember { preferences.getBoolean("duo3_article_bar", false) }
     val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
