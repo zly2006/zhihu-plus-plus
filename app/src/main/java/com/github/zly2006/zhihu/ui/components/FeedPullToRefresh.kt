@@ -40,7 +40,7 @@ fun FeedPullToRefresh(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(padding),
-                isRefreshing = viewModel.isPullToRefresh,
+                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 state = state,

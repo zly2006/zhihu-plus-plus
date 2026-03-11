@@ -362,7 +362,7 @@ private fun FeedCardContent(
             }
         }
 
-        if ((item.details.isNotEmpty()) or (item.avatarSrc != null && item.authorName != null)) {
+        if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
