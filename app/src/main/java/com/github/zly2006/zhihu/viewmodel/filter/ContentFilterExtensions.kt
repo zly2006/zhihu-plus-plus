@@ -35,17 +35,6 @@ object ContentFilterExtensions {
         val isFollowing: Boolean = false,
     )
 
-    val `斩杀线` = FilterableContent(
-        "斯奎奇大王（牢 a）称「不是有国籍就是中国人」，如何理解此言论",
-        "我的理解：他是完全没有意识到言论是有边界的，这样下去可能就是烈火烹油了。例如有一个很火的小众UP主他天天说美国是没事的，有一天他说了泰国那段时间号就没了，这就是言论的边界。沈直播中打断了他关于器官捐献的言论，沈知道国内正在推器官捐献进校，本来抖音上那些人就反对声音一浪接一浪的，沈的边界意识是非常强的。他本地情节厚重吧，张大帅在叙事中评价非常低，因为他儿子功劳大很多时候避开了对他的评价，要知道他杀…",
-        null,
-        "斯奎奇大王（牢 a）",
-        null,
-        "1234567890",
-        ContentType.ANSWER,
-        DataHolder.DummyContent,
-    )
-
     /**
      * 检查是否启用了内容过滤功能
      */
@@ -203,6 +192,7 @@ object ContentFilterExtensions {
                 // 获取完整内容详情
                 val rawContent = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
+                    is com.github.zly2006.zhihu.Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     else -> DataHolder.DummyContent
                 }
 

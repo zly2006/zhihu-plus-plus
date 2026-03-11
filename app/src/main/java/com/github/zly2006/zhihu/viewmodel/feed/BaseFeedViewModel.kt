@@ -45,6 +45,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val isFiltered: Boolean = false,
         val content: String? = null,
         val raw: DataHolder.Content? = null,
+        val isPendingRemoval: Boolean = false,
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {

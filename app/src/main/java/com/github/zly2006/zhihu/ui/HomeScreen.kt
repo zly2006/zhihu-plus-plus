@@ -294,6 +294,7 @@ fun HomeScreen(refreshTrigger: Int = 0) {
                     items = viewModel.displayItems,
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
+                    key = { item -> item.navDestination.toString() },
                 ) { item ->
                     FeedCard(
                         item,

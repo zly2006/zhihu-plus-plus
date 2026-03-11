@@ -27,9 +27,9 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -149,20 +149,38 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
-                // 应用内容过滤
-                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
-
-                // 将过滤后的内容添加到显示列表
-                filteredItems
-                    .map { item ->
-                        coroutineScope {
-                            launch(Dispatchers.Main) {
-                                if (displayItems.none { it.navDestination == item.navDestination }) {
-                                    displayItems.add(item)
-                                }
-                            }
+                // 立即展示所有内容
+                withContext(Dispatchers.Main) {
+                    itemsToDisplay.forEach { item ->
+                        if (displayItems.none { it.navDestination == item.navDestination }) {
+                            displayItems.add(item)
                         }
-                    }.joinAll()
+                    }
+                }
+
+                // 后台运行内容过滤
+                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
+                val newDestinations = itemsToDisplay.map { it.navDestination }.toSet()
+
+                // 标记被过滤的条目，更新已保留条目的 raw 内容
+                withContext(Dispatchers.Main) {
+                    for (i in displayItems.indices) {
+                        val item = displayItems[i]
+                        if (item.navDestination !in newDestinations) continue
+                        val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
+                        displayItems[i] = if (filteredVersion == null) {
+                            item.copy(isPendingRemoval = true)
+                        } else {
+                            item.copy(raw = filteredVersion.raw)
+                        }
+                    }
+                }
+
+                // 等待退出动画完成后移除
+                delay(400)
+                withContext(Dispatchers.Main) {
+                    displayItems.removeAll { it.isPendingRemoval }
+                }
 
                 lastPaging = if ("paging" in jojo) {
                     AccountData.decodeJson(jojo["paging"]!!)
