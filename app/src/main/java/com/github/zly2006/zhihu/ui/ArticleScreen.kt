@@ -576,8 +576,8 @@ fun ArticleScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val duo3All = remember { preferences.getBoolean("duo3_all", false) }
-    val useDuo3ArticleBar = duo3All && remember { preferences.getBoolean("duo3_article_bar", false) }
-    val useDuo3ArticleActions = duo3All && remember { preferences.getBoolean("duo3_article_actions", false) }
+    val useDuo3ArticleBar = remember { preferences.getBoolean("duo3_article_bar", false) }
+    val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
 

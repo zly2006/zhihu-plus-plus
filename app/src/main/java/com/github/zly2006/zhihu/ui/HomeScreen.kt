@@ -163,10 +163,8 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
 
-    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
     val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
     val duo3HomeNoFab = remember { preferences.getBoolean("duo3_home_no_fab", false) }
-    val useDuo3HomeAccount = duo3All && duo3HomeAccount
 
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
@@ -257,9 +255,9 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         }
 
     Scaffold(
-        containerColor = if (useDuo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
+        containerColor = if (duo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
         topBar = {
-            if (useDuo3HomeAccount) {
+            if (duo3HomeAccount) {
                 Box {
                     Surface(
                         color = containerColor,
@@ -406,7 +404,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
             }
         },
     ) { scaffoldPadding ->
-        if (useDuo3HomeAccount && showAccountBottomSheet) {
+        if (duo3HomeAccount && showAccountBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAccountBottomSheet = false },
             ) {
@@ -469,7 +467,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                     }
                 }
 
-                if (!(duo3All && duo3HomeNoFab)) {
+                if (!(duo3HomeNoFab)) {
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
                     if (showRefreshFab) {
                         if (BuildConfig.DEBUG) {

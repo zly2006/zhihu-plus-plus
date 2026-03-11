@@ -13,6 +13,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
@@ -183,8 +184,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
     val duo3HomeScrollTop = remember { preferences.getBoolean("duo3_home_scroll_top", false) }
     val duo3NavStyle = remember { preferences.getBoolean("duo3_nav_style", false) }
-    val useDuo3HomeAccount = duo3All && duo3HomeAccount
-    val useDuo3NavStyle = duo3All && duo3NavStyle
 
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
@@ -274,9 +273,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
-                        modifier = if (useDuo3NavStyle) modifier else modifier.height(56.dp + bottomPadding),
+                        modifier = if (duo3NavStyle) modifier else modifier.height(56.dp + bottomPadding),
                     ) {
-                        val allItems = if (useDuo3HomeAccount) {
+                        val allItems = if (duo3HomeAccount) {
                             listOf(
                                 Triple(Home, "主页", Icons.Filled.Home),
                                 Triple(Follow, "关注", Icons.Filled.Group),
@@ -293,7 +292,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 Triple(Account, "账号", Icons.Filled.ManageAccounts),
                             )
                         }
-                        val defaultKeys = if (useDuo3HomeAccount) {
+                        val defaultKeys = if (duo3HomeAccount) {
                             setOf(Home.name, Follow.name, Daily.name)
                         } else {
                             setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
@@ -316,12 +315,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    } else if (if (duo3All && duo3HomeScrollTop) tapToScrollToTopEnabled else tapToRefreshEnabled) {
-                                        if (duo3All && duo3HomeScrollTop) scrollToTopTrigger++ else refreshTrigger++
+                                    } else if (if (duo3HomeScrollTop) tapToScrollToTopEnabled else tapToRefreshEnabled) {
+                                        if (duo3HomeScrollTop) scrollToTopTrigger++ else refreshTrigger++
                                     }
                                 },
                                 label = {
-                                    if (useDuo3NavStyle) {
+                                    if (duo3NavStyle) {
                                         Text(label)
                                     } else {
                                         Text(
@@ -333,8 +332,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                         )
                                     }
                                 },
-                                alwaysShowLabel = useDuo3NavStyle,
-                                colors = if (useDuo3NavStyle) {
+                                alwaysShowLabel = duo3NavStyle,
+                                colors = if (duo3NavStyle) {
                                     NavigationBarItemDefaults.colors()
                                 } else {
                                     NavigationBarItemDefaults.colors(
@@ -391,7 +390,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HomeScreen(
                         refreshTrigger = refreshTrigger,
                         scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
+                        innerPadding = if (duo3All) innerPadding else PaddingValues(0.dp),
                     )
                 }
                 composable<Question> { navEntry ->
@@ -444,22 +443,22 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel)
                 }
                 composable<HotList> {
-                    HotListScreen(innerPadding = innerPadding)
+                    HotListScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<Follow> {
-                    FollowScreen(innerPadding = innerPadding)
+                    FollowScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<Daily> {
-                    DailyScreen(innerPadding = innerPadding)
+                    DailyScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<History> {
                     HistoryScreen()
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen(innerPadding = innerPadding)
+                    OnlineHistoryScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<Account> {
-                    AccountSettingScreen(innerPadding)
+                    AccountSettingScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
@@ -482,9 +481,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     PinScreen(pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(
-                        innerPadding = innerPadding,
-                    )
+                    BlocklistSettingsScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
                 }
                 composable<Notification> {
                     NotificationScreen()
