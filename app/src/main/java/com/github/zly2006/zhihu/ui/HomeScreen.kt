@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
@@ -25,9 +26,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,9 +55,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.Notification
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -61,10 +68,12 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -75,6 +84,7 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
@@ -146,12 +156,17 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
+
+    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
+    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
+    val duo3HomeNoFab = remember { preferences.getBoolean("duo3_home_no_fab", false) }
+    val useDuo3HomeAccount = duo3All && duo3HomeAccount
 
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
@@ -182,6 +197,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                 listState.animateScrollToItem(0)
             }
             cachedScrollToTopTrigger = scrollToTopTrigger
+        }
+    }
+
+    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
+    LaunchedEffect(refreshTrigger) {
+        if (refreshTrigger != cachedRefreshTrigger) {
+            viewModel.refresh(context)
+            cachedRefreshTrigger = refreshTrigger
         }
     }
 
@@ -234,89 +257,87 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
         }
 
     Scaffold(
-        containerColor = containerColor,
+        containerColor = if (useDuo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
         topBar = {
-            Box {
-                Surface(
-                    color = containerColor,
-                    modifier = Modifier
-                        .height(
-                            WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
-                        ).fillMaxWidth(),
-                ) { }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                        .padding(16.dp, 8.dp, 16.dp, 0.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+            if (useDuo3HomeAccount) {
+                Box {
                     Surface(
+                        color = containerColor,
                         modifier = Modifier
-                            .weight(1f)
-                            .height(64.dp),
-                        shape = RoundedCornerShape(32.dp),
-                        color = MaterialTheme.colorScheme.surfaceColorAtElevation(16.dp),
-                        onClick = {
-                            navigator.onNavigate(
-                                com.github.zly2006.zhihu
-                                    .Search(query = ""),
-                            )
-                        },
+                            .height(
+                                WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
+                            ).fillMaxWidth(),
+                    ) { }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+                            .padding(16.dp, 8.dp, 16.dp, 0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
+                        Surface(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .weight(1f)
+                                .height(64.dp),
+                            shape = RoundedCornerShape(32.dp),
+                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(16.dp),
+                            onClick = {
+                                navigator.onNavigate(
+                                    com.github.zly2006.zhihu
+                                        .Search(query = ""),
+                                )
+                            },
                         ) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = "搜索",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "搜索",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f),
-                            )
-
-                            // 头像按钮 (带通知红点)
-
-                            IconButton(
-                                onClick = { showAccountBottomSheet = true },
-                                modifier = Modifier.size(64.dp),
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Box(Modifier.padding(12.dp)) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (unreadCount > 0) {
-                                                Badge {
-                                                    // Text("$unreadCount") // 可选：只显示红点或也显示数字
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "搜索",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+
+                                IconButton(
+                                    onClick = { showAccountBottomSheet = true },
+                                    modifier = Modifier.size(64.dp),
+                                ) {
+                                    Box(Modifier.padding(12.dp)) {
+                                        BadgedBox(
+                                            badge = {
+                                                if (unreadCount > 0) {
+                                                    Badge { }
                                                 }
+                                            },
+                                        ) {
+                                            val avatarUrl = AccountData.data.self?.avatarUrl
+                                            if (avatarUrl != null) {
+                                                AsyncImage(
+                                                    model = avatarUrl,
+                                                    contentDescription = "账号",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                                        .clip(CircleShape),
+                                                )
+                                            } else {
+                                                Icon(
+                                                    Icons.Default.AccountCircle,
+                                                    contentDescription = "账号",
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.size(40.dp),
+                                                )
                                             }
-                                        },
-                                    ) {
-                                        val avatarUrl = AccountData.data.self?.avatarUrl
-                                        if (avatarUrl != null) {
-                                            AsyncImage(
-                                                model = avatarUrl,
-                                                contentDescription = "账号",
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .size(40.dp)
-                                                    .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                                    .clip(CircleShape),
-                                            )
-                                        } else {
-                                            Icon(
-                                                Icons.Default.AccountCircle,
-                                                contentDescription = "账号",
-                                                tint = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.size(40.dp),
-                                            )
                                         }
                                     }
                                 }
@@ -324,10 +345,68 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                         }
                     }
                 }
+            } else {
+                Surface(shadowElevation = 4.dp) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(36.dp),
+                            shape = RoundedCornerShape(24.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            onClick = {
+                                navigator.onNavigate(
+                                    com.github.zly2006.zhihu
+                                        .Search(query = ""),
+                                )
+                            },
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "搜索内容",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { navigator.onNavigate(Notification) }) {
+                            BadgedBox(
+                                badge = {
+                                    if (unreadCount > 0) {
+                                        Badge { Text("$unreadCount") }
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = "通知",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         },
     ) { scaffoldPadding ->
-        if (showAccountBottomSheet) {
+        if (useDuo3HomeAccount && showAccountBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showAccountBottomSheet = false },
             ) {
@@ -339,9 +418,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
             }
         }
 
-        Box(
-            // modifier = Modifier.padding(top = scaffoldPadding.calculateTopPadding()),
-        ) {
+        Box {
             FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
                     items = viewModel.displayItems,
@@ -388,6 +465,34 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                         }
                         if (navDestination != null) {
                             navigator.onNavigate(navDestination)
+                        }
+                    }
+                }
+
+                if (!(duo3All && duo3HomeNoFab)) {
+                    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                    if (showRefreshFab) {
+                        if (BuildConfig.DEBUG) {
+                            DraggableRefreshButton(
+                                onClick = {
+                                    val data = Json.encodeToString(viewModel.debugData)
+                                    val clip = ClipData.newPlainText("data", data)
+                                    context.clipboardManager.setPrimaryClip(clip)
+                                    Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                                },
+                                preferenceName = "copyAll",
+                            ) {
+                                Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                            }
+                        }
+                        DraggableRefreshButton(
+                            onClick = { viewModel.refresh(context) },
+                        ) {
+                            if (viewModel.isLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                            } else {
+                                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                            }
                         }
                     }
                 }

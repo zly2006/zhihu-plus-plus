@@ -882,6 +882,159 @@ fun AppearanceSettingsScreen(
                     preferences.edit { putBoolean("enable_predictive_back", it) }
                 },
             )
+
+            // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
+            Text(
+                "123duo3 的 UI 改进",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            // 先声明所有子开关状态，以便主开关可以批量操作
+            val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
+            val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+            val duo3HomeScrollTop = remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
+            val duo3HomeNoFab = remember { mutableStateOf(preferences.getBoolean("duo3_home_no_fab", false)) }
+            val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+            val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
+            val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
+            val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
+            val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
+            val duo3ArticleNoSkip = remember { mutableStateOf(preferences.getBoolean("duo3_article_no_skip", false)) }
+
+            fun enableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", true)
+                    putBoolean("duo3_home_scroll_top", true)
+                    putBoolean("duo3_home_no_fab", true)
+                    putBoolean("duo3_nav_style", true)
+                    putBoolean("duo3_card_appearance", true)
+                    putBoolean("duo3_card_layout", true)
+                    putBoolean("duo3_article_bar", true)
+                    putBoolean("duo3_article_actions", true)
+                    putBoolean("duo3_article_no_skip", true)
+                }
+                duo3HomeAccount.value = true
+                duo3HomeScrollTop.value = true
+                duo3HomeNoFab.value = true
+                duo3NavStyle.value = true
+                duo3CardAppearance.value = true
+                duo3CardLayout.value = true
+                duo3ArticleBar.value = true
+                duo3ArticleActions.value = true
+                duo3ArticleNoSkip.value = true
+            }
+
+            SwitchSettingItem(
+                title = "启用 123duo3 的所有 UI 修改",
+                description = "总开关：开启后强制启用下方全部子选项；关闭后下方子选项一并隐藏，恢复默认 UI",
+                checked = duo3All.value,
+                onCheckedChange = {
+                    duo3All.value = it
+                    preferences.edit { putBoolean("duo3_all", it) }
+                    if (it) enableAllSubs()
+                },
+            )
+
+            SwitchSettingItem(
+                title = "主页：账号入口迁移至顶部头像",
+                description = "搜索栏升级、通知铃铛改为账号头像（带未读红点）、点击弹出账号面板；底部导航同步移除\"账号\"和\"历史\" Tab，通知与历史入口整合进账号设置页",
+                checked = duo3HomeAccount.value,
+                onCheckedChange = {
+                    duo3HomeAccount.value = it
+                    preferences.edit { putBoolean("duo3_home_account", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "主页：点击当前 Tab 回到顶部",
+                description = "再次点击已激活的底部 Tab，从触发刷新改为平滑滚动回列表顶部（已在顶部时才触发刷新）",
+                checked = duo3HomeScrollTop.value,
+                onCheckedChange = {
+                    duo3HomeScrollTop.value = it
+                    preferences.edit { putBoolean("duo3_home_scroll_top", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "主页：移除悬浮刷新按钮（FAB）",
+                description = "移除屏幕右下角的可拖拽悬浮刷新按钮，刷新统一由下拉手势完成",
+                checked = duo3HomeNoFab.value,
+                onCheckedChange = {
+                    duo3HomeNoFab.value = it
+                    preferences.edit { putBoolean("duo3_home_no_fab", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "底部导航栏：恢复 Material 标准视觉样式",
+                description = "移除自定义蓝色高亮色、透明指示器背景、超小字号标签等非标准样式；\"关注\" Tab 图标更换为 Group",
+                checked = duo3NavStyle.value,
+                onCheckedChange = {
+                    duo3NavStyle.value = it
+                    preferences.edit { putBoolean("duo3_nav_style", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：外观重设计",
+                description = "卡片圆角改为 24dp，移除阴影，暗色模式下背景使用 surfaceContainerHigh 加强层次感",
+                checked = duo3CardAppearance.value,
+                onCheckedChange = {
+                    duo3CardAppearance.value = it
+                    preferences.edit { putBoolean("duo3_card_appearance", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：内容排版升级",
+                description = "缩略图移至摘要右侧并列展示，摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式",
+                checked = duo3CardLayout.value,
+                onCheckedChange = {
+                    duo3CardLayout.value = it
+                    preferences.edit { putBoolean("duo3_card_layout", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：顶/底部栏跟手隐藏升级",
+                description = "顶部栏和底部栏随手指滚动按像素连续偏移，停止滚动后自动 snap 到完全显示或完全隐藏（原为按滚动方向整体切换）",
+                checked = duo3ArticleBar.value,
+                onCheckedChange = {
+                    duo3ArticleBar.value = it
+                    preferences.edit { putBoolean("duo3_article_bar", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：操作栏视觉重设计",
+                description = "赞同/反对改为圆角胶囊形，反对激活后展开文字标签，各操作按钮颜色通过 Color Harmonize 与主题色融合",
+                checked = duo3ArticleActions.value,
+                onCheckedChange = {
+                    duo3ArticleActions.value = it
+                    preferences.edit { putBoolean("duo3_article_actions", it) }
+                },
+                enabled = duo3All.value,
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：移除\"跳过答案\"浮动按钮",
+                description = "移除答案页右下角的\"跳过至下一个回答\"悬浮按钮",
+                checked = duo3ArticleNoSkip.value,
+                onCheckedChange = {
+                    duo3ArticleNoSkip.value = it
+                    preferences.edit { putBoolean("duo3_article_no_skip", it) }
+                },
+                enabled = duo3All.value,
+            )
         }
     }
 }

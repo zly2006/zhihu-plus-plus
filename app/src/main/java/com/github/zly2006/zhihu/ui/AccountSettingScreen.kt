@@ -89,6 +89,9 @@ fun AccountSettingScreen(
         )
     }
 
+    val useDuo3HomeAccount = remember {
+        preferences.getBoolean("duo3_all", false) && preferences.getBoolean("duo3_home_account", false)
+    }
     var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     LaunchedEffect(isDeveloper) {
@@ -258,35 +261,37 @@ fun AccountSettingScreen(
         }
         Spacer(Modifier.height(8.dp))
 
-        ListItem(
-            headlineContent = { Text("通知") },
-            supportingContent = { Text("查看通知及回复") },
-            leadingContent = { Icon(Icons.Default.Notifications, null) },
-            trailingContent = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (unreadCount > 0) {
-                        Badge { Text("$unreadCount") }
-                        Spacer(modifier = Modifier.width(8.dp))
+        if (useDuo3HomeAccount) {
+            ListItem(
+                headlineContent = { Text("通知") },
+                supportingContent = { Text("查看通知及回复") },
+                leadingContent = { Icon(Icons.Default.Notifications, null) },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (unreadCount > 0) {
+                            Badge { Text("$unreadCount") }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                     }
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
-                }
-            },
-            modifier = Modifier.clickable {
-                onDismissRequest()
-                navigator.onNavigate(Notification)
-            },
-        )
+                },
+                modifier = Modifier.clickable {
+                    onDismissRequest()
+                    navigator.onNavigate(Notification)
+                },
+            )
 
-        ListItem(
-            headlineContent = { Text("在线浏览历史") },
-            supportingContent = { Text("查看在线阅读历史记录") },
-            leadingContent = { Icon(Icons.Default.History, null) },
-            trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable {
-                onDismissRequest()
-                navigator.onNavigate(OnlineHistory)
-            },
-        )
+            ListItem(
+                headlineContent = { Text("在线浏览历史") },
+                supportingContent = { Text("查看在线阅读历史记录") },
+                leadingContent = { Icon(Icons.Default.History, null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable {
+                    onDismissRequest()
+                    navigator.onNavigate(OnlineHistory)
+                },
+            )
+        }
 
         ListItem(
             headlineContent = { Text("外观与阅读体验") },

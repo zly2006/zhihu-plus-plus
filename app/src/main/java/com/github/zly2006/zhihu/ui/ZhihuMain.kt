@@ -17,12 +17,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
+import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,12 +40,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
@@ -164,7 +171,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         )
     }
 
-    // 底部导航栏双击回到顶部功能
+    // 底部导航栏功能
+    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
+    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
+    val duo3HomeScrollTop = remember { preferences.getBoolean("duo3_home_scroll_top", false) }
+    val duo3NavStyle = remember { preferences.getBoolean("duo3_nav_style", false) }
+    val useDuo3HomeAccount = duo3All && duo3HomeAccount
+    val useDuo3NavStyle = duo3All && duo3NavStyle
+
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     val tapToScrollToTopEnabled = remember { preferences.getBoolean("bottomBarTapScrollToTop", true) }
 
@@ -253,13 +269,28 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     NavigationBar(
                         modifier = modifier,
                     ) {
-                        val allItems = listOf(
-                            Triple(Home, "主页", Icons.Filled.Home),
-                            Triple(Follow, "关注", Icons.Filled.Group),
-                            Triple(HotList, "热榜", Icons.Filled.Whatshot),
-                            Triple(Daily, "日报", Icons.Filled.Newspaper),
-                        )
-                        val defaultKeys = setOf(Home.name, Follow.name, Daily.name)
+                        val allItems = if (useDuo3HomeAccount) {
+                            listOf(
+                                Triple(Home, "主页", Icons.Filled.Home),
+                                Triple(Follow, "关注", Icons.Filled.Group),
+                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
+                                Triple(Daily, "日报", Icons.Filled.Newspaper),
+                            )
+                        } else {
+                            listOf(
+                                Triple(Home, "主页", Icons.Filled.Home),
+                                Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
+                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
+                                Triple(Daily, "日报", Icons.Filled.Newspaper),
+                                Triple(OnlineHistory, "历史", Icons.Filled.History),
+                                Triple(Account, "账号", Icons.Filled.ManageAccounts),
+                            )
+                        }
+                        val defaultKeys = if (useDuo3HomeAccount) {
+                            setOf(Home.name, Follow.name, Daily.name)
+                        } else {
+                            setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
+                        }
                         val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
                         val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
 
@@ -278,14 +309,30 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    } else if (tapToScrollToTopEnabled) {
-                                        // 已经在当前页面，触发回到顶部
-                                        scrollToTopTrigger++
+                                    } else if (if (duo3All && duo3HomeScrollTop) tapToScrollToTopEnabled else tapToRefreshEnabled) {
+                                        if (duo3All && duo3HomeScrollTop) scrollToTopTrigger++ else refreshTrigger++
                                     }
                                 },
                                 label = {
-                                    Text(
-                                        label,
+                                    if (useDuo3NavStyle) {
+                                        Text(label)
+                                    } else {
+                                        Text(
+                                            label,
+                                            style = TextStyle(
+                                                fontSize = 9.sp,
+                                                color = LocalContentColor.current.copy(alpha = 0.6f),
+                                            ),
+                                        )
+                                    }
+                                },
+                                alwaysShowLabel = useDuo3NavStyle,
+                                colors = if (useDuo3NavStyle) {
+                                    NavigationBarItemDefaults.colors()
+                                } else {
+                                    NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xff66ccff),
+                                        indicatorColor = Color.Transparent,
                                     )
                                 },
                                 icon = {
@@ -335,6 +382,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             ) {
                 composable<Home> {
                     HomeScreen(
+                        refreshTrigger = refreshTrigger,
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
                     )
