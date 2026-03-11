@@ -1,8 +1,5 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +71,6 @@ fun PinScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val httpClient = remember { AccountData.httpClient(context) }
 
     val viewModel = viewModel<PinViewModel>(

@@ -1,5 +1,3 @@
-@file:Suppress("PropertyName")
-
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
@@ -42,7 +40,6 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import com.github.zly2006.zhihu.util.ZseSigner
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
@@ -56,17 +53,14 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.system.measureNanoTime
 
 class MainActivity : ComponentActivity() {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
 
-    val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
     lateinit var history: HistoryStorage
     val httpClient by lazy {
@@ -455,26 +449,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
-    fun signRequest96(url: String, body: String?): String {
-        val dc0 = AccountData.data.cookies["d_c0"] ?: ""
-        val pathname = "/" + url.substringAfter("//").substringAfter('/')
-        val signSource = listOfNotNull(
-            ZSE93,
-            pathname,
-            dc0,
-            body,
-        ).joinToString("+")
-        val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-        val kotlinSign: String
-        val kotlinTime = measureNanoTime {
-            kotlinSign = ZseSigner.encryptZseV4(md5)
-        }
-        Log.i("signRequest96", "Kotlin signing time: ${kotlinTime / 1_000_000.0} ms")
-
-        return "2.0_$kotlinSign"
-    }
-
     fun postHistory(dest: NavDestination) {
         history.add(dest)
     }
@@ -655,5 +629,6 @@ class MainActivity : ComponentActivity() {
         const val ANDROID = "4_2.0"
         const val WEB = "3_2.0"
         const val ZSE93 = "101_3_3.0"
+        const val TAG = "MainActivity"
     }
 }

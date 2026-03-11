@@ -27,7 +27,7 @@ class SearchViewModel(
                 url {
                     parameters.append("include", include)
                 }
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             val jsonArray = jojo["data"]!!.jsonArray
 

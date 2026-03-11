@@ -246,7 +246,7 @@ class PersonViewModel(
         if (isFollowing) {
             val jojo = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
                 .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount - 1)
@@ -254,7 +254,7 @@ class PersonViewModel(
         } else {
             val jojo = client
                 .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
                 .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount + 1)
@@ -269,7 +269,7 @@ class PersonViewModel(
             // unblock
             val response = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
             isBlocking = false
@@ -277,7 +277,7 @@ class PersonViewModel(
             // block
             val response = client
                 .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
             isBlocking = true
@@ -312,7 +312,7 @@ class PersonViewModel(
                     "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
                 )
             }
-            signFetchRequest(context)
+            signFetchRequest()
         }!!
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl

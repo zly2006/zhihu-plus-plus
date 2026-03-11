@@ -3,7 +3,6 @@ on:
   push:
     branches-ignore:
       - master
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -71,10 +70,17 @@ jobs:
       - name: Move files
         run: |
           mkdir -p app/build/upload
+          mkdir -p app/build/upload-lite
           mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
-          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+          cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload-lite/zhihu++-lite-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PR Debug artifacts
           path: app/build/upload/
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR Debug artifacts (Lite)
+          path: app/build/upload-lite/

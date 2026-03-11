@@ -29,7 +29,7 @@ fun FeedPullToRefresh(
     val state = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     PullToRefreshBox(
-        isRefreshing = viewModel.isPullToRefresh,
+        isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
         onRefresh = {
             scope.launch {
                 viewModel.pullToRefresh(context)

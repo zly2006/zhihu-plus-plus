@@ -27,10 +27,17 @@ import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
@@ -98,7 +105,7 @@ suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, 
         setBody(
             """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
         )
-        signFetchRequest(context)
+        signFetchRequest()
     }
 
     val responseText = response.bodyAsText()
@@ -196,6 +203,37 @@ class CustomWebView : WebView {
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
+    var onContentHeightCallback: ((Int) -> Unit)? = null
+    var onPageStartedCallback: (() -> Unit)? = null
+
+    private var touchStartY = 0f
+
+    /**
+     * 在 WebView 内容已到达顶部/底部边界时，不 disallow 父 View 拦截触摸事件，
+     * 使 Compose 的 nestedScroll/overscroll 能接管剩余的拖动。
+     * 使用从 ACTION_DOWN 开始的累积位移判断方向，避免逐帧增量在触摸初始时误判。
+     */
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        when (event.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                touchStartY = event.y
+                parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            android.view.MotionEvent.ACTION_MOVE -> {
+                val totalDy = event.y - touchStartY
+                val atTop = scrollY == 0
+                val maxScroll = computeVerticalScrollRange() - computeVerticalScrollExtent()
+                val atBottom = maxScroll <= 0 || scrollY >= maxScroll
+                if ((totalDy > 8f && atTop) || (totalDy < -8f && atBottom)) {
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                } else if (totalDy > 8f || totalDy < -8f) {
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                }
+                // 位移未超过阈值时不修改 disallow 状态，保持 ACTION_DOWN 时的 false
+            }
+        }
+        return super.onTouchEvent(event)
+    }
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -210,6 +248,11 @@ class CustomWebView : WebView {
         @JavascriptInterface
         fun scrollToHeight(y: Int, maxY: Int) {
             scrollToHeightCallback?.invoke(y, maxY)
+        }
+
+        @JavascriptInterface
+        fun onContentHeight(height: Int) {
+            onContentHeightCallback?.invoke(height)
         }
     }
 
@@ -285,9 +328,37 @@ class CustomWebView : WebView {
     }
 
     /**
-     * 注入脚注处理的 JavaScript 代码
-     * 处理 data-draft-type="reference" 的 sup 标签，生成脚注列表
+     * 注入高度上报脚本：立即上报一次，并在所有图片加载完成后再上报。
+     * 使用 document.body.scrollHeight（不含 margin），通过 AndroidInterface.onContentHeight 回调。
      */
+    fun injectContentHeightReporter() {
+        if (onContentHeightCallback == null) return
+        val js =
+            """
+            (function() {
+                function report() {
+                    if (window.AndroidInterface && AndroidInterface.onContentHeight) {
+                        AndroidInterface.onContentHeight(document.body.scrollHeight);
+                    }
+                }
+                report();
+                // 图片加载完成后再上报一次（处理懒加载图片导致高度变化的情况）
+                var imgs = document.querySelectorAll('img');
+                var pending = imgs.length;
+                if (pending === 0) return;
+                function onImgDone() {
+                    report();
+                }
+                imgs.forEach(function(img) {
+                    if (img.complete) { onImgDone(); }
+                    else { img.addEventListener('load', onImgDone); img.addEventListener('error', onImgDone); }
+                });
+                setTimeout(report, 3000); // 3秒后强制上报一次，防止有些图片既不触发 load 也不触发 error
+            })();
+            """.trimIndent()
+        evaluateJavascript(js, null)
+    }
+
     fun injectFootnoteScript() {
         val jsCode = loadJavaScriptFromAssets("footnotes.js")
         if (jsCode.isNotEmpty()) {
@@ -450,9 +521,11 @@ fun WebviewComp(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val httpClient = AccountData.httpClient(context)
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+    // JS 上报的内容高度（CSS 像素 = dp，WebView viewport 默认 1 CSS px = 1 dp）；
+    // 0 表示尚未收到上报（等待 onPageFinished），此时用 wrapContentSize 避免撑满未知高度
+    var contentHeightDp by remember { mutableIntStateOf(0) }
 
     AndroidView(
         factory = { ctx ->
@@ -478,9 +551,17 @@ fun WebviewComp(
                     }
                 }
             }
+            view.onContentHeightCallback = { height ->
+                coroutineScope.launch(Dispatchers.Main) { contentHeightDp = height }
+            }
+            view.onPageStartedCallback = { coroutineScope.launch(Dispatchers.Main) { contentHeightDp = 0 } }
             onLoad(view)
         },
-        modifier = modifier,
+        modifier = if (contentHeightDp > 0) {
+            modifier.height(contentHeightDp.dp)
+        } else {
+            modifier.wrapContentSize()
+        },
         onRelease = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
             if (existingWebView != null) {
@@ -653,6 +734,11 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             return super.shouldOverrideUrlLoading(view, request)
         }
 
+        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+            if (view is CustomWebView) view.onPageStartedCallback?.invoke()
+        }
+
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
             Log.i("WebView-Page", "Page finished loading: $url")
@@ -664,6 +750,8 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 view.injectFootnoteScript()
                 // 注入主题样式
                 view.applyThemeStyle()
+                // 上报内容高度（图片加载完成后再上报一次）
+                view.injectContentHeightReporter()
             }
 
             onPageFinished?.invoke(url)

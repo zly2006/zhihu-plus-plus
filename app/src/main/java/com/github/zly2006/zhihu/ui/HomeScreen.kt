@@ -92,7 +92,7 @@ interface IHomeFeedViewModel {
         try {
             AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
                 header("x-requested-with", "fetch")
-                signFetchRequest(context)
+                signFetchRequest()
                 setBody(
                     MultiPartFormDataContent(
                         formData {
@@ -190,7 +190,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
     LaunchedEffect(Unit) {
         try {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
         } catch (_: Exception) {
@@ -352,6 +352,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                     ),
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,
+                    key = { item -> item.navDestination.toString() },
                 ) { item ->
                     FeedCard(
                         item,

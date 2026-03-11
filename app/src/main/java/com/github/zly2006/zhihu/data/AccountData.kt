@@ -273,7 +273,7 @@ object AccountData {
     ) {
         try {
             fetchPost(context, "https://www.zhihu.com/api/v4/read_history/add") {
-                signFetchRequest(context)
+                signFetchRequest()
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {

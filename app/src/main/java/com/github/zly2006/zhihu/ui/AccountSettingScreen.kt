@@ -110,7 +110,7 @@ fun AccountSettingScreen(
             if (data.login) {
                 try {
                     val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }!!
                     val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
                     AccountData.saveData(

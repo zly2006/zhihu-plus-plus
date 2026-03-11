@@ -20,8 +20,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -50,29 +49,46 @@ class HomeFeedViewModel :
         debugData.addAll(rawData)
 
         viewModelScope.launch {
-            // 先创建所有的 FeedDisplayItem
-            val displayItemsToFilter = data
+            val newItems = data
                 .flatten()
                 .filter { feed -> feed.target?.navDestination != null }
                 .map { feed -> createDisplayItem(context, feed) }
 
-            // 应用内容过滤（包括广告检测）
-            val filteredDisplayItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, displayItemsToFilter)
+            // 立即展示所有内容，不等待过滤
+            withContext(Dispatchers.Main) {
+                newItems.forEach { item ->
+                    if (displayItems.none { it.navDestination == item.navDestination }) {
+                        displayItems.add(item)
+                    }
+                }
+            }
+
+            // 后台运行内容过滤
+            val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
+            val newDestinations = newItems.map { it.navDestination }.toSet()
 
             // 记录内容展示
-            recordContentDisplays(context, filteredDisplayItems)
+            recordContentDisplays(context, filteredItems)
 
-            // 添加到显示列表
-            filteredDisplayItems
-                .map { item ->
-                    coroutineScope {
-                        launch(Dispatchers.Main) {
-                            if (displayItems.none { it.navDestination == item.navDestination }) {
-                                displayItems.add(item)
-                            }
-                        }
+            // 标记被过滤的条目，并更新已保留条目的 raw 内容
+            withContext(Dispatchers.Main) {
+                for (i in displayItems.indices) {
+                    val item = displayItems[i]
+                    if (item.navDestination !in newDestinations) continue
+                    val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
+                    displayItems[i] = if (filteredVersion == null) {
+                        item.copy(isPendingRemoval = true)
+                    } else {
+                        item.copy(raw = filteredVersion.raw)
                     }
-                }.joinAll()
+                }
+            }
+
+            // 等待退出动画完成后移除
+            delay(400)
+            withContext(Dispatchers.Main) {
+                displayItems.removeAll { it.isPendingRemoval }
+            }
         }
     }
 
@@ -163,13 +179,13 @@ class HomeFeedViewModel :
     private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {
         try {
             val untouchedAnswers = displayItems
-                .filter { !it.isFiltered && it.feed?.target is Feed.AnswerTarget }
+                .filter { !it.isFiltered && !it.isPendingRemoval && it.feed?.target is Feed.AnswerTarget }
 
             if (untouchedAnswers.isNotEmpty()) {
                 httpClient
                     .post("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
-                        signFetchRequest(context)
+                        signFetchRequest()
                         setBody(
                             MultiPartFormDataContent(
                                 formData {

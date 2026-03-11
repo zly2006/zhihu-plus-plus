@@ -119,7 +119,7 @@ abstract class PaginationViewModel<T : Any>(
                 url {
                     parameters.append("include", include)
                 }
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
 
             val jsonArray = json["data"]!!.jsonArray
