@@ -316,7 +316,11 @@ class MainActivity : ComponentActivity() {
                     if (hasUpdate) {
                         val updateState = UpdateManager.updateState.value
                         if (updateState is UpdateManager.UpdateState.UpdateAvailable) {
-                            showUpdateDialog(updateState.version.toString(), updateState.isNightly, updateState.releaseNotes)
+                            showUpdateDialog(
+                                updateState.version.toString(),
+                                updateState.isNightly,
+                                updateState.releaseNotes?.replace("https://github.com/zly2006/zhihu-plus-plus/pull/", "#"),
+                            )
                         }
                     }
                 } catch (e: Exception) {
