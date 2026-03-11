@@ -14,24 +14,21 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInCubic
 import androidx.compose.animation.core.EaseOutCubic
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +44,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,7 +54,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -66,7 +61,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -197,11 +191,11 @@ private val VoteUpNeutralContent = Color(0xFF3671EE)
 private val VoteUpNeutralContentDark = Color(0xFF628DF7)
 
 @Composable
-fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme())
-        VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
-    else
-        VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
-
+fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) {
+    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
+} else {
+    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
+}
 
 @Composable
 fun ArticleActionsMenu(
@@ -670,11 +664,15 @@ fun ArticleScreen(
         if (!scrollState.isScrollInProgress) {
             val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
                 if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
-            } else topBarOffset.value
+            } else {
+                topBarOffset.value
+            }
 
             val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
                 if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
-            } else bottomBarOffset.value
+            } else {
+                bottomBarOffset.value
+            }
 
             // Only compensate scroll for the top bar near the top
             // Bottom bar: no scroll compensation (distance-based reveal handles it)
@@ -827,11 +825,11 @@ fun ArticleScreen(
             topBar = {
                 Box(
                     modifier = Modifier
-                    .onSizeChanged { topBarHeightPx = it.height.toFloat() }
-                    .graphicsLayer {
-                        translationY = topBarOffset.value
-                        alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
-                    }
+                        .onSizeChanged { topBarHeightPx = it.height.toFloat() }
+                        .graphicsLayer {
+                            translationY = topBarOffset.value
+                            alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
+                        },
                 ) {
                     TwoRowsTopAppBar(
                         navigationIcon = {
@@ -871,7 +869,7 @@ fun ArticleScreen(
                                         }
                                     },
                                 maxLines = if (expanded) Int.MAX_VALUE else 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         },
                         subtitle = { expanded ->
@@ -887,9 +885,7 @@ fun ArticleScreen(
                                                 name = viewModel.authorName,
                                             ),
                                         )
-                                    }
-                                    .padding(end = 16.dp)
-
+                                    }.padding(end = 16.dp),
                             ) {
                                 if (viewModel.authorAvatarSrc.isNotEmpty()) {
                                     AsyncImage(
@@ -897,34 +893,33 @@ fun ArticleScreen(
                                         contentDescription = "作者头像",
                                         modifier = Modifier
                                             .size(if (expanded) 40.dp else 20.dp)
-                                            .clip(CircleShape)
+                                            .clip(CircleShape),
                                     )
                                 } else {
                                     Box(
                                         modifier = Modifier
                                             .size(if (expanded) 40.dp else 20.dp)
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
                                     )
                                 }
 
                                 Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
 
-                                Column() {
+                                Column {
                                     Text(
                                         text = viewModel.authorName,
                                         style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                                        color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     if (viewModel.authorBio.isNotEmpty() && expanded) {
                                         Text(
                                             text = viewModel.authorBio,
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
-
                             }
                         },
                         scrollBehavior = scrollBehavior,
@@ -935,11 +930,11 @@ fun ArticleScreen(
                 if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                     Box(
                         modifier = Modifier
-                        .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
-                        .graphicsLayer {
-                            translationY = bottomBarOffset.value
-                            alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
-                        }
+                            .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                            .graphicsLayer {
+                                translationY = bottomBarOffset.value
+                                alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                            },
                     ) {
                         Row(
                             modifier = Modifier
@@ -959,10 +954,10 @@ fun ArticleScreen(
                                     visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Up,
                                 ) {
                                     val upBgColor by animateColorAsState(
-                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) voteUpNeutralContent() else MaterialTheme.colorScheme.surfaceContainer
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) voteUpNeutralContent() else MaterialTheme.colorScheme.surfaceContainer,
                                     )
                                     val upContentColor by animateColorAsState(
-                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSurface
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSurface,
                                     )
                                     Row(
                                         modifier = Modifier
@@ -971,23 +966,22 @@ fun ArticleScreen(
                                             .clickable {
                                                 viewModel.toggleVoteUp(
                                                     context,
-                                                    if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up
+                                                    if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
                                                 )
-                                            }
-                                            .padding(6.dp, 8.dp, 12.dp, 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                            }.padding(6.dp, 8.dp, 12.dp, 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.ic_vote_up_24dp),
                                             contentDescription = "赞同",
                                             tint = upContentColor,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = viewModel.voteUpCount.toString(),
                                             color = upContentColor,
-                                            style = MaterialTheme.typography.titleMedium
+                                            style = MaterialTheme.typography.titleMedium,
                                         )
                                     }
                                 }
@@ -1000,10 +994,10 @@ fun ArticleScreen(
                                     visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Down,
                                 ) {
                                     val downBgColor by animateColorAsState(
-                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) voteUpNeutralContent() else MaterialTheme.colorScheme.surfaceContainer
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) voteUpNeutralContent() else MaterialTheme.colorScheme.surfaceContainer,
                                     )
                                     val downContentColor by animateColorAsState(
-                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) Color.White else MaterialTheme.colorScheme.onSurface
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) Color.White else MaterialTheme.colorScheme.onSurface,
                                     )
                                     Row(
                                         modifier = Modifier
@@ -1012,11 +1006,10 @@ fun ArticleScreen(
                                             .clickable {
                                                 viewModel.toggleVoteUp(
                                                     context,
-                                                    if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down
+                                                    if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
                                                 )
-                                            }
-                                            .padding(6.dp, 8.dp, 8.dp, 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                            }.padding(6.dp, 8.dp, 8.dp, 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         AnimatedVisibility(visible = viewModel.voteUpState != VoteUpState.Down) {
                                             Spacer(modifier = Modifier.width(2.dp))
@@ -1025,7 +1018,7 @@ fun ArticleScreen(
                                             painter = painterResource(R.drawable.ic_vote_down_24dp),
                                             contentDescription = "反对",
                                             tint = downContentColor,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(24.dp),
                                         )
                                         AnimatedVisibility(visible = viewModel.voteUpState == VoteUpState.Down) {
                                             Row {
@@ -1033,7 +1026,7 @@ fun ArticleScreen(
                                                     text = "反对",
                                                     color = downContentColor,
                                                     style = MaterialTheme.typography.titleMedium,
-                                                    modifier = Modifier.padding(horizontal = 4.dp)
+                                                    modifier = Modifier.padding(horizontal = 4.dp),
                                                 )
                                             }
                                         }
@@ -1051,14 +1044,16 @@ fun ArticleScreen(
                                 IconButton(
                                     onClick = { showCollectionDialog = true },
                                     colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = if (viewModel.isFavorited)
+                                        containerColor = if (viewModel.isFavorited) {
                                             Color(0xFFF57C00).harmonize(MaterialTheme.colorScheme.primary)
-                                        else
-                                            MaterialTheme.colorScheme.surfaceContainer,
-                                        contentColor = if (viewModel.isFavorited)
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainer
+                                        },
+                                        contentColor = if (viewModel.isFavorited) {
                                             Color.White.copy(alpha = 0.87f)
-                                        else
-                                            MaterialTheme.colorScheme.onSurface,
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
                                     ),
                                 ) {
                                     Icon(
@@ -1081,13 +1076,13 @@ fun ArticleScreen(
                                                 ).show()
                                         },
                                         enabled = (
-                                                ttsState !in listOf(
-                                                    TtsState.Error,
-                                                    TtsState.Uninitialized,
-                                                    TtsState.Initializing,
-                                                    null
-                                                )
-                                                ),
+                                            ttsState !in listOf(
+                                                TtsState.Error,
+                                                TtsState.Uninitialized,
+                                                TtsState.Initializing,
+                                                null,
+                                            )
+                                        ),
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
                                             contentColor = Color.White,
@@ -1112,7 +1107,7 @@ fun ArticleScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "${viewModel.commentCount}",
-                                        style = MaterialTheme.typography.titleMedium
+                                        style = MaterialTheme.typography.titleMedium,
                                     )
                                 }
                             }
@@ -1129,7 +1124,6 @@ fun ArticleScreen(
                         .padding(innerPadding)
                         .padding(top = 32.dp),
                 ) {
-
                     @Composable
                     fun DateTexts() {
                         Text(
@@ -1225,12 +1219,12 @@ fun ArticleScreen(
                         .background(
                             Brush.verticalGradient(
                                 colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
-                            )
-                        )
+                            ),
+                        ),
                 ) {}
             }
         }
-    }// end answerSwitchContent
+    } // end answerSwitchContent
 
     // 根据模式渲染
     if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {

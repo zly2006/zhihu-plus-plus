@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -38,7 +37,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -171,7 +169,7 @@ fun FeedCard(
                         MaterialTheme.colorScheme.surfaceContainerHigh
                     } else {
                         MaterialTheme.colorScheme.surface
-                    }
+                    },
                 ),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier
@@ -335,15 +333,14 @@ private fun FeedCardContent(
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
             }
         }
     }
 
-
-    Column() {
-        Row() {
+    Column {
+        Row {
             Text(
                 text = parseHtmlTextWithTheme(item.summary ?: ""),
                 style = MaterialTheme.typography.bodyMedium,
@@ -367,13 +364,11 @@ private fun FeedCardContent(
             }
         }
 
-
         if ((item.details.isNotEmpty()) or (item.avatarSrc != null && item.authorName != null)) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-
                 if (item.avatarSrc != null && item.authorName != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

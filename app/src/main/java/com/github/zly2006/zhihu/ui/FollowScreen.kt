@@ -93,8 +93,10 @@ fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
         PrimaryTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
             modifier = Modifier.padding(
-                top = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-            )
+                top = androidx.compose.foundation.layout.WindowInsets.statusBars
+                    .asPaddingValues()
+                    .calculateTopPadding(),
+            ),
         ) {
             titles.forEachIndexed { index, title ->
                 Tab(

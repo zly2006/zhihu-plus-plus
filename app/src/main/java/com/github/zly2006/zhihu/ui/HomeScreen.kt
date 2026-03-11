@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
@@ -26,15 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,17 +47,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.Notification
-import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -77,7 +65,6 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -88,7 +75,6 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.setBody
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
@@ -166,7 +152,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
-    
+
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
@@ -184,7 +170,8 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val listState = androidx.compose.foundation.lazy
+        .rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger != cachedScrollToTopTrigger) {
@@ -249,14 +236,13 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
     Scaffold(
         containerColor = containerColor,
         topBar = {
-            Box() {
+            Box {
                 Surface(
                     color = containerColor,
                     modifier = Modifier
                         .height(
-                            WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp
-                        )
-                        .fillMaxWidth()
+                            WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
+                        ).fillMaxWidth(),
                 ) { }
                 Row(
                     modifier = Modifier
@@ -294,14 +280,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                                 text = "搜索",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
 
                             // 头像按钮 (带通知红点)
 
                             IconButton(
                                 onClick = { showAccountBottomSheet = true },
-                                modifier = Modifier.size(64.dp)
+                                modifier = Modifier.size(64.dp),
                             ) {
                                 Box(Modifier.padding(12.dp)) {
                                     BadgedBox(
@@ -322,14 +308,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                                                 modifier = Modifier
                                                     .size(40.dp)
                                                     .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                                    .clip(CircleShape)
+                                                    .clip(CircleShape),
                                             )
                                         } else {
                                             Icon(
                                                 Icons.Default.AccountCircle,
                                                 contentDescription = "账号",
                                                 tint = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.size(40.dp)
+                                                modifier = Modifier.size(40.dp),
                                             )
                                         }
                                     }
@@ -348,13 +334,13 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
-                    onDismissRequest = { showAccountBottomSheet = false }
+                    onDismissRequest = { showAccountBottomSheet = false },
                 )
             }
         }
 
         Box(
-            //modifier = Modifier.padding(top = scaffoldPadding.calculateTopPadding()),
+            // modifier = Modifier.padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
             FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
@@ -362,7 +348,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues = Paddin
                     listState = listState,
                     contentPadding = PaddingValues(
                         top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding()
+                        bottom = innerPadding.calculateBottomPadding(),
                     ),
                     onLoadMore = { viewModel.loadMore(context) },
                     footer = ProgressIndicatorFooter,

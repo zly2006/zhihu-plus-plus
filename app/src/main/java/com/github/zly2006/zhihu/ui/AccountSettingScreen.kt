@@ -23,13 +23,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -277,7 +276,7 @@ fun AccountSettingScreen(
                 navigator.onNavigate(Notification)
             },
         )
-        
+
         ListItem(
             headlineContent = { Text("在线浏览历史") },
             supportingContent = { Text("查看在线阅读历史记录") },
@@ -386,6 +385,6 @@ fun AccountSettingScreen(
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
         innerPadding = PaddingValues(16.dp),
-        unreadCount = 5
+        unreadCount = 5,
     )
 }

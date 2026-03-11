@@ -41,7 +41,10 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             isEnd = { viewModel.isEnd },
             topContent = {
                 item(0) {
-                    Row(modifier = androidx.compose.ui.Modifier.padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
+                    Row(
+                        modifier = androidx.compose.ui.Modifier
+                            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+                    ) {
                         FilledTonalButton(
                             onClick = {
                                 navigator.onNavigate(History)

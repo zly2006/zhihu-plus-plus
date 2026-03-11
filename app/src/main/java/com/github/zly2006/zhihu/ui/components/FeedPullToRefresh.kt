@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
-import kotlinx.datetime.format.Padding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
