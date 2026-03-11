@@ -25,7 +25,7 @@ fun FeedPullToRefresh(
     val state = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     PullToRefreshBox(
-        isRefreshing = viewModel.isPullToRefresh,
+        isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
         onRefresh = {
             scope.launch {
                 viewModel.pullToRefresh(context)
@@ -34,7 +34,7 @@ fun FeedPullToRefresh(
         indicator = {
             PullToRefreshDefaults.Indicator(
                 modifier = Modifier.align(Alignment.TopCenter),
-                isRefreshing = viewModel.isPullToRefresh,
+                isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 state = state,
