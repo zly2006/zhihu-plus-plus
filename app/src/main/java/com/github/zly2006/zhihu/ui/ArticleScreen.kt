@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName", "PropertyName")
-
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData

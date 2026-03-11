@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
@@ -348,10 +346,6 @@ fun CommentScreen(
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
-    val useWebview = remember { preferences.getBoolean("commentsUseWebview1", false) }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (val content = content()) {

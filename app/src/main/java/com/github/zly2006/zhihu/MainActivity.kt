@@ -1,5 +1,3 @@
-@file:Suppress("PropertyName")
-
 package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
@@ -63,7 +61,6 @@ class MainActivity : ComponentActivity() {
         var clipboardDestination: NavDestination? = null
     }
 
-    val TAG = "MainActivity"
     val sharedData by viewModels<SharedData>()
     lateinit var history: HistoryStorage
     val httpClient by lazy {
@@ -632,5 +629,6 @@ class MainActivity : ComponentActivity() {
         const val ANDROID = "4_2.0"
         const val WEB = "3_2.0"
         const val ZSE93 = "101_3_3.0"
+        const val TAG = "MainActivity"
     }
 }
