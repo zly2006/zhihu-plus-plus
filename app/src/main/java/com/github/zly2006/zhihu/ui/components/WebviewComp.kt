@@ -105,7 +105,7 @@ suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, 
         setBody(
             """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
         )
-        signFetchRequest(context)
+        signFetchRequest()
     }
 
     val responseText = response.bodyAsText()

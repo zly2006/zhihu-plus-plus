@@ -169,7 +169,7 @@ class HomeFeedViewModel :
                 httpClient
                     .post("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
-                        signFetchRequest(context)
+                        signFetchRequest()
                         setBody(
                             MultiPartFormDataContent(
                                 formData {

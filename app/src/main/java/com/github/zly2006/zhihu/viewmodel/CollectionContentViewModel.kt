@@ -60,7 +60,7 @@ class CollectionContentViewModel(
         displayItems.clear()
         viewModelScope.launch {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             collection = AccountData.decodeJson<Collection>(jojo["collection"]!!)
         }

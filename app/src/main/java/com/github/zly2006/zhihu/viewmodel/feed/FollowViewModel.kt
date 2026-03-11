@@ -53,7 +53,7 @@ class RecentMomentsViewModel : ViewModel() {
                     return@launch
                 }
                 val json = AccountData.fetchGet(context, "https://api.zhihu.com/moments/recent?type=raw") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 } ?: return@launch
                 val dataArray = json["data"]?.jsonArray ?: return@launch
                 users.addAll(

@@ -432,7 +432,7 @@ fun DeveloperSettingsScreen() {
                                 try {
                                     val httpClient = AccountData.httpClient(context)
                                     val response = httpClient.get(urlInput) {
-                                        signFetchRequest(context)
+                                        signFetchRequest()
                                     }
                                     val body = response.bodyAsText()
                                     responseText = body

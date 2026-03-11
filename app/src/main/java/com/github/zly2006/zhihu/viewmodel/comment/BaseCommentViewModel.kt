@@ -83,12 +83,12 @@ abstract class BaseCommentViewModel(
                 val response = if (newLikeState) {
                     // 点赞
                     httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }
                 } else {
                     // 取消点赞
                     httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }
                 }
 

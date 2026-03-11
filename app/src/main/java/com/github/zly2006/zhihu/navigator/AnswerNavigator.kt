@@ -149,7 +149,7 @@ class QuestionAnswerNavigator(
     private suspend fun ensureDestinations(context: Context, currentArticleId: Long) {
         if (destinations.isNotEmpty()) return
         val url = nextUrl.ifEmpty { "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2" }
-        val jojo = AccountData.fetchGet(context, url) { signFetchRequest(context) } ?: return
+        val jojo = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return
         val data = AccountData.decodeJson<List<Feed>>(jojo["data"] ?: return)
         nextUrl = jojo["paging"]
             ?.jsonObject
@@ -251,7 +251,7 @@ class CollectionAnswerNavigator(
     private suspend fun ensureQueue(context: Context) {
         if (queue.isNotEmpty() || prefetchedArticle != null) return
         if (nextPageUrl.isEmpty()) return
-        val jojo = AccountData.fetchGet(context, nextPageUrl) { signFetchRequest(context) } ?: return
+        val jojo = AccountData.fetchGet(context, nextPageUrl) { signFetchRequest() } ?: return
         val items = AccountData.decodeJson<List<CollectionContentViewModel.CollectionItem>>(jojo["data"] ?: return)
         nextPageUrl = jojo["paging"]
             ?.jsonObject

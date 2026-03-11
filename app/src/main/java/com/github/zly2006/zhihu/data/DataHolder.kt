@@ -34,7 +34,7 @@ object DataHolder {
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
@@ -66,7 +66,7 @@ object DataHolder {
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
@@ -95,7 +95,7 @@ object DataHolder {
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             AccountData.decodeJson<Pin>(jo)
         }.getOrElse { e ->
