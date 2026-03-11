@@ -76,8 +76,8 @@ fun <T> PaginatedList(
         items(items, key = key) { item ->
             Box(
                 modifier = Modifier.animateItem(
-                    fadeInSpec = null,
-                    fadeOutSpec = null,
+                    fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
                     placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
                 ),
             ) {
