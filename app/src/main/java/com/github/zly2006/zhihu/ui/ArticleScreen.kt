@@ -578,7 +578,6 @@ fun ArticleScreen(
     val duo3All = remember { preferences.getBoolean("duo3_all", false) }
     val useDuo3ArticleBar = duo3All && remember { preferences.getBoolean("duo3_article_bar", false) }
     val useDuo3ArticleActions = duo3All && remember { preferences.getBoolean("duo3_article_actions", false) }
-    val useDuo3ArticleNoSkip = duo3All && remember { preferences.getBoolean("duo3_article_no_skip", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
 
@@ -1438,8 +1437,8 @@ fun ArticleScreen(
                     }
                     Spacer(modifier = Modifier.height((16 + 36).dp))
                 }
-                // Skip answer button (master feature, gated off by duo3_article_no_skip)
-                if (article.type == ArticleType.Answer && buttonSkipAnswer && !useDuo3ArticleNoSkip) {
+                // Skip answer button
+                if (article.type == ArticleType.Answer && buttonSkipAnswer) {
                     var navigatingToNextAnswer by remember { mutableStateOf(false) }
                     val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
                     val skipButtonAlpha by animateFloatAsState(

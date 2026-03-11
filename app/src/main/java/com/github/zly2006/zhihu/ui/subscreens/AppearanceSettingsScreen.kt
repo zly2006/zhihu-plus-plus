@@ -901,7 +901,6 @@ fun AppearanceSettingsScreen(
             val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
             val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
             val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
-            val duo3ArticleNoSkip = remember { mutableStateOf(preferences.getBoolean("duo3_article_no_skip", false)) }
 
             fun enableAllSubs() {
                 preferences.edit {
@@ -913,7 +912,7 @@ fun AppearanceSettingsScreen(
                     putBoolean("duo3_card_layout", true)
                     putBoolean("duo3_article_bar", true)
                     putBoolean("duo3_article_actions", true)
-                    putBoolean("duo3_article_no_skip", true)
+                    putBoolean("buttonSkipAnswer", false)
                 }
                 duo3HomeAccount.value = true
                 duo3HomeScrollTop.value = true
@@ -923,7 +922,7 @@ fun AppearanceSettingsScreen(
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
-                duo3ArticleNoSkip.value = true
+                buttonSkipAnswer.value = false
             }
 
             SwitchSettingItem(
@@ -956,7 +955,6 @@ fun AppearanceSettingsScreen(
                     duo3HomeScrollTop.value = it
                     preferences.edit { putBoolean("duo3_home_scroll_top", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -967,7 +965,6 @@ fun AppearanceSettingsScreen(
                     duo3HomeNoFab.value = it
                     preferences.edit { putBoolean("duo3_home_no_fab", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -978,7 +975,6 @@ fun AppearanceSettingsScreen(
                     duo3NavStyle.value = it
                     preferences.edit { putBoolean("duo3_nav_style", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -989,7 +985,6 @@ fun AppearanceSettingsScreen(
                     duo3CardAppearance.value = it
                     preferences.edit { putBoolean("duo3_card_appearance", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -1000,7 +995,6 @@ fun AppearanceSettingsScreen(
                     duo3CardLayout.value = it
                     preferences.edit { putBoolean("duo3_card_layout", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -1011,7 +1005,6 @@ fun AppearanceSettingsScreen(
                     duo3ArticleBar.value = it
                     preferences.edit { putBoolean("duo3_article_bar", it) }
                 },
-                enabled = duo3All.value,
             )
 
             SwitchSettingItem(
@@ -1022,18 +1015,6 @@ fun AppearanceSettingsScreen(
                     duo3ArticleActions.value = it
                     preferences.edit { putBoolean("duo3_article_actions", it) }
                 },
-                enabled = duo3All.value,
-            )
-
-            SwitchSettingItem(
-                title = "文章阅读页：移除\"跳过答案\"浮动按钮",
-                description = "移除答案页右下角的\"跳过至下一个回答\"悬浮按钮",
-                checked = duo3ArticleNoSkip.value,
-                onCheckedChange = {
-                    duo3ArticleNoSkip.value = it
-                    preferences.edit { putBoolean("duo3_article_no_skip", it) }
-                },
-                enabled = duo3All.value,
             )
         }
     }
