@@ -150,10 +150,13 @@ class AndroidHomeFeedViewModel :
                     }
 
                 // 立即展示所有内容
-                withContext(Dispatchers.Main) {
-                    itemsToDisplay.forEach { item ->
-                        if (displayItems.none { it.navDestination == item.navDestination }) {
-                            displayItems.add(item)
+                val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                if (!preferences.getBoolean("reverseBlock", false)) {
+                    withContext(Dispatchers.Main) {
+                        itemsToDisplay.forEach { item ->
+                            if (displayItems.none { it.navDestination == item.navDestination }) {
+                                displayItems.add(item)
+                            }
                         }
                     }
                 }

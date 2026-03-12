@@ -156,12 +156,12 @@ object ContentFilterExtensions {
         items: List<FeedDisplayItem>,
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
             var filteredItems = items
 
             // 1. 应用关注用户过滤逻辑
-            val shouldFilterFollowed = context
-                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-                .getBoolean("filterFollowedUserContent", false)
+            val shouldFilterFollowed = preferences.getBoolean("filterFollowedUserContent", false)
 
             val (followedUserItems, otherItems) = if (!shouldFilterFollowed) {
                 // 分离已关注用户的内容
@@ -238,6 +238,19 @@ object ContentFilterExtensions {
 
             // 3. 过滤广告和付费内容
             val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
+            if (preferences.getBoolean("reverseBlock", false)) {
+                val ads = filterableContents.filter { content -> checkForAd(content) }
+                val ids = ads.map { it.contentId }
+                return@withContext items.filter { item ->
+                    val contentId = when (val dest = item.navDestination) {
+                        is com.github.zly2006.zhihu.Article -> dest.id.toString()
+                        is com.github.zly2006.zhihu.Question -> dest.questionId.toString()
+                        is com.github.zly2006.zhihu.Pin -> dest.id.toString()
+                        else -> item.navDestination.hashCode().toString()
+                    }
+                    contentId in ids
+                }
+            }
             val nonAdContents = filterableContents.filter { content ->
                 val isAd = checkForAd(content)
                 if (isAd) adBlockedContents.add(content to "广告或付费内容")
@@ -258,6 +271,7 @@ object ContentFilterExtensions {
                 val contentId = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> dest.id.toString()
                     is com.github.zly2006.zhihu.Question -> dest.questionId.toString()
+                    is com.github.zly2006.zhihu.Pin -> dest.id.toString()
                     else -> item.navDestination.hashCode().toString()
                 }
                 if (contentId in filteredContentIds) {

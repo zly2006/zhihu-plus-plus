@@ -361,6 +361,24 @@ fun ContentFilterSettingsScreen(
                 }
             }
 
+            val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
+            HighlightableSettingContainer(
+                settingKey = "reverseBlock",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["reverseBlock"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "反向屏蔽（吃\uD83D\uDCA9模式）",
+                    description = "开启后，首页将只保留广告和付费内容，屏蔽其余所有内容",
+                    checked = reverseBlock.value,
+                    onCheckedChange = {
+                        reverseBlock.value = it
+                        preferences.edit { putBoolean("reverseBlock", it) }
+                    },
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
