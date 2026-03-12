@@ -920,7 +920,32 @@ fun ArticleScreen(
                             }
                         },
                 ) {
-                    if (useDuo3ArticleBar) {
+                    if (!useDuo3ArticleBar) {
+                        AnimatedVisibility(
+                            visible = showTopBar,
+                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top, initialHeight = { 0 }) + slideInVertically { it / 2 },
+                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top, targetHeight = { 0 }) + slideOutVertically { it / 2 },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = viewModel.title,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = 32.sp,
+                                modifier = Modifier
+                                    .padding(bottom = 8.dp)
+                                    .let {
+                                        if (article.type == ArticleType.Answer) {
+                                            it.clickable {
+                                                navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                            }
+                                        } else {
+                                            it
+                                        }
+                                    },
+                            )
+                        }
+                    } else {
                         TwoRowsTopAppBar(
                             navigationIcon = {
                                 IconButton(onClick = {
@@ -1014,41 +1039,122 @@ fun ArticleScreen(
                             },
                             scrollBehavior = scrollBehavior,
                         )
-                    } else {
-                        AnimatedVisibility(
-                            visible = showTopBar,
-                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top, initialHeight = { 0 }) + slideInVertically { it / 2 },
-                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top, targetHeight = { 0 }) + slideOutVertically { it / 2 },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                text = viewModel.title,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 32.sp,
-                                modifier = Modifier
-                                    .padding(bottom = 8.dp)
-                                    .let {
-                                        if (article.type == ArticleType.Answer) {
-                                            it.clickable {
-                                                navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
-                                            }
-                                        } else {
-                                            it
-                                        }
-                                    },
-                            )
-                        }
                     }
                 }
             },
             bottomBar = {
+                // 防止在导航动画和预测性返回手势的过程中，buttom bar闪烁
                 val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable
                 fun ActionBarContent() {
-                    if (useDuo3ArticleActions) {
+                    if (!useDuo3ArticleActions) {
+                        // ── master: Button-based vote + actions ────────────────────────
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        color = if (viewModel.voteUpState == VoteUpState.Neutral) {
+                                            voteUpNeutralContent().copy(alpha = 0.1f)
+                                        } else {
+                                            voteUpNeutralContent()
+                                        },
+                                    ),
+                                horizontalArrangement = Arrangement.Start,
+                            ) {
+                                when (viewModel.voteUpState) {
+                                    VoteUpState.Neutral -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
+                                        }
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                        }
+                                    }
+
+                                    VoteUpState.Up -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+
+                                    VoteUpState.Down -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("反对")
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.End) {
+                                IconButton(
+                                    onClick = { showCollectionDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
+                                ) {
+                                    Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
+                                }
+                                val mainActivity = context as? MainActivity
+                                val ttsState = mainActivity?.ttsState
+                                if (ttsState?.isSpeaking == true) {
+                                    IconButton(
+                                        onClick = {
+                                            mainActivity?.stopSpeaking()
+                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                                        },
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
+                                    }
+                                }
+                                Button(
+                                    onClick = { showComments = true },
+                                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = "${viewModel.commentCount}")
+                                }
+                            }
+                        }
+                    } else {
                         // ── duo3: pill-shaped animated vote + actions ────────────────────
                         Row(
                             modifier = Modifier
@@ -1205,109 +1311,6 @@ fun ArticleScreen(
                                     Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(text = "${viewModel.commentCount}", style = MaterialTheme.typography.titleMedium)
-                                }
-                            }
-                        }
-                    } else {
-                        // ── master: Button-based vote + actions ────────────────────────
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(
-                                        color = if (viewModel.voteUpState == VoteUpState.Neutral) {
-                                            voteUpNeutralContent().copy(alpha = 0.1f)
-                                        } else {
-                                            voteUpNeutralContent()
-                                        },
-                                    ),
-                                horizontalArrangement = Arrangement.Start,
-                            ) {
-                                when (viewModel.voteUpState) {
-                                    VoteUpState.Neutral -> {
-                                        Button(
-                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
-                                            colors = voteUpNeutralButtonColors(),
-                                            shape = RectangleShape,
-                                            contentPadding = PaddingValues(horizontal = 0.dp),
-                                        ) {
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(Icons.Filled.ArrowUpward, "赞同")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(text = viewModel.voteUpCount.toString())
-                                        }
-                                        Button(
-                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
-                                            colors = voteUpNeutralButtonColors(),
-                                            shape = RectangleShape,
-                                            modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
-                                            contentPadding = PaddingValues(horizontal = 0.dp),
-                                        ) {
-                                            Icon(Icons.Filled.ArrowDownward, "反对")
-                                        }
-                                    }
-                                    VoteUpState.Up -> {
-                                        Button(
-                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                            colors = voteUpActiveButtonColors(),
-                                            shape = RectangleShape,
-                                            contentPadding = PaddingValues(horizontal = 0.dp),
-                                        ) {
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(Icons.Filled.ArrowUpward, "赞同")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(text = viewModel.voteUpCount.toString())
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                        }
-                                    }
-                                    VoteUpState.Down -> {
-                                        Button(
-                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                            colors = voteUpActiveButtonColors(),
-                                            shape = RectangleShape,
-                                            modifier = Modifier.height(ButtonDefaults.MinHeight),
-                                            contentPadding = PaddingValues(horizontal = 0.dp),
-                                        ) {
-                                            Icon(Icons.Filled.ArrowDownward, "反对")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("反对")
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                        }
-                                    }
-                                }
-                            }
-                            Row(horizontalArrangement = Arrangement.End) {
-                                IconButton(
-                                    onClick = { showCollectionDialog = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                                    ),
-                                ) {
-                                    Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
-                                }
-                                val mainActivity = context as? MainActivity
-                                val ttsState = mainActivity?.ttsState
-                                if (ttsState?.isSpeaking == true) {
-                                    IconButton(
-                                        onClick = {
-                                            mainActivity?.stopSpeaking()
-                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
-                                        },
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                                    }
-                                }
-                                Button(
-                                    onClick = { showComments = true },
-                                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "${viewModel.commentCount}")
                                 }
                             }
                         }
