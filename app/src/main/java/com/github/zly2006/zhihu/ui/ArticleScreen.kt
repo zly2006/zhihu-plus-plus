@@ -101,6 +101,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -550,7 +551,7 @@ fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
     // 仅用于master 分支
-    innerPadding: PaddingValues = PaddingValues(0.dp)
+    innerPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -891,52 +892,434 @@ fun ArticleScreen(
         }
     }
 
+    val answerSwitchContentOld: @Composable () -> Unit = {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    horizontal = 16.dp,
+                ).background(
+                    color = MaterialTheme.colorScheme.background,
+                    shape = RectangleShape,
+                ),
+            topBar = {
+                Box(
+                    modifier = Modifier
+                        .wrapContentHeight(unbounded = true)
+                        .onGloballyPositioned { coordinates ->
+                            if (coordinates.size.height >= topBarHeight) {
+                                topBarHeight = coordinates.size.height
+                            }
+                        }.background(
+                            color = MaterialTheme.colorScheme.background,
+                            shape = RectangleShape,
+                        ),
+                ) {
+                    AnimatedVisibility(
+                        visible = showTopBar,
+                        enter = fadeIn() + expandVertically(
+                            expandFrom = Alignment.Top,
+                            initialHeight = { 0 },
+                        ) + slideInVertically { it / 2 },
+                        exit = fadeOut() + shrinkVertically(
+                            shrinkTowards = Alignment.Top,
+                            targetHeight = { 0 },
+                        ) + slideOutVertically { it / 2 },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = viewModel.title,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 32.sp,
+                            modifier = Modifier
+                                .padding(bottom = 8.dp)
+                                .let {
+                                    if (article.type == ArticleType.Answer) {
+                                        it.clickable {
+                                            navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                        }
+                                    } else {
+                                        it
+                                    }
+                                },
+                        )
+                    }
+                }
+            },
+            bottomBar = {
+                Column {
+                    if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
+                        AnimatedVisibility(
+                            visible = showBottomBar,
+                            enter = fadeIn() + expandVertically(
+                                expandFrom = Alignment.Bottom,
+                                initialHeight = { 0 },
+                            ) + slideInVertically { it / 2 },
+                            exit = fadeOut() + shrinkVertically(
+                                shrinkTowards = Alignment.Bottom,
+                                targetHeight = { 0 },
+                            ) + slideOutVertically { it / 2 },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .padding(horizontal = 0.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(
+                                            color = if (viewModel.voteUpState == VoteUpState.Neutral) {
+                                                voteUpNeutralContent().copy(alpha = 0.1f)
+                                            } else {
+                                                voteUpNeutralContent()
+                                            },
+                                        ),
+                                    horizontalArrangement = Arrangement.Start,
+                                ) {
+                                    when (viewModel.voteUpState) {
+                                        VoteUpState.Neutral -> {
+                                            Button(
+                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                                colors = voteUpNeutralButtonColors(),
+                                                shape = RectangleShape,
+                                                contentPadding = PaddingValues(horizontal = 0.dp),
+                                            ) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(Icons.Filled.ArrowUpward, "赞同")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(text = viewModel.voteUpCount.toString())
+                                            }
+                                            Button(
+                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
+                                                colors = voteUpNeutralButtonColors(),
+                                                shape = RectangleShape,
+                                                modifier = Modifier
+                                                    .height(ButtonDefaults.MinHeight)
+                                                    .width(ButtonDefaults.MinHeight),
+                                                contentPadding = PaddingValues(horizontal = 0.dp),
+                                            ) {
+                                                Icon(Icons.Filled.ArrowDownward, "反对")
+                                            }
+                                        }
+
+                                        VoteUpState.Up -> {
+                                            Button(
+                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                                colors = voteUpActiveButtonColors(),
+                                                shape = RectangleShape,
+                                                contentPadding = PaddingValues(horizontal = 0.dp),
+                                            ) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(Icons.Filled.ArrowUpward, "赞同")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(text = viewModel.voteUpCount.toString())
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            }
+                                        }
+
+                                        VoteUpState.Down -> {
+                                            Button(
+                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                                colors = voteUpActiveButtonColors(),
+                                                shape = RectangleShape,
+                                                modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                                contentPadding = PaddingValues(horizontal = 0.dp),
+                                            ) {
+                                                Icon(Icons.Filled.ArrowDownward, "反对")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("反对")
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    horizontalArrangement = Arrangement.End,
+                                ) {
+                                    IconButton(
+                                        onClick = { showCollectionDialog = true },
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                        ),
+                                    ) {
+                                        Icon(
+                                            if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                            contentDescription = "收藏",
+                                        )
+                                    }
+
+                                    if ((context as? MainActivity)?.ttsState?.isSpeaking == true) {
+                                        IconButton(
+                                            onClick = {
+                                                context.stopSpeaking()
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        "已停止朗读",
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                            },
+                                            enabled = (
+                                                context.ttsState !in listOf(
+                                                    TtsState.Error,
+                                                    TtsState.Uninitialized,
+                                                    TtsState.Initializing,
+                                                )
+                                            ),
+                                            colors = IconButtonDefaults.iconButtonColors(
+                                                containerColor = Color(0xFF4CAF50),
+                                                contentColor = Color.White,
+                                            ),
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.VolumeOff,
+                                                contentDescription = "停止朗读",
+                                            )
+                                        }
+                                    }
+
+                                    Button(
+                                        onClick = { showComments = true },
+                                        contentPadding = PaddingValues(horizontal = 8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        ),
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(text = "${viewModel.commentCount}")
+                                    }
+
+                                    IconButton(
+                                        onClick = { showActionsMenu = true },
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        ),
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.MoreVert,
+                                            contentDescription = "更多选项",
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            },
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(
+                        start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                        end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                    ).verticalScroll(scrollState),
+            ) {
+                Spacer(
+                    modifier = Modifier.height(
+                        height = LocalDensity.current.run {
+                            topBarHeight.toDp()
+                        },
+                    ),
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            navigator.onNavigate(
+                                com.github.zly2006.zhihu.Person(
+                                    id = viewModel.authorId,
+                                    urlToken = viewModel.authorUrlToken,
+                                    name = viewModel.authorName,
+                                ),
+                            )
+                        },
+                ) {
+                    if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                        AsyncImage(
+                            model = viewModel.authorAvatarSrc,
+                            contentDescription = "作者头像",
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color.LightGray),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.Start,
+                    ) {
+                        Text(
+                            text = viewModel.authorName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                        if (viewModel.authorBio.isNotEmpty()) {
+                            Text(
+                                text = viewModel.authorBio,
+                                fontSize = 12.sp,
+                                color = Color.Gray,
+                            )
+                        }
+                    }
+                }
+
+                @Suppress("UnusedReceiverParameter") // 确保竖式布局
+                @Composable
+                fun ColumnScope.DateTexts() {
+                    Text(
+                        "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                    )
+                    if (viewModel.createdAt != viewModel.updatedAt) {
+                        Text(
+                            "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                            color = Color.Gray,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                if (pinAnswerDate) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalAlignment = Alignment.Start,
+                    ) {
+                        DateTexts()
+                    }
+                }
+
+                if (viewModel.content.isNotEmpty()) {
+                    if (preferences.getBoolean("articleUseWebview", true)) {
+                        WebviewComp(
+                            scrollState = scrollState,
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                        ) {
+                            it.isVerticalScrollBarEnabled = false
+                            it.setupUpWebviewClient {
+                                if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                    coroutineScope.launch {
+                                        val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                        while (scrollState.maxValue < rememberedY) {
+                                            delay(100)
+                                        }
+                                        Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                        scrollState.animateScrollTo(rememberedY)
+                                        viewModel.rememberedScrollYSync = true
+                                    }
+                                }
+                            }
+                            it.contentId = article.id.toString()
+                            it.loadZhihu(
+                                "https://www.zhihu.com/${article.type}/${article.id}",
+                                prepareContentDocument(viewModel.content, context).apply {
+                                    title(viewModel.title)
+                                },
+                            )
+                        }
+                    } else {
+                        val astNode = remember(viewModel.content) {
+                            htmlToMdAst(viewModel.content)
+                        }
+                        val context = MarkdownRenderContext()
+                        Spacer(Modifier.height(10.dp))
+                        SelectionContainer(Modifier.fuckHonorService()) {
+                            Column {
+                                for (ast in astNode) {
+                                    ast.Render(context)
+                                    Spacer(Modifier.height(12.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    if (!pinAnswerDate) {
+                        DateTexts()
+                    }
+                    if (viewModel.ipInfo != null) {
+                        Text(
+                            "IP属地：${viewModel.ipInfo}",
+                            color = Color.Gray,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height((16 + 36).dp))
+            }
+        }
+    } // end answerSwitchContentOld
+
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         Scaffold(
-            modifier = if (useDuo3ArticleBar) {
-                Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)
-            } else {
-                Modifier.fillMaxSize().padding(innerPadding).background(
-                    color = MaterialTheme.colorScheme.background,
-                    shape = RectangleShape,
-                )
-            },
-            containerColor = if (useDuo3ArticleBar) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background,
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 Box(
                     modifier = Modifier
                         .onSizeChanged {
                             topBarHeightPx = it.height.toFloat()
-                            if (it.height >= topBarHeight) topBarHeight = it.height
+                            if (it.height >= 10) topBarHeight = it.height
                         }.let {
-                            if (useDuo3ArticleBar) {
-                                it.graphicsLayer {
-                                    translationY = topBarOffset.value
-                                    alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
-                                }
-                            } else {
-                                it
-                                    .wrapContentHeight(unbounded = true)
-                                    .background(color = MaterialTheme.colorScheme.background, shape = RectangleShape)
+                            it.graphicsLayer {
+                                translationY = topBarOffset.value
+                                alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
                             }
                         },
                 ) {
-                    if (!useDuo3ArticleBar) {
-                        AnimatedVisibility(
-                            visible = showTopBar,
-                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Top, initialHeight = { 0 }) + slideInVertically { it / 2 },
-                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top, targetHeight = { 0 }) + slideOutVertically { it / 2 },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
+                    TwoRowsTopAppBar(
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                val activity = context as? MainActivity
+                                activity?.navController?.popBackStack()
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            }
+                        },
+                        actions = {
+                            IconButton(
+                                onClick = { showActionsMenu = true },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
+                                Icon(
+                                    Icons.Filled.MoreVert,
+                                    contentDescription = "更多选项",
+                                )
+                            }
+                        },
+                        title = { expanded ->
                             Text(
                                 text = viewModel.title,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 32.sp,
                                 modifier = Modifier
-                                    .padding(bottom = 8.dp)
+                                    .padding(if (expanded) PaddingValues(end = 16.dp) else PaddingValues())
                                     .let {
                                         if (article.type == ArticleType.Answer) {
                                             it.clickable {
@@ -946,103 +1329,62 @@ fun ArticleScreen(
                                             it
                                         }
                                     },
+                                maxLines = if (expanded) Int.MAX_VALUE else 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        }
-                    } else {
-                        TwoRowsTopAppBar(
-                            navigationIcon = {
-                                IconButton(onClick = {
-                                    val activity = context as? MainActivity
-                                    activity?.navController?.popBackStack()
-                                }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                                }
-                            },
-                            actions = {
-                                IconButton(
-                                    onClick = { showActionsMenu = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
-                                ) {
-                                    Icon(
-                                        Icons.Filled.MoreVert,
-                                        contentDescription = "更多选项",
+                        },
+                        subtitle = { expanded ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            com.github.zly2006.zhihu.Person(
+                                                id = viewModel.authorId,
+                                                urlToken = viewModel.authorUrlToken,
+                                                name = viewModel.authorName,
+                                            ),
+                                        )
+                                    }.padding(end = 16.dp),
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                    AsyncImage(
+                                        model = viewModel.authorAvatarSrc,
+                                        contentDescription = "作者头像",
+                                        modifier = Modifier
+                                            .size(if (expanded) 40.dp else 20.dp)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(if (expanded) 40.dp else 20.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
                                     )
                                 }
-                            },
-                            title = { expanded ->
-                                Text(
-                                    text = viewModel.title,
-                                    modifier = Modifier
-                                        .padding(if (expanded) PaddingValues(end = 16.dp) else PaddingValues())
-                                        .let {
-                                            if (article.type == ArticleType.Answer) {
-                                                it.clickable {
-                                                    navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
-                                                }
-                                            } else {
-                                                it
-                                            }
-                                        },
-                                    maxLines = if (expanded) Int.MAX_VALUE else 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            subtitle = { expanded ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
-                                        .clickable {
-                                            navigator.onNavigate(
-                                                com.github.zly2006.zhihu.Person(
-                                                    id = viewModel.authorId,
-                                                    urlToken = viewModel.authorUrlToken,
-                                                    name = viewModel.authorName,
-                                                ),
-                                            )
-                                        }.padding(end = 16.dp),
-                                ) {
-                                    if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                                        AsyncImage(
-                                            model = viewModel.authorAvatarSrc,
-                                            contentDescription = "作者头像",
-                                            modifier = Modifier
-                                                .size(if (expanded) 40.dp else 20.dp)
-                                                .clip(CircleShape),
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(if (expanded) 40.dp else 20.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        )
-                                    }
 
-                                    Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
+                                Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
 
-                                    Column {
+                                Column {
+                                    Text(
+                                        text = viewModel.authorName,
+                                        style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                                        color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (viewModel.authorBio.isNotEmpty() && expanded) {
                                         Text(
-                                            text = viewModel.authorName,
-                                            style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                                            color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            text = viewModel.authorBio,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
-                                        if (viewModel.authorBio.isNotEmpty() && expanded) {
-                                            Text(
-                                                text = viewModel.authorBio,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
                                     }
                                 }
-                            },
-                            scrollBehavior = scrollBehavior,
-                        )
-                    }
+                            }
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
                 }
             },
             bottomBar = {
@@ -1333,31 +1675,16 @@ fun ArticleScreen(
                     }
                 }
 
-                if (useDuo3ArticleBar) {
-                    if (showBottomBarCondition) {
-                        Box(
-                            modifier = Modifier
-                                .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
-                                .graphicsLayer {
-                                    translationY = bottomBarOffset.value
-                                    alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
-                                },
-                        ) {
-                            ActionBarContent()
-                        }
-                    }
-                } else {
-                    Column {
-                        if (showBottomBarCondition) {
-                            AnimatedVisibility(
-                                visible = showBottomBar,
-                                enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom, initialHeight = { 0 }) + slideInVertically { it / 2 },
-                                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom, targetHeight = { 0 }) + slideOutVertically { it / 2 },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                ActionBarContent()
-                            }
-                        }
+                if (showBottomBarCondition) {
+                    Box(
+                        modifier = Modifier
+                            .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                            .graphicsLayer {
+                                translationY = bottomBarOffset.value
+                                alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                            },
+                    ) {
+                        ActionBarContent()
                     }
                 }
             },
@@ -1370,67 +1697,6 @@ fun ArticleScreen(
                         .padding(innerPadding)
                         .padding(top = 32.dp),
                 ) {
-                    if (!useDuo3ArticleBar) {
-                        Spacer(
-                            modifier = Modifier.height(
-                                height = LocalDensity.current.run {
-                                    topBarHeight.toDp()
-                                },
-                            ),
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    navigator.onNavigate(
-                                        com.github.zly2006.zhihu.Person(
-                                            id = viewModel.authorId,
-                                            urlToken = viewModel.authorUrlToken,
-                                            name = viewModel.authorName,
-                                        ),
-                                    )
-                                },
-                        ) {
-                            if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                                AsyncImage(
-                                    model = viewModel.authorAvatarSrc,
-                                    contentDescription = "作者头像",
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.LightGray),
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column(
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.Start,
-                            ) {
-                                Text(
-                                    text = viewModel.authorName,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                )
-                                if (viewModel.authorBio.isNotEmpty()) {
-                                    Text(
-                                        text = viewModel.authorBio,
-                                        fontSize = 12.sp,
-                                        color = Color.Gray,
-                                    )
-                                }
-                            }
-                        }
-                    }
-
                     @Suppress("UnusedReceiverParameter") // 确保竖式布局
                     @Composable
                     fun ColumnScope.DateTexts() {
@@ -1545,85 +1811,87 @@ fun ArticleScreen(
                     }
                 }
                 // Status bar gradient overlay (duo3 only — not needed in master path)
-                if (useDuo3ArticleBar) {
-                    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                    val surfaceColor = MaterialTheme.colorScheme.surface
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(statusBarHeight + 8.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
-                                ),
+                val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(statusBarHeight + 8.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
                             ),
-                    ) {}
-                }
+                        ),
+                ) {}
             }
         }
     } // end answerSwitchContent
 
-    // 根据模式渲染
-    if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
-        val nav = sharedData?.navigator
-        AnswerVerticalOverscroll(
-            previousAnswer = nav?.previousAnswer,
-            nextAnswer = nav?.nextAnswer,
-            onNavigatePrevious = navigateToPrevious,
-            onNavigateNext = navigateToNext,
-            isAtTop = { scrollState.value == 0 },
-            isAtBottom = { scrollState.value >= scrollState.maxValue },
-            scrollState = scrollState,
-        ) {
-            answerSwitchContent()
-        }
-    } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        val nav = sharedData?.navigator
-        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
-        LaunchedEffect(nav?.nextAnswer) {
-            val cached = nav?.nextAnswer ?: return@LaunchedEffect
-            val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
-            val articleId = cached.article.id.toString()
-            if (wv.contentId != articleId) {
-                wv.contentId = articleId
-                wv.loadZhihu(
-                    "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
-                    },
-                )
+    Box(
+        modifier = if (useDuo3ArticleBar) Modifier.padding() else Modifier.padding(innerPadding),
+    ) {
+        // 根据模式渲染
+        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+            val nav = sharedData?.navigator
+            AnswerVerticalOverscroll(
+                previousAnswer = nav?.previousAnswer,
+                nextAnswer = nav?.nextAnswer,
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
+                isAtTop = { scrollState.value == 0 },
+                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                scrollState = scrollState,
+            ) {
+                (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
             }
-        }
-        LaunchedEffect(nav?.previousAnswer) {
-            val cached = nav?.previousAnswer ?: return@LaunchedEffect
-            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
-            val articleId = cached.article.id.toString()
-            if (wv.contentId != articleId) {
-                wv.contentId = articleId
-                wv.loadZhihu(
-                    "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
-                    },
-                )
+        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+            val nav = sharedData?.navigator
+            // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+            LaunchedEffect(nav?.nextAnswer) {
+                val cached = nav?.nextAnswer ?: return@LaunchedEffect
+                val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
+                val articleId = cached.article.id.toString()
+                if (wv.contentId != articleId) {
+                    wv.contentId = articleId
+                    wv.loadZhihu(
+                        "https://www.zhihu.com/answer/${cached.article.id}",
+                        prepareContentDocument(cached.content, context).apply {
+                            title(viewModel.title)
+                        },
+                    )
+                }
             }
+            LaunchedEffect(nav?.previousAnswer) {
+                val cached = nav?.previousAnswer ?: return@LaunchedEffect
+                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
+                val articleId = cached.article.id.toString()
+                if (wv.contentId != articleId) {
+                    wv.contentId = articleId
+                    wv.loadZhihu(
+                        "https://www.zhihu.com/answer/${cached.article.id}",
+                        prepareContentDocument(cached.content, context).apply {
+                            title(viewModel.title)
+                        },
+                    )
+                }
+            }
+            AnswerHorizontalOverscroll(
+                canGoPrevious = nav?.previousAnswer != null,
+                canGoNext = true,
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
+                previousContent = nav?.previousAnswer?.let { cached ->
+                    { CachedAnswerPreview(cached, sharedData, isNext = false) }
+                },
+                nextContent = nav?.nextAnswer?.let { cached ->
+                    { CachedAnswerPreview(cached, sharedData, isNext = true) }
+                },
+            ) {
+                (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
+            }
+        } else {
+            (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
         }
-        AnswerHorizontalOverscroll(
-            canGoPrevious = nav?.previousAnswer != null,
-            canGoNext = true,
-            onNavigatePrevious = navigateToPrevious,
-            onNavigateNext = navigateToNext,
-            previousContent = nav?.previousAnswer?.let { cached ->
-                { CachedAnswerPreview(cached, sharedData, isNext = false) }
-            },
-            nextContent = nav?.nextAnswer?.let { cached ->
-                { CachedAnswerPreview(cached, sharedData, isNext = true) }
-            },
-        ) {
-            answerSwitchContent()
-        }
-    } else {
-        answerSwitchContent()
     }
 
     // 全屏菜单
