@@ -520,17 +520,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
+                        innerPadding,
                         setting = args.setting,
                     )
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
+                    SystemAndUpdateSettingsScreen(innerPadding)
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
+                    DeveloperSettingsScreen(innerPadding)
                 }
                 composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen()
+                    ColorSchemeScreen(innerPadding)
                 }
             }
         }
