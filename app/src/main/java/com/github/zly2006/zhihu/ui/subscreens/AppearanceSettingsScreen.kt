@@ -898,7 +898,6 @@ fun AppearanceSettingsScreen(
             val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
             val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
             val duo3HomeScrollTop = remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
-            val duo3HomeNoFab = remember { mutableStateOf(preferences.getBoolean("duo3_home_no_fab", false)) }
             val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
@@ -909,22 +908,22 @@ fun AppearanceSettingsScreen(
                 preferences.edit {
                     putBoolean("duo3_home_account", true)
                     putBoolean("duo3_home_scroll_top", true)
-                    putBoolean("duo3_home_no_fab", true)
                     putBoolean("duo3_nav_style", true)
                     putBoolean("duo3_card_appearance", true)
                     putBoolean("duo3_card_layout", true)
                     putBoolean("duo3_article_bar", true)
                     putBoolean("duo3_article_actions", true)
+                    putBoolean("showRefreshFab", true)
                     putBoolean("buttonSkipAnswer", false)
                 }
                 duo3HomeAccount.value = true
                 duo3HomeScrollTop.value = true
-                duo3HomeNoFab.value = true
                 duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
+                showRefreshFab.value = false
                 buttonSkipAnswer.value = false
             }
 
@@ -932,7 +931,6 @@ fun AppearanceSettingsScreen(
                 preferences.edit {
                     putBoolean("duo3_home_account", false)
                     putBoolean("duo3_home_scroll_top", false)
-                    putBoolean("duo3_home_no_fab", false)
                     putBoolean("duo3_nav_style", false)
                     putBoolean("duo3_card_appearance", false)
                     putBoolean("duo3_card_layout", false)
@@ -941,7 +939,6 @@ fun AppearanceSettingsScreen(
                 }
                 duo3HomeAccount.value = false
                 duo3HomeScrollTop.value = false
-                duo3HomeNoFab.value = false
                 duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
@@ -981,16 +978,6 @@ fun AppearanceSettingsScreen(
                 onCheckedChange = {
                     duo3HomeScrollTop.value = it
                     preferences.edit { putBoolean("duo3_home_scroll_top", it) }
-                },
-            )
-
-            SwitchSettingItem(
-                title = "主页：移除悬浮刷新按钮（FAB）",
-                description = "移除屏幕右下角的可拖拽悬浮刷新按钮，刷新统一由下拉手势完成",
-                checked = duo3HomeNoFab.value,
-                onCheckedChange = {
-                    duo3HomeNoFab.value = it
-                    preferences.edit { putBoolean("duo3_home_no_fab", it) }
                 },
             )
 

@@ -164,8 +164,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
     }
 
     val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
-    val duo3HomeNoFab = remember { preferences.getBoolean("duo3_home_no_fab", false) }
-
+    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
@@ -255,6 +254,14 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         }
 
     Scaffold(
+        modifier = if (duo3HomeAccount) {
+            Modifier.fillMaxSize()
+        } else {
+            // master旧版需要pad掉状态栏
+            Modifier
+                .fillMaxSize()
+                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
+        },
         containerColor = if (duo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
         topBar = {
             if (duo3HomeAccount) {
@@ -467,30 +474,27 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                     }
                 }
 
-                if (!(duo3HomeNoFab)) {
-                    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
-                    if (showRefreshFab) {
-                        if (BuildConfig.DEBUG) {
-                            DraggableRefreshButton(
-                                onClick = {
-                                    val data = Json.encodeToString(viewModel.debugData)
-                                    val clip = ClipData.newPlainText("data", data)
-                                    context.clipboardManager.setPrimaryClip(clip)
-                                    Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                                },
-                                preferenceName = "copyAll",
-                            ) {
-                                Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                            }
-                        }
+                if (showRefreshFab) {
+                    if (BuildConfig.DEBUG) {
                         DraggableRefreshButton(
-                            onClick = { viewModel.refresh(context) },
+                            onClick = {
+                                val data = Json.encodeToString(viewModel.debugData)
+                                val clip = ClipData.newPlainText("data", data)
+                                context.clipboardManager.setPrimaryClip(clip)
+                                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                            },
+                            preferenceName = "copyAll",
                         ) {
-                            if (viewModel.isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                            } else {
-                                Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                            }
+                            Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                        }
+                    }
+                    DraggableRefreshButton(
+                        onClick = { viewModel.refresh(context) },
+                    ) {
+                        if (viewModel.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
                         }
                     }
                 }
