@@ -1,0 +1,77 @@
+name: Bug 反馈
+description: 反馈 bug 或错误的行为。
+title: ""
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: "⚠️ 请务必按照本模板完整填写，**未填写必填字段或保留示例值的 issue 将被自动关闭**。"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 描述
+      description: 清晰地描述这个 bug。
+      placeholder: "例如：点击首页的推荐按钮后应用崩溃，显示白屏..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 如何复现
+      description: 详细描述如何触发这个 bug。
+      placeholder: |
+        1. 点击「...」
+        2. 打开「...」
+        3. 前往「...」
+        4. 出现 bug
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期的表现
+      description: 你觉得应该发生什么行为？
+      placeholder: "例如：应该正常打开推荐页面..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图
+      description: 如果有相关截图，请粘贴在这里（可选）。
+
+  - type: input
+    id: device
+    attributes:
+      label: 手机设备及型号
+      placeholder: "例如：Pixel 7 Pro / 小米 13 Pro"
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: 操作系统版本
+      placeholder: "例如：Android 14 / HyperOS 3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: 知乎++ 版本
+      description: 可以在账号设置页面长按版本号复制。
+      placeholder: "例如：22"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 其他
+      description: 其他补充信息（可选）。
