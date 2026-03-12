@@ -30,6 +30,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -548,6 +549,8 @@ private fun prepareContentDocument(content: String, context: Context): Document 
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
+    // 仅用于master 分支
+    innerPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -895,7 +898,7 @@ fun ArticleScreen(
             modifier = if (useDuo3ArticleBar) {
                 Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)
             } else {
-                Modifier.fillMaxSize().padding(horizontal = 16.dp).background(
+                Modifier.fillMaxSize().padding(innerPadding).background(
                     color = MaterialTheme.colorScheme.background,
                     shape = RectangleShape,
                 )
@@ -1137,7 +1140,7 @@ fun ArticleScreen(
                                 if (ttsState?.isSpeaking == true) {
                                     IconButton(
                                         onClick = {
-                                            mainActivity?.stopSpeaking()
+                                            mainActivity.stopSpeaking()
                                             Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
                                         },
                                     ) {
@@ -1151,6 +1154,19 @@ fun ArticleScreen(
                                     Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(text = "${viewModel.commentCount}")
+                                }
+
+                                IconButton(
+                                    onClick = { showActionsMenu = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项",
+                                    )
                                 }
                             }
                         }
@@ -1354,8 +1370,70 @@ fun ArticleScreen(
                         .padding(innerPadding)
                         .padding(top = 32.dp),
                 ) {
+                    if (!useDuo3ArticleBar) {
+                        Spacer(
+                            modifier = Modifier.height(
+                                height = LocalDensity.current.run {
+                                    topBarHeight.toDp()
+                                },
+                            ),
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    navigator.onNavigate(
+                                        com.github.zly2006.zhihu.Person(
+                                            id = viewModel.authorId,
+                                            urlToken = viewModel.authorUrlToken,
+                                            name = viewModel.authorName,
+                                        ),
+                                    )
+                                },
+                        ) {
+                            if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                AsyncImage(
+                                    model = viewModel.authorAvatarSrc,
+                                    contentDescription = "作者头像",
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.LightGray),
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Column(
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.Start,
+                            ) {
+                                Text(
+                                    text = viewModel.authorName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                )
+                                if (viewModel.authorBio.isNotEmpty()) {
+                                    Text(
+                                        text = viewModel.authorBio,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    @Suppress("UnusedReceiverParameter") // 确保竖式布局
                     @Composable
-                    fun DateTexts() {
+                    fun ColumnScope.DateTexts() {
                         Text(
                             "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
                             color = Color.Gray,

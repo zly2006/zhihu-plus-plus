@@ -456,7 +456,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     val viewModel: ArticleViewModel = viewModel(navEntry) {
                         ArticleViewModel(article, activity.httpClient, navEntry)
                     }
-                    ArticleScreen(article, viewModel)
+                    ArticleScreen(article, viewModel, innerPadding)
                 }
                 composable<HotList> {
                     HotListScreen(innerPadding)
