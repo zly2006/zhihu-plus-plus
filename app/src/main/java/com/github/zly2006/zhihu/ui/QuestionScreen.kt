@@ -369,5 +369,6 @@ fun QuestionScreenPreview() {
     val question = Question(123456789, "这是一个问题的标题")
     QuestionScreen(
         question = question,
+        innerPadding = PaddingValues(0.dp),
     )
 }
