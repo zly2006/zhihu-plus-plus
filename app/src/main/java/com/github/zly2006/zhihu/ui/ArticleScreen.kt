@@ -12,8 +12,6 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.EaseInCubic
-import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -62,6 +60,7 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -119,6 +118,7 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
+import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -191,6 +191,7 @@ fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleActionsMenu(
     article: Article,
@@ -262,217 +263,174 @@ fun ArticleActionsMenu(
         )
     }
 
-    AnimatedVisibility(
-        visible = showMenu,
-        enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300)),
-    ) {
-        // 背景遮罩
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .clickable { onDismissRequest() },
-        ) {
-            // 菜单内容
-            AnimatedVisibility(
-                visible = showMenu,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(300, easing = EaseOutCubic),
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(300, easing = EaseInCubic),
-                ),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = false) { /* 阻止点击穿透 */ },
-                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    ) {
-                        // 顶部拖拽指示器
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 20.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(40.dp)
-                                    .height(4.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                        RoundedCornerShape(2.dp),
-                                    ),
-                            )
+    @Composable
+    fun Content() {
+        val ttsState = (context as? MainActivity)?.ttsState ?: TtsState.Uninitialized
+        MenuActionButton(
+            icon = {
+                when (ttsState) {
+                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+
+                    else -> Icon(
+                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
+            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+            onClick = {
+                onDismissRequest()
+                val mainActivity = context as? MainActivity
+                if (ttsState.isSpeaking) {
+                    mainActivity?.stopSpeaking()
+                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                    // 使用协程在后台处理文本提取，避免UI阻塞
+                    viewModel.viewModelScope.launch {
+                        try {
+                            // 在IO线程中处理文本提取
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                val textToRead = buildString {
+                                    append(viewModel.title)
+                                    append("。")
+                                    if (viewModel.content.isNotEmpty()) {
+                                        // 从HTML内容中提取纯文本，限制处理的内容长度
+                                        val contentToProcess =
+                                            if (viewModel.content.length > 50000) {
+                                                viewModel.content.substring(0, 50000) + "..."
+                                            } else {
+                                                viewModel.content
+                                            }
+                                        val plainText = Jsoup.parse(contentToProcess).text()
+                                        append(plainText)
+                                    }
+                                }
+
+                                // 回到主线程执行TTS
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    if (textToRead.isNotBlank()) {
+                                        mainActivity?.speakText(textToRead, viewModel.title)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                Toast
+                                    .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
+                                    .show()
+                            }
                         }
-
-                        val ttsState = (context as? MainActivity)?.ttsState ?: TtsState.Uninitialized
-                        MenuActionButton(
-                            icon = {
-                                when (ttsState) {
-                                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-
-                                    else -> Icon(
-                                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            },
-                            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-                            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
-                            onClick = {
-                                onDismissRequest()
-                                val mainActivity = context as? MainActivity
-                                if (ttsState.isSpeaking) {
-                                    mainActivity?.stopSpeaking()
-                                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                                    // 使用协程在后台处理文本提取，避免UI阻塞
-                                    viewModel.viewModelScope.launch {
-                                        try {
-                                            // 在IO线程中处理文本提取
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                                val textToRead = buildString {
-                                                    append(viewModel.title)
-                                                    append("。")
-                                                    if (viewModel.content.isNotEmpty()) {
-                                                        // 从HTML内容中提取纯文本，限制处理的内容长度
-                                                        val contentToProcess =
-                                                            if (viewModel.content.length > 50000) {
-                                                                viewModel.content.substring(0, 50000) + "..."
-                                                            } else {
-                                                                viewModel.content
-                                                            }
-                                                        val plainText = Jsoup.parse(contentToProcess).text()
-                                                        append(plainText)
-                                                    }
-                                                }
-
-                                                // 回到主线程执行TTS
-                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                    if (textToRead.isNotBlank()) {
-                                                        mainActivity?.speakText(textToRead, viewModel.title)
-                                                    }
-                                                }
-                                            }
-                                        } catch (e: Exception) {
-                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                Toast
-                                                    .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
-                                                    .show()
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 分享按钮
-                        MenuActionButton(
-                            icon = Icons.Filled.Share,
-                            text = "分享",
-                            onClick = {
-                                onDismissRequest()
-                                val text = when (article.type) {
-                                    ArticleType.Answer -> {
-                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                    }
-                                    ArticleType.Article -> {
-                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                                    }
-                                }
-                                val shareIntent = Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, text)
-                                }
-                                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-                                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(chooserIntent)
-                            },
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 复制链接按钮
-                        MenuActionButton(
-                            icon = Icons.Filled.ContentCopy,
-                            text = "复制链接",
-                            onClick = {
-                                onDismissRequest()
-                                val text = when (article.type) {
-                                    ArticleType.Answer -> {
-                                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                                    }
-                                    ArticleType.Article -> {
-                                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                                    }
-                                }
-                                (context as? MainActivity)?.sharedData?.clipboardDestination = article
-                                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
-                            },
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 复制 Markdown 按钮
-                        MenuActionButton(
-                            icon = Icons.Filled.ContentCopy,
-                            text = "复制 Markdown",
-                            onClick = {
-                                onDismissRequest()
-                                viewModel.exportToClipboard(context)
-                                Toast.makeText(context, "已复制 Markdown", Toast.LENGTH_SHORT).show()
-                            },
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // 导出按钮
-                        MenuActionButton(
-                            icon = Icons.Filled.GetApp,
-                            text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
-                            onClick = {
-                                onDismissRequest()
-                                onExportRequest()
-                            },
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        MenuActionButton(
-                            icon = Icons.Outlined.DesktopWindows,
-                            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
-                            onClick = {
-                                coroutineScope.launch {
-                                    OpenInBrowser.openUrlInBrowser(context, article)
-                                    onDismissRequest()
-                                    Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                        )
-
-                        // 底部安全区域
-                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 分享按钮
+        MenuActionButton(
+            icon = Icons.Filled.Share,
+            text = "分享",
+            onClick = {
+                onDismissRequest()
+                val text = when (article.type) {
+                    ArticleType.Answer -> {
+                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                    }
+
+                    ArticleType.Article -> {
+                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                    }
+                }
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooserIntent)
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 复制链接按钮
+        MenuActionButton(
+            icon = Icons.Filled.ContentCopy,
+            text = "复制链接",
+            onClick = {
+                onDismissRequest()
+                val text = when (article.type) {
+                    ArticleType.Answer -> {
+                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                    }
+
+                    ArticleType.Article -> {
+                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                    }
+                }
+                (context as? MainActivity)?.sharedData?.clipboardDestination = article
+                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
+                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 复制 Markdown 按钮
+        MenuActionButton(
+            icon = Icons.Filled.ContentCopy,
+            text = "复制 Markdown",
+            onClick = {
+                onDismissRequest()
+                viewModel.exportToClipboard(context)
+                Toast.makeText(context, "已复制 Markdown", Toast.LENGTH_SHORT).show()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // 导出按钮
+        MenuActionButton(
+            icon = Icons.Filled.GetApp,
+            text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
+            onClick = {
+                onDismissRequest()
+                onExportRequest()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        MenuActionButton(
+            icon = Icons.Outlined.DesktopWindows,
+            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
+            onClick = {
+                coroutineScope.launch {
+                    OpenInBrowser.openUrlInBrowser(context, article)
+                    onDismissRequest()
+                    Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
+
+        // 底部安全区域
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (showMenu) {
+        MyModalBottomSheet(onDismissRequest) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+            ) {
+                Content()
             }
         }
     }
