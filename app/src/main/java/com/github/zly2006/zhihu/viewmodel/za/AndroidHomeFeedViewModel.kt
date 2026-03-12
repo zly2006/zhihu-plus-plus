@@ -165,6 +165,10 @@ class AndroidHomeFeedViewModel :
                 val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
                 val newDestinations = itemsToDisplay.map { it.navDestination }.toSet()
 
+                if (preferences.getBoolean("reverseBlock", false)) {
+                    displayItems.addAll(filteredItems)
+                }
+
                 // 标记被过滤的条目，更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
                     for (i in displayItems.indices) {

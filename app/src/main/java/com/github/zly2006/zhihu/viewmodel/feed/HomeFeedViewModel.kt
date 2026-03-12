@@ -71,6 +71,10 @@ class HomeFeedViewModel :
             val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
             val newDestinations = newItems.map { it.navDestination }.toSet()
 
+            if (preferences.getBoolean("reverseBlock", false)) {
+                displayItems.addAll(filteredItems)
+            }
+
             // 记录内容展示
             recordContentDisplays(context, filteredItems)
 
