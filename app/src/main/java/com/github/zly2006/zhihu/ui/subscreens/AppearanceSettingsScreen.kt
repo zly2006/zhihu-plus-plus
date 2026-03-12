@@ -949,7 +949,7 @@ fun AppearanceSettingsScreen(
 
             SwitchSettingItem(
                 title = "启用 123duo3 的所有 UI 修改",
-                description = "总开关：开启后强制启用下方全部子选项；关闭后下方子选项一并隐藏，恢复默认 UI",
+                description = "总开关：开启后强制启用下方全部子选项；关闭后恢复默认 UI（可继续在下方单独调整子选项）",
                 checked = duo3All.value,
                 onCheckedChange = {
                     duo3All.value = it
