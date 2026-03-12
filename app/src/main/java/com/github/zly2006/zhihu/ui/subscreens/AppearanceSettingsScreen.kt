@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,6 +75,7 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
+    innerPadding: PaddingValues,
     setting: String = "",
 ) {
     val context = LocalContext.current
@@ -100,6 +102,7 @@ fun AppearanceSettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("外观与阅读体验") },

@@ -76,7 +76,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 @OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun AccountSettingScreen(
-    @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
+    innerPadding: PaddingValues,
     unreadCount: Int = 0,
     onDismissRequest: () -> Unit = {},
 ) {
@@ -105,6 +105,7 @@ fun AccountSettingScreen(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
+            .padding(innerPadding)
             .verticalScroll(rememberScrollState()),
 //        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -389,7 +390,7 @@ fun AccountSettingScreen(
 @Composable
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
-        innerPadding = PaddingValues(16.dp),
+        innerPadding = PaddingValues(0.dp),
         unreadCount = 5,
     )
 }
