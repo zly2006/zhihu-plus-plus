@@ -2,23 +2,13 @@ package com.github.zly2006.zhihu.ui.components
 
 import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,28 +19,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue.Expanded
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionDialogComponent(
     showDialog: Boolean,
@@ -67,75 +61,16 @@ fun CollectionDialogComponent(
         }
     }
 
-    val dialogTopPadding = if (LocalConfiguration.current.screenHeightDp > 500) {
-        100.dp
-    } else {
-        60.dp
-    }
-    val dialogPaddingPixels = LocalDensity.current.run {
-        dialogTopPadding.toPx()
-    }
-
-    // 半透明背景遮罩
-    AnimatedVisibility(
-        visible = showDialog,
-        enter = fadeIn(animationSpec = tween(300)),
-        exit = fadeOut(animationSpec = tween(300)),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        if (offset.y < dialogPaddingPixels) {
-                            onDismiss()
-                        }
-                    }
-                },
-        )
-    }
-
     // 对话框内容
-    AnimatedVisibility(
-        visible = showDialog,
-        enter = slideInVertically(
-            animationSpec = tween(300),
-        ) { it },
-        exit = slideOutVertically(
-            animationSpec = tween(300),
-        ) { it },
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = dialogTopPadding),
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-            color = MaterialTheme.colorScheme.surface,
+    if (showDialog) {
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
             ) {
-                // 顶部拖拽指示器
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
-                            .background(
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                                RoundedCornerShape(2.dp),
-                            ),
-                    )
-                }
-
                 // 标题
                 Text(
                     text = "选择收藏夹",
@@ -193,27 +128,8 @@ fun CollectionDialogComponent(
                         )
                     }
                 }
-
-                // 底部按钮
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("关闭")
-                    }
-                }
             }
         }
-    }
-
-    // 返回键处理
-    BackHandler(
-        enabled = showDialog,
-    ) {
-        onDismiss()
     }
 
     // 新建收藏夹对话框
@@ -224,6 +140,12 @@ fun CollectionDialogComponent(
             viewModel.createNewCollection(context, title, description, isPublic)
         },
     )
+
+    BackHandler(
+        enabled = showCreateDialog,
+    ) {
+        showCreateDialog = false
+    }
 }
 
 @Composable
