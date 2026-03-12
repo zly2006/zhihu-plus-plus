@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -38,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -180,18 +182,37 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     // 底部导航栏功能
-    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
-    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
-    val duo3HomeScrollTop = remember { preferences.getBoolean("duo3_home_scroll_top", false) }
-    val duo3NavStyle = remember { preferences.getBoolean("duo3_nav_style", false) }
+    var duo3All by remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
+    var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+    var duo3HomeScrollTop by remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
+    var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+    var tapToRefreshEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
+    var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+    val preferenceListener = remember(preferences) {
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "duo3_all" -> duo3All = preferences.getBoolean("duo3_all", false)
+                "duo3_home_account" -> duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+                "duo3_home_scroll_top" -> duo3HomeScrollTop = preferences.getBoolean("duo3_home_scroll_top", false)
+                "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
+                "bottomBarTapRefresh" -> tapToRefreshEnabled = preferences.getBoolean("bottomBarTapRefresh", true)
+                "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+                "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+            }
+        }
+    }
+
+    DisposableEffect(preferences, preferenceListener) {
+        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        }
+    }
 
     var refreshTrigger by remember { mutableIntStateOf(0) }
-    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
-    val tapToScrollToTopEnabled = remember { preferences.getBoolean("bottomBarTapScrollToTop", true) }
-
     // 滚动时自动隐藏底部导航栏
-    val autoHideBottomBar = remember { preferences.getBoolean("autoHideBottomBar", false) }
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {

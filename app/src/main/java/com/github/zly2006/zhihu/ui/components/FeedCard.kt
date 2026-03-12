@@ -502,7 +502,7 @@ private fun FeedCardContent(
         }
     } else {
         // ── 原始排版（master）────────────────────────────────────────────────
-        if (!item.title.isEmpty()) {
+        if (!item.title.isEmpty() && !item.isFiltered) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseHtmlTextWithTheme(item.title),
