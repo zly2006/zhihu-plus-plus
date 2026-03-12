@@ -14,11 +14,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -384,7 +381,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         ) {
             MyNavHost(
                 navController,
-                modifier = if (duo3All) Modifier else Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+                modifier = Modifier,
                 startDestination = Home,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
@@ -411,7 +408,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HomeScreen(
                         refreshTrigger = refreshTrigger,
                         scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = if (duo3All) innerPadding else PaddingValues(0.dp),
+                        innerPadding = innerPadding,
                     )
                 }
                 composable<Question> { navEntry ->
@@ -440,7 +437,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exitTransition = {
                         val sharedData = try {
                             (activity as? androidx.activity.ComponentActivity)
-                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                                ?.let { ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
                         } catch (_: Exception) {
                             null
                         }
@@ -464,58 +461,59 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel)
                 }
                 composable<HotList> {
-                    HotListScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    HotListScreen(innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    FollowScreen(innerPadding)
                 }
                 composable<Daily> {
-                    DailyScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    DailyScreen(innerPadding)
                 }
                 composable<History> {
-                    HistoryScreen()
+                    HistoryScreen(innerPadding)
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    OnlineHistoryScreen(innerPadding)
                 }
                 composable<Account> {
-                    AccountSettingScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    AccountSettingScreen(innerPadding)
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(search)
+                    SearchScreen(innerPadding, search)
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken)
+                    CollectionScreen(data.userToken, innerPadding)
                 }
                 composable<CollectionContent> {
                     val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId)
+                    CollectionContentScreen(content.collectionId, innerPadding)
                 }
                 composable<Person> {
                     val person: Person = it.toRoute()
-                    PeopleScreen(person)
+                    PeopleScreen(innerPadding, person)
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(pin)
+                    PinScreen(innerPadding, pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(if (duo3All) innerPadding else PaddingValues(0.dp))
+                    BlocklistSettingsScreen(innerPadding)
                 }
                 composable<Notification> {
-                    NotificationScreen()
+                    NotificationScreen(innerPadding)
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
+                    NotificationSettingsScreen(innerPadding)
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen()
+                    SentenceSimilarityTestScreen(innerPadding)
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
                     AppearanceSettingsScreen(
+                        innerPadding,
                         setting = args.setting,
                     )
                 }

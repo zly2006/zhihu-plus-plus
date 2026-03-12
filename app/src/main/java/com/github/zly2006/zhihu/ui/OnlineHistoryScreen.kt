@@ -33,15 +33,12 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     FeedPullToRefresh(viewModel) {
         PaginatedList(
             items = viewModel.displayItems,
-            contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
+            modifier = Modifier.padding(innerPadding),
             topContent = {
                 item(0) {
-                    Row(
-                        modifier = Modifier
-                            .padding(top = innerPadding.calculateTopPadding()),
-                    ) {
+                    Row {
                         FilledTonalButton(
                             onClick = {
                                 navigator.onNavigate(History)

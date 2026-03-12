@@ -243,7 +243,7 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp + innerPadding.calculateBottomPadding()),
+                        contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
                         viewModel.sections.forEach { section ->
                             // Date header

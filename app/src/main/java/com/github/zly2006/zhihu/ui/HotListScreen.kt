@@ -6,8 +6,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -63,13 +62,8 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
-                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 onLoadMore = { viewModel.loadMore(context) },
-                topContent = {
-                    item {
-                        Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding() + 8.dp))
-                    }
-                },
+                modifier = Modifier.padding(innerPadding),
                 isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
