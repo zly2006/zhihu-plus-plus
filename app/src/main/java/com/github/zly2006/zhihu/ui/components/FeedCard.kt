@@ -106,7 +106,6 @@ fun FeedCard(
     val feedCardStyle = remember {
         preferences.getString("feedCardStyle", "card")
     }
-    val duo3All = remember { preferences.getBoolean("duo3_all", false) }
     val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
 
