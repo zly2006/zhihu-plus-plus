@@ -373,6 +373,18 @@ fun ContentFilterSettingsScreen(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("屏蔽记录", style = MaterialTheme.typography.bodyLarge)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
             // Filter Stats (Simplified)
             var filterStats by remember { mutableStateOf<FilterStats?>(null) }
             var showStatsDialog by remember { mutableStateOf(false) }
