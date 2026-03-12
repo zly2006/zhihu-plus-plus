@@ -923,6 +923,7 @@ fun AppearanceSettingsScreen(
                 duo3CardLayout.value = true
                 duo3ArticleBar.value = true
                 duo3ArticleActions.value = true
+                // in 123duo3 changes, FABs are removed.
                 showRefreshFab.value = false
                 buttonSkipAnswer.value = false
             }

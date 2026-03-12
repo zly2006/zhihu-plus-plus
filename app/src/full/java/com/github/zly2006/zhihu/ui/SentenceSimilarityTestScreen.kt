@@ -52,7 +52,9 @@ import kotlin.math.sqrt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SentenceSimilarityTestScreen() {
+fun SentenceSimilarityTestScreen(
+    innerPadding: PaddingValues,
+) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -97,6 +99,7 @@ fun SentenceSimilarityTestScreen() {
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {

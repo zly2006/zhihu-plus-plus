@@ -1785,7 +1785,7 @@ fun ArticleScreen(
     } // end answerSwitchContent
 
     Box(
-        modifier = if (useDuo3ArticleBar) Modifier.padding() else Modifier.padding(innerPadding),
+        modifier = if (useDuo3ArticleBar) Modifier else Modifier.padding(innerPadding),
     ) {
         // 根据模式渲染
         if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {

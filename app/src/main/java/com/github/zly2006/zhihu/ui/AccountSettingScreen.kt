@@ -89,9 +89,7 @@ fun AccountSettingScreen(
         )
     }
 
-    val useDuo3HomeAccount = remember {
-        preferences.getBoolean("duo3_all", false) && preferences.getBoolean("duo3_home_account", false)
-    }
+    val useDuo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
     var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     LaunchedEffect(isDeveloper) {
