@@ -179,7 +179,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     // 底部导航栏功能
-    var duo3All by remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
     var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
     var duo3HomeScrollTop by remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
@@ -189,7 +188,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val preferenceListener = remember(preferences) {
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
-                "duo3_all" -> duo3All = preferences.getBoolean("duo3_all", false)
                 "duo3_home_account" -> duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
                 "duo3_home_scroll_top" -> duo3HomeScrollTop = preferences.getBoolean("duo3_home_scroll_top", false)
                 "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
@@ -413,7 +411,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question)
+                    QuestionScreen(question, innerPadding)
                 }
                 composable<Article>(
                     enterTransition = {
