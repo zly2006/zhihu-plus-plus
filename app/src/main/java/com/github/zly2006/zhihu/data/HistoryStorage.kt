@@ -49,4 +49,11 @@ class HistoryStorage(
             _history[data] = data
         }
     }
+
+    fun clearAndSave() {
+        ContextCompat.getMainExecutor(activity).execute {
+            _history.clear()
+            save()
+        }
+    }
 }
