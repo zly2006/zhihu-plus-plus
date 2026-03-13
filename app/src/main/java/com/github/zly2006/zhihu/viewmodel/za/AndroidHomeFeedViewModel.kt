@@ -27,7 +27,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -169,24 +168,15 @@ class AndroidHomeFeedViewModel :
                     displayItems.addAll(filteredItems)
                 }
 
-                // 标记被过滤的条目，更新已保留条目的 raw 内容
+                // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
-                    for (i in displayItems.indices) {
-                        val item = displayItems[i]
-                        if (item.navDestination !in newDestinations) continue
+                    displayItems.removeAll { item ->
+                        if (item.navDestination !in newDestinations) return@removeAll false
                         val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
-                        displayItems[i] = if (filteredVersion == null) {
-                            item.copy(isPendingRemoval = true)
-                        } else {
-                            item.copy(raw = filteredVersion.raw)
-                        }
+                        item.raw = filteredVersion?.raw ?: item.raw
+                        // remove if no filtered version exists, which means it was filtered out
+                        filteredVersion == null
                     }
-                }
-
-                // 等待退出动画完成后移除
-                delay(400)
-                withContext(Dispatchers.Main) {
-                    displayItems.removeAll { it.isPendingRemoval }
                 }
 
                 lastPaging = if ("paging" in jojo) {

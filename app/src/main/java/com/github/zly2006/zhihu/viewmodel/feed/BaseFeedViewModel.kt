@@ -44,8 +44,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val authorName: String? = null,
         val isFiltered: Boolean = false,
         val content: String? = null,
-        val raw: DataHolder.Content? = null,
-        val isPendingRemoval: Boolean = false,
+        var raw: DataHolder.Content? = null,
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
@@ -260,10 +259,10 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 blocklistManager.addBlockedTopic(topicId, topicName)
                 Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
                 displayItems.removeAll {
-                    val topics = when (it.raw) {
-                        is DataHolder.Answer -> it.raw.question.topics
-                        is DataHolder.Article -> it.raw.topics
-                        is DataHolder.Question -> it.raw.topics
+                    val topics = when (val content = it.raw) {
+                        is DataHolder.Answer -> content.question.topics
+                        is DataHolder.Article -> content.topics
+                        is DataHolder.Question -> content.topics
                         else -> null
                     }
                     topics?.any { topic -> topic.id == topicId } == true
