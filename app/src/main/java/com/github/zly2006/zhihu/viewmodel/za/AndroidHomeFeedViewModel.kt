@@ -149,10 +149,13 @@ class AndroidHomeFeedViewModel :
                     }
 
                 // 立即展示所有内容
-                withContext(Dispatchers.Main) {
-                    itemsToDisplay.forEach { item ->
-                        if (displayItems.none { it.navDestination == item.navDestination }) {
-                            displayItems.add(item)
+                val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                if (!preferences.getBoolean("reverseBlock", false)) {
+                    withContext(Dispatchers.Main) {
+                        itemsToDisplay.forEach { item ->
+                            if (displayItems.none { it.navDestination == item.navDestination }) {
+                                displayItems.add(item)
+                            }
                         }
                     }
                 }
@@ -160,6 +163,10 @@ class AndroidHomeFeedViewModel :
                 // 后台运行内容过滤
                 val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
                 val newDestinations = itemsToDisplay.map { it.navDestination }.toSet()
+
+                if (preferences.getBoolean("reverseBlock", false)) {
+                    displayItems.addAll(filteredItems)
+                }
 
                 // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {

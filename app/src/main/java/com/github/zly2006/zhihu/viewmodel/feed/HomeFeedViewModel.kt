@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -54,10 +55,13 @@ class HomeFeedViewModel :
                 .map { feed -> createDisplayItem(context, feed) }
 
             // 立即展示所有内容，不等待过滤
-            withContext(Dispatchers.Main) {
-                newItems.forEach { item ->
-                    if (displayItems.none { it.navDestination == item.navDestination }) {
-                        displayItems.add(item)
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            if (!preferences.getBoolean("reverseBlock", false)) {
+                withContext(Dispatchers.Main) {
+                    newItems.forEach { item ->
+                        if (displayItems.none { it.navDestination == item.navDestination }) {
+                            displayItems.add(item)
+                        }
                     }
                 }
             }
@@ -65,6 +69,10 @@ class HomeFeedViewModel :
             // 后台运行内容过滤
             val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
             val newDestinations = newItems.map { it.navDestination }.toSet()
+
+            if (preferences.getBoolean("reverseBlock", false)) {
+                displayItems.addAll(filteredItems)
+            }
 
             // 记录内容展示
             recordContentDisplays(context, filteredItems)

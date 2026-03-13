@@ -88,6 +88,7 @@ import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
@@ -451,6 +452,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     BlocklistSettingsScreen(
                         innerPadding = innerPadding,
                     )
+                }
+                composable<Account.RecommendSettings.BlockedFeedHistory> {
+                    BlockedFeedHistoryScreen()
                 }
                 composable<Notification> {
                     NotificationScreen()
