@@ -58,11 +58,7 @@ class HomeFeedViewModel :
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             if (!preferences.getBoolean("reverseBlock", false)) {
                 withContext(Dispatchers.Main) {
-                    newItems.forEach { item ->
-                        if (displayItems.none { it.navDestination == item.navDestination }) {
-                            displayItems.add(item)
-                        }
-                    }
+                    addDisplayItems(newItems)
                 }
             }
 
@@ -71,7 +67,7 @@ class HomeFeedViewModel :
             val newDestinations = newItems.map { it.navDestination }.toSet()
 
             if (preferences.getBoolean("reverseBlock", false)) {
-                displayItems.addAll(filteredItems)
+                addDisplayItems(filteredItems)
             }
 
             // 记录内容展示
