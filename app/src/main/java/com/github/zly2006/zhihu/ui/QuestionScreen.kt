@@ -131,7 +131,7 @@ fun QuestionScreen(
 
     FeedPullToRefresh(
         viewModel,
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier = Modifier.padding(innerPadding),
     ) {
         Scaffold(
             topBar = {
