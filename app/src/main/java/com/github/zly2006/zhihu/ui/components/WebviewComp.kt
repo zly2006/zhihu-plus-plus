@@ -337,8 +337,14 @@ class CustomWebView : WebView {
             """
             (function() {
                 function report() {
+                    if (!document.getElementById('end')) {
+                        const div = document.createElement('div');
+                        div.id = 'end';
+                        document.body.appendChild(div);
+                    }
+                    const bottom = document.getElementById('end').getBoundingClientRect().bottom;
                     if (window.AndroidInterface && AndroidInterface.onContentHeight) {
-                        AndroidInterface.onContentHeight(document.body.scrollHeight);
+                        AndroidInterface.onContentHeight(bottom);
                     }
                 }
                 report();
