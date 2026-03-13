@@ -291,7 +291,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
-                        modifier = if (duo3NavStyle) modifier.height(64.dp + bottomPadding) else modifier.height(56.dp + bottomPadding),
+                        modifier = Modifier.height(
+                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                        ),
                     ) {
                         val allItems = if (duo3HomeAccount) {
                             listOf(
@@ -362,7 +364,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 icon = {
                                     Icon(icon, contentDescription = label)
                                 },
-                                modifier = if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier
+                                modifier = if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier,
                             )
                         }
 
