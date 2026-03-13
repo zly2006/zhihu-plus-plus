@@ -888,7 +888,7 @@ fun AppearanceSettingsScreen(
 
             // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
             Text(
-                "123duo3 的 UI 改进",
+                "123Duo3 的 UI/UX 改进",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -948,8 +948,8 @@ fun AppearanceSettingsScreen(
             }
 
             SwitchSettingItem(
-                title = "启用 123duo3 的所有 UI 修改",
-                description = "总开关：开启后强制启用下方全部子选项；关闭后恢复默认 UI（可继续在下方单独调整子选项）",
+                title = "启用 123duo3 的所有 UI/UX 修改",
+                description = "启用所有更改，并关闭文章阅读页的浮动按钮。",
                 checked = duo3All.value,
                 onCheckedChange = {
                     duo3All.value = it
@@ -964,7 +964,7 @@ fun AppearanceSettingsScreen(
 
             SwitchSettingItem(
                 title = "主页：账号入口迁移至顶部头像",
-                description = "搜索栏升级、通知铃铛改为账号头像、点击弹出账号面板；底部导航同步移除\"账号\"和\"历史\" Tab，通知与历史入口整合进账号设置页",
+                description = "搜索栏样式变更；点击头像弹出账号面板；底部导航同步移除「账号」和「历史」Tab，入口并入进账号设置页。",
                 checked = duo3HomeAccount.value,
                 onCheckedChange = {
                     duo3HomeAccount.value = it
@@ -974,7 +974,7 @@ fun AppearanceSettingsScreen(
 
             SwitchSettingItem(
                 title = "主页：点击当前 Tab 回到顶部",
-                description = "再次点击已激活的底部 Tab，从触发刷新改为平滑滚动回列表顶部（已在顶部时才触发刷新）",
+                description = "点击已激活的底部 Tab，行为将会从触发刷新改为滚动回列表顶部，已在顶部时再触发刷新。",
                 checked = duo3HomeScrollTop.value,
                 onCheckedChange = {
                     duo3HomeScrollTop.value = it
@@ -983,8 +983,8 @@ fun AppearanceSettingsScreen(
             )
 
             SwitchSettingItem(
-                title = "底部导航栏：恢复 Material 标准视觉样式",
-                description = "移除自定义蓝色高亮色、透明指示器背景、超小字号标签等非标准样式；\"关注\" Tab 图标更换为 Group",
+                title = "底部导航栏：改为 Material 标准视觉样式",
+                description = "移除自定义样式；更改「关注」Tab 图标。",
                 checked = duo3NavStyle.value,
                 onCheckedChange = {
                     duo3NavStyle.value = it
@@ -993,8 +993,8 @@ fun AppearanceSettingsScreen(
             )
 
             SwitchSettingItem(
-                title = "信息流卡片：外观重设计",
-                description = "卡片圆角改为 24dp，移除阴影，暗色模式下背景使用 surfaceContainerHigh 加强层次感",
+                title = "信息流卡片：外观更改",
+                description = "卡片圆角增大，移除阴影；修改背景与卡片颜色。",
                 checked = duo3CardAppearance.value,
                 onCheckedChange = {
                     duo3CardAppearance.value = it
@@ -1003,8 +1003,8 @@ fun AppearanceSettingsScreen(
             )
 
             SwitchSettingItem(
-                title = "信息流卡片：内容排版升级",
-                description = "缩略图移至摘要右侧并列展示，摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式",
+                title = "信息流卡片：更改内容排版",
+                description = "作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式",
                 checked = duo3CardLayout.value,
                 onCheckedChange = {
                     duo3CardLayout.value = it
@@ -1013,8 +1013,8 @@ fun AppearanceSettingsScreen(
             )
 
             SwitchSettingItem(
-                title = "文章阅读页：顶/底部栏跟手隐藏升级",
-                description = "顶部栏和底部栏随手指滚动按像素连续偏移，停止滚动后自动 snap 到完全显示或完全隐藏（原为按滚动方向整体切换）",
+                title = "文章阅读页：更改整体顶/底栏框架",
+                description = "更改标题栏样式；优化顶/底栏隐藏逻辑。",
                 checked = duo3ArticleBar.value,
                 onCheckedChange = {
                     duo3ArticleBar.value = it
@@ -1023,8 +1023,8 @@ fun AppearanceSettingsScreen(
             )
 
             SwitchSettingItem(
-                title = "文章阅读页：操作栏视觉重设计",
-                description = "赞同/反对改为圆角胶囊形，反对激活后展开文字标签，各操作按钮颜色通过 Color Harmonize 与主题色融合",
+                title = "文章阅读页：更改操作栏样式",
+                description = "底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。上一项启用时生效。",
                 checked = duo3ArticleActions.value,
                 onCheckedChange = {
                     duo3ArticleActions.value = it

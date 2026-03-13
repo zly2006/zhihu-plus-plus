@@ -1259,17 +1259,19 @@ fun ArticleScreen(
                             }
                         },
                         actions = {
-                            IconButton(
-                                onClick = { showActionsMenu = true },
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
-                            ) {
-                                Icon(
-                                    Icons.Filled.MoreVert,
-                                    contentDescription = "更多选项",
-                                )
+                            if (useDuo3ArticleActions) {
+                                IconButton(
+                                    onClick = { showActionsMenu = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项",
+                                    )
+                                }
                             }
                         },
                         title = { expanded ->
@@ -1345,7 +1347,7 @@ fun ArticleScreen(
                 }
             },
             bottomBar = {
-                // 防止在导航动画和预测性返回手势的过程中，buttom bar闪烁
+                // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
                 val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
@@ -1354,7 +1356,11 @@ fun ArticleScreen(
                     if (!useDuo3ArticleActions) {
                         // ── master: Button-based vote + actions ────────────────────────
                         Row(
-                            modifier = Modifier.fillMaxWidth().height(36.dp).padding(horizontal = 0.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp)
+                                .height(36.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(

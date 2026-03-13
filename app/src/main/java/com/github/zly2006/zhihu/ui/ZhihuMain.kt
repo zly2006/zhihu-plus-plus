@@ -16,6 +16,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -290,7 +291,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
-                        modifier = if (duo3NavStyle) modifier else modifier.height(56.dp + bottomPadding),
+                        modifier = if (duo3NavStyle) modifier.height(64.dp + bottomPadding) else modifier.height(56.dp + bottomPadding),
                     ) {
                         val allItems = if (duo3HomeAccount) {
                             listOf(
@@ -361,6 +362,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 icon = {
                                     Icon(icon, contentDescription = label)
                                 },
+                                modifier = if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier
                             )
                         }
 
