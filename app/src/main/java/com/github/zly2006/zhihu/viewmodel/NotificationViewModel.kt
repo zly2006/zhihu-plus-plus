@@ -42,7 +42,7 @@ class NotificationViewModel :
     private suspend fun getUnreadCount(context: Context): Int {
         try {
             val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             return AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
         } catch (_: Exception) {
@@ -91,13 +91,13 @@ class NotificationViewModel :
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(context: Context) {
         AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
-            signFetchRequest(context)
+            signFetchRequest()
         }
         AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall") {
-            signFetchRequest(context)
+            signFetchRequest()
         }
         AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall") {
-            signFetchRequest(context)
+            signFetchRequest()
         }
     }
 }

@@ -54,7 +54,7 @@ object ThemeManager {
     }
 
     fun initialize(context: Context) {
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         useDynamicColor.value = preferences.getBoolean("useDynamicColor", true)
         customColorInt.intValue = preferences.getInt("customThemeColor", 0xFF2196F3.toInt())
         backgroundColorLight.intValue = preferences.getInt("backgroundColorLight", 0xFFFFFFFF.toInt())
@@ -69,13 +69,13 @@ object ThemeManager {
 
     fun setUseDynamicColor(context: Context, useDynamic: Boolean) {
         useDynamicColor.value = useDynamic
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         preferences.edit { putBoolean("useDynamicColor", useDynamic) }
     }
 
     fun setCustomColor(context: Context, color: Color) {
         customColorInt.intValue = color.toArgb()
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         preferences.edit { putInt("customThemeColor", color.toArgb()) }
     }
 

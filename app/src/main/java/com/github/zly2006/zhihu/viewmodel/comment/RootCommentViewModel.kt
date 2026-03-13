@@ -13,7 +13,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
-import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -109,7 +108,7 @@ class RootCommentViewModel(
                 }
 
                 val response = httpClient.post(content.submitCommentUrl) {
-                    signFetchRequest(context)
+                    signFetchRequest()
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }

@@ -464,7 +464,7 @@ class ArticleViewModel(
                     }
                     val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
                     val jojo = AccountData.fetchGet(context, collectionsUrl) {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }!!
                     val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
                     collections.clear()
@@ -503,7 +503,7 @@ class ArticleViewModel(
                         put("is_public", isPublic)
                     },
                 )
-                signFetchRequest(context)
+                signFetchRequest()
             }
             loadCollections(context)
         }

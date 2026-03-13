@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.ui.raiseForStatus
@@ -27,7 +28,6 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.serialization.JsonConvertException
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
@@ -139,7 +139,7 @@ object AccountData {
         }
         if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
             // 大概率是，包括 MainActivity 等。
-            context.mainExecutor.execute {
+            ContextCompat.getMainExecutor(context).execute {
                 context.lifecycle.addObserver(object : DefaultLifecycleObserver {
                     override fun onDestroy(owner: LifecycleOwner) {
                         httpClient.close()
@@ -271,9 +271,9 @@ object AccountData {
         contentToken: String,
         contentType: String,
     ) {
-        try {
+        runCatching {
             fetchPost(context, "https://www.zhihu.com/api/v4/read_history/add") {
-                signFetchRequest(context)
+                signFetchRequest()
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {
@@ -282,9 +282,6 @@ object AccountData {
                     }.toString(),
                 )
             }
-        } catch (_: JsonConvertException) {
-            // 忽略序列化异常，服务器已成功添加历史记录，只是返回格式不标准
-            // fetchPost 假设返回的是 JsonObject，而实际上是 JsonNull，会触发 JsonConvertException
         }
     }
 }

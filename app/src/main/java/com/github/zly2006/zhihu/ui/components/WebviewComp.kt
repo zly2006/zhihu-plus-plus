@@ -105,7 +105,7 @@ suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, 
         setBody(
             """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
         )
-        signFetchRequest(context)
+        signFetchRequest()
     }
 
     val responseText = response.bodyAsText()
@@ -337,8 +337,14 @@ class CustomWebView : WebView {
             """
             (function() {
                 function report() {
+                    if (!document.getElementById('end')) {
+                        const div = document.createElement('div');
+                        div.id = 'end';
+                        document.body.appendChild(div);
+                    }
+                    const bottom = document.getElementById('end').getBoundingClientRect().bottom;
                     if (window.AndroidInterface && AndroidInterface.onContentHeight) {
-                        AndroidInterface.onContentHeight(document.body.scrollHeight);
+                        AndroidInterface.onContentHeight(bottom);
                     }
                 }
                 report();

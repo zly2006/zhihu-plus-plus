@@ -66,7 +66,7 @@ class ChildCommentViewModel(
                 }
 
                 val response = httpClient.post(commentHolder.article.submitCommentUrl) {
-                    signFetchRequest(context)
+                    signFetchRequest()
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }

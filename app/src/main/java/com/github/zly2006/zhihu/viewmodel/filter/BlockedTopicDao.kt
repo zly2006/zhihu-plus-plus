@@ -30,4 +30,7 @@ interface BlockedTopicDao {
 
     @Query("SELECT topicId FROM blocked_topics WHERE topicId IN (:topicIds)")
     suspend fun getBlockedTopicIds(topicIds: List<String>): List<String>
+
+    @Query("SELECT topicName FROM blocked_topics WHERE topicId = :topicId")
+    suspend fun getTopicNameById(topicId: String): String
 }

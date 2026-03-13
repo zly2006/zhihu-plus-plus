@@ -1,9 +1,12 @@
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -40,8 +43,9 @@ fun <T> PaginatedList(
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
     footer: @Composable (() -> Unit)? = null,
+    key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
-    itemContent: @Composable (T) -> Unit,
+    itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -69,8 +73,16 @@ fun <T> PaginatedList(
     ) {
         topContent(this)
 
-        items(items) { item ->
-            itemContent(item)
+        items(items, key = key) { item ->
+            Box(
+                modifier = Modifier.animateItem(
+                    fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                ),
+            ) {
+                itemContent(item)
+            }
         }
 
         item {

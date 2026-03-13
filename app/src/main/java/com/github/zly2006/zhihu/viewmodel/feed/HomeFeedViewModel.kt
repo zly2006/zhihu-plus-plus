@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -20,8 +21,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -50,29 +49,40 @@ class HomeFeedViewModel :
         debugData.addAll(rawData)
 
         viewModelScope.launch {
-            // 先创建所有的 FeedDisplayItem
-            val displayItemsToFilter = data
+            val newItems = data
                 .flatten()
                 .filter { feed -> feed.target?.navDestination != null }
                 .map { feed -> createDisplayItem(context, feed) }
 
-            // 应用内容过滤（包括广告检测）
-            val filteredDisplayItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, displayItemsToFilter)
+            // 立即展示所有内容，不等待过滤
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            if (!preferences.getBoolean("reverseBlock", false)) {
+                withContext(Dispatchers.Main) {
+                    addDisplayItems(newItems)
+                }
+            }
+
+            // 后台运行内容过滤
+            val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
+            val newDestinations = newItems.map { it.navDestination }.toSet()
+
+            if (preferences.getBoolean("reverseBlock", false)) {
+                addDisplayItems(filteredItems)
+            }
 
             // 记录内容展示
-            recordContentDisplays(context, filteredDisplayItems)
+            recordContentDisplays(context, filteredItems)
 
-            // 添加到显示列表
-            filteredDisplayItems
-                .map { item ->
-                    coroutineScope {
-                        launch(Dispatchers.Main) {
-                            if (displayItems.none { it.navDestination == item.navDestination }) {
-                                displayItems.add(item)
-                            }
-                        }
-                    }
-                }.joinAll()
+            // 移除被过滤的条目，并更新已保留条目的 raw 内容
+            withContext(Dispatchers.Main) {
+                displayItems.removeAll { item ->
+                    if (item.navDestination !in newDestinations) return@removeAll false
+                    val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
+                    item.raw = filteredVersion?.raw ?: item.raw
+                    // remove if no filtered version exists, which means it was filtered out
+                    filteredVersion == null
+                }
+            }
         }
     }
 
@@ -169,7 +179,7 @@ class HomeFeedViewModel :
                 httpClient
                     .post("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
-                        signFetchRequest(context)
+                        signFetchRequest()
                         setBody(
                             MultiPartFormDataContent(
                                 formData {
