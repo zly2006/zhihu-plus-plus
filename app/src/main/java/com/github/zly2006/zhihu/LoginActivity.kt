@@ -51,13 +51,6 @@ class LoginActivity : ComponentActivity() {
                             ): Boolean {
                                 if (request.url.toString() == "https://www.zhihu.com/") {
                                     webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
-                                    webView.loadUrl("https://www.zhihu.com/question/11474985081")
-                                    return true
-                                }
-                                if (request.url.host == "graph.qq.com") {
-                                    // QQ login
-                                    luoTianYiUrlLauncher(this@LoginActivity, request.url)
-                                    return true
                                 }
                                 if (request.url?.scheme == "zhihu") {
                                     return true
@@ -65,20 +58,9 @@ class LoginActivity : ComponentActivity() {
                                 return false
                             }
 
-                            var loadedJs = false
-
-                            override fun onLoadResource(view: WebView?, url: String) {
-                                super.onLoadResource(view, url)
-                                if (url.startsWith("https://static.zhihu.com/zse-ck/v4/")) {
-                                    if (!loadedJs) {
-                                        loadedJs = true
-                                    }
-                                }
-                            }
-
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                if (url == "https://www.zhihu.com/question/11474985081") {
+                                if (url == "https://www.zhihu.com/") {
                                     val cookies =
                                         CookieManager
                                             .getInstance()
@@ -89,21 +71,6 @@ class LoginActivity : ComponentActivity() {
                                                 it.substringBefore("=").trim() to it.substringAfter("=")
                                             }
                                     runBlocking {
-                                        if (!loadedJs) {
-                                            delay(1000)
-                                            if (!loadedJs) {
-                                                AlertDialog
-                                                    .Builder(this@LoginActivity)
-                                                    .apply {
-                                                        setTitle("登录失败")
-                                                        setMessage("模拟正常登录环境失败，请检查网络")
-                                                        setPositiveButton("OK") { _, _ ->
-                                                        }
-                                                    }.create()
-                                                    .show()
-                                                return@runBlocking false
-                                            }
-                                        }
                                         if (AccountData.verifyLogin(this@LoginActivity, cookies)) {
                                             val data = AccountData.loadData(this@LoginActivity)
 
@@ -122,36 +89,10 @@ class LoginActivity : ComponentActivity() {
                                                     }
                                                 }.create()
                                                 .show()
+                                            AccountData.saveData(this@LoginActivity, data)
+                                            telemetry(this@LoginActivity, "login")
                                             // back to the main activity
-                                            scope.launch(mainExecutor.asCoroutineDispatcher()) {
-                                                delay(5000)
-                                                webView.evaluateJavascript("document.cookie") {
-                                                    data.cookies.putAll(
-                                                        it
-                                                            .removeSurrounding("\"")
-                                                            .removeSurrounding("\'")
-                                                            .split(";")
-                                                            .associate {
-                                                                it.substringBefore("=").trim() to it.substringAfter("=")
-                                                            },
-                                                    )
-                                                    if ("__zse_ck" !in data.cookies) {
-                                                        AlertDialog
-                                                            .Builder(this@LoginActivity)
-                                                            .apply {
-                                                                setTitle("登录失败")
-                                                                setMessage("模拟正常登录环境失败，请检查网络")
-                                                                setPositiveButton("OK") { _, _ ->
-                                                                }
-                                                            }.create()
-                                                            .show()
-                                                    } else {
-                                                        AccountData.saveData(this@LoginActivity, data)
-                                                        telemetry(this@LoginActivity, "login")
-                                                        this@LoginActivity.finish()
-                                                    }
-                                                }
-                                            }
+                                            this@LoginActivity.finish()
                                             return@runBlocking true
                                         } else {
                                             AlertDialog
