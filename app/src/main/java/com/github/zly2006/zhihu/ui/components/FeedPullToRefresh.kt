@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +21,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun FeedPullToRefresh(
     viewModel: BaseFeedViewModel,
+    modifier: Modifier = Modifier,
+    /**
+     * Padding for the pull-to-refresh indicator. This is useful when the indicator is used
+     * in a Scaffold with a top bar, to avoid the indicator being covered by the top bar.
+     */
     padding: PaddingValues = PaddingValues(0.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -47,7 +51,7 @@ fun FeedPullToRefresh(
             )
         },
         state = state,
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier,
         content = content,
     )
 }

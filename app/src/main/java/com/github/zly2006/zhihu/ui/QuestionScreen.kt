@@ -129,25 +129,27 @@ fun QuestionScreen(
         }
     }
 
-    Scaffold(
+    FeedPullToRefresh(
+        viewModel,
         modifier = Modifier.fillMaxSize().padding(innerPadding),
-        topBar = {
-            SelectionContainer(
-                modifier = Modifier.fuckHonorService(),
-            ) {
-                Row {
-                    Text(
-                        text = title,
-                        fontSize = 24.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(16.dp),
-                    )
+    ) {
+        Scaffold(
+            topBar = {
+                SelectionContainer(
+                    modifier = Modifier.fuckHonorService(),
+                ) {
+                    Row {
+                        Text(
+                            text = title,
+                            fontSize = 24.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
-            }
-        },
-    ) { innerPadding ->
-        FeedPullToRefresh(viewModel) {
+            },
+        ) { innerPadding ->
             PaginatedList(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },

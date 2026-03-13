@@ -424,7 +424,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         }
 
         Box {
-            FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
+            FeedPullToRefresh(viewModel, padding = PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
                 PaginatedList(
                     items = viewModel.displayItems,
                     listState = listState,
