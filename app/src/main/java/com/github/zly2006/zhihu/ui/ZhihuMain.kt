@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -14,10 +15,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -178,12 +180,36 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         )
     }
 
-    // 底部导航栏刷新功能
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-    val tapToRefreshEnabled = remember { preferences.getBoolean("bottomBarTapRefresh", true) }
+    // 底部导航栏功能
+    var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+    var duo3HomeScrollTop by remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
+    var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+    var tapToRefreshEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
+    var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+    val preferenceListener = remember(preferences) {
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "duo3_home_account" -> duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+                "duo3_home_scroll_top" -> duo3HomeScrollTop = preferences.getBoolean("duo3_home_scroll_top", false)
+                "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
+                "bottomBarTapRefresh" -> tapToRefreshEnabled = preferences.getBoolean("bottomBarTapRefresh", true)
+                "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+                "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+            }
+        }
+    }
 
+    DisposableEffect(preferences, preferenceListener) {
+        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        }
+    }
+
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
-    val autoHideBottomBar = remember { preferences.getBoolean("autoHideBottomBar", false) }
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
         object : NestedScrollConnection {
@@ -265,17 +291,32 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
-                        modifier = modifier.height(56.dp + bottomPadding),
+                        modifier = Modifier.height(
+                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                        ),
                     ) {
-                        val allItems = listOf(
-                            Triple(Home, "主页", Icons.Filled.Home),
-                            Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
-                            Triple(HotList, "热榜", Icons.Filled.Whatshot),
-                            Triple(Daily, "日报", Icons.Filled.Newspaper),
-                            Triple(OnlineHistory, "历史", Icons.Filled.History),
-                            Triple(Account, "账号", Icons.Filled.ManageAccounts),
-                        )
-                        val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
+                        val allItems = if (duo3HomeAccount) {
+                            listOf(
+                                Triple(Home, "主页", Icons.Filled.Home),
+                                Triple(Follow, "关注", Icons.Filled.Group),
+                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
+                                Triple(Daily, "日报", Icons.Filled.Newspaper),
+                            )
+                        } else {
+                            listOf(
+                                Triple(Home, "主页", Icons.Filled.Home),
+                                Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
+                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
+                                Triple(Daily, "日报", Icons.Filled.Newspaper),
+                                Triple(OnlineHistory, "历史", Icons.Filled.History),
+                                Triple(Account, "账号", Icons.Filled.ManageAccounts),
+                            )
+                        }
+                        val defaultKeys = if (duo3HomeAccount) {
+                            setOf(Home.name, Follow.name, Daily.name)
+                        } else {
+                            setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
+                        }
                         val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
                         val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
 
@@ -294,28 +335,36 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    } else if (tapToRefreshEnabled) {
-                                        // 已经在当前页面，触发刷新
-                                        refreshTrigger++
+                                    } else if (if (duo3HomeScrollTop) tapToScrollToTopEnabled else tapToRefreshEnabled) {
+                                        if (duo3HomeScrollTop) scrollToTopTrigger++ else refreshTrigger++
                                     }
                                 },
                                 label = {
-                                    Text(
-                                        label,
-                                        style = TextStyle(
-                                            fontSize = 9.sp,
-                                            color = LocalContentColor.current.copy(alpha = 0.6f),
-                                        ),
+                                    if (duo3NavStyle) {
+                                        Text(label)
+                                    } else {
+                                        Text(
+                                            label,
+                                            style = TextStyle(
+                                                fontSize = 9.sp,
+                                                color = LocalContentColor.current.copy(alpha = 0.6f),
+                                            ),
+                                        )
+                                    }
+                                },
+                                alwaysShowLabel = duo3NavStyle,
+                                colors = if (duo3NavStyle) {
+                                    NavigationBarItemDefaults.colors()
+                                } else {
+                                    NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xff66ccff),
+                                        indicatorColor = Color.Transparent,
                                     )
                                 },
-                                alwaysShowLabel = false,
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xff66ccff),
-                                    indicatorColor = Color.Transparent,
-                                ),
                                 icon = {
                                     Icon(icon, contentDescription = label)
                                 },
+                                modifier = if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier,
                             )
                         }
 
@@ -335,7 +384,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         ) {
             MyNavHost(
                 navController,
-                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
+                modifier = Modifier,
                 startDestination = Home,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
@@ -359,11 +408,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<Home> {
-                    HomeScreen(refreshTrigger = refreshTrigger)
+                    HomeScreen(
+                        refreshTrigger = refreshTrigger,
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        innerPadding = innerPadding,
+                    )
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question)
+                    QuestionScreen(question, innerPadding)
                 }
                 composable<Article>(
                     enterTransition = {
@@ -387,7 +440,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exitTransition = {
                         val sharedData = try {
                             (activity as? androidx.activity.ComponentActivity)
-                                ?.let { androidx.lifecycle.ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                                ?.let { ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
                         } catch (_: Exception) {
                             null
                         }
@@ -408,83 +461,83 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     val viewModel: ArticleViewModel = viewModel(navEntry) {
                         ArticleViewModel(article, activity.httpClient, navEntry)
                     }
-                    ArticleScreen(article, viewModel)
+                    ArticleScreen(article, viewModel, innerPadding)
                 }
                 composable<HotList> {
-                    HotListScreen()
+                    HotListScreen(innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen()
+                    FollowScreen(innerPadding)
                 }
                 composable<Daily> {
-                    DailyScreen()
+                    DailyScreen(innerPadding)
                 }
                 composable<History> {
-                    HistoryScreen()
+                    HistoryScreen(innerPadding)
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen()
+                    OnlineHistoryScreen(innerPadding)
                 }
                 composable<Account> {
                     AccountSettingScreen(innerPadding)
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(search)
+                    SearchScreen(innerPadding, search)
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken)
+                    CollectionScreen(data.userToken, innerPadding)
                 }
                 composable<CollectionContent> {
                     val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId)
+                    CollectionContentScreen(content.collectionId, innerPadding)
                 }
                 composable<Person> {
                     val person: Person = it.toRoute()
-                    PeopleScreen(person)
+                    PeopleScreen(innerPadding, person)
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(pin)
+                    PinScreen(innerPadding, pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(
-                        innerPadding = innerPadding,
-                    )
+                    BlocklistSettingsScreen(innerPadding)
                 }
                 composable<Account.RecommendSettings.BlockedFeedHistory> {
                     BlockedFeedHistoryScreen()
                 }
                 composable<Notification> {
-                    NotificationScreen()
+                    NotificationScreen(innerPadding)
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
+                    NotificationSettingsScreen(innerPadding)
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen()
+                    SentenceSimilarityTestScreen(innerPadding)
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
                     AppearanceSettingsScreen(
+                        innerPadding,
                         setting = args.setting,
                     )
                 }
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
+                        innerPadding,
                         setting = args.setting,
                     )
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
+                    SystemAndUpdateSettingsScreen(innerPadding)
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
+                    DeveloperSettingsScreen(innerPadding)
                 }
                 composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen()
+                    ColorSchemeScreen(innerPadding)
                 }
             }
         }

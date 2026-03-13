@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui.subscreens
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,7 +58,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SystemAndUpdateSettingsScreen() {
+fun SystemAndUpdateSettingsScreen(
+    innerPadding: PaddingValues,
+) {
     val context = LocalContext.current
     val navigator = LocalNavigator.current
     val preferences = remember {
@@ -68,6 +71,7 @@ fun SystemAndUpdateSettingsScreen() {
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("系统与更新") },

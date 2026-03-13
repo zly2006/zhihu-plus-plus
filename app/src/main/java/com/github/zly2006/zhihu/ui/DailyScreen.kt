@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -80,7 +79,7 @@ data class DailySection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyScreen() {
+fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<DailyViewModel>()
@@ -184,16 +183,15 @@ fun DailyScreen() {
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
-                windowInsets = WindowInsets(0.dp),
             )
         },
-    ) { paddingValues ->
+    ) { scaffoldPadding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = doRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
+                .padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
             when {
                 viewModel.isLoading -> {

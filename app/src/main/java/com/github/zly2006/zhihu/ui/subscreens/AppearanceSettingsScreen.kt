@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,6 +75,7 @@ import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
+    innerPadding: PaddingValues,
     setting: String = "",
 ) {
     val context = LocalContext.current
@@ -100,6 +102,7 @@ fun AppearanceSettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("外观与阅读体验") },
@@ -880,6 +883,152 @@ fun AppearanceSettingsScreen(
                 onCheckedChange = {
                     enablePredictiveBack.value = it
                     preferences.edit { putBoolean("enable_predictive_back", it) }
+                },
+            )
+
+            // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
+            Text(
+                "123Duo3 的 UI/UX 改进",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            // 先声明所有子开关状态，以便主开关可以批量操作
+            val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
+            val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+            val duo3HomeScrollTop = remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
+            val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+            val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
+            val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
+            val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
+            val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
+
+            fun enableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", true)
+                    putBoolean("duo3_home_scroll_top", true)
+                    putBoolean("duo3_nav_style", true)
+                    putBoolean("duo3_card_appearance", true)
+                    putBoolean("duo3_card_layout", true)
+                    putBoolean("duo3_article_bar", true)
+                    putBoolean("duo3_article_actions", true)
+                    putBoolean("showRefreshFab", true)
+                    putBoolean("buttonSkipAnswer", false)
+                }
+                duo3HomeAccount.value = true
+                duo3HomeScrollTop.value = true
+                duo3NavStyle.value = true
+                duo3CardAppearance.value = true
+                duo3CardLayout.value = true
+                duo3ArticleBar.value = true
+                duo3ArticleActions.value = true
+                // in 123duo3 changes, FABs are removed.
+                showRefreshFab.value = false
+                buttonSkipAnswer.value = false
+            }
+
+            fun disableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", false)
+                    putBoolean("duo3_home_scroll_top", false)
+                    putBoolean("duo3_nav_style", false)
+                    putBoolean("duo3_card_appearance", false)
+                    putBoolean("duo3_card_layout", false)
+                    putBoolean("duo3_article_bar", false)
+                    putBoolean("duo3_article_actions", false)
+                }
+                duo3HomeAccount.value = false
+                duo3HomeScrollTop.value = false
+                duo3NavStyle.value = false
+                duo3CardAppearance.value = false
+                duo3CardLayout.value = false
+                duo3ArticleBar.value = false
+                duo3ArticleActions.value = false
+            }
+
+            SwitchSettingItem(
+                title = "启用 123duo3 的所有 UI/UX 修改",
+                description = "启用所有更改，并关闭文章阅读页的浮动按钮。",
+                checked = duo3All.value,
+                onCheckedChange = {
+                    duo3All.value = it
+                    preferences.edit { putBoolean("duo3_all", it) }
+                    if (it) {
+                        enableAllSubs()
+                    } else {
+                        disableAllSubs()
+                    }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "主页：账号入口迁移至顶部头像",
+                description = "搜索栏样式变更；点击头像弹出账号面板；底部导航同步移除「账号」和「历史」Tab，入口并入进账号设置页。",
+                checked = duo3HomeAccount.value,
+                onCheckedChange = {
+                    duo3HomeAccount.value = it
+                    preferences.edit { putBoolean("duo3_home_account", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "主页：点击当前 Tab 回到顶部",
+                description = "点击已激活的底部 Tab，行为将会从触发刷新改为滚动回列表顶部，已在顶部时再触发刷新。",
+                checked = duo3HomeScrollTop.value,
+                onCheckedChange = {
+                    duo3HomeScrollTop.value = it
+                    preferences.edit { putBoolean("duo3_home_scroll_top", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "底部导航栏：改为 Material 标准视觉样式",
+                description = "移除自定义样式；更改「关注」Tab 图标。",
+                checked = duo3NavStyle.value,
+                onCheckedChange = {
+                    duo3NavStyle.value = it
+                    preferences.edit { putBoolean("duo3_nav_style", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：外观更改",
+                description = "卡片圆角增大，移除阴影；修改背景与卡片颜色。",
+                checked = duo3CardAppearance.value,
+                onCheckedChange = {
+                    duo3CardAppearance.value = it
+                    preferences.edit { putBoolean("duo3_card_appearance", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：更改内容排版",
+                description = "作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式",
+                checked = duo3CardLayout.value,
+                onCheckedChange = {
+                    duo3CardLayout.value = it
+                    preferences.edit { putBoolean("duo3_card_layout", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：更改整体顶/底栏框架",
+                description = "更改标题栏样式；优化顶/底栏隐藏逻辑。",
+                checked = duo3ArticleBar.value,
+                onCheckedChange = {
+                    duo3ArticleBar.value = it
+                    preferences.edit { putBoolean("duo3_article_bar", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：更改操作栏样式",
+                description = "底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。上一项启用时生效。",
+                checked = duo3ArticleActions.value,
+                onCheckedChange = {
+                    duo3ArticleActions.value = it
+                    preferences.edit { putBoolean("duo3_article_actions", it) }
                 },
             )
         }

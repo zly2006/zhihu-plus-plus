@@ -12,6 +12,8 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -22,6 +24,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +32,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +41,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +51,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -61,6 +69,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -68,11 +77,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,15 +93,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,6 +122,7 @@ import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
@@ -126,6 +144,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
+import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -178,6 +197,13 @@ private val VoteUpNeutralContentDark = Color(0xFF628DF7)
 
 @Composable
 fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
+
+@Composable
+fun voteUpNeutralContentDuo3() = if (ThemeManager.isDarkTheme()) {
+    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
+} else {
+    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
+}
 
 @Composable
 fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
@@ -476,10 +502,13 @@ private fun prepareContentDocument(content: String, context: Context): Document 
         }
     }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
+    // 仅用于master 分支
+    innerPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -492,8 +521,6 @@ fun ArticleScreen(
     var autoHideArticleBottomBar by remember {
         mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
     }
-    var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
-    var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
     var answerSwitchMode by remember {
         mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
     }
@@ -508,6 +535,19 @@ fun ArticleScreen(
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    val useDuo3ArticleBar = remember { preferences.getBoolean("duo3_article_bar", false) }
+    val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
+    var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
+    var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+
+    // Follow-the-finger bar hide: pixel-based offsets driven by scroll delta
+    val topBarOffset = remember { Animatable(0f) }
+    val bottomBarOffset = remember { Animatable(0f) }
+    var topBarHeightPx by remember { mutableFloatStateOf(0f) }
+    var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
+    var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
+    var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         AccountData.addReadHistory(
@@ -526,9 +566,7 @@ fun ArticleScreen(
                 }
 
                 "buttonSkipAnswer" -> buttonSkipAnswer = preferences.getBoolean(key, true)
-                "autoHideSkipAnswerButton" -> {
-                    autoHideSkipAnswerButton = preferences.getBoolean(key, true)
-                }
+                "autoHideSkipAnswerButton" -> autoHideSkipAnswerButton = preferences.getBoolean(key, true)
 
                 "answerSwitchMode" -> {
                     answerSwitchMode = preferences.getString(key, "vertical") ?: "vertical"
@@ -546,13 +584,59 @@ fun ArticleScreen(
         }
     }
 
+    // Reset bar offsets when auto-hide preferences are turned off
+    LaunchedEffect(isTitleAutoHide) {
+        if (!isTitleAutoHide) topBarOffset.snapTo(0f)
+    }
+    LaunchedEffect(autoHideArticleBottomBar) {
+        if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
+    }
+
     LaunchedEffect(scrollState.value) {
         val currentScroll = scrollState.value
-        val scrollDelta = abs(currentScroll - previousScrollValue)
-        if (scrollDelta > scrollDeltaThreshold) {
+        val scrollDeltaAbs = abs(currentScroll - previousScrollValue)
+        if (scrollDeltaAbs > scrollDeltaThreshold) {
             isScrollingUp = currentScroll < previousScrollValue
             previousScrollValue = currentScroll
         }
+
+        // Skip bar offset tracking during snap animation (scroll is driven programmatically)
+        if (useDuo3ArticleBar && !isBarSnapping) {
+            val delta = currentScroll - previousScrollForBarOffset
+            val atTop = currentScroll == 0
+            val atBottom = currentScroll >= scrollState.maxValue
+
+            // Top bar: force show at top; content-like reveal at bottom
+            if (atTop) {
+                topBarOffset.snapTo(0f)
+            } else if (isTitleAutoHide && topBarHeightPx > 0f) {
+                val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
+                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
+                if (distanceFromBottom < topBarHeightPx.toInt()) {
+                    // Bottom region: use whichever shows MORE of the bar (closer to 0)
+                    val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
+                    topBarOffset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
+                } else {
+                    topBarOffset.snapTo(deltaBasedOffset)
+                }
+            }
+
+            // Bottom bar: force show at top; content-like reveal at bottom
+            if (atTop) {
+                bottomBarOffset.snapTo(0f)
+            } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+                val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
+                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
+                if (distanceFromBottom < bottomBarHeightPx.toInt()) {
+                    // Bottom region: use whichever shows MORE of the bar
+                    val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
+                    bottomBarOffset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
+                } else {
+                    bottomBarOffset.snapTo(deltaBasedOffset)
+                }
+            }
+        }
+        previousScrollForBarOffset = currentScroll
 
         if (viewModel.rememberedScrollYSync) {
             viewModel.rememberedScrollY.value = currentScroll
@@ -562,33 +646,77 @@ fun ArticleScreen(
         }
     }
 
-    val showTopBar by derivedStateOf {
-        val canScroll = scrollState.maxValue > topBarHeight
-        val isNearTop = scrollState.value < topBarHeight
-        when {
-            !isTitleAutoHide -> true
-            !canScroll -> true
-            isScrollingUp -> true
-            isNearTop -> true
-            else -> false
-        }
-    }
+    // Snap bars to fully visible or fully hidden when scrolling stops,
+    // and animate content scroll to follow the snap
+    LaunchedEffect(scrollState.isScrollInProgress) {
+        if (!useDuo3ArticleBar) return@LaunchedEffect
+        if (!scrollState.isScrollInProgress) {
+            val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
+                if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
+            } else {
+                topBarOffset.value
+            }
 
-    val showBottomBar by derivedStateOf {
-        val canScroll = scrollState.maxValue > 0
-        val isNearTop = scrollState.value == 0
-        when {
-            !autoHideArticleBottomBar -> true
-            !canScroll -> true
-            isScrollingUp -> true
-            isNearTop -> true
-            else -> false
+            val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+                if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
+            } else {
+                bottomBarOffset.value
+            }
+
+            // Only compensate scroll for the top bar near the top
+            // Bottom bar: no scroll compensation (distance-based reveal handles it)
+            val topInNaturalArea = scrollState.value <= topBarHeightPx
+            val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
+            val scrollCompensation = topDelta
+
+            if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
+                try {
+                    isBarSnapping = true
+                    kotlinx.coroutines.coroutineScope {
+                        launch { topBarOffset.animateTo(topTarget, tween(150)) }
+                        launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
+                        if (scrollCompensation != 0f) {
+                            launch { scrollState.animateScrollBy(scrollCompensation, tween(150)) }
+                        }
+                    }
+                } finally {
+                    isBarSnapping = false
+                }
+            }
         }
     }
 
     LaunchedEffect(article.id) {
         viewModel.loadArticle(context)
         viewModel.loadCollections(context)
+    }
+
+    // Master-style bar visibility (direction-based, used when useDuo3ArticleBar is false)
+    val showTopBar by remember {
+        derivedStateOf {
+            val canScroll = scrollState.maxValue > topBarHeight
+            val isNearTop = scrollState.value < topBarHeight
+            when {
+                !isTitleAutoHide -> true
+                !canScroll -> true
+                isScrollingUp -> true
+                isNearTop -> true
+                else -> false
+            }
+        }
+    }
+    val showBottomBar by remember {
+        derivedStateOf {
+            val canScroll = scrollState.maxValue > 0
+            val isNearTop = scrollState.value == 0
+            when {
+                !autoHideArticleBottomBar -> true
+                !canScroll -> true
+                isScrollingUp -> true
+                isNearTop -> true
+                else -> false
+            }
+        }
     }
 
     // 回答切换手势系统
@@ -721,7 +849,7 @@ fun ArticleScreen(
         }
     }
 
-    val answerSwitchContent: @Composable () -> Unit = {
+    val answerSwitchContentOld: @Composable () -> Unit = {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
@@ -1013,6 +1141,7 @@ fun ArticleScreen(
                     }
                 }
 
+                @Suppress("UnusedReceiverParameter") // 确保竖式布局
                 @Composable
                 fun ColumnScope.DateTexts() {
                     Text(
@@ -1099,96 +1228,632 @@ fun ArticleScreen(
                 Spacer(modifier = Modifier.height((16 + 36).dp))
             }
         }
-    } // end answerSwitchContent
+    } // end answerSwitchContentOld
 
-    // 根据模式渲染
-    if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
-        val nav = sharedData?.navigator
-        AnswerVerticalOverscroll(
-            previousAnswer = nav?.previousAnswer,
-            nextAnswer = nav?.nextAnswer,
-            onNavigatePrevious = navigateToPrevious,
-            onNavigateNext = navigateToNext,
-            isAtTop = { scrollState.value == 0 },
-            isAtBottom = { scrollState.value >= scrollState.maxValue },
-            scrollState = scrollState,
-        ) {
-            answerSwitchContent()
-        }
-    } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-        val nav = sharedData?.navigator
-        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
-        LaunchedEffect(nav?.nextAnswer) {
-            val cached = nav?.nextAnswer ?: return@LaunchedEffect
-            val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
-            val articleId = cached.article.id.toString()
-            if (wv.contentId != articleId) {
-                wv.contentId = articleId
-                wv.loadZhihu(
-                    "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
-                    },
-                )
-            }
-        }
-        LaunchedEffect(nav?.previousAnswer) {
-            val cached = nav?.previousAnswer ?: return@LaunchedEffect
-            val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
-            val articleId = cached.article.id.toString()
-            if (wv.contentId != articleId) {
-                wv.contentId = articleId
-                wv.loadZhihu(
-                    "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
-                    },
-                )
-            }
-        }
-        AnswerHorizontalOverscroll(
-            canGoPrevious = nav?.previousAnswer != null,
-            canGoNext = true,
-            onNavigatePrevious = navigateToPrevious,
-            onNavigateNext = navigateToNext,
-            previousContent = nav?.previousAnswer?.let { cached ->
-                { CachedAnswerPreview(cached, sharedData, isNext = false) }
-            },
-            nextContent = nav?.nextAnswer?.let { cached ->
-                { CachedAnswerPreview(cached, sharedData, isNext = true) }
-            },
-        ) {
-            answerSwitchContent()
-        }
-    } else {
-        answerSwitchContent()
-    }
+    @OptIn(ExperimentalMaterial3Api::class)
+    val answerSwitchContent: @Composable () -> Unit = {
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        Scaffold(
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            containerColor = MaterialTheme.colorScheme.surface,
+            topBar = {
+                Box(
+                    modifier = Modifier
+                        .onSizeChanged {
+                            topBarHeightPx = it.height.toFloat()
+                            if (it.height >= 10) topBarHeight = it.height
+                        }.let {
+                            it.graphicsLayer {
+                                translationY = topBarOffset.value
+                                alpha = if (topBarHeightPx > 0f) 1f + (topBarOffset.value / topBarHeightPx) else 1f
+                            }
+                        },
+                ) {
+                    TwoRowsTopAppBar(
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                val activity = context as? MainActivity
+                                activity?.navController?.popBackStack()
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            }
+                        },
+                        actions = {
+                            if (useDuo3ArticleActions) {
+                                IconButton(
+                                    onClick = { showActionsMenu = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项",
+                                    )
+                                }
+                            }
+                        },
+                        title = { expanded ->
+                            Text(
+                                text = viewModel.title,
+                                modifier = Modifier
+                                    .padding(if (expanded) PaddingValues(end = 16.dp) else PaddingValues())
+                                    .let {
+                                        if (article.type == ArticleType.Answer) {
+                                            it.clickable {
+                                                navigator.onNavigate(Question(viewModel.questionId, viewModel.title))
+                                            }
+                                        } else {
+                                            it
+                                        }
+                                    },
+                                maxLines = if (expanded) Int.MAX_VALUE else 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        subtitle = { expanded ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
+                                    .clickable {
+                                        navigator.onNavigate(
+                                            com.github.zly2006.zhihu.Person(
+                                                id = viewModel.authorId,
+                                                urlToken = viewModel.authorUrlToken,
+                                                name = viewModel.authorName,
+                                            ),
+                                        )
+                                    }.padding(end = 16.dp),
+                            ) {
+                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                                    AsyncImage(
+                                        model = viewModel.authorAvatarSrc,
+                                        contentDescription = "作者头像",
+                                        modifier = Modifier
+                                            .size(if (expanded) 40.dp else 20.dp)
+                                            .clip(CircleShape),
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(if (expanded) 40.dp else 20.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    )
+                                }
 
-    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
-        var navigatingToNextAnswer by remember { mutableStateOf(false) }
-        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
-        val skipButtonAlpha by animateFloatAsState(
-            targetValue = if (showSkipButton) 1f else 0f,
-            animationSpec = tween(200),
-            label = "skipButtonAlpha",
-        )
-        DraggableRefreshButton(
-            // graphicsLayer 在 offset 之前，确保 alpha 动画作用在正确位置
-            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-            onClick = {
-                if (showSkipButton) {
-                    navigatingToNextAnswer = true
-                    navigateToNext()
-                    navigatingToNextAnswer = false
+                                Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
+
+                                Column {
+                                    Text(
+                                        text = viewModel.authorName,
+                                        style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                                        color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    if (viewModel.authorBio.isNotEmpty() && expanded) {
+                                        Text(
+                                            text = viewModel.authorBio,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
                 }
             },
-            preferenceName = "buttonSkipAnswer",
-        ) {
-            if (navigatingToNextAnswer) {
-                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-            } else {
-                Icon(Icons.Default.SkipNext, contentDescription = "下一个回答")
+            bottomBar = {
+                // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
+                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+
+                // Shared composable for the action bar content (gated by useDuo3ArticleActions)
+                @Composable
+                fun ActionBarContent() {
+                    if (!useDuo3ArticleActions) {
+                        // ── master: Button-based vote + actions ────────────────────────
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp)
+                                .height(36.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        color = if (viewModel.voteUpState == VoteUpState.Neutral) {
+                                            voteUpNeutralContent().copy(alpha = 0.1f)
+                                        } else {
+                                            voteUpNeutralContent()
+                                        },
+                                    ),
+                                horizontalArrangement = Arrangement.Start,
+                            ) {
+                                when (viewModel.voteUpState) {
+                                    VoteUpState.Neutral -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
+                                        }
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                        }
+                                    }
+
+                                    VoteUpState.Up -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+
+                                    VoteUpState.Down -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("反对")
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.End) {
+                                IconButton(
+                                    onClick = { showCollectionDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
+                                ) {
+                                    Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
+                                }
+                                val mainActivity = context as? MainActivity
+                                val ttsState = mainActivity?.ttsState
+                                if (ttsState?.isSpeaking == true) {
+                                    IconButton(
+                                        onClick = {
+                                            mainActivity.stopSpeaking()
+                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                                        },
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
+                                    }
+                                }
+                                Button(
+                                    onClick = { showComments = true },
+                                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = "${viewModel.commentCount}")
+                                }
+
+                                IconButton(
+                                    onClick = { showActionsMenu = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项",
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        // ── duo3: pill-shaped animated vote + actions ────────────────────
+                        Row(
+                            modifier = Modifier
+                                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 16.dp)
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .padding(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                AnimatedVisibility(
+                                    visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Up,
+                                ) {
+                                    val upBgColor by animateColorAsState(
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
+                                    )
+                                    val upContentColor by animateColorAsState(
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(upBgColor)
+                                            .clickable {
+                                                viewModel.toggleVoteUp(
+                                                    context,
+                                                    if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
+                                                )
+                                            }.padding(6.dp, 8.dp, 12.dp, 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_vote_up_24dp),
+                                            contentDescription = "赞同",
+                                            tint = upContentColor,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = viewModel.voteUpCount.toString(),
+                                            color = upContentColor,
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                    }
+                                }
+
+                                AnimatedVisibility(visible = viewModel.voteUpState == VoteUpState.Neutral) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+
+                                AnimatedVisibility(
+                                    visible = viewModel.voteUpState == VoteUpState.Neutral || viewModel.voteUpState == VoteUpState.Down,
+                                ) {
+                                    val downBgColor by animateColorAsState(
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
+                                    )
+                                    val downContentColor by animateColorAsState(
+                                        targetValue = if (viewModel.voteUpState == VoteUpState.Down) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(downBgColor)
+                                            .clickable {
+                                                viewModel.toggleVoteUp(
+                                                    context,
+                                                    if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
+                                                )
+                                            }.padding(6.dp, 8.dp, 8.dp, 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        AnimatedVisibility(visible = viewModel.voteUpState != VoteUpState.Down) {
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                        }
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_vote_down_24dp),
+                                            contentDescription = "反对",
+                                            tint = downContentColor,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                        AnimatedVisibility(visible = viewModel.voteUpState == VoteUpState.Down) {
+                                            Row {
+                                                Text(
+                                                    text = "反对",
+                                                    color = downContentColor,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    modifier = Modifier.padding(horizontal = 4.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .padding(end = 4.dp),
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                IconButton(
+                                    onClick = { showCollectionDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = if (viewModel.isFavorited) {
+                                            Color(0xFFF57C00).harmonize(MaterialTheme.colorScheme.primary)
+                                        } else {
+                                            MaterialTheme.colorScheme.surfaceContainer
+                                        },
+                                        contentColor = if (viewModel.isFavorited) {
+                                            Color.White.copy(alpha = 0.87f)
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                    ),
+                                ) {
+                                    Icon(
+                                        if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                        contentDescription = "收藏",
+                                    )
+                                }
+
+                                val mainActivity = context as? MainActivity
+                                val ttsState = mainActivity?.ttsState
+                                AnimatedVisibility(visible = ttsState?.isSpeaking == true) {
+                                    IconButton(
+                                        onClick = {
+                                            mainActivity?.stopSpeaking()
+                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                                        },
+                                        enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing, null),
+                                        colors = IconButtonDefaults.iconButtonColors(
+                                            containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
+                                            contentColor = Color.White,
+                                        ),
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
+                                    }
+                                }
+
+                                Button(
+                                    onClick = { showComments = true },
+                                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = "${viewModel.commentCount}", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (showBottomBarCondition) {
+                    Box(
+                        modifier = Modifier
+                            .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                            .graphicsLayer {
+                                translationY = bottomBarOffset.value
+                                alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                            },
+                    ) {
+                        ActionBarContent()
+                    }
+                }
+            },
+        ) { innerPadding ->
+            Box {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .verticalScroll(scrollState)
+                        .padding(innerPadding)
+                        .padding(top = 32.dp),
+                ) {
+                    @Suppress("UnusedReceiverParameter") // 确保竖式布局
+                    @Composable
+                    fun ColumnScope.DateTexts() {
+                        Text(
+                            "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                            color = Color.Gray,
+                            fontSize = 11.sp,
+                        )
+                        if (viewModel.createdAt != viewModel.updatedAt) {
+                            Text(
+                                "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                    if (pinAnswerDate) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalAlignment = Alignment.Start,
+                        ) {
+                            DateTexts()
+                        }
+                    }
+
+                    if (viewModel.content.isNotEmpty()) {
+                        if (preferences.getBoolean("articleUseWebview", true)) {
+                            WebviewComp(
+                                scrollState = scrollState,
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                            ) {
+                                it.isVerticalScrollBarEnabled = false
+                                it.setupUpWebviewClient {
+                                    if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                        coroutineScope.launch {
+                                            val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                            while (scrollState.maxValue < rememberedY) {
+                                                delay(100)
+                                            }
+                                            Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                            scrollState.animateScrollTo(rememberedY)
+                                            viewModel.rememberedScrollYSync = true
+                                        }
+                                    }
+                                }
+                                it.contentId = article.id.toString()
+                                it.loadZhihu(
+                                    "https://www.zhihu.com/${article.type}/${article.id}",
+                                    prepareContentDocument(viewModel.content, context).apply {
+                                        title(viewModel.title)
+                                    },
+                                )
+                            }
+                        } else {
+                            val astNode = remember(viewModel.content) {
+                                htmlToMdAst(viewModel.content)
+                            }
+                            val context = MarkdownRenderContext()
+                            Spacer(Modifier.height(10.dp))
+                            SelectionContainer(Modifier.fuckHonorService()) {
+                                Column {
+                                    for (ast in astNode) {
+                                        ast.Render(context)
+                                        Spacer(Modifier.height(12.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        if (!pinAnswerDate) {
+                            DateTexts()
+                        }
+                        if (viewModel.ipInfo != null) {
+                            Text(
+                                "IP属地：${viewModel.ipInfo}",
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height((16 + 36).dp))
+                }
+                // Skip answer button
+                if (article.type == ArticleType.Answer && buttonSkipAnswer) {
+                    var navigatingToNextAnswer by remember { mutableStateOf(false) }
+                    val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+                    val skipButtonAlpha by animateFloatAsState(
+                        targetValue = if (showSkipButton) 1f else 0f,
+                        animationSpec = tween(200),
+                        label = "skipButtonAlpha",
+                    )
+                    DraggableRefreshButton(
+                        modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
+                        onClick = {
+                            if (showSkipButton) {
+                                navigatingToNextAnswer = true
+                                navigateToNext()
+                                navigatingToNextAnswer = false
+                            }
+                        },
+                        preferenceName = "buttonSkipAnswer",
+                    ) {
+                        if (navigatingToNextAnswer) {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                        } else {
+                            Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
+                        }
+                    }
+                }
+                // Status bar gradient overlay (duo3 only — not needed in master path)
+                val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(statusBarHeight + 8.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
+                            ),
+                        ),
+                ) {}
             }
+        }
+    } // end answerSwitchContent
+
+    Box(
+        modifier = if (useDuo3ArticleBar) Modifier else Modifier.padding(innerPadding),
+    ) {
+        // 根据模式渲染
+        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+            val nav = sharedData?.navigator
+            AnswerVerticalOverscroll(
+                previousAnswer = nav?.previousAnswer,
+                nextAnswer = nav?.nextAnswer,
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
+                isAtTop = { scrollState.value == 0 },
+                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                scrollState = scrollState,
+            ) {
+                (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
+            }
+        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+            val nav = sharedData?.navigator
+            // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+            LaunchedEffect(nav?.nextAnswer) {
+                val cached = nav?.nextAnswer ?: return@LaunchedEffect
+                val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
+                val articleId = cached.article.id.toString()
+                if (wv.contentId != articleId) {
+                    wv.contentId = articleId
+                    wv.loadZhihu(
+                        "https://www.zhihu.com/answer/${cached.article.id}",
+                        prepareContentDocument(cached.content, context).apply {
+                            title(viewModel.title)
+                        },
+                    )
+                }
+            }
+            LaunchedEffect(nav?.previousAnswer) {
+                val cached = nav?.previousAnswer ?: return@LaunchedEffect
+                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
+                val articleId = cached.article.id.toString()
+                if (wv.contentId != articleId) {
+                    wv.contentId = articleId
+                    wv.loadZhihu(
+                        "https://www.zhihu.com/answer/${cached.article.id}",
+                        prepareContentDocument(cached.content, context).apply {
+                            title(viewModel.title)
+                        },
+                    )
+                }
+            }
+            AnswerHorizontalOverscroll(
+                canGoPrevious = nav?.previousAnswer != null,
+                canGoNext = true,
+                onNavigatePrevious = navigateToPrevious,
+                onNavigateNext = navigateToNext,
+                previousContent = nav?.previousAnswer?.let { cached ->
+                    { CachedAnswerPreview(cached, sharedData, isNext = false) }
+                },
+                nextContent = nav?.nextAnswer?.let { cached ->
+                    { CachedAnswerPreview(cached, sharedData, isNext = true) }
+                },
+            ) {
+                (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
+            }
+        } else {
+            (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
         }
     }
 

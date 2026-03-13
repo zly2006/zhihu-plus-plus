@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +62,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -104,6 +106,8 @@ fun FeedCard(
     val feedCardStyle = remember {
         preferences.getString("feedCardStyle", "card")
     }
+    val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
+    val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -149,6 +153,7 @@ fun FeedCard(
                     onBlockUser = onBlockUser,
                     onBlockByKeywords = onBlockByKeywords,
                     onBlockTopic = onBlockTopic,
+                    duo3CardLayout = duo3CardLayout,
                 )
             }
             HorizontalDivider(thickness = 0.3.dp)
@@ -161,10 +166,23 @@ fun FeedCard(
                 .padding(horizontal = horizontalPadding, vertical = 8.dp),
         ) {
             Card(
+                colors = if (duo3CardAppearance) {
+                    CardDefaults.cardColors().copy(
+                        containerColor = if (ThemeManager.isDarkTheme()) {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                    )
+                } else {
+                    CardDefaults.cardColors()
+                },
+                shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .alpha(1 - min(actionAlpha, 0.5f))
                     .offset(x = with(density) { animatedOffsetX.toDp() })
+                    .let { if (duo3CardAppearance) it.clip(RoundedCornerShape(24.dp)) else it }
                     .clickable {
                         if (!isDragging && abs(animatedOffsetX) < 10f) {
                             onClick(item)
@@ -204,12 +222,18 @@ fun FeedCard(
                             it
                         }
                     },
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = if (isDragging) 8.dp else 2.dp,
-                ),
+                elevation = if (duo3CardAppearance) {
+                    CardDefaults.cardElevation()
+                } else {
+                    CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 2.dp)
+                },
             ) {
                 Column(
-                    modifier = Modifier.padding(8.dp),
+                    modifier = if (duo3CardAppearance) {
+                        Modifier.padding(16.dp, 12.dp, 16.dp, 16.dp)
+                    } else {
+                        Modifier.padding(8.dp)
+                    },
                 ) {
                     FeedCardContent(
                         item = item,
@@ -220,6 +244,7 @@ fun FeedCard(
                         onBlockUser = onBlockUser,
                         onBlockByKeywords = onBlockByKeywords,
                         onBlockTopic = onBlockTopic,
+                        duo3CardLayout = duo3CardLayout,
                     )
                 }
             }
@@ -302,6 +327,86 @@ fun FeedCard(
 }
 
 @Composable
+private fun FeedCardMenuBox(
+    item: BaseFeedViewModel.FeedDisplayItem,
+    showMenu: Boolean,
+    onShowMenuChange: (Boolean) -> Unit,
+    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
+    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
+    onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    navigator: com.github.zly2006.zhihu.Navigator,
+) {
+    Box {
+        IconButton(
+            onClick = { onShowMenuChange(true) },
+            modifier = Modifier.size(24.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "更多选项",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { onShowMenuChange(false) },
+        ) {
+            @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
+            if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
+                DropdownMenuItem(
+                    text = { Text("按关键词屏蔽") },
+                    onClick = {
+                        onShowMenuChange(false)
+                        onBlockByKeywords(item)
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("屏蔽用户") },
+                onClick = {
+                    onShowMenuChange(false)
+                    onBlockUser?.invoke(item)
+                },
+            )
+            if (onBlockTopic != null && item.raw != null) {
+                val topics = when (val raw = item.raw) {
+                    is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
+                    is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
+                    is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
+                    else -> emptyList()
+                }
+                topics.forEach { topic ->
+                    DropdownMenuItem(
+                        text = { Text("屏蔽「${topic.name}」") },
+                        onClick = {
+                            onShowMenuChange(false)
+                            onBlockTopic(topic.id, topic.name)
+                        },
+                    )
+                }
+            }
+            DropdownMenuItem(
+                text = { Text("外观设置") },
+                onClick = {
+                    onShowMenuChange(false)
+                    navigator.onNavigate(Account.AppearanceSettings())
+                },
+            )
+            if (item.isFiltered) {
+                DropdownMenuItem(
+                    text = { Text("不再屏蔽低赞内容") },
+                    onClick = {
+                        onShowMenuChange(false)
+                        navigator.onNavigate(Account.RecommendSettings("enableQualityFilter"))
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun FeedCardContent(
     item: BaseFeedViewModel.FeedDisplayItem,
     showFeedThumbnail: Boolean,
@@ -311,13 +416,93 @@ private fun FeedCardContent(
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
+    duo3CardLayout: Boolean,
 ) {
     val navigator = LocalNavigator.current
-    if (!item.isFiltered) {
+    if (duo3CardLayout) {
+        // ── 新排版（duo3）────────────────────────────────────────────────────
         if (!item.title.isEmpty()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = parseHtmlTextWithTheme(item.title),
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 2,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+        }
+
+        Column {
+            Row {
+                Text(
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AsyncImage(
+                        model = thumbnailUrl,
+                        contentDescription = "Thumbnail",
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .sizeIn(maxHeight = 80.dp, maxWidth = 128.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.FillHeight,
+                    )
+                }
+            }
+            if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (item.avatarSrc != null && item.authorName != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {},
+                        ) {
+                            item.avatarSrc.let {
+                                AsyncImage(
+                                    model = it,
+                                    contentDescription = "Avatar",
+                                    modifier = Modifier.clip(CircleShape).size(24.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text(
+                                text = item.authorName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    if (item.details.isNotEmpty()) {
+                        Text(
+                            text = item.details,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
+                    }
+                }
+            }
+        }
+    } else {
+        // ── 原始排版（master）────────────────────────────────────────────────
+        if (!item.title.isEmpty() && !item.isFiltered) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseHtmlTextWithTheme(item.title),
                     fontSize = 16.sp,
@@ -337,9 +522,7 @@ private fun FeedCardContent(
                     AsyncImage(
                         model = it,
                         contentDescription = "Avatar",
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .size(20.dp),
+                        modifier = Modifier.clip(CircleShape).size(20.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                 }
@@ -352,116 +535,42 @@ private fun FeedCardContent(
                 )
             }
         }
-    }
-
-    Row {
-        Column(
-            modifier = Modifier.weight(2f),
-        ) {
-            Text(
-                text = parseHtmlTextWithTheme(item.summary ?: ""),
-                fontSize = 14.sp,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(
-                    top = if (item.isFiltered) 0.dp else 3.dp,
-                ),
-            )
-
-            if (item.details.isNotEmpty()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = item.details,
-                        fontSize = 12.sp,
-                        lineHeight = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Box {
-                        IconButton(
-                            onClick = { onShowMenuChange(true) },
-                            modifier = Modifier.size(24.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "更多选项",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { onShowMenuChange(false) },
-                        ) {
-                            @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
-                            if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
-                                DropdownMenuItem(
-                                    text = { Text("按关键词屏蔽") },
-                                    onClick = {
-                                        onShowMenuChange(false)
-                                        onBlockByKeywords(item)
-                                    },
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text("屏蔽用户") },
-                                onClick = {
-                                    onShowMenuChange(false)
-                                    onBlockUser?.invoke(item)
-                                },
-                            )
-                            if (onBlockTopic != null && item.raw != null) {
-                                val topics = when (val raw = item.raw) {
-                                    is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
-                                    is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
-                                    is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
-                                    else -> emptyList()
-                                }
-                                topics.forEach { topic ->
-                                    DropdownMenuItem(
-                                        text = { Text("屏蔽「${topic.name}」") },
-                                        onClick = {
-                                            onShowMenuChange(false)
-                                            onBlockTopic(topic.id, topic.name)
-                                        },
-                                    )
-                                }
-                            }
-                            DropdownMenuItem(
-                                text = { Text("外观设置") },
-                                onClick = {
-                                    onShowMenuChange(false)
-                                    navigator.onNavigate(Account.AppearanceSettings())
-                                },
-                            )
-                            if (item.isFiltered) {
-                                DropdownMenuItem(
-                                    text = { Text("不再屏蔽低赞内容") },
-                                    onClick = {
-                                        onShowMenuChange(false)
-                                        navigator.onNavigate(Account.RecommendSettings("enableQualityFilter"))
-                                    },
-                                )
-                            }
-                        }
+        Row {
+            Column(modifier = Modifier.weight(2f)) {
+                Text(
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    fontSize = 14.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
+                )
+                if (item.details.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = item.details,
+                            fontSize = 12.sp,
+                            lineHeight = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        FeedCardMenuBox(item, showMenu, onShowMenuChange, onBlockUser, onBlockByKeywords, onBlockTopic, navigator)
                     }
                 }
             }
-        }
-
-        if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
-            Spacer(modifier = Modifier.width(8.dp))
-            AsyncImage(
-                model = thumbnailUrl,
-                contentDescription = "Thumbnail",
-                modifier = Modifier
-                    .weight(1f)
-                    .sizeIn(maxWidth = 60.dp)
-                    .clip(RoundedCornerShape(8.dp)),
-            )
+            if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail) {
+                Spacer(modifier = Modifier.width(8.dp))
+                AsyncImage(
+                    model = thumbnailUrl,
+                    contentDescription = "Thumbnail",
+                    modifier = Modifier
+                        .weight(1f)
+                        .sizeIn(maxWidth = 60.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                )
+            }
         }
     }
 }

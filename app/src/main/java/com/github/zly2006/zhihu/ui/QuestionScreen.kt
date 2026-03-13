@@ -73,6 +73,7 @@ import org.jsoup.Jsoup
 @Composable
 fun QuestionScreen(
     question: Question,
+    innerPadding: PaddingValues,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -129,7 +130,7 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
         topBar = {
             SelectionContainer(
                 modifier = Modifier.fuckHonorService(),
@@ -368,5 +369,6 @@ fun QuestionScreenPreview() {
     val question = Question(123456789, "这是一个问题的标题")
     QuestionScreen(
         question = question,
+        innerPadding = PaddingValues(0.dp),
     )
 }

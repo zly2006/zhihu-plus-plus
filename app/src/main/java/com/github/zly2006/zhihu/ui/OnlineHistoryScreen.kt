@@ -1,11 +1,15 @@
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.History
 import com.github.zly2006.zhihu.LocalNavigator
@@ -15,7 +19,7 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 
 @Composable
-fun OnlineHistoryScreen() {
+fun OnlineHistoryScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -31,6 +35,7 @@ fun OnlineHistoryScreen() {
             items = viewModel.displayItems,
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
+            modifier = Modifier.padding(innerPadding),
             topContent = {
                 item(0) {
                     Row {
