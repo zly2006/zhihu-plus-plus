@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://github.com/zly2006/zhihu-plus-plus/releases)
 
-本项目还不够完善，欢迎PR，如果对第三方知乎客户端有兴趣，也可以试试时间更早、功能更全面的[Hydrogen](https://github.com/zhihulite/Hydrogen)
+本项目还不够完善，欢迎PR。
 
 Zhihu++独创本地推荐算法，把内容推荐完全放在本地进行，为您提供和筛选高质量内容。
 本地推荐算法完全独立于知乎算法，依赖爬虫运行，可以自由定制各种推荐权重，保证看到自己想看的内容。
