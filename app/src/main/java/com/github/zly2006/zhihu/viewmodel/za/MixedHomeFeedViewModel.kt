@@ -36,7 +36,7 @@ class MixedHomeFeedViewModel :
         web.recordContentInteraction(context, feed)
     }
 
-    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
         web.onUiContentClick(context, feed, item)
     }
 }
