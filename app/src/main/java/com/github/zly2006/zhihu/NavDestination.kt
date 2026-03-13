@@ -58,6 +58,9 @@ data object Account : NavDestination, TopLevelDestination {
     ) : NavDestination {
         @Serializable
         data object Blocklist : NavDestination
+
+        @Serializable
+        data object BlockedFeedHistory : NavDestination
     }
 
     @Serializable

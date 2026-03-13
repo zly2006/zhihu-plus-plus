@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -20,7 +21,6 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -55,10 +55,13 @@ class HomeFeedViewModel :
                 .map { feed -> createDisplayItem(context, feed) }
 
             // 立即展示所有内容，不等待过滤
-            withContext(Dispatchers.Main) {
-                newItems.forEach { item ->
-                    if (displayItems.none { it.navDestination == item.navDestination }) {
-                        displayItems.add(item)
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            if (!preferences.getBoolean("reverseBlock", false)) {
+                withContext(Dispatchers.Main) {
+                    newItems.forEach { item ->
+                        if (displayItems.none { it.navDestination == item.navDestination }) {
+                            displayItems.add(item)
+                        }
                     }
                 }
             }
@@ -67,27 +70,22 @@ class HomeFeedViewModel :
             val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
             val newDestinations = newItems.map { it.navDestination }.toSet()
 
+            if (preferences.getBoolean("reverseBlock", false)) {
+                displayItems.addAll(filteredItems)
+            }
+
             // 记录内容展示
             recordContentDisplays(context, filteredItems)
 
-            // 标记被过滤的条目，并更新已保留条目的 raw 内容
+            // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
-                for (i in displayItems.indices) {
-                    val item = displayItems[i]
-                    if (item.navDestination !in newDestinations) continue
+                displayItems.removeAll { item ->
+                    if (item.navDestination !in newDestinations) return@removeAll false
                     val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
-                    displayItems[i] = if (filteredVersion == null) {
-                        item.copy(isPendingRemoval = true)
-                    } else {
-                        item.copy(raw = filteredVersion.raw)
-                    }
+                    item.raw = filteredVersion?.raw ?: item.raw
+                    // remove if no filtered version exists, which means it was filtered out
+                    filteredVersion == null
                 }
-            }
-
-            // 等待退出动画完成后移除
-            delay(400)
-            withContext(Dispatchers.Main) {
-                displayItems.removeAll { it.isPendingRemoval }
             }
         }
     }
@@ -179,7 +177,7 @@ class HomeFeedViewModel :
     private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {
         try {
             val untouchedAnswers = displayItems
-                .filter { !it.isFiltered && !it.isPendingRemoval && it.feed?.target is Feed.AnswerTarget }
+                .filter { !it.isFiltered && it.feed?.target is Feed.AnswerTarget }
 
             if (untouchedAnswers.isNotEmpty()) {
                 httpClient

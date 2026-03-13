@@ -27,7 +27,6 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -150,10 +149,13 @@ class AndroidHomeFeedViewModel :
                     }
 
                 // 立即展示所有内容
-                withContext(Dispatchers.Main) {
-                    itemsToDisplay.forEach { item ->
-                        if (displayItems.none { it.navDestination == item.navDestination }) {
-                            displayItems.add(item)
+                val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                if (!preferences.getBoolean("reverseBlock", false)) {
+                    withContext(Dispatchers.Main) {
+                        itemsToDisplay.forEach { item ->
+                            if (displayItems.none { it.navDestination == item.navDestination }) {
+                                displayItems.add(item)
+                            }
                         }
                     }
                 }
@@ -162,24 +164,19 @@ class AndroidHomeFeedViewModel :
                 val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
                 val newDestinations = itemsToDisplay.map { it.navDestination }.toSet()
 
-                // 标记被过滤的条目，更新已保留条目的 raw 内容
-                withContext(Dispatchers.Main) {
-                    for (i in displayItems.indices) {
-                        val item = displayItems[i]
-                        if (item.navDestination !in newDestinations) continue
-                        val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
-                        displayItems[i] = if (filteredVersion == null) {
-                            item.copy(isPendingRemoval = true)
-                        } else {
-                            item.copy(raw = filteredVersion.raw)
-                        }
-                    }
+                if (preferences.getBoolean("reverseBlock", false)) {
+                    displayItems.addAll(filteredItems)
                 }
 
-                // 等待退出动画完成后移除
-                delay(400)
+                // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
-                    displayItems.removeAll { it.isPendingRemoval }
+                    displayItems.removeAll { item ->
+                        if (item.navDestination !in newDestinations) return@removeAll false
+                        val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
+                        item.raw = filteredVersion?.raw ?: item.raw
+                        // remove if no filtered version exists, which means it was filtered out
+                        filteredVersion == null
+                    }
                 }
 
                 lastPaging = if ("paging" in jojo) {
