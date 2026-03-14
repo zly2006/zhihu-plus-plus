@@ -151,6 +151,7 @@ import kotlinx.serialization.Serializable
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import kotlin.math.abs
+import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
@@ -1233,6 +1234,13 @@ fun ArticleScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        // 不受到是否收起影响，在topbar最大时是否可以滚动？
+        var scrollStateMaxValue by remember { mutableStateOf(0) }
+        LaunchedEffect(scrollState.maxValue) {
+            if (scrollState.maxValue != Int.MAX_VALUE) {
+                scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
+            }
+        }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
             containerColor = MaterialTheme.colorScheme.surface,
@@ -1342,7 +1350,7 @@ fun ArticleScreen(
                                 }
                             }
                         },
-                        scrollBehavior = scrollBehavior,
+                        scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                     )
                 }
             },
