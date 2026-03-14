@@ -55,8 +55,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
@@ -948,7 +946,7 @@ fun ArticleScreen(
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
                                             ) {
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(Icons.Filled.ArrowUpward, "赞同")
+                                                Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(text = viewModel.voteUpCount.toString())
                                             }
@@ -961,7 +959,7 @@ fun ArticleScreen(
                                                     .width(ButtonDefaults.MinHeight),
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
                                             ) {
-                                                Icon(Icons.Filled.ArrowDownward, "反对")
+                                                Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
                                             }
                                         }
 
@@ -973,7 +971,7 @@ fun ArticleScreen(
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
                                             ) {
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(Icons.Filled.ArrowUpward, "赞同")
+                                                Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text(text = viewModel.voteUpCount.toString())
                                                 Spacer(modifier = Modifier.width(8.dp))
@@ -988,7 +986,7 @@ fun ArticleScreen(
                                                 modifier = Modifier.height(ButtonDefaults.MinHeight),
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
                                             ) {
-                                                Icon(Icons.Filled.ArrowDownward, "反对")
+                                                Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
                                                 Spacer(modifier = Modifier.width(4.dp))
                                                 Text("反对")
                                                 Spacer(modifier = Modifier.width(8.dp))
@@ -1392,7 +1390,7 @@ fun ArticleScreen(
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(text = viewModel.voteUpCount.toString())
                                         }
@@ -1403,7 +1401,7 @@ fun ArticleScreen(
                                             modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
-                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
                                         }
                                     }
 
@@ -1415,7 +1413,7 @@ fun ArticleScreen(
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(text = viewModel.voteUpCount.toString())
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -1430,7 +1428,7 @@ fun ArticleScreen(
                                             modifier = Modifier.height(ButtonDefaults.MinHeight),
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
-                                            Icon(Icons.Filled.ArrowDownward, "反对")
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text("反对")
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -1965,7 +1963,7 @@ private fun CachedAnswerPreview(
                             contentPadding = PaddingValues(horizontal = 0.dp),
                         ) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Filled.ArrowUpward, "赞同")
+                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = cached.voteUpCount.toString())
                         }
