@@ -206,31 +206,20 @@ class CustomWebView : WebView {
     var onContentHeightCallback: ((Int) -> Unit)? = null
     var onPageStartedCallback: (() -> Unit)? = null
 
-    private var touchStartY = 0f
+    override fun scrollTo(x: Int, y: Int) {
+        // 禁止 WebView 自己滚动，所有滚动都通过 scrollToHeightCallback 回调到 Compose 层处理
+        super.scrollTo(0, 0)
+    }
 
     /**
-     * 在 WebView 内容已到达顶部/底部边界时，不 disallow 父 View 拦截触摸事件，
-     * 使 Compose 的 nestedScroll/overscroll 能接管剩余的拖动。
-     * 使用从 ACTION_DOWN 开始的累积位移判断方向，避免逐帧增量在触摸初始时误判。
+     * 在 WebView ，allow 父 View 拦截触摸事件，
+     * 使 Compose 的 nestedScroll/overscroll 能接管所有的拖动。
      */
     override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
-        when (event.actionMasked) {
-            android.view.MotionEvent.ACTION_DOWN -> {
-                touchStartY = event.y
-                parent?.requestDisallowInterceptTouchEvent(false)
-            }
-            android.view.MotionEvent.ACTION_MOVE -> {
-                val totalDy = event.y - touchStartY
-                val atTop = scrollY == 0
-                val maxScroll = computeVerticalScrollRange() - computeVerticalScrollExtent()
-                val atBottom = maxScroll <= 0 || scrollY >= maxScroll
-                if ((totalDy > 8f && atTop) || (totalDy < -8f && atBottom)) {
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                } else if (totalDy > 8f || totalDy < -8f) {
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                }
-                // 位移未超过阈值时不修改 disallow 状态，保持 ACTION_DOWN 时的 false
-            }
+        parent?.requestDisallowInterceptTouchEvent(false)
+        if (event.actionMasked == android.view.MotionEvent.ACTION_MOVE) {
+            super.scrollTo(0, 0)
+            return super.onTouchEvent(event)
         }
         return super.onTouchEvent(event)
     }
