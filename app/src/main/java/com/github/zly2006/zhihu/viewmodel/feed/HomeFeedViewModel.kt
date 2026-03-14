@@ -203,7 +203,7 @@ class HomeFeedViewModel :
                                     }
                                     append(
                                         "items",
-                                        Json.encodeToString(payload)
+                                        Json.encodeToString(payload),
                                     )
                                 },
                             ),
