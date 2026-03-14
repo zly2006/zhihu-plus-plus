@@ -59,6 +59,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -943,7 +944,14 @@ private fun UserInfoHeader(
                 modifier = Modifier
                     .padding(end = 16.dp)
                     .size(80.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .clickable {
+                        OpenImageDislog(
+                            context,
+                            AccountData.httpClient(context),
+                            viewModel.avatar.substringBefore("_") + ".jpg",
+                        ).show()
+                    },
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(viewModel.name, style = MaterialTheme.typography.titleLarge)
