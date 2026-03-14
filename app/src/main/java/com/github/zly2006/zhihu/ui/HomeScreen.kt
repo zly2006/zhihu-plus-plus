@@ -219,7 +219,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode) {
+    LaunchedEffect(currentRecommendationMode, AccountData.data.login) {
         if (!AccountData.data.login &&
             preferences.getBoolean("loginForRecommendation", true)
         ) {
