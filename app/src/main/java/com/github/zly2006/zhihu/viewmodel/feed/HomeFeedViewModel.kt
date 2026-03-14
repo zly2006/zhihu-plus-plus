@@ -23,13 +23,14 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
 
 class HomeFeedViewModel :
     BaseFeedViewModel(),
     IHomeFeedViewModel {
+    private val reportedTouchedItems = hashSetOf<Pair<String, String>>()
+
     override val initialUrl: String
 //        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
         get() = "https://api.zhihu.com/topstory/recommend"
@@ -170,62 +171,57 @@ class HomeFeedViewModel :
         }
     }
 
-    private suspend fun markItemsAsTouched(context: Context, httpClient: HttpClient = AccountData.httpClient(context)) {
+    private suspend fun markItemsAsTouched(
+        context: Context,
+        httpClient: HttpClient = AccountData.httpClient(context),
+    ) {
         try {
-            val untouchedAnswers = displayItems
-                .filter { !it.isFiltered && it.feed?.target is Feed.AnswerTarget }
+            val currentTouchItems = displayItems
+                .asSequence()
+                .filterNot { it.isFiltered }
+                .mapNotNull { it.feed?.target }
+                .mapNotNull { target ->
+                    when (target) {
+                        is Feed.AnswerTarget -> "answer" to target.id.toString()
+                        is Feed.ArticleTarget -> "article" to target.id.toString()
+                        is Feed.PinTarget -> "pin" to target.id.toString()
+                        else -> null
+                    }
+                }.toList()
+            val untouchedItemSet = currentTouchItems - reportedTouchedItems
 
-            if (untouchedAnswers.isNotEmpty()) {
-                httpClient
+            if (untouchedItemSet.isNotEmpty()) {
+                val response = httpClient
                     .post("https://www.zhihu.com/lastread/touch") {
                         header("x-requested-with", "fetch")
                         signFetchRequest()
                         setBody(
                             MultiPartFormDataContent(
                                 formData {
+                                    val payload = untouchedItemSet.map { (type, id) ->
+                                        listOf(type, id, "touch")
+                                    }
                                     append(
                                         "items",
-                                        buildJsonArray {
-                                            untouchedAnswers.forEach { item ->
-                                                item.feed?.let { feed ->
-                                                    when (val target = feed.target) {
-                                                        is Feed.AnswerTarget -> {
-                                                            add(
-                                                                buildJsonArray {
-                                                                    add("answer")
-                                                                    add(target.id.toString())
-                                                                    add("touch")
-                                                                },
-                                                            )
-                                                        }
-
-                                                        is Feed.ArticleTarget -> {
-                                                            add(
-                                                                buildJsonArray {
-                                                                    add("article")
-                                                                    add(target.id.toString())
-                                                                    add("touch")
-                                                                },
-                                                            )
-                                                        }
-
-                                                        else -> {}
-                                                    }
-                                                }
-                                            }
-                                        }.toString(),
+                                        Json.encodeToString(payload)
                                     )
                                 },
                             ),
                         )
-                    }.let { response ->
-                        if (!response.status.isSuccess()) {
-                            Log.e("Browse-Touch", response.bodyAsText())
-                        }
                     }
+                if (response.status.isSuccess()) {
+                    reportedTouchedItems.addAll(untouchedItemSet)
+                } else {
+                    Log.e("Browse-Touch", response.bodyAsText())
+                }
             }
         } catch (e: Exception) {
             Log.e("FeedViewModel", "Failed to mark items as touched", e)
         }
+    }
+
+    override fun refresh(context: Context) {
+        super.refresh(context)
+        reportedTouchedItems.clear()
     }
 }
