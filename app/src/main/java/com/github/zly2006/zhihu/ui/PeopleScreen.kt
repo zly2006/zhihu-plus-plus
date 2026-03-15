@@ -140,7 +140,9 @@ class PeopleFollowersViewModel(
         typeOf<DataHolder.People>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
+        // 签名有bug，暂时无法使用新的API，先回退到旧的API
+        // get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
+        get() = "https://api.zhihu.com/people/${person.id}/followers"
 
     override val include: String
         get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
