@@ -21,6 +21,7 @@ import java.net.URI
 
 object UpdateManager {
     private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
+    private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
     private const val PREF_SKIPPED_VERSION = "skippedVersion"
     private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
@@ -125,7 +126,7 @@ object UpdateManager {
 
             // 检查正式版本
             val latestResponse = client
-                .get(GITHUB_API_LATEST) {
+                .get(REDEN_API_LATEST) {
                     getGitHubToken(context)?.let { token ->
                         headers {
                             append(HttpHeaders.Authorization, "Bearer $token")
@@ -175,7 +176,7 @@ object UpdateManager {
 
             // 检查正式版本
             val latestResponse = client
-                .get(GITHUB_API_LATEST) {
+                .get(REDEN_API_LATEST) {
                     getGitHubToken(context)?.let { token ->
                         headers {
                             append(HttpHeaders.Authorization, "Bearer $token")
