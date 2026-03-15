@@ -152,7 +152,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")
 }
 
-val ktor = "3.3.3"
+val ktor = "3.4.1"
+val coil = "3.4.0"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -164,10 +165,10 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.3.0")
-    implementation("io.coil-kt.coil3:coil-gif:3.3.0")
-    implementation("io.coil-kt.coil3:coil-svg:3.3.0")
+    implementation("io.coil-kt.coil3:coil-compose:$coil")
+    implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
+    implementation("io.coil-kt.coil3:coil-gif:$coil")
+    implementation("io.coil-kt.coil3:coil-svg:$coil")
 
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.materialkolor:material-kolor:4.1.1")
