@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +36,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -58,6 +60,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
@@ -71,6 +74,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -887,12 +891,18 @@ fun AppearanceSettingsScreen(
             )
 
             // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
-            Text(
-                "123Duo3 的 UI/UX 改进",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-            )
+            HighlightableSettingContainer(
+                settingKey = "123Duo3",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["123Duo3"] = it },
+            ) {
+                Text(
+                    "123Duo3 的 UI/UX 改进",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+                )
+            }
 
             // 先声明所有子开关状态，以便主开关可以批量操作
             val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
@@ -1030,6 +1040,13 @@ fun AppearanceSettingsScreen(
                     duo3ArticleActions.value = it
                     preferences.edit { putBoolean("duo3_article_actions", it) }
                 },
+            )
+
+            ListItem(
+                headlineContent = { Text("Github issue") },
+                supportingContent = { Text("欢迎提交 issue 讨论本次 UI 修改和反馈问题") },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/issues".toUri()) },
             )
         }
     }

@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -59,8 +58,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -114,7 +111,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
 
     val keySurveyDone = "survey_feedback_done"
-    var showSurveyDialog by remember { mutableStateOf(false) }
+    var installed3Hours by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (!preferences.getBoolean(keySurveyDone, false)) {
             val installTime = try {
@@ -123,7 +120,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 System.currentTimeMillis()
             }
             if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
-                showSurveyDialog = true
+                installed3Hours = true
             }
         }
     }
@@ -131,6 +128,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     // 首次启动提示
     var showFilterExplainDialog by remember {
         mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
+    }
+    var uiChanges by remember {
+        mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
     }
     // 首次启动过滤说明对话框
     if (showFilterExplainDialog) {
@@ -141,7 +141,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 Text(
                     "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
                         "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                        "获取数据需要时间，所以他们会闪一下然后消失。",
+                        "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
                 )
             },
             confirmButton = {
@@ -154,34 +154,63 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             },
         )
     }
-    if (showSurveyDialog) {
+    if (uiChanges && installed3Hours) {
         AlertDialog(
-            onDismissRequest = { showSurveyDialog = false },
-            title = { Text("希望听到您的声音") },
+            onDismissRequest = {},
+            title = { Text("UI新变化！") },
             text = {
-                Text("我们诚挚地邀请您填写一份简短的调查问卷，帮助我们了解您的使用体验和需求，以便为您带来更好的产品。只需 1~2 分钟，非常感谢您的支持！")
+                Text(
+                    "知乎++正在测试一套新的UI。欢迎尝试。如有任何意见，请在GitHub issues提出。",
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    preferences.edit().putBoolean("duo3uiChangesDialogShown", true).apply()
+                    uiChanges = false
+                }) {
+                    Text("算了")
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    showSurveyDialog = false
-                    preferences.edit { putBoolean(keySurveyDone, true) }
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        SURVEY_URL.toUri(),
-                    )
-                    context.startActivity(intent)
-                }) { Text("去填写") }
-            },
-            dismissButton = {
-                androidx.compose.foundation.layout.Row {
-                    TextButton(onClick = { showSurveyDialog = false }) { Text("取消") }
-                    TextButton(onClick = {
-                        showSurveyDialog = false
-                        preferences.edit { putBoolean(keySurveyDone, true) }
-                    }) { Text("我已填写") }
+                    preferences.edit().putBoolean("duo3uiChangesDialogShown", true).apply()
+                    uiChanges = false
+                    activity.navigate(Account.AppearanceSettings("123Duo3"))
+                }) {
+                    Text("去看看")
                 }
             },
         )
+    }
+    if (installed3Hours) {
+        // 暂停显示调查问卷对话框
+//        AlertDialog(
+//            onDismissRequest = { showSurveyDialog = false },
+//            title = { Text("希望听到您的声音") },
+//            text = {
+//                Text("我们诚挚地邀请您填写一份简短的调查问卷，帮助我们了解您的使用体验和需求，以便为您带来更好的产品。只需 1~2 分钟，非常感谢您的支持！")
+//            },
+//            confirmButton = {
+//                TextButton(onClick = {
+//                    showSurveyDialog = false
+//                    preferences.edit { putBoolean(keySurveyDone, true) }
+//                    val intent = Intent(
+//                        Intent.ACTION_VIEW,
+//                        SURVEY_URL.toUri(),
+//                    )
+//                    context.startActivity(intent)
+//                }) { Text("去填写") }
+//            },
+//            dismissButton = {
+//                androidx.compose.foundation.layout.Row {
+//                    TextButton(onClick = { showSurveyDialog = false }) { Text("取消") }
+//                    TextButton(onClick = {
+//                        showSurveyDialog = false
+//                        preferences.edit { putBoolean(keySurveyDone, true) }
+//                    }) { Text("我已填写") }
+//                }
+//            },
+//        )
     }
 
     // 底部导航栏功能
