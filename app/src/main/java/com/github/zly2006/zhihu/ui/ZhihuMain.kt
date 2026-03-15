@@ -335,7 +335,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             val tag = "nav_tab_${(destination as? TopLevelDestination)?.name?.lowercase() ?: label.lowercase()}"
                             NavigationBarItem(
                                 navEntry.hasRoute(destination::class),
-                                modifier = Modifier.testTag(tag),
                                 onClick = {
                                     if (!navEntry.hasRoute(destination::class)) {
                                         navController.navigate(destination) {
@@ -372,7 +371,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 icon = {
                                     Icon(icon, contentDescription = label)
                                 },
-                                modifier = if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier,
+                                modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
                             )
                         }
 

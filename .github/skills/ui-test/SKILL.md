@@ -47,7 +47,7 @@ python3 .github/skills/ui-test/llm_test_helper.py <command> [options]
 
 ## 完整命令参考
 
-### `dump` — 查看当前界面所有可点击元素
+### `dump` — 查看当前界面关键信息元素（可点击 + 不可点击）
 
 ```bash
 python3 .github/skills/ui-test/llm_test_helper.py dump
@@ -55,16 +55,20 @@ python3 .github/skills/ui-test/llm_test_helper.py dump
 
 输出示例（带序号，LLM 可用序号决定 `--index`）：
 ```
-可点击元素（12 个，按屏幕顺序）:
+关键信息元素（18 个，按屏幕顺序；含可点击与不可点击）:
 
-  [ 0] tag:nav_tab_home                                       [0,1234][216,1344]
-  [ 1] tag:nav_tab_hotlist                                    [216,1234][432,1344]
-  [ 2] tag:feed_card                                          [0,80][1080,320]
-  [ 3] tag:feed_card_more_btn                                 [1020,80][1080,140]
-  [ 4] tag:feed_card                                          [0,320][1080,560]
-  [ 5] tag:feed_card_more_btn                                 [1020,320][1080,380]
+  [ 0] [C] tag:feed_card                                      [42,273][1038,712]
+  [ 1] [N] text:"github上有哪些有趣的项目？"                         [63,294][625,357]
+  [ 2] [C] (无标识)                                              [924,598][1050,724]
+  [ 3] [N] desc:"更多选项"                                        [966,640][1008,682]
+  [ 4] [C] tag:nav_tab_account                                [881,2127][1080,2274]
+  [ 5] [N] desc:"账号"                                          [949,2169][1012,2232]
   ...
 ```
+
+`[C]` = 可点击，`[N]` = 不可点击。优先点击 `[C]` 元素；`[N]` 主要用于理解上下文和做 `--within-text` 消歧。
+
+**弹窗模式**：检测到弹窗时，`dump` 只输出弹窗内容并自动过滤无用节点（避免被背景页面干扰）。
 
 **LLM 使用规则**：执行任何 tap 前，先运行 `dump` 确认目标元素存在及其序号。
 
@@ -79,6 +83,8 @@ python3 .github/skills/ui-test/llm_test_helper.py find --tag feed_card
 # 找包含"AI"的卡片内的 more_btn 坐标
 python3 .github/skills/ui-test/llm_test_helper.py find --tag feed_card_more_btn --within-text "AI"
 ```
+
+> `--tag` 支持两种 resource-id 形式：`com.xxx:id/tag` 和裸 `tag`（如 `nav_tab_account`）。
 
 ---
 
@@ -195,6 +201,7 @@ adb shell input swipe 540 400 540 1200 500   # 下拉刷新
 | `[NOT FOUND] tag='xxx' 在包含...内不存在` | `--within-text` 关键词不匹配 | 检查拼写，或改用 `--index` |
 | `[AMBIGUOUS] tag='xxx' 匹配到 N 个` | **未消歧**，脚本拒绝静默选第一个 | 按错误输出中的列表，加 `--within-text` 或 `--index N` 重试 |
 | `[OUT OF RANGE] index=N` | `--index` 超出候选数量 | 先 `find --tag xxx` 确认数量，再选合法序号 |
+| `uiautomator dump 失败` / `adb pull dump 失败` | ADB 异常或设备未连接 | 先执行 `adb devices`，确认设备状态为 `device` |
 
 ---
 

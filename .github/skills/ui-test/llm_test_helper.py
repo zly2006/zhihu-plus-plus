@@ -22,6 +22,7 @@ Zhihu++ LLM 自动化测试辅助脚本
 """
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -44,8 +45,18 @@ def get_package() -> str:
 
 
 def dump_ui() -> ET.Element:
-    adb("shell", "uiautomator", "dump", UI_DUMP_DEVICE)
-    adb("pull", UI_DUMP_DEVICE, UI_DUMP_LOCAL)
+    dump_result = adb("shell", "uiautomator", "dump", UI_DUMP_DEVICE)
+    if dump_result.returncode != 0:
+        print(f"uiautomator dump 失败: {dump_result.stderr}", file=sys.stderr)
+        sys.exit(1)
+
+    pull_result = adb("pull", UI_DUMP_DEVICE, UI_DUMP_LOCAL)
+    if pull_result.returncode != 0:
+        print(f"adb pull dump 失败: {pull_result.stderr}", file=sys.stderr)
+        sys.exit(1)
+    if not os.path.exists(UI_DUMP_LOCAL):
+        print(f"adb pull 后未找到 dump 文件: {UI_DUMP_LOCAL}", file=sys.stderr)
+        sys.exit(1)
     return ET.parse(UI_DUMP_LOCAL).getroot()
 
 
@@ -139,8 +150,95 @@ def find_all_by_content_desc(root: ET.Element, desc: str) -> list[ET.Element]:
 
 
 def find_all_by_tag(root: ET.Element, tag: str, package: str) -> list[ET.Element]:
-    resource_id = f"{package}:id/{tag}"
-    return [n for n in root.iter("node") if n.get("resource-id") == resource_id]
+    full_resource_id = f"{package}:id/{tag}"
+    # 不同 Android/Compose 版本下，UI dump 里 resource-id 可能是完整格式或裸 tag。
+    accepted = {full_resource_id, tag}
+    return [n for n in root.iter("node") if n.get("resource-id", "") in accepted]
+
+
+def format_resource_id(resource_id: str, package: str) -> str:
+    if not resource_id:
+        return ""
+    if resource_id.startswith(package + ":id/"):
+        return "tag:" + resource_id[len(package) + 4:]
+    if ":" not in resource_id and "/" not in resource_id:
+        return "tag:" + resource_id
+    return resource_id
+
+
+def node_has_useful_info(node: ET.Element) -> bool:
+    rid = node.get("resource-id", "")
+    if rid == "android:id/content":
+        rid = ""
+    return bool(rid or node.get("text") or node.get("content-desc") or node.get("clickable") == "true")
+
+
+def node_order_key(node: ET.Element) -> tuple[int, int]:
+    bounds = get_bounds(node)
+    if not bounds:
+        return (10**9, 10**9)
+    x1, y1, _, _ = bounds
+    return (y1, x1)
+
+
+def shorten(text: str, max_len: int = 60) -> str:
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
+
+
+def detect_dialog_scope(root: ET.Element) -> Optional[ET.Element]:
+    nodes = list(root.iter("node"))
+    if not nodes:
+        return None
+    screen_bounds = get_bounds(nodes[0])
+    if not screen_bounds:
+        return None
+    sx1, sy1, sx2, sy2 = screen_bounds
+    # 某些系统版本在弹窗时只返回弹窗窗口树（根节点非全屏），此时根节点即弹窗作用域。
+    if sx1 > 0 or sy1 > 0:
+        return nodes[0]
+    sw = sx2 - sx1
+    sh = sy2 - sy1
+    if sw <= 0 or sh <= 0:
+        return None
+    screen_area = sw * sh
+
+    candidates: list[tuple[tuple[int, int, int], ET.Element]] = []
+    for node in nodes:
+        bounds = get_bounds(node)
+        if not bounds:
+            continue
+        x1, y1, x2, y2 = bounds
+        w = x2 - x1
+        h = y2 - y1
+        area = w * h
+        if w <= 0 or h <= 0:
+            continue
+        # 典型居中弹窗：不占满屏、距离四周有边距。
+        if x1 < sx1 + int(sw * 0.05) or x2 > sx2 - int(sw * 0.05):
+            continue
+        if y1 < sy1 + int(sh * 0.15) or y2 > sy2 - int(sh * 0.05):
+            continue
+        if area >= int(screen_area * 0.9) or area <= int(screen_area * 0.03):
+            continue
+        clickable_count = sum(1 for n in node.iter("node") if n.get("clickable") == "true")
+        if clickable_count == 0:
+            continue
+        text_count = sum(
+            1
+            for n in node.iter("node")
+            if n.get("text", "").strip() or n.get("content-desc", "").strip()
+        )
+        if text_count == 0:
+            continue
+        # 优先选择包含更多交互与文字信息的容器（通常是弹窗根），再比较面积。
+        candidates.append(((clickable_count, text_count, area), node))
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
 
 
 def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
@@ -228,18 +326,35 @@ def cmd_dump(args):
     root = dump_ui()
     package = get_package()
     print(f"已保存 UI dump → {UI_DUMP_LOCAL}")
-    interactive = [n for n in root.iter("node") if n.get("clickable") == "true"]
-    print(f"\n可点击元素（{len(interactive)} 个，按屏幕顺序）:\n")
-    for i, node in enumerate(interactive):
-        rid = node.get("resource-id", "")
-        # 展示 tag 短名（去掉包名前缀）
-        if rid.startswith(package + ":id/"):
-            rid = "tag:" + rid[len(package) + 4:]
-        text = node.get("text", "")
-        desc = node.get("content-desc", "")
-        label = rid or (f'text:"{text}"' if text else "") or (f'desc:"{desc}"' if desc else "") or "(无标识)"
+    scope = detect_dialog_scope(root)
+    if scope is not None:
+        print("\n检测到弹窗：仅显示弹窗内元素（已过滤无用节点）")
+        dump_nodes = list(scope.iter("node"))
+    else:
+        dump_nodes = list(root.iter("node"))
+
+    visible_nodes = [n for n in dump_nodes if node_has_useful_info(n)]
+    visible_nodes.sort(key=node_order_key)
+
+    print(f"\n关键信息元素（{len(visible_nodes)} 个，按屏幕顺序；含可点击与不可点击）:\n")
+    for i, node in enumerate(visible_nodes):
+        rid = format_resource_id(node.get("resource-id", ""), package)
+        text = shorten(node.get("text", ""))
+        desc = shorten(node.get("content-desc", ""))
+        clickable = "C" if node.get("clickable") == "true" else "N"
+
+        parts = []
+        if rid:
+            parts.append(rid)
+        if text:
+            parts.append(f'text:"{text}"')
+        if desc:
+            parts.append(f'desc:"{desc}"')
+        if not parts:
+            parts.append("(无标识)")
+        label = " | ".join(parts)
         bounds = node.get("bounds", "")
-        print(f"  [{i:2d}] {label:55s} {bounds}")
+        print(f"  [{i:2d}] [{clickable}] {label:70s} {bounds}")
 
 
 def cmd_find(args):
@@ -312,9 +427,15 @@ def cmd_tap(args):
 
 def cmd_screenshot(args):
     remote = "/sdcard/llm_test_screenshot.png"
-    adb("shell", "screencap", "-p", remote)
+    capture = adb("shell", "screencap", "-p", remote)
+    if capture.returncode != 0:
+        print(f"screencap 失败: {capture.stderr}", file=sys.stderr)
+        sys.exit(1)
     local = args.output or "/tmp/zhihu_screenshot.png"
-    adb("pull", remote, local)
+    pull = adb("pull", remote, local)
+    if pull.returncode != 0:
+        print(f"截图 pull 失败: {pull.stderr}", file=sys.stderr)
+        sys.exit(1)
     print(f"截图 → {local}")
 
 
@@ -332,7 +453,7 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("dump", help="Dump UI 树，列出所有可点击元素（带序号）")
+    sub.add_parser("dump", help="Dump UI 树，列出关键信息元素（含可点击与不可点击，弹窗优先）")
 
     find_p = sub.add_parser("find", help="查找元素，打印坐标（不点击）")
     add_selector_args(find_p)
