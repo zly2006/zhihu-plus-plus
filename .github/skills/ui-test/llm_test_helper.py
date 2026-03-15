@@ -247,7 +247,7 @@ def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
     index: Optional[int] = getattr(args, "index", None)  # None = 用户未指定
     within_text: Optional[str] = getattr(args, "within_text", None)
 
-    if args.tag:
+    if args.tag is not None:
         candidates = find_all_by_tag(root, args.tag, package)
         if not candidates:
             print(f"[NOT FOUND] tag='{args.tag}' 在当前界面不存在", file=sys.stderr)
@@ -282,7 +282,7 @@ def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
             sys.exit(1)
         return candidates[i]
 
-    elif args.text:
+    elif args.text is not None:
         matches = find_all_by_text(root, args.text)
         if not matches:
             print(f"[NOT FOUND] text='{args.text}' 在当前界面不存在", file=sys.stderr)
@@ -304,7 +304,7 @@ def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
             sys.exit(1)
         return matches[i]
 
-    elif args.desc:
+    elif args.desc is not None:
         matches = find_all_by_content_desc(root, args.desc)
         if not matches:
             print(f"[NOT FOUND] desc='{args.desc}' 在当前界面不存在", file=sys.stderr)
@@ -322,9 +322,27 @@ def resolve_node(args, root: ET.Element, package: str) -> ET.Element:
     sys.exit(1)
 
 
+def get_content_recursive(node: ET.Element) -> str:
+    """递归获取节点及其子节点的 text 和 content-desc，用于 dump 输出中展示元素信息。"""
+    parts = []
+    text = node.get("text", "").strip()
+    desc = node.get("content-desc", "").strip()
+    if text:
+        parts.append(text)
+    if desc:
+        parts.append(desc)
+    for child in node:
+        child_text = get_content_recursive(child)
+        if child_text:
+            parts.append(child_text)
+    final = " | ".join(parts)
+    if len(final) > 60:
+        return final[:57] + "..."
+    return final
+
+
 def cmd_dump(args):
     root = dump_ui()
-    package = get_package()
     print(f"已保存 UI dump → {UI_DUMP_LOCAL}")
     scope = detect_dialog_scope(root)
     if scope is not None:
@@ -338,21 +356,8 @@ def cmd_dump(args):
 
     print(f"\n关键信息元素（{len(visible_nodes)} 个，按屏幕顺序；含可点击与不可点击）:\n")
     for i, node in enumerate(visible_nodes):
-        rid = format_resource_id(node.get("resource-id", ""), package)
-        text = shorten(node.get("text", ""))
-        desc = shorten(node.get("content-desc", ""))
         clickable = "C" if node.get("clickable") == "true" else "N"
-
-        parts = []
-        if rid:
-            parts.append(rid)
-        if text:
-            parts.append(f'text:"{text}"')
-        if desc:
-            parts.append(f'desc:"{desc}"')
-        if not parts:
-            parts.append("(无标识)")
-        label = " | ".join(parts)
+        label = get_content_recursive(node)
         bounds = node.get("bounds", "")
         print(f"  [{i:2d}] [{clickable}] {label:70s} {bounds}")
 
@@ -415,7 +420,12 @@ def cmd_tap(args):
         sys.exit(1)
 
     cx, cy = center(b)
-    tag_info = f"tag={args.tag}" if args.tag else (f"text={args.text}" if args.text else f"desc={args.desc}")
+    if args.tag is not None:
+        tag_info = f"tag={args.tag}"
+    elif args.text is not None:
+        tag_info = f"text={args.text!r}"
+    else:
+        tag_info = f"desc={args.desc!r}"
     print(f"点击 {tag_info} → ({cx}, {cy})  bounds={node.get('bounds')}")
     # uiautomator dump 会短暂冻结 UI，立刻 tap 会被系统丢弃，需等待 UI 恢复
     time.sleep(0.8)

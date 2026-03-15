@@ -75,7 +75,7 @@ sleep 3
 4. ✅ 等待加载完成（至少 8-10 秒）
 5. ✅ 使用 `uianimator` 查看当前页面状态。
 7. ✅ 使用ui-test技能，先 `dump` 再 `tap`：`python3 .github/skills/ui-test/llm_test_helper.py dump`，优先通过 `--tag/--text` 交互，不再用硬编码坐标 tap
-8. ✅ 再次截图验证
+8. ✅ 再次使用 `uianimator` 验证
 9. ✅ 仅在无 tag 可用，或者必须swipe使用的功能 时才用 `adb shell input swipe` 等手势
 10. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
 
