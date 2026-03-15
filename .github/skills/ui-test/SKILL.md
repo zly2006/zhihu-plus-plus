@@ -38,6 +38,12 @@ python3 .github/skills/ui-test/llm_test_helper.py <command> [options]
 │
 └─ 没有 testTag？→ 用 --text 按显示文字点击
       python3 ... tap --text "屏蔽用户"
+      │
+      ├─ 没有 text，但有 content-desc？→ 用 --desc
+      │    python3 ... tap --desc "返回"
+      │
+      └─ text/desc/tag 都没有（无标识可点击节点）？→ 用 --text "" + --index
+           python3 ... tap --text "" --index 19
 ```
 
 > **重要**：`--within-text` 和 `--index` 可以组合使用。当同一卡片内有多个相同 tag 时，
@@ -57,16 +63,17 @@ python3 .github/skills/ui-test/llm_test_helper.py dump
 ```
 关键信息元素（18 个，按屏幕顺序；含可点击与不可点击）:
 
-  [ 0] [C] tag:feed_card                                      [42,273][1038,712]
-  [ 1] [N] text:"github上有哪些有趣的项目？"                         [63,294][625,357]
-  [ 2] [C] (无标识)                                              [924,598][1050,724]
-  [ 3] [N] desc:"更多选项"                                        [966,640][1008,682]
-  [ 4] [C] tag:nav_tab_account                                [881,2127][1080,2274]
-  [ 5] [N] desc:"账号"                                          [949,2169][1012,2232]
+  [ 0] [C] 搜索 | 搜索内容                                         [42,86][891,212]
+  [ 1] [C] 某条 Feed 卡片内容                                       [42,273][1038,775]
+  [ 2] [C] 更多选项                                               [924,661][1050,787]
+  [ 3] [N] 更多选项                                               [966,703][1008,745]
+  [ 4] [C] 主页                                                  [0,2127][200,2274]
+  [ 5] [C] 账号                                                  [881,2127][1080,2274]
   ...
 ```
 
 `[C]` = 可点击，`[N]` = 不可点击。优先点击 `[C]` 元素；`[N]` 主要用于理解上下文和做 `--within-text` 消歧。
+`label` 为脚本聚合后的可读信息，不再保证固定显示 `tag:/text:/desc:` 前缀。
 
 **弹窗模式**：检测到弹窗时，`dump` 只输出弹窗内容并自动过滤无用节点（避免被背景页面干扰）。
 
@@ -133,6 +140,27 @@ python3 .github/skills/ui-test/llm_test_helper.py tap --text "取消"
 python3 .github/skills/ui-test/llm_test_helper.py tap --text "登录"
 ```
 
+#### 场景 6：按 contentDescription 点击（无文本但有无障碍描述）
+
+```bash
+python3 .github/skills/ui-test/llm_test_helper.py tap --desc "返回"
+```
+
+> 注意：若 `--desc` 匹配多个节点，脚本当前不会对 `desc` 提供 `--index` 消歧。
+> 这种情况下请优先改用 `--tag`；如果没有可用 tag，请先 `dump` 后用 `--text "" --index N`。
+
+#### 场景 7：点击无标识可点击节点（text/desc/tag 全为空）
+
+```bash
+# 1) 先 dump，确认目标在当前页面中的相对位置
+python3 .github/skills/ui-test/llm_test_helper.py dump
+
+# 2) 再用空文本 + index 点击（index 基于当前页面 text="" 节点顺序）
+python3 .github/skills/ui-test/llm_test_helper.py tap --text "" --index 19
+```
+
+> 适用场景：颜色面板色块、部分开关、部分“更多”按钮容器。
+
 ---
 
 ### `screenshot` — 截图
@@ -178,7 +206,7 @@ adb shell input swipe 540 400 540 1200 500   # 下拉刷新
 |---------|------|
 | `nav_tab_home` | 主页 |
 | `nav_tab_follow` | 关注 |
-| `nav_tab_hotlist` | 热榜 |
+| `nav_tab_hotlist` | 热榜（可选，默认可能不显示） |
 | `nav_tab_daily` | 日报 |
 | `nav_tab_onlinehistory` | 历史 |
 | `nav_tab_account` | 账号 |
@@ -200,6 +228,7 @@ adb shell input swipe 540 400 540 1200 500   # 下拉刷新
 | `[NOT FOUND] tag='xxx'` | APK 未更新 | 重新构建并 `adb install -r` |
 | `[NOT FOUND] tag='xxx' 在包含...内不存在` | `--within-text` 关键词不匹配 | 检查拼写，或改用 `--index` |
 | `[AMBIGUOUS] tag='xxx' 匹配到 N 个` | **未消歧**，脚本拒绝静默选第一个 | 按错误输出中的列表，加 `--within-text` 或 `--index N` 重试 |
+| `[AMBIGUOUS] desc='xxx' 匹配到 N 个` | `--desc` 出现歧义且不支持 `--index` | 改用 `--tag`，或改走 `--text "" --index N` |
 | `[OUT OF RANGE] index=N` | `--index` 超出候选数量 | 先 `find --tag xxx` 确认数量，再选合法序号 |
 | `uiautomator dump 失败` / `adb pull dump 失败` | ADB 异常或设备未连接 | 先执行 `adb devices`，确认设备状态为 `device` |
 

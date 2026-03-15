@@ -73,11 +73,12 @@ sleep 3
 2. ✅ 安装到设备
 3. ✅ 正确启动应用（检查包名！）
 4. ✅ 等待加载完成（至少 8-10 秒）
-5. ✅ 使用 `uianimator` 查看当前页面状态。
-7. ✅ 使用ui-test技能，先 `dump` 再 `tap`：`python3 .github/skills/ui-test/llm_test_helper.py dump`，优先通过 `--tag/--text` 交互，不再用硬编码坐标 tap
-8. ✅ 再次使用 `uianimator` 验证
-9. ✅ 仅在无 tag 可用，或者必须swipe使用的功能 时才用 `adb shell input swipe` 等手势
-10. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
+5. ✅ 使用 ui-test 技能查看当前页面状态：`python3 .github/skills/ui-test/llm_test_helper.py dump`
+6. ✅ 先 `dump` 再 `tap`，优先通过 `--tag/--text/--desc` 交互，不使用硬编码坐标 tap
+7. ✅ 若目标是无标识可点击节点，使用 `--text "" --index N`（N 来自当前页面 dump）
+8. ✅ 交互后再次 `dump` 或截图验证状态
+9. ✅ 仅在无 tag/文字可用且必须手势操作时，才使用 `adb shell input swipe` 等手势
+10. ❌ 异常时检查 logcat：`adb logcat | grep -i error`
 
 ## 代码风格
 - Kotlin Serialization with `@Serializable`
