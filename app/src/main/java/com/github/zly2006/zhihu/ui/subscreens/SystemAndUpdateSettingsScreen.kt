@@ -164,6 +164,9 @@ fun SystemAndUpdateSettingsScreen(
                                     updateState.file,
                                 )
                             }
+                            UpdateState.Latest -> {
+                                UpdateManager.updateState.value = UpdateState.NoUpdate
+                            }
                             UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
                         }
                     }
