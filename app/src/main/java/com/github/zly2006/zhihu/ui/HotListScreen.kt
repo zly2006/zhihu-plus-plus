@@ -1,11 +1,12 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context.MODE_PRIVATE
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -32,10 +34,13 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen() {
+fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -58,15 +63,13 @@ fun HotListScreen() {
             PaginatedList(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
-                topContent = {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                },
+                modifier = Modifier.padding(innerPadding),
+                isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
                     item,
+                    thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
                 ) {
                     if (navDestination != null) {
                         navigator.onNavigate(navDestination)
@@ -76,15 +79,18 @@ fun HotListScreen() {
                 }
             }
 
-            DraggableRefreshButton(
-                onClick = {
-                    viewModel.refresh(context)
-                },
-            ) {
-                if (viewModel.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(36.dp))
-                } else {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+            if (showRefreshFab) {
+                DraggableRefreshButton(
+                    onClick = {
+                        viewModel.refresh(context)
+                    },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(36.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                 }
             }
         }

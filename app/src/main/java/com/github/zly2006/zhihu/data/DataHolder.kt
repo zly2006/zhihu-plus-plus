@@ -15,19 +15,26 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 
 object DataHolder {
+    /**
+     * 此API没有缓存，谨慎使用！
+     *
+     * 优先考虑 [ContentDetailCache.getOrFetch]
+     *
+     * 使用此方法的场景：主要显示内容的获取，只有时效性要求特别高才允许使用。
+     */
     suspend fun getContentDetail(
         context: Context,
         dest: com.github.zly2006.zhihu.Article,
     ): Content? {
         val apiUrl = when (dest.type) {
             ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,ip_info,question.topics,reaction.relation.voting"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting"
             // ^ question.topics 后面的字段可能有点bug。
         }
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
@@ -59,7 +66,7 @@ object DataHolder {
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             val jojo = buildJsonObject {
                 jo.entries.forEach { (key, value) ->
@@ -88,7 +95,7 @@ object DataHolder {
 
         return runCatching {
             val jo = AccountData.fetchGet(context, apiUrl) {
-                signFetchRequest(context)
+                signFetchRequest()
             }!!
             AccountData.decodeJson<Pin>(jo)
         }.getOrElse { e ->
@@ -298,7 +305,15 @@ object DataHolder {
         val settings: Settings? = null,
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
-    ) : Content
+        val paginationInfo: PaginationInfo? = null,
+    ) : Content {
+        @Serializable
+        data class PaginationInfo(
+            val index: Int,
+            val prevAnswerIds: List<Long> = emptyList(),
+            val nextAnswerIds: List<Long> = emptyList(),
+        )
+    }
 
     @Serializable
     data class Article(

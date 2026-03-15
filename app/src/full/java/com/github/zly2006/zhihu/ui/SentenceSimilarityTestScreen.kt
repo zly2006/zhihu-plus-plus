@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import kotlinx.coroutines.Dispatchers
@@ -52,8 +54,9 @@ import kotlin.math.sqrt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SentenceSimilarityTestScreen(
-    onBack: () -> Unit,
+    innerPadding: PaddingValues,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val modelState by SentenceEmbeddingManager.state.collectAsState()
@@ -97,6 +100,7 @@ fun SentenceSimilarityTestScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -107,7 +111,7 @@ fun SentenceSimilarityTestScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },

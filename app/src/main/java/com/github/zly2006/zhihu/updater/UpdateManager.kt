@@ -63,14 +63,6 @@ object UpdateManager {
     }
 
     /**
-     * 检查是否启用自动更新检查
-     */
-    private fun isAutoCheckEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)
-    }
-
-    /**
      * 获取跳过的版本
      */
     private fun getSkippedVersion(context: Context): String? {
@@ -90,14 +82,14 @@ object UpdateManager {
      * 检查是否需要进行自动更新检查（避免频繁检查）
      */
     private fun shouldPerformAutoCheck(context: Context): Boolean {
-        if (!isAutoCheckEnabled(context)) return false
-
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        if (!preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)) return false
+
         val lastCheck = preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)
         val now = System.currentTimeMillis()
-        val dayInMillis = 24 * 60 * 60 * 1000L
+        val dayInMillis = 3 * 60 * 60 * 1000L
 
-        return (now - lastCheck) > dayInMillis // 每天最多检查一次
+        return (now - lastCheck) > dayInMillis // 每3h最多检查一次
     }
 
     /**
@@ -107,6 +99,12 @@ object UpdateManager {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
     }
+
+    private fun String.extractReleaseNotes() = this
+        .replace("\r\n", "\n")
+        .substringAfter("## What's Changed\n")
+        .substringBefore("\n**Full Changelog**:")
+        .trimEnd('\n')
 
     /**
      * 自动检查更新（在应用启动时调用）
@@ -144,9 +142,7 @@ object UpdateManager {
                     updateState.value = UpdateState.UpdateAvailable(
                         latestVersion,
                         false,
-                        latestResponse.body
-                            ?.substringAfter("## What's Changed\n")
-                            ?.substringBefore("\n\n\n**Full Changelog**:"),
+                        latestResponse.body?.extractReleaseNotes(),
                     )
                     return true // 有可用更新且未被跳过
                 } else {
@@ -187,9 +183,7 @@ object UpdateManager {
                     }
                 }.body<GithubRelease>()
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            releaseNotes = latestResponse.body
-                ?.substringAfter("## What's Changed\n")
-                ?.substringBefore("\n\n\n**Full Changelog**:")
+            releaseNotes = latestResponse.body?.extractReleaseNotes()
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -211,9 +205,7 @@ object UpdateManager {
                             build = "",
                         )
                         isNightly = true
-                        releaseNotes = nightlyResponse.body
-                            ?.substringAfter("## What's Changed\n")
-                            ?.substringBefore("\n\n\n**Full Changelog**:")
+                        releaseNotes = nightlyResponse.body?.extractReleaseNotes()
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -279,7 +271,7 @@ object UpdateManager {
                         .toURL()
                         .openConnection()
                         .getInputStream()
-                        .copyTo(apkFile.outputStream())
+                        .use { input -> apkFile.outputStream().use { output -> input.copyTo(output) } }
                     apkFile
                 }
                 updateState.value = UpdateState.Downloaded(file)

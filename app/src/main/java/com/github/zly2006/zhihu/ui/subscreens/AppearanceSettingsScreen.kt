@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,12 +30,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -47,13 +48,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -62,18 +63,20 @@ import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSettingsScreen(
+    innerPadding: PaddingValues,
     setting: String = "",
-    onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val preferences = remember {
@@ -84,29 +87,27 @@ fun AppearanceSettingsScreen(
     }
 
     val scrollState = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+    val navigator = LocalNavigator.current
 
-    // 用于存储各个设置项的位置
-    var shareActionPosition by remember { mutableIntStateOf(0) }
+    val itemPositions = remember { mutableMapOf<String, Int>() }
+    var scrollColumnRootY by remember { mutableIntStateOf(0) }
 
-    // 当 setting 参数不为空时，滚动到指定位置
-    LaunchedEffect(setting, shareActionPosition) {
-        if (setting.isNotEmpty() && shareActionPosition > 0) {
-            when (setting) {
-                "shareAction" -> {
-                    kotlinx.coroutines.delay(100) // 等待布局完成
-                    scrollState.animateScrollTo(shareActionPosition)
-                }
+    LaunchedEffect(setting, itemPositions[setting]) {
+        if (setting.isNotEmpty()) {
+            kotlinx.coroutines.delay(200)
+            itemPositions[setting]?.let { itemRootY ->
+                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
             }
         }
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("外观与阅读体验") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -119,13 +120,15 @@ fun AppearanceSettingsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
+                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
                 .verticalScroll(scrollState),
         ) {
             val useDynamicColor = ThemeManager.getUseDynamicColor()
             val currentThemeMode = ThemeManager.getThemeMode()
 
+            // ── 主题 ────────────────────────────────────────────────────────────
             Text(
-                "主题设置",
+                "主题",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
@@ -333,6 +336,156 @@ fun AppearanceSettingsScreen(
                 )
             }
 
+            // ── 阅读 ────────────────────────────────────────────────────────────
+            Text(
+                "阅读",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("字号", style = MaterialTheme.typography.bodyLarge)
+                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = fontSize.toFloat(),
+                    onValueChange = {
+                        fontSize = it.toInt()
+                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
+                    },
+                    valueRange = 50f..200f,
+                    steps = 14,
+                )
+            }
+
+            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("行高", style = MaterialTheme.typography.bodyLarge)
+                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
+                }
+                Slider(
+                    value = lineHeight.toFloat(),
+                    onValueChange = {
+                        lineHeight = it.toInt()
+                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
+                    },
+                    valueRange = 100f..300f,
+                    steps = 19,
+                )
+            }
+
+            val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
+            SwitchSettingItem(
+                title = "评论区标题上下留白",
+                description = "为评论区卡片顶部\"评论/回复\"标题增加间距，提升视觉层次感",
+                checked = commentTopTextExtraSpacing.value,
+                onCheckedChange = {
+                    commentTopTextExtraSpacing.value = it
+                    preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
+                },
+            )
+
+            // ── 信息流 ──────────────────────────────────────────────────────────
+            Text(
+                "信息流",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
+            SwitchSettingItem(
+                title = "显示 Feed 卡片缩略图",
+                description = "在信息流卡片中显示文章缩略图",
+                checked = showFeedThumbnail.value,
+                onCheckedChange = {
+                    showFeedThumbnail.value = it
+                    preferences.edit { putBoolean("showFeedThumbnail", it) }
+                },
+            )
+
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SwitchSettingItem(
+                title = "显示刷新 FAB 按钮",
+                description = "在页面上显示可拖动的刷新按钮",
+                checked = showRefreshFab.value,
+                onCheckedChange = {
+                    showRefreshFab.value = it
+                    preferences.edit { putBoolean("showRefreshFab", it) }
+                },
+            )
+
+            var feedCardStyleExpanded by remember { mutableStateOf(false) }
+            val feedCardStyle = remember {
+                mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
+            }
+            val feedCardStyleOptions = listOf(
+                "card" to "卡片样式",
+                "divider" to "分割线样式",
+            )
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "信息流样式",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = feedCardStyleExpanded,
+                    onExpandedChange = { feedCardStyleExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = feedCardStyleExpanded,
+                        onDismissRequest = { feedCardStyleExpanded = false },
+                    ) {
+                        feedCardStyleOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    feedCardStyle.value = mode
+                                    preferences.edit { putString("feedCardStyle", mode) }
+                                    feedCardStyleExpanded = false
+                                    Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── 回答页 ──────────────────────────────────────────────────────────
+            Text(
+                "回答页",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
             val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
             SwitchSettingItem(
                 title = "使用 WebView 显示文章",
@@ -406,8 +559,8 @@ fun AppearanceSettingsScreen(
 
             val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
             SwitchSettingItem(
-                title = "标题栏自动隐藏",
-                description = "滚动时自动隐藏标题栏",
+                title = "回答标题自动隐藏",
+                description = "滚动时自动隐藏回答标题栏",
                 checked = isTitleAutoHide.value,
                 onCheckedChange = {
                     isTitleAutoHide.value = it
@@ -415,14 +568,39 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val autoHideArticleBottomBar = remember {
+                mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
+            }
+            SwitchSettingItem(
+                title = "回答底部按钮自动隐藏",
+                description = "上划时隐藏回答底部操作按钮，下划时重新显示",
+                checked = autoHideArticleBottomBar.value,
+                onCheckedChange = {
+                    autoHideArticleBottomBar.value = it
+                    preferences.edit { putBoolean("autoHideArticleBottomBar", it) }
+                },
+            )
+
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
             SwitchSettingItem(
                 title = "显示跳转下一个回答按钮",
-                description = "在回答页面显示快速跳转按钮",
+                description = "在回答页面显示可拖动的快速跳转按钮",
                 checked = buttonSkipAnswer.value,
                 onCheckedChange = {
                     buttonSkipAnswer.value = it
                     preferences.edit { putBoolean("buttonSkipAnswer", it) }
+                },
+            )
+
+            val autoHideSkipAnswerButton = remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+            SwitchSettingItem(
+                title = "滚动时自动隐藏跳转按钮",
+                description = "上划时淡出[下一个回答]按钮，下划时淡入显示",
+                checked = autoHideSkipAnswerButton.value,
+                enabled = buttonSkipAnswer.value,
+                onCheckedChange = {
+                    autoHideSkipAnswerButton.value = it
+                    preferences.edit { putBoolean("autoHideSkipAnswerButton", it) }
                 },
             )
 
@@ -437,7 +615,6 @@ fun AppearanceSettingsScreen(
                 },
             )
 
-            // 回答切换手势设置
             var answerSwitchExpanded by remember { mutableStateOf(false) }
             val answerSwitchMode = remember {
                 mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
@@ -447,7 +624,6 @@ fun AppearanceSettingsScreen(
                 "vertical" to "上下滑动切换",
                 "horizontal" to "左右滑动切换",
             )
-
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text(
                     "回答切换手势",
@@ -470,7 +646,7 @@ fun AppearanceSettingsScreen(
                         readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
                         modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth(),
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     )
@@ -493,111 +669,9 @@ fun AppearanceSettingsScreen(
                 }
             }
 
-            val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
-            SwitchSettingItem(
-                title = "显示 Feed 卡片缩略图",
-                description = "在信息流卡片中显示文章缩略图",
-                checked = showFeedThumbnail.value,
-                onCheckedChange = {
-                    showFeedThumbnail.value = it
-                    preferences.edit { putBoolean("showFeedThumbnail", it) }
-                },
-            )
-
-            // 分享操作设置
-            var shareActionExpanded by remember { mutableStateOf(false) }
-            val shareActionMode = remember {
-                mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
-            }
-            val shareActionOptions = listOf(
-                "ask" to "询问",
-                "copy" to "复制链接",
-                "share" to "Android分享",
-            )
-
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 8.dp)
-                    .onGloballyPositioned { coordinates ->
-                        // 存储设置项的 Y 位置
-                        shareActionPosition = coordinates.size.height
-                    },
-            ) {
-                Text(
-                    "分享操作",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-                Text(
-                    "点击分享按钮时的默认行为",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                ExposedDropdownMenuBox(
-                    expanded = shareActionExpanded,
-                    onExpandedChange = { shareActionExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
-                        modifier = Modifier
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                            .fillMaxWidth(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = shareActionExpanded,
-                        onDismissRequest = { shareActionExpanded = false },
-                    ) {
-                        shareActionOptions.forEach { (mode, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = {
-                                    shareActionMode.value = mode
-                                    preferences.edit { putString("shareActionMode", mode) }
-                                    shareActionExpanded = false
-                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-
+            // ── 底部导航栏 ──────────────────────────────────────────────────────
             Text(
-                "交互设置",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
-            )
-
-            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
-            SwitchSettingItem(
-                title = "点击底部导航栏刷新",
-                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
-                checked = tapToRefresh.value,
-                onCheckedChange = {
-                    tapToRefresh.value = it
-                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
-                },
-            )
-
-            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
-            SwitchSettingItem(
-                title = "显示刷新FAB按钮",
-                description = "在页面上显示可拖动的刷新按钮",
-                checked = showRefreshFab.value,
-                onCheckedChange = {
-                    showRefreshFab.value = it
-                    preferences.edit { putBoolean("showRefreshFab", it) }
-                },
-            )
-
-            Text(
-                "底部栏设置",
+                "底部导航栏",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -660,62 +734,130 @@ fun AppearanceSettingsScreen(
                         )
                         Checkbox(
                             checked = isChecked,
-                            onCheckedChange = null, // Handled by Row click
+                            onCheckedChange = null,
                             enabled = isEnabled,
                         )
                     }
                 }
             }
 
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
+            SwitchSettingItem(
+                title = "点击底部导航栏刷新",
+                description = "在当前页面时，点击底部导航栏对应按钮刷新页面",
+                checked = tapToRefresh.value,
+                onCheckedChange = {
+                    tapToRefresh.value = it
+                    preferences.edit { putBoolean("bottomBarTapRefresh", it) }
+                },
+            )
+
+            val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+            SwitchSettingItem(
+                title = "滚动时自动隐藏底部导航栏",
+                description = "上划时隐藏底部导航栏，下划时重新显示",
+                checked = autoHideBottomBar.value,
+                onCheckedChange = {
+                    autoHideBottomBar.value = it
+                    preferences.edit { putBoolean("autoHideBottomBar", it) }
+                },
+            )
+
+            // ── 交互 ────────────────────────────────────────────────────────────
             Text(
-                "阅读设置",
+                "交互",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
             )
 
-            var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("字号", style = MaterialTheme.typography.bodyLarge)
-                    Text("$fontSize%", style = MaterialTheme.typography.bodyMedium)
+            HighlightableSettingContainer(
+                settingKey = "shareAction",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["shareAction"] = it },
+                modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+            ) {
+                var shareActionExpanded by remember { mutableStateOf(false) }
+                val shareActionMode = remember {
+                    mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
                 }
-                Slider(
-                    value = fontSize.toFloat(),
-                    onValueChange = {
-                        fontSize = it.toInt()
-                        preferences.edit { putInt("webviewFontSize", it.toInt()) }
-                    },
-                    valueRange = 50f..200f,
-                    steps = 14,
+                val shareActionOptions = listOf(
+                    "ask" to "询问",
+                    "copy" to "复制链接",
+                    "share" to "Android分享",
                 )
+                Text(
+                    "分享操作",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "点击分享按钮时的默认行为",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = shareActionExpanded,
+                    onExpandedChange = { shareActionExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = shareActionExpanded,
+                        onDismissRequest = { shareActionExpanded = false },
+                    ) {
+                        shareActionOptions.forEach { (mode, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    shareActionMode.value = mode
+                                    preferences.edit { putString("shareActionMode", mode) }
+                                    shareActionExpanded = false
+                                    Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
-            var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("行高", style = MaterialTheme.typography.bodyLarge)
-                    Text("${lineHeight / 100f}", style = MaterialTheme.typography.bodyMedium)
-                }
-                Slider(
-                    value = lineHeight.toFloat(),
-                    onValueChange = {
-                        lineHeight = it.toInt()
-                        preferences.edit { putInt("webviewLineHeight", it.toInt()) }
-                    },
-                    valueRange = 100f..300f,
-                    steps = 19,
-                )
-            }
-
+            // ── 搜索 ────────────────────────────────────────────────────────────
             Text(
-                "导航设置",
+                "搜索",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+            HighlightableSettingContainer(
+                settingKey = "showSearchHotSearch",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["showSearchHotSearch"] = it },
+            ) {
+                SwitchSettingItem(
+                    title = "搜索界面显示热搜",
+                    description = "在搜索界面空白时显示知乎热搜关键词",
+                    checked = showSearchHotSearch.value,
+                    onCheckedChange = {
+                        showSearchHotSearch.value = it
+                        preferences.edit { putBoolean("showSearchHotSearch", it) }
+                    },
+                )
+            }
+
+            // ── 导航 ────────────────────────────────────────────────────────────
+            Text(
+                "技术性导航设置",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
@@ -741,6 +883,152 @@ fun AppearanceSettingsScreen(
                 onCheckedChange = {
                     enablePredictiveBack.value = it
                     preferences.edit { putBoolean("enable_predictive_back", it) }
+                },
+            )
+
+            // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
+            Text(
+                "123Duo3 的 UI/UX 改进",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 24.dp, bottom = 8.dp),
+            )
+
+            // 先声明所有子开关状态，以便主开关可以批量操作
+            val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
+            val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+            val duo3HomeScrollTop = remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
+            val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+            val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
+            val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
+            val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
+            val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
+
+            fun enableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", true)
+                    putBoolean("duo3_home_scroll_top", true)
+                    putBoolean("duo3_nav_style", true)
+                    putBoolean("duo3_card_appearance", true)
+                    putBoolean("duo3_card_layout", true)
+                    putBoolean("duo3_article_bar", true)
+                    putBoolean("duo3_article_actions", true)
+                    putBoolean("showRefreshFab", true)
+                    putBoolean("buttonSkipAnswer", false)
+                }
+                duo3HomeAccount.value = true
+                duo3HomeScrollTop.value = true
+                duo3NavStyle.value = true
+                duo3CardAppearance.value = true
+                duo3CardLayout.value = true
+                duo3ArticleBar.value = true
+                duo3ArticleActions.value = true
+                // in 123duo3 changes, FABs are removed.
+                showRefreshFab.value = false
+                buttonSkipAnswer.value = false
+            }
+
+            fun disableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", false)
+                    putBoolean("duo3_home_scroll_top", false)
+                    putBoolean("duo3_nav_style", false)
+                    putBoolean("duo3_card_appearance", false)
+                    putBoolean("duo3_card_layout", false)
+                    putBoolean("duo3_article_bar", false)
+                    putBoolean("duo3_article_actions", false)
+                }
+                duo3HomeAccount.value = false
+                duo3HomeScrollTop.value = false
+                duo3NavStyle.value = false
+                duo3CardAppearance.value = false
+                duo3CardLayout.value = false
+                duo3ArticleBar.value = false
+                duo3ArticleActions.value = false
+            }
+
+            SwitchSettingItem(
+                title = "启用 123duo3 的所有 UI/UX 修改",
+                description = "启用所有更改，并关闭文章阅读页的浮动按钮。",
+                checked = duo3All.value,
+                onCheckedChange = {
+                    duo3All.value = it
+                    preferences.edit { putBoolean("duo3_all", it) }
+                    if (it) {
+                        enableAllSubs()
+                    } else {
+                        disableAllSubs()
+                    }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "主页：账号入口迁移至顶部头像",
+                description = "搜索栏样式变更；点击头像弹出账号面板；底部导航同步移除「账号」和「历史」Tab，入口并入进账号设置页。",
+                checked = duo3HomeAccount.value,
+                onCheckedChange = {
+                    duo3HomeAccount.value = it
+                    preferences.edit { putBoolean("duo3_home_account", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "主页：点击当前 Tab 回到顶部",
+                description = "点击已激活的底部 Tab，行为将会从触发刷新改为滚动回列表顶部，已在顶部时再触发刷新。",
+                checked = duo3HomeScrollTop.value,
+                onCheckedChange = {
+                    duo3HomeScrollTop.value = it
+                    preferences.edit { putBoolean("duo3_home_scroll_top", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "底部导航栏：改为 Material 标准视觉样式",
+                description = "移除自定义样式；更改「关注」Tab 图标。",
+                checked = duo3NavStyle.value,
+                onCheckedChange = {
+                    duo3NavStyle.value = it
+                    preferences.edit { putBoolean("duo3_nav_style", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：外观更改",
+                description = "卡片圆角增大，移除阴影；修改背景与卡片颜色。",
+                checked = duo3CardAppearance.value,
+                onCheckedChange = {
+                    duo3CardAppearance.value = it
+                    preferences.edit { putBoolean("duo3_card_appearance", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "信息流卡片：更改内容排版",
+                description = "作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式",
+                checked = duo3CardLayout.value,
+                onCheckedChange = {
+                    duo3CardLayout.value = it
+                    preferences.edit { putBoolean("duo3_card_layout", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：更改整体顶/底栏框架",
+                description = "更改标题栏样式；优化顶/底栏隐藏逻辑。",
+                checked = duo3ArticleBar.value,
+                onCheckedChange = {
+                    duo3ArticleBar.value = it
+                    preferences.edit { putBoolean("duo3_article_bar", it) }
+                },
+            )
+
+            SwitchSettingItem(
+                title = "文章阅读页：更改操作栏样式",
+                description = "底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。上一项启用时生效。",
+                checked = duo3ArticleActions.value,
+                onCheckedChange = {
+                    duo3ArticleActions.value = it
+                    preferences.edit { putBoolean("duo3_article_actions", it) }
                 },
             )
         }

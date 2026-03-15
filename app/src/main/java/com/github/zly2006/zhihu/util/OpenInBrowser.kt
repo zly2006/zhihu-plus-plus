@@ -31,7 +31,7 @@ object OpenInBrowser {
                             put("is_public", false)
                         },
                     )
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }!!["collection"]!!,
             )
         if (destination is Article) {

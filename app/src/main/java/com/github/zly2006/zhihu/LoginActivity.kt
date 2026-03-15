@@ -9,7 +9,6 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
-import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
@@ -21,9 +20,6 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.telemetry
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class LoginActivity : ComponentActivity() {
@@ -51,17 +47,6 @@ class LoginActivity : ComponentActivity() {
                             ): Boolean {
                                 if (request.url.toString() == "https://www.zhihu.com/") {
                                     webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
-                                    webView.loadUrl("https://www.zhihu.com/question/11474985081")
-                                    return true
-                                }
-                                if (request.url.host == "graph.qq.com") {
-                                    // QQ login
-                                    CustomTabsIntent
-                                        .Builder()
-                                        .setToolbarColor(0xff66CCFF.toInt())
-                                        .build()
-                                        .launchUrl(this@LoginActivity, request.url)
-                                    return true
                                 }
                                 if (request.url?.scheme == "zhihu") {
                                     return true
@@ -69,44 +54,19 @@ class LoginActivity : ComponentActivity() {
                                 return false
                             }
 
-                            var loadedJs = false
-
-                            override fun onLoadResource(view: WebView?, url: String) {
-                                super.onLoadResource(view, url)
-                                if (url.startsWith("https://static.zhihu.com/zse-ck/v4/")) {
-                                    if (!loadedJs) {
-                                        loadedJs = true
-                                    }
-                                }
-                            }
-
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 super.onPageFinished(view, url)
-                                if (url == "https://www.zhihu.com/question/11474985081") {
+                                if (url == "https://www.zhihu.com/") {
                                     val cookies =
                                         CookieManager
                                             .getInstance()
                                             .getCookie("https://www.zhihu.com/")
+                                            .orEmpty()
                                             .split(";")
                                             .associate {
                                                 it.substringBefore("=").trim() to it.substringAfter("=")
                                             }
                                     runBlocking {
-                                        if (!loadedJs) {
-                                            delay(1000)
-                                            if (!loadedJs) {
-                                                AlertDialog
-                                                    .Builder(this@LoginActivity)
-                                                    .apply {
-                                                        setTitle("登录失败")
-                                                        setMessage("模拟正常登录环境失败，请检查网络")
-                                                        setPositiveButton("OK") { _, _ ->
-                                                        }
-                                                    }.create()
-                                                    .show()
-                                                return@runBlocking false
-                                            }
-                                        }
                                         if (AccountData.verifyLogin(this@LoginActivity, cookies)) {
                                             val data = AccountData.loadData(this@LoginActivity)
 
@@ -125,36 +85,10 @@ class LoginActivity : ComponentActivity() {
                                                     }
                                                 }.create()
                                                 .show()
+                                            AccountData.saveData(this@LoginActivity, data)
+                                            telemetry(this@LoginActivity, "login")
                                             // back to the main activity
-                                            scope.launch(mainExecutor.asCoroutineDispatcher()) {
-                                                delay(5000)
-                                                webView.evaluateJavascript("document.cookie") {
-                                                    data.cookies.putAll(
-                                                        it
-                                                            .removeSurrounding("\"")
-                                                            .removeSurrounding("\'")
-                                                            .split(";")
-                                                            .associate {
-                                                                it.substringBefore("=").trim() to it.substringAfter("=")
-                                                            },
-                                                    )
-                                                    if ("__zse_ck" !in data.cookies) {
-                                                        AlertDialog
-                                                            .Builder(this@LoginActivity)
-                                                            .apply {
-                                                                setTitle("登录失败")
-                                                                setMessage("模拟正常登录环境失败，请检查网络")
-                                                                setPositiveButton("OK") { _, _ ->
-                                                                }
-                                                            }.create()
-                                                            .show()
-                                                    } else {
-                                                        AccountData.saveData(this@LoginActivity, data)
-                                                        telemetry(this@LoginActivity, "login")
-                                                        this@LoginActivity.finish()
-                                                    }
-                                                }
-                                            }
+                                            this@LoginActivity.finish()
                                             return@runBlocking true
                                         } else {
                                             AlertDialog

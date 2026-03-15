@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,12 +38,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -50,6 +54,7 @@ import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
@@ -58,7 +63,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContentFilterSettingsScreen(
-    onNavigateBack: () -> Unit,
+    innerPadding: PaddingValues,
+    setting: String = "",
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -70,12 +76,26 @@ fun ContentFilterSettingsScreen(
         )
     }
 
+    val scrollState = rememberScrollState()
+    val itemPositions = remember { mutableMapOf<String, Int>() }
+    var scrollColumnRootY by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(setting, itemPositions[setting]) {
+        if (setting.isNotEmpty()) {
+            kotlinx.coroutines.delay(200)
+            itemPositions[setting]?.let { itemRootY ->
+                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
+            }
+        }
+    }
+
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("推荐系统与内容过滤") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -88,132 +108,189 @@ fun ContentFilterSettingsScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
+                .verticalScroll(scrollState),
         ) {
-            // Rec Mode
-            val currentRecommendationMode = remember {
-                mutableStateOf(
-                    RecommendationMode.entries.find {
-                        it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
-                    } ?: RecommendationMode.MIXED,
-                )
-            }
-            var expanded by remember { mutableStateOf(false) }
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            HighlightableSettingContainer(
+                settingKey = "recommendationMode",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["recommendationMode"] = it },
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                OutlinedTextField(
-                    value = currentRecommendationMode.value.displayName,
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("推荐算法") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
-                )
-                ExposedDropdownMenu(
+                // Rec Mode
+                val currentRecommendationMode = remember {
+                    mutableStateOf(
+                        RecommendationMode.entries.find {
+                            it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+                        } ?: RecommendationMode.MIXED,
+                    )
+                }
+                var expanded by remember { mutableStateOf(false) }
+
+                ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onDismissRequest = { expanded = false },
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    RecommendationMode.entries.forEach { mode ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(mode.displayName)
-                                    Text(mode.description, style = MaterialTheme.typography.bodySmall)
-                                }
-                            },
-                            onClick = {
-                                currentRecommendationMode.value = mode
-                                preferences.edit { putString("recommendationMode", mode.key) }
-                                expanded = false
-                            },
-                        )
+                    OutlinedTextField(
+                        value = currentRecommendationMode.value.displayName,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("推荐算法") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        RecommendationMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(mode.displayName)
+                                        Text(mode.description, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                },
+                                onClick = {
+                                    currentRecommendationMode.value = mode
+                                    preferences.edit { putString("recommendationMode", mode.key) }
+                                    expanded = false
+                                },
+                            )
+                        }
                     }
                 }
             }
 
-            val isLoginForRecommendation = remember {
-                mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
+            HighlightableSettingContainer(
+                settingKey = "loginForRecommendation",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["loginForRecommendation"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val isLoginForRecommendation = remember {
+                    mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
+                }
+                SwitchSettingItem(
+                    title = "推荐内容时登录",
+                    description = "获取推荐内容时携带登录凭证",
+                    checked = isLoginForRecommendation.value,
+                    onCheckedChange = { checked ->
+                        isLoginForRecommendation.value = checked
+                        preferences.edit { putBoolean("loginForRecommendation", checked) }
+                    },
+                )
             }
-            SwitchSettingItem(
-                title = "推荐内容时登录",
-                description = "获取推荐内容时携带登录凭证",
-                checked = isLoginForRecommendation.value,
-                onCheckedChange = { checked ->
-                    isLoginForRecommendation.value = checked
-                    preferences.edit { putBoolean("loginForRecommendation", checked) }
-                },
-            )
 
-            val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
-            SwitchSettingItem(
-                title = "启用质量过滤规则",
-                description = "根据赞同数、关注数等指标过滤低质量内容",
-                checked = enableQualityFilter.value,
-                onCheckedChange = {
-                    enableQualityFilter.value = it
-                    preferences.edit { putBoolean("enableQualityFilter", it) }
-                },
-            )
+            HighlightableSettingContainer(
+                settingKey = "enableQualityFilter",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["enableQualityFilter"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
+                SwitchSettingItem(
+                    title = "启用质量过滤规则",
+                    description = "根据赞同数、关注数等指标过滤低质量内容",
+                    checked = enableQualityFilter.value,
+                    onCheckedChange = {
+                        enableQualityFilter.value = it
+                        preferences.edit { putBoolean("enableQualityFilter", it) }
+                    },
+                )
+            }
 
             val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
-            SwitchSettingItem(
-                title = "启用智能内容过滤",
-                description = "自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐",
-                checked = enableContentFilter.value,
-                onCheckedChange = {
-                    enableContentFilter.value = it
-                    preferences.edit { putBoolean("enableContentFilter", it) }
-                },
-            )
+            HighlightableSettingContainer(
+                settingKey = "enableContentFilter",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["enableContentFilter"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "启用智能内容过滤",
+                    description = "自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐",
+                    checked = enableContentFilter.value,
+                    onCheckedChange = {
+                        enableContentFilter.value = it
+                        preferences.edit { putBoolean("enableContentFilter", it) }
+                    },
+                )
+            }
 
             val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
-            SwitchSettingItem(
-                title = "过滤已关注用户内容",
-                description = "是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示",
-                checked = filterFollowedUserContent.value,
-                onCheckedChange = {
-                    filterFollowedUserContent.value = it
-                    preferences.edit { putBoolean("filterFollowedUserContent", it) }
-                },
-                enabled = enableContentFilter.value,
-            )
+            HighlightableSettingContainer(
+                settingKey = "filterFollowedUserContent",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["filterFollowedUserContent"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "过滤已关注用户内容",
+                    description = "是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示",
+                    checked = filterFollowedUserContent.value,
+                    onCheckedChange = {
+                        filterFollowedUserContent.value = it
+                        preferences.edit { putBoolean("filterFollowedUserContent", it) }
+                    },
+                    enabled = enableContentFilter.value,
+                )
+            }
 
             val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
-            SwitchSettingItem(
-                title = "启用关键词屏蔽",
-                description = "屏蔽包含特定关键词的内容",
-                checked = enableKeywordBlocking.value,
-                onCheckedChange = {
-                    enableKeywordBlocking.value = it
-                    preferences.edit { putBoolean("enableKeywordBlocking", it) }
-                },
-            )
+            HighlightableSettingContainer(
+                settingKey = "enableKeywordBlocking",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["enableKeywordBlocking"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "启用关键词屏蔽",
+                    description = "屏蔽包含特定关键词的内容",
+                    checked = enableKeywordBlocking.value,
+                    onCheckedChange = {
+                        enableKeywordBlocking.value = it
+                        preferences.edit { putBoolean("enableKeywordBlocking", it) }
+                    },
+                )
+            }
 
             val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
-            SwitchSettingItem(
-                title = "启用用户屏蔽",
-                description = "屏蔽特定用户发布的内容",
-                checked = enableUserBlocking.value,
-                onCheckedChange = {
-                    enableUserBlocking.value = it
-                    preferences.edit { putBoolean("enableUserBlocking", it) }
-                },
-            )
+            HighlightableSettingContainer(
+                settingKey = "enableUserBlocking",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["enableUserBlocking"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "启用用户屏蔽",
+                    description = "屏蔽特定用户发布的内容",
+                    checked = enableUserBlocking.value,
+                    onCheckedChange = {
+                        enableUserBlocking.value = it
+                        preferences.edit { putBoolean("enableUserBlocking", it) }
+                    },
+                )
+            }
 
             val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
-            SwitchSettingItem(
-                title = "启用主题屏蔽",
-                description = "屏蔽包含特定主题的内容",
-                checked = enableTopicBlocking.value,
-                onCheckedChange = {
-                    enableTopicBlocking.value = it
-                    preferences.edit { putBoolean("enableTopicBlocking", it) }
-                },
-            )
+            HighlightableSettingContainer(
+                settingKey = "enableTopicBlocking",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["enableTopicBlocking"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "启用主题屏蔽",
+                    description = "屏蔽包含特定主题的内容",
+                    checked = enableTopicBlocking.value,
+                    onCheckedChange = {
+                        enableTopicBlocking.value = it
+                        preferences.edit { putBoolean("enableTopicBlocking", it) }
+                    },
+                )
+            }
 
             AnimatedVisibility(visible = enableTopicBlocking.value) {
                 Column {
@@ -287,6 +364,24 @@ fun ContentFilterSettingsScreen(
                 }
             }
 
+            val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
+            HighlightableSettingContainer(
+                settingKey = "reverseBlock",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["reverseBlock"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "反向屏蔽（吃\uD83D\uDCA9模式）",
+                    description = "开启后，首页将只保留广告和付费内容，屏蔽其余所有内容",
+                    checked = reverseBlock.value,
+                    onCheckedChange = {
+                        reverseBlock.value = it
+                        preferences.edit { putBoolean("reverseBlock", it) }
+                    },
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -296,6 +391,18 @@ fun ContentFilterSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("管理屏蔽列表", style = MaterialTheme.typography.bodyLarge)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("屏蔽记录", style = MaterialTheme.typography.bodyLarge)
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 

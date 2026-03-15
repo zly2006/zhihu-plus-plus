@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.animation.core.Animatable
@@ -49,8 +47,8 @@ fun AnswerHorizontalOverscroll(
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.dp.toPx() }
-    val triggerThresholdPx = with(density) { HORIZONTAL_TRIGGER_THRESHOLD_DP.dp.toPx() }
+    val maxOverscrollPx = with(density) { MAX_HORIZONTAL_OVERSCROLL_DP.toPx() }
+    val triggerThresholdPx = with(density) { HORIZONTAL_TRIGGER_THRESHOLD_DP.toPx() }
 
     val overscrollOffset = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
@@ -128,8 +126,8 @@ fun AnswerHorizontalOverscroll(
                 }
             },
     ) {
-        // 左侧相邻回答（上一个），定位在当前内容左侧
-        if (overscrollOffset.value > 0 && canGoPrevious && previousContent != null) {
+        // 左侧相邻回答（上一个），始终存活以避免 WebView 重建闪动
+        if (previousContent != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -144,8 +142,8 @@ fun AnswerHorizontalOverscroll(
             }
         }
 
-        // 右侧相邻回答（下一个），定位在当前内容右侧
-        if (overscrollOffset.value < 0 && canGoNext && nextContent != null) {
+        // 右侧相邻回答（下一个），始终存活以避免 WebView 重建闪动
+        if (nextContent != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -171,6 +169,6 @@ fun AnswerHorizontalOverscroll(
     }
 }
 
-private const val MAX_HORIZONTAL_OVERSCROLL_DP = 300f
-private const val HORIZONTAL_TRIGGER_THRESHOLD_DP = 120f
+private val MAX_HORIZONTAL_OVERSCROLL_DP = 300.dp
+private val HORIZONTAL_TRIGGER_THRESHOLD_DP = 60.dp
 private const val HORIZONTAL_DAMPING_FACTOR = 1.2f

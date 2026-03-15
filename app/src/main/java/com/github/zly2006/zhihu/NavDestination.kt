@@ -53,16 +53,24 @@ data object Account : NavDestination, TopLevelDestination {
     ) : NavDestination
 
     @Serializable
-    data object RecommendSettings : NavDestination {
+    data class RecommendSettings(
+        val setting: String = "",
+    ) : NavDestination {
         @Serializable
         data object Blocklist : NavDestination
+
+        @Serializable
+        data object BlockedFeedHistory : NavDestination
     }
 
     @Serializable
     data object SystemAndUpdateSettings : NavDestination
 
     @Serializable
-    data object DeveloperSettings : NavDestination
+    data object DeveloperSettings : NavDestination {
+        @Serializable
+        data object ColorScheme : NavDestination
+    }
 }
 
 @Serializable
@@ -150,6 +158,7 @@ data class Person(
      */
     var urlToken: String,
     val name: String = "loading...",
+    val jumpTo: String = "",
 ) : NavDestination {
     override fun hashCode(): Int {
         if (id != EMPTY_ID) {
@@ -230,6 +239,11 @@ fun resolveContent(uri: Uri): NavDestination? {
             } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "pin") {
                 val pinId = uri.pathSegments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
+            } else if (uri.pathSegments.size == 1 &&
+                uri.pathSegments[0] == "search"
+            ) {
+                val query = uri.getQueryParameter("q") ?: ""
+                return Search(query)
             }
             Log.w("NavDestination", "Cannot resolve content from uri: $uri")
         } else if (uri.host == "zhuanlan.zhihu.com") {
@@ -254,6 +268,9 @@ fun resolveContent(uri: Uri): NavDestination? {
         } else if (uri.host == "articles") {
             val articleId = uri.pathSegments[0].toLong()
             return Article(type = ArticleType.Article, id = articleId)
+        } else if (uri.host == "search") {
+            val query = uri.getQueryParameter("q") ?: ""
+            return Search(query)
         }
         Log.w("NavDestination", "Cannot resolve content from uri: $uri")
     }

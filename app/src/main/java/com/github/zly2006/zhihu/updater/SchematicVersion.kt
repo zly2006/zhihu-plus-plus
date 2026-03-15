@@ -12,7 +12,7 @@ class SchematicVersion(
     val allComponents: List<Int>,
     val preRelease: String,
     val build: String,
-) {
+) : Comparable<SchematicVersion> {
     companion object : KSerializer<SchematicVersion> {
         override val descriptor =
             PrimitiveSerialDescriptor(SchematicVersion::class.simpleName!!, PrimitiveKind.STRING)
@@ -46,7 +46,7 @@ class SchematicVersion(
         if (build.isNotEmpty()) append("+$build")
     }
 
-    operator fun compareTo(other: SchematicVersion): Int {
+    override operator fun compareTo(other: SchematicVersion): Int {
         for (i in 0 until maxOf(allComponents.size, other.allComponents.size)) {
             val a = allComponents.getOrNull(i) ?: 0
             val b = other.allComponents.getOrNull(i) ?: 0

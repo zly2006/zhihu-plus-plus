@@ -44,12 +44,12 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val authorName: String? = null,
         val isFiltered: Boolean = false,
         val content: String? = null,
-        val raw: DataHolder.Content? = null,
+        var raw: DataHolder.Content? = null,
     )
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
-        displayItems.addAll(data.flatten().map { createDisplayItem(context, it) }) // 展示用的已flatten数据
+        addDisplayItems(data.flatten().map { createDisplayItem(context, it) })
     }
 
     override fun refresh(context: Context) {
@@ -138,8 +138,16 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             isFiltered = true,
         )
 
-        is GroupFeed -> error("GroupFeed should not be flatten") // GroupFeed will be handled in the UI
+        is GroupFeed -> error("GroupFeed should be flatten") // GroupFeed will be handled in the UI
         is QuestionFeedCard -> TODO()
+    }
+
+    fun addDisplayItems(newItems: List<FeedDisplayItem>) {
+        newItems.forEach {
+            if (displayItems.none { existing -> existing.navDestination == it.navDestination }) {
+                displayItems.add(it)
+            }
+        }
     }
 
     @Suppress("NOTHING_TO_INLINE")
@@ -259,10 +267,10 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 blocklistManager.addBlockedTopic(topicId, topicName)
                 Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
                 displayItems.removeAll {
-                    val topics = when (it.raw) {
-                        is DataHolder.Answer -> it.raw.question.topics
-                        is DataHolder.Article -> it.raw.topics
-                        is DataHolder.Question -> it.raw.topics
+                    val topics = when (val content = it.raw) {
+                        is DataHolder.Answer -> content.question.topics
+                        is DataHolder.Article -> content.topics
+                        is DataHolder.Question -> content.topics
                         else -> null
                     }
                     topics?.any { topic -> topic.id == topicId } == true

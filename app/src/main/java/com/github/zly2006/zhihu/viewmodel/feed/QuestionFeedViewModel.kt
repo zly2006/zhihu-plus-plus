@@ -45,7 +45,7 @@ class QuestionFeedViewModel(
         try {
             val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
             AccountData.fetch(context, url) {
-                signFetchRequest(context)
+                signFetchRequest()
                 method = if (follow) HttpMethod.Post else HttpMethod.Delete
             }
         } catch (e: Exception) {

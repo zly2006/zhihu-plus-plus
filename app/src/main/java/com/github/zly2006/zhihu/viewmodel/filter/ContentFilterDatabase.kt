@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class],
-    version = 4,
+    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class, BlockedFeedRecord::class],
+    version = 5,
     exportSchema = false,
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
@@ -22,6 +22,8 @@ abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun blockedContentRecordDao(): BlockedContentRecordDao
 
     abstract fun blockedTopicDao(): BlockedTopicDao
+
+    abstract fun blockedFeedRecordDao(): BlockedFeedRecordDao
 
     companion object {
         @Volatile
@@ -86,6 +88,33 @@ abstract class ContentFilterDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Migration from version 4 to version 5
+         * Changes:
+         * 1. Add new table: blocked_feed_records
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `${BlockedFeedRecord.TABLE_NAME}` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `questionId` INTEGER,
+                        `authorName` TEXT,
+                        `authorId` TEXT,
+                        `url` TEXT,
+                        `content` TEXT,
+                        `blockedReason` TEXT NOT NULL,
+                        `navDestinationJson` TEXT,
+                        `feedJson` TEXT,
+                        `blockedTime` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ContentFilterDatabase = INSTANCE ?: synchronized(this) {
             val instance =
                 Room
@@ -93,7 +122,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         context.applicationContext,
                         ContentFilterDatabase::class.java,
                         "content_filter_database",
-                    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration(true)
                     .build()
             INSTANCE = instance

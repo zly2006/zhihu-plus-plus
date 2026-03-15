@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,13 +53,13 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -247,7 +248,7 @@ class PersonViewModel(
         if (isFollowing) {
             val jojo = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
                 .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount - 1)
@@ -255,7 +256,7 @@ class PersonViewModel(
         } else {
             val jojo = client
                 .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
                 .body<JsonObject>()
             this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount + 1)
@@ -270,7 +271,7 @@ class PersonViewModel(
             // unblock
             val response = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
             isBlocking = false
@@ -278,7 +279,7 @@ class PersonViewModel(
             // block
             val response = client
                 .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest(context)
+                    signFetchRequest()
                 }.raiseForStatus()
             Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
             isBlocking = true
@@ -313,7 +314,7 @@ class PersonViewModel(
                     "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
                 )
             }
-            signFetchRequest(context)
+            signFetchRequest()
         }!!
         val person = AccountData.decodeJson<DataHolder.People>(jojo)
         this.avatar = person.avatarUrl
@@ -387,6 +388,7 @@ suspend fun HttpResponse.raiseForStatus() = apply {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
+    innerPadding: PaddingValues,
     person: Person,
 ) {
     val navigator = LocalNavigator.current
@@ -406,7 +408,7 @@ fun PeopleScreen(
         "关注",
     )
 
-    val pagerState = rememberPagerState(pageCount = { titles.size })
+    val pagerState = rememberPagerState(initialPage = if (person.jumpTo.isNotEmpty()) titles.indexOf(person.jumpTo) else 0, pageCount = { titles.size })
 
     LaunchedEffect(viewModel) {
         try {
@@ -439,7 +441,7 @@ fun PeopleScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -594,10 +596,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.collectionsFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) { collection ->
-                            CollectionListItem(
-                                collection = collection,
-                                onNavigate = navigator.onNavigate,
-                            )
+                            CollectionListItem(collection)
                         }
                     }
 
@@ -669,7 +668,6 @@ fun PeopleScreen(
 @Composable
 private fun CollectionListItem(
     collection: DataHolder.Collection,
-    onNavigate: (NavDestination) -> Unit,
 ) {
     val context = LocalContext.current
     Column(
@@ -946,7 +944,14 @@ private fun UserInfoHeader(
                 modifier = Modifier
                     .padding(end = 16.dp)
                     .size(80.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .clickable {
+                        OpenImageDislog(
+                            context,
+                            AccountData.httpClient(context),
+                            viewModel.avatar.substringBefore("_") + ".jpg",
+                        ).show()
+                    },
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(viewModel.name, style = MaterialTheme.typography.titleLarge)

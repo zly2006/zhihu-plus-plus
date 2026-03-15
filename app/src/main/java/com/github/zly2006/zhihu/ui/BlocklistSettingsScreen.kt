@@ -65,7 +65,6 @@ import kotlinx.coroutines.launch
 @Composable
 fun BlocklistSettingsScreen(
     innerPadding: PaddingValues,
-    onNavigateBack: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -294,7 +293,7 @@ fun BlocklistSettingsScreen(
                 )
                 1 -> NLPKeywordManagementScreen(
                     innerPadding = PaddingValues(0.dp),
-                    onNavigateBack = onNavigateBack,
+                    onNavigateBack = navigator.onNavigateBack,
                 )
                 2 -> BlockedUsersList(
                     users = blockedUsers,

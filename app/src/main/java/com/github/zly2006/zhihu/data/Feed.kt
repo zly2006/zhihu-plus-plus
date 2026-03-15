@@ -454,4 +454,11 @@ class HotListFeed(
     val id: String,
     val detailText: String,
     val target: Feed.Target,
-) : Feed
+    val children: List<Children> = emptyList(),
+) : Feed {
+    @Serializable
+    class Children(
+        val type: String,
+        val thumbnail: String? = null,
+    )
+}

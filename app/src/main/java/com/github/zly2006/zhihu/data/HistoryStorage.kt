@@ -1,8 +1,8 @@
 package com.github.zly2006.zhihu.data
 
 import android.content.Context
+import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.NavDestination
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -17,12 +17,14 @@ class HistoryStorage(
     }
 
     fun add(data: NavDestination) {
-        this._history.remove(data)
-        this._history[data] = data
-        while (this._history.size > 1000) {
-            this._history.remove(this._history.keys.first())
+        ContextCompat.getMainExecutor(activity).execute {
+            this._history.remove(data)
+            this._history[data] = data
+            while (this._history.size > 1000) {
+                this._history.remove(this._history.keys.first())
+            }
+            save()
         }
-        save()
     }
 
     fun save() {
@@ -45,6 +47,13 @@ class HistoryStorage(
     fun post(data: NavDestination) {
         if (data in _history) {
             _history[data] = data
+        }
+    }
+
+    fun clearAndSave() {
+        ContextCompat.getMainExecutor(activity).execute {
+            _history.clear()
+            save()
         }
     }
 }

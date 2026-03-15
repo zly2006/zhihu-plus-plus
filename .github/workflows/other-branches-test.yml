@@ -3,7 +3,6 @@ on:
   push:
     branches-ignore:
       - master
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -42,6 +41,20 @@ jobs:
           key: gradle-cache-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+      - name: Setup rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          override: true
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk || true
+
+      - name: Add Android Rust targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add i686-linux-android
+          rustup target add x86_64-linux-android
       # Run Tests Build
       - name: Run KtLint
         run: ./gradlew ktlintCheck
@@ -57,10 +70,17 @@ jobs:
       - name: Move files
         run: |
           mkdir -p app/build/upload
+          mkdir -p app/build/upload-lite
           mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
-          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+          cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
+          mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload-lite/zhihu++-lite-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PR Debug artifacts
           path: app/build/upload/
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR Debug artifacts (Lite)
+          path: app/build/upload-lite/

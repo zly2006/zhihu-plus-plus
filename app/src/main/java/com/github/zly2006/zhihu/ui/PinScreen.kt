@@ -1,13 +1,11 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,11 +68,11 @@ import java.util.Locale
 
 @Composable
 fun PinScreen(
+    innerPadding: PaddingValues,
     pin: Pin,
-    onNavigateBack: () -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val httpClient = remember { AccountData.httpClient(context) }
 
     val viewModel = viewModel<PinViewModel>(
@@ -94,6 +92,7 @@ fun PinScreen(
     var showShareDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             Row(
                 modifier = Modifier
@@ -103,7 +102,7 @@ fun PinScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onNavigateBack) {
+                IconButton(onClick = navigator.onNavigateBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                 }
                 Text(

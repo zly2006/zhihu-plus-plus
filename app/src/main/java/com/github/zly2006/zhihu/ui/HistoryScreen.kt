@@ -1,7 +1,10 @@
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.LocalNavigator
@@ -11,7 +14,9 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(
+    innerPadding: PaddingValues,
+) {
     val navigator = LocalNavigator.current
     val viewModel: HistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -24,6 +29,7 @@ fun HistoryScreen() {
 
     FeedPullToRefresh(viewModel) {
         PaginatedList(
+            modifier = Modifier.padding(innerPadding),
             items = viewModel.displayItems,
             onLoadMore = { /* 不需要loadMore */ },
             isEnd = { true }, // 始终为true，因为没有更多数据需要加载

@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.LocalNavigator
 
 enum class NotificationType(
     val displayName: String,
@@ -77,8 +79,9 @@ object NotificationPreferences {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationSettingsScreen(
-    onBack: () -> Unit,
+    innerPadding: PaddingValues,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
 
     var systemNotificationSettings by remember {
@@ -98,11 +101,12 @@ fun NotificationSettingsScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text("通知设置") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = navigator.onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -112,11 +116,11 @@ fun NotificationSettingsScreen(
                 windowInsets = WindowInsets(0.dp),
             )
         },
-    ) { paddingValues ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
         ) {

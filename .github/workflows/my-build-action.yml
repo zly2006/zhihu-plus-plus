@@ -198,7 +198,7 @@ jobs:
           name: ${{ github.ref_name }}
           body: |
             如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
-            Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有 3 MB 的大小。
+            Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有不到 4 MB 的大小。
 
             ${{ steps.release_notes.outputs.result }}
           files: |

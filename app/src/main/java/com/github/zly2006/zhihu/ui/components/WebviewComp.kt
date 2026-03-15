@@ -2,6 +2,7 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -22,13 +23,21 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.net.toUri
@@ -96,7 +105,7 @@ suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, 
         setBody(
             """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
         )
-        signFetchRequest(context)
+        signFetchRequest()
     }
 
     val responseText = response.bodyAsText()
@@ -138,11 +147,82 @@ class CustomWebView : WebView {
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
+    /**
+     * Constructs a CustomWebView and prepare everything for displaying content, then call onLoad callback when ready.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    constructor(context: Context, onLoad: (CustomWebView) -> Unit, useHardwareAcceleration: Boolean) : this(context) {
+        if (useHardwareAcceleration) {
+            setLayerType(LAYER_TYPE_HARDWARE, null)
+        } else {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+        }
+        this.setupUpWebviewClient {
+        }
+        this.setHtmlClickListener(this.defaultHtmlClickListener())
+        onLoad(this)
+        setOnLongClickListener { view ->
+            view.showContextMenu()
+        }
+        setOnCreateContextMenuListener { menu, v, _ ->
+            val result = hitTestResult
+            if (result.type == HitTestResult.IMAGE_TYPE ||
+                result.type == HitTestResult.SRC_IMAGE_ANCHOR_TYPE
+            ) {
+                val imgElement = document?.select("img[src='${result.extra}']")?.first()
+                val url = imgElement?.let { extractImageUrl(it) }
+                    ?: result.extra?.takeIf { !it.startsWith("data") }
+                if (url != null) {
+                    menu.add("查看图片").setOnMenuItemClickListener {
+                        openImage(AccountData.httpClient(context), url)
+                        true
+                    }
+                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                        luoTianYiUrlLauncher(context, url.toUri())
+                        true
+                    }
+                    menu.add("保存图片").setOnMenuItemClickListener {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            saveImageToGallery(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                    menu.add("分享图片").setOnMenuItemClickListener {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            shareImage(context, AccountData.httpClient(context), url)
+                        }
+                        true
+                    }
+                }
+            }
+        }
+    }
+
     var document: Document? = null
         private set
     var contentId: String? = null
     private var htmlClickListener: HtmlClickListener? = null
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
+    var onContentHeightCallback: ((Int) -> Unit)? = null
+    var onPageStartedCallback: (() -> Unit)? = null
+
+    override fun scrollTo(x: Int, y: Int) {
+        // 禁止 WebView 自己滚动，所有滚动都通过 scrollToHeightCallback 回调到 Compose 层处理
+        super.scrollTo(0, 0)
+    }
+
+    /**
+     * 在 WebView ，allow 父 View 拦截触摸事件，
+     * 使 Compose 的 nestedScroll/overscroll 能接管所有的拖动。
+     */
+    override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
+        parent?.requestDisallowInterceptTouchEvent(false)
+        if (event.actionMasked == android.view.MotionEvent.ACTION_MOVE) {
+            super.scrollTo(0, 0)
+            return super.onTouchEvent(event)
+        }
+        return super.onTouchEvent(event)
+    }
 
     // JavaScript 接口类
     inner class JsInterface {
@@ -157,6 +237,11 @@ class CustomWebView : WebView {
         @JavascriptInterface
         fun scrollToHeight(y: Int, maxY: Int) {
             scrollToHeightCallback?.invoke(y, maxY)
+        }
+
+        @JavascriptInterface
+        fun onContentHeight(height: Int) {
+            onContentHeightCallback?.invoke(height)
         }
     }
 
@@ -194,26 +279,8 @@ class CustomWebView : WebView {
         }
     }
 
-    /**
-     * 应用主题样式到WebView
-     * 根据应用的主题设置为body添加或移除dark-theme类
-     */
     fun applyThemeStyle() {
-        val preferences = context.getSharedPreferences("com.github.zly2006.zhihu_preferences", Context.MODE_PRIVATE)
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-
-        // 判断是否应该应用暗色主题
-        val shouldApplyDarkTheme = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> { // SYSTEM
-                // 检查系统是否为暗色模式
-                val currentNightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-
-        val jsCode = if (shouldApplyDarkTheme) {
+        val jsCode = if (ThemeManager.isDarkTheme) {
             "document.body.classList.add('dark-theme');"
         } else {
             "document.body.classList.remove('dark-theme');"
@@ -250,9 +317,43 @@ class CustomWebView : WebView {
     }
 
     /**
-     * 注入脚注处理的 JavaScript 代码
-     * 处理 data-draft-type="reference" 的 sup 标签，生成脚注列表
+     * 注入高度上报脚本：立即上报一次，并在所有图片加载完成后再上报。
+     * 使用 document.body.scrollHeight（不含 margin），通过 AndroidInterface.onContentHeight 回调。
      */
+    fun injectContentHeightReporter() {
+        if (onContentHeightCallback == null) return
+        val js =
+            """
+            (function() {
+                function report() {
+                    if (!document.getElementById('end')) {
+                        const div = document.createElement('div');
+                        div.id = 'end';
+                        document.body.appendChild(div);
+                    }
+                    const bottom = document.getElementById('end').getBoundingClientRect().bottom;
+                    if (window.AndroidInterface && AndroidInterface.onContentHeight) {
+                        AndroidInterface.onContentHeight(bottom);
+                    }
+                }
+                report();
+                // 图片加载完成后再上报一次（处理懒加载图片导致高度变化的情况）
+                var imgs = document.querySelectorAll('img');
+                var pending = imgs.length;
+                if (pending === 0) return;
+                function onImgDone() {
+                    report();
+                }
+                imgs.forEach(function(img) {
+                    if (img.complete) { onImgDone(); }
+                    else { img.addEventListener('load', onImgDone); img.addEventListener('error', onImgDone); }
+                });
+                setTimeout(report, 3000); // 3秒后强制上报一次，防止有些图片既不触发 load 也不触发 error
+            })();
+            """.trimIndent()
+        evaluateJavascript(js, null)
+    }
+
     fun injectFootnoteScript() {
         val jsCode = loadJavaScriptFromAssets("footnotes.js")
         if (jsCode.isNotEmpty()) {
@@ -273,28 +374,21 @@ class CustomWebView : WebView {
             // same content
             return
         }
+        Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
-            val base64 = android.util.Base64.encodeToString(customFontFile.readBytes(), android.util.Base64.NO_WRAP)
-            "@font-face { font-family: 'ZhihuCustomFont'; src: url('data:font/truetype;base64,$base64'); }\n" +
+            val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+            val format = if (fontName.endsWith(".otf", ignoreCase = true)) "opentype" else "truetype"
+            "@font-face { font-family: 'ZhihuCustomFont'; src: url('https://zhihu-plus.internal/user-files/custom_font') format('$format'); }\n" +
                 "body { font-family: 'ZhihuCustomFont', sans-serif; }"
         } else {
             ""
         }
 
-        val themeModeValue = preferences.getString("themeMode", "SYSTEM") ?: "SYSTEM"
-        val isDark = when (themeModeValue) {
-            "LIGHT" -> false
-            "DARK" -> true
-            else -> {
-                val nightMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-        val bodyClass = if (isDark) " class=\"dark-theme\"" else ""
+        val bodyClass = if (ThemeManager.isDarkTheme) " class=\"dark-theme\" " else ""
 
         loadDataWithBaseURL(
             url,
@@ -312,7 +406,7 @@ class CustomWebView : WebView {
             ${additionalStyle.replace("\n", "")}
             </style>
             </head>
-            <body$bodyClass>
+            <body $bodyClass>
             ${document.body().html()}
             </body>
             """.trimIndent(),
@@ -381,28 +475,26 @@ class OpenImageDislog(
 ) : ComponentDialog(context) {
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
-        setContentView(
-            PhotoView(context).apply {
-                GlobalScope.launch {
-                    httpClient
-                        .get(url)
-                        .bodyAsChannel()
-                        .toInputStream()
-                        .buffered()
-                        .use {
-                            val bitmap = BitmapFactory.decodeStream(it)
-                            withContext(Dispatchers.Main) {
-                                setImageBitmap(bitmap)
-                            }
-                        }
-                }
-                setImageURI(url.toUri())
-                setBackgroundColor(Color.BLACK)
-                setOnClickListener { dismiss() }
-            },
-        )
+        val photoView = PhotoView(context).apply {
+            setBackgroundColor(Color.BLACK)
+            setOnClickListener { dismiss() }
+        }
+        setContentView(photoView)
         window?.setBackgroundDrawable(Color.BLACK.toDrawable())
         setCanceledOnTouchOutside(true)
+        lifecycleScope.launch {
+            httpClient
+                .get(url)
+                .bodyAsChannel()
+                .toInputStream()
+                .buffered()
+                .use {
+                    val bitmap = BitmapFactory.decodeStream(it)
+                    withContext(Dispatchers.Main) {
+                        photoView.setImageBitmap(bitmap)
+                    }
+                }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -419,66 +511,34 @@ class OpenImageDislog(
 fun WebviewComp(
     modifier: Modifier = Modifier.fillMaxSize(),
     scrollState: ScrollState? = null,
+    existingWebView: CustomWebView? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val httpClient = AccountData.httpClient(context)
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+    // JS 上报的内容高度（CSS 像素 = dp，WebView viewport 默认 1 CSS px = 1 dp）；
+    // 0 表示尚未收到上报（等待 onPageFinished），此时用 wrapContentSize 避免撑满未知高度
+    var contentHeightDp by remember { mutableIntStateOf(0) }
 
     AndroidView(
         factory = { ctx ->
-            CustomWebView(ctx).apply {
-                // 根据用户设置决定是否启用硬件加速
-                if (useHardwareAcceleration) {
-                    setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                } else {
-                    setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                }
-
-                this.setupUpWebviewClient {
-                }
-                this.setHtmlClickListener(this.defaultHtmlClickListener())
-                onLoad(this)
-                setOnLongClickListener { view ->
-                    view.showContextMenu()
-                }
-                setOnCreateContextMenuListener { menu, v, _ ->
-                    val result = hitTestResult
-                    if (result.type == WebView.HitTestResult.IMAGE_TYPE ||
-                        result.type == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE
-                    ) {
-                        val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                        val url = imgElement?.let { extractImageUrl(it) }
-                            ?: result.extra?.takeIf { !it.startsWith("data") }
-                        if (url != null) {
-                            menu.add("查看图片").setOnMenuItemClickListener {
-                                openImage(httpClient, url)
-                                true
-                            }
-                            menu.add("在浏览器中打开").setOnMenuItemClickListener {
-                                luoTianYiUrlLauncher(context, url.toUri())
-                                true
-                            }
-                            menu.add("保存图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    saveImageToGallery(context, httpClient, url)
-                                }
-                                true
-                            }
-                            menu.add("分享图片").setOnMenuItemClickListener {
-                                coroutineScope.launch {
-                                    shareImage(context, httpClient, url)
-                                }
-                                true
-                            }
-                        }
-                    }
-                }
+            val webView = if (existingWebView != null) {
+                (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
+                existingWebView
+            } else {
+                CustomWebView(ctx, onLoad, useHardwareAcceleration)
             }
+            FrameLayout(ctx).apply { addView(webView) }
         },
-        update = { view ->
+        update = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: run {
+                frameLayout.removeAllViews()
+                val newWebView = CustomWebView(frameLayout.context, onLoad, useHardwareAcceleration)
+                frameLayout.addView(newWebView)
+                newWebView
+            }
             if (scrollState != null) {
                 view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
@@ -486,26 +546,67 @@ fun WebviewComp(
                     }
                 }
             }
+            view.onContentHeightCallback = { height ->
+                coroutineScope.launch(Dispatchers.Main) { contentHeightDp = height }
+            }
+            view.onPageStartedCallback = { coroutineScope.launch(Dispatchers.Main) { contentHeightDp = 0 } }
             onLoad(view)
         },
-        modifier = modifier,
-        onRelease = {
-            it.stopLoading()
-            it.webChromeClient = null
-            it.clearHistory()
-            it.clearCache(true)
-            it.destroy()
+        modifier = if (contentHeightDp > 0) {
+            modifier.height(contentHeightDp.dp)
+        } else {
+            modifier.wrapContentSize()
+        },
+        onRelease = { frameLayout ->
+            val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
+            if (existingWebView != null) {
+                (view.parent as? ViewGroup)?.removeView(view)
+            } else {
+                view.stopLoading()
+                view.webChromeClient = null
+                view.clearHistory()
+                view.clearCache(true)
+                view.destroy()
+            }
         },
     )
 }
 
+private class UserFilesPathHandler(
+    private val context: Context,
+) : WebViewAssetLoader.PathHandler {
+    override fun handle(path: String): WebResourceResponse? {
+        val file = java.io.File(context.filesDir, path)
+        if (!file.exists() || !file.isFile) return null
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val mimeType = when {
+            path == "custom_font" -> {
+                val fontName = preferences.getString("webviewCustomFontName", "") ?: ""
+                if (fontName.endsWith(".otf", ignoreCase = true)) "font/otf" else "font/ttf"
+            }
+            else -> "application/octet-stream"
+        }
+        return WebResourceResponse(
+            mimeType,
+            null,
+            200,
+            "OK",
+            mapOf("Access-Control-Allow-Origin" to "*"),
+            file.inputStream(),
+        )
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
 fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
     setBackgroundColor(Color.TRANSPARENT)
+    settings.javaScriptEnabled = true
     val context = this.context
     val assetLoader = WebViewAssetLoader
         .Builder()
         .setDomain("zhihu-plus.internal")
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+        .addPathHandler("/user-files/", UserFilesPathHandler(context))
         .build()
 
     // 设置WebChromeClient来监控控制台消息和加载进度
@@ -628,6 +729,11 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             return super.shouldOverrideUrlLoading(view, request)
         }
 
+        override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+            if (view is CustomWebView) view.onPageStartedCallback?.invoke()
+        }
+
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
             Log.i("WebView-Page", "Page finished loading: $url")
@@ -639,6 +745,8 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                 view.injectFootnoteScript()
                 // 注入主题样式
                 view.applyThemeStyle()
+                // 上报内容高度（图片加载完成后再上报一次）
+                view.injectContentHeightReporter()
             }
 
             onPageFinished?.invoke(url)

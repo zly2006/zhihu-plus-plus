@@ -1,5 +1,3 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context.MODE_PRIVATE
@@ -25,16 +23,18 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -107,6 +107,7 @@ import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
+import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
@@ -321,6 +322,15 @@ private fun ClickableImageWithMenu(
                     showContextMenu = false
                 },
             )
+            DropdownMenuItem(
+                text = { Text("分享图片") },
+                onClick = {
+                    showContextMenu = false
+                    coroutineScope.launch {
+                        shareImage(context, httpClient, imageUrl)
+                    }
+                },
+            )
         }
     }
 }
@@ -338,10 +348,6 @@ fun CommentScreen(
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
-    val useWebview = remember { preferences.getBoolean("commentsUseWebview1", false) }
 
     // 根据内容类型选择合适的ViewModel
     val viewModel: BaseCommentViewModel = when (val content = content()) {
@@ -415,9 +421,7 @@ fun CommentScreen(
     }
 
     Box(
-        modifier = Modifier
-            .imePadding()
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
     ) {
         // 评论内容区域
         Surface(
@@ -429,7 +433,11 @@ fun CommentScreen(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             color = MaterialTheme.colorScheme.surface,
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()),
+            ) {
                 CommentTopText(content())
                 Box(modifier = Modifier.weight(1f)) {
                     when {
@@ -751,21 +759,37 @@ fun CommentScreen(
 @Composable
 @Preview(showBackground = true)
 fun CommentTopText(content: NavDestination? = null) {
-    Text(
-        if (content is CommentHolder) {
-            "回复"
-        } else {
-            "评论"
-        },
-        style = Typography.bodyMedium.copy(
-            fontWeight = FontWeight.Bold,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(26.dp),
-        textAlign = TextAlign.Center,
-        fontSize = 18.sp,
-    )
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
+    }
+    val commentTopTextExtraSpacing = remember {
+        preferences.getBoolean("commentTopTextExtraSpacing", false)
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (commentTopTextExtraSpacing) {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        Text(
+            if (content is CommentHolder) {
+                "回复"
+            } else {
+                "评论"
+            },
+            style = Typography.bodyMedium.copy(
+                fontWeight = FontWeight.Bold,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(26.dp),
+            textAlign = TextAlign.Center,
+            fontSize = 18.sp,
+        )
+        if (commentTopTextExtraSpacing) {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

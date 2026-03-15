@@ -33,8 +33,12 @@ abstract class BaseCommentViewModel(
     var sortOrder by mutableStateOf(CommentSortOrder.SCORE)
 
     override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
-        super.processResponse(context, data, rawData)
+        debugData.addAll(rawData) // 保存原始JSON
         data.forEach { comment ->
+            if (allData.none { it.id == comment.id }) {
+                // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
+                allData.add(comment)
+            }
             val commentItem = createCommentItem(comment, article)
             commentsMap[comment.id] = commentItem
             // 载入可见的子评论
@@ -83,12 +87,12 @@ abstract class BaseCommentViewModel(
                 val response = if (newLikeState) {
                     // 点赞
                     httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }
                 } else {
                     // 取消点赞
                     httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }
                 }
 

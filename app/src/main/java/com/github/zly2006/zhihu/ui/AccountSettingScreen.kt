@@ -3,9 +3,13 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,9 +24,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -49,10 +60,12 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.Collections
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.Notification
+import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.QRCodeScanActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.ui.components.QRCodeLogin
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -63,7 +76,9 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 @OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun AccountSettingScreen(
-    @Suppress("UNUSED_PARAMETER") innerPadding: PaddingValues,
+    innerPadding: PaddingValues,
+    unreadCount: Int = 0,
+    onDismissRequest: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -74,6 +89,7 @@ fun AccountSettingScreen(
         )
     }
 
+    val useDuo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
     var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     LaunchedEffect(isDeveloper) {
@@ -87,35 +103,16 @@ fun AccountSettingScreen(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
+            .padding(innerPadding)
             .verticalScroll(rememberScrollState()),
 //        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
-            modifier = Modifier.combinedClickable(
-                onLongClick = {
-                    val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
-                    val clip = android.content.ClipData.newPlainText("version", versionInfo)
-                    context.clipboardManager.setPrimaryClip(clip)
-                    Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
-                },
-                onClick = {
-                    clickTimes++
-                    if (clickTimes == 5) {
-                        clickTimes = 0
-                        isDeveloper = true
-                        Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
-                    }
-                },
-            ),
-        )
-
         LaunchedEffect(Unit) {
             val data = AccountData.data
             if (data.login) {
                 try {
                     val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                        signFetchRequest(context)
+                        signFetchRequest()
                     }!!
                     val self = AccountData.decodeJson<com.github.zly2006.zhihu.data.Person>(response)
                     AccountData.saveData(
@@ -129,57 +126,97 @@ fun AccountSettingScreen(
             }
         }
         if (data.login) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        navigator.onNavigate(
-                            Person(
-                                id = data.self?.id ?: "",
-                                urlToken = data.self?.urlToken ?: "",
-                                name = data.username,
-                            ),
+            Box {
+                Column {
+                    Text(
+                        "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
+                        modifier = Modifier.combinedClickable(
+                            onLongClick = {
+                                val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
+                                val clip = android.content.ClipData.newPlainText("version", versionInfo)
+                                context.clipboardManager.setPrimaryClip(clip)
+                                Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
+                            },
+                            onClick = {
+                                clickTimes++
+                                if (clickTimes == 5) {
+                                    clickTimes = 0
+                                    isDeveloper = true
+                                    Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                        ),
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navigator.onNavigate(
+                                    Person(
+                                        id = data.self?.id ?: "",
+                                        urlToken = data.self?.urlToken ?: "",
+                                        name = data.username,
+                                    ),
+                                )
+                            },
+                    ) {
+                        AsyncImage(
+                            model = data.self?.avatarUrl,
+                            contentDescription = "头像",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape)
+                                .clip(CircleShape),
                         )
-                    },
-            ) {
-                // 这里可以添加头像组件，暂时用 Box 代替
-                AsyncImage(
-                    model = data.self?.avatarUrl,
-                    contentDescription = "头像",
-                    modifier = Modifier
-                        .size(120.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .clip(CircleShape),
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(data.username, style = MaterialTheme.typography.headlineLarge)
-            }
-            Button(
-                onClick = {
-                    AccountData.delete(context)
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("退出登录")
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(data.username, style = MaterialTheme.typography.headlineLarge)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    val scanActivityLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult(),
+                    ) scan@{ result ->
+                        if (result.resultCode == android.app.Activity.RESULT_OK) {
+                            val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
+                            val url = Url(scanResult)
+                            if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
+                                Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
+                                return@scan
+                            }
+                            Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
+                            Intent(context, WebviewActivity::class.java).let {
+                                it.data = scanResult.toUri()
+                                context.startActivity(it)
+                            }
+                        }
+                    }
+                    FilledTonalIconButton(
+                        onClick = {
+                            val intent = Intent(context, QRCodeScanActivity::class.java)
+                            scanActivityLauncher.launch(intent)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "扫码登录",
+                        )
+                    }
+
+                    FilledTonalIconButton(
+                        onClick = {
+                            AccountData.delete(context)
+                        },
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "退出登录")
+                    }
+                }
             }
 
-            // 扫码登录功能 - 适用于已登录用户协助其他设备登录
-            QRCodeLogin(
-                modifier = Modifier.fillMaxWidth(),
-                onScanResult = { qrContent ->
-                    val url = Url(qrContent)
-                    if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
-                        Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
-                        return@QRCodeLogin
-                    }
-                    Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                    Intent(context, WebviewActivity::class.java).let {
-                        it.data = qrContent.toUri()
-                        context.startActivity(it)
-                    }
-                },
-            )
+            Spacer(Modifier.height(8.dp))
 
             Button(
                 onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
@@ -193,6 +230,25 @@ fun AccountSettingScreen(
                 Text("查看收藏夹")
             }
         } else {
+            Text(
+                "版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}",
+                modifier = Modifier.combinedClickable(
+                    onLongClick = {
+                        val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
+                        val clip = android.content.ClipData.newPlainText("version", versionInfo)
+                        context.clipboardManager.setPrimaryClip(clip)
+                        Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
+                    },
+                    onClick = {
+                        clickTimes++
+                        if (clickTimes == 5) {
+                            clickTimes = 0
+                            isDeveloper = true
+                            Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ),
+            )
             Button(
                 onClick = {
                     context.startActivity(Intent(context, LoginActivity::class.java))
@@ -204,6 +260,38 @@ fun AccountSettingScreen(
         }
         Spacer(Modifier.height(8.dp))
 
+        if (useDuo3HomeAccount) {
+            ListItem(
+                headlineContent = { Text("通知") },
+                supportingContent = { Text("查看通知及回复") },
+                leadingContent = { Icon(Icons.Default.Notifications, null) },
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (unreadCount > 0) {
+                            Badge { Text("$unreadCount") }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                    }
+                },
+                modifier = Modifier.clickable {
+                    onDismissRequest()
+                    navigator.onNavigate(Notification)
+                },
+            )
+
+            ListItem(
+                headlineContent = { Text("在线浏览历史") },
+                supportingContent = { Text("查看在线阅读历史记录") },
+                leadingContent = { Icon(Icons.Default.History, null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+                modifier = Modifier.clickable {
+                    onDismissRequest()
+                    navigator.onNavigate(OnlineHistory)
+                },
+            )
+        }
+
         ListItem(
             headlineContent = { Text("外观与阅读体验") },
             supportingContent = { Text("主题颜色、字体大小等") },
@@ -214,7 +302,7 @@ fun AccountSettingScreen(
             headlineContent = { Text("推荐系统与内容过滤") },
             supportingContent = { Text("推荐、智能过滤、关键词屏蔽等") },
             trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
-            modifier = Modifier.clickable { navigator.onNavigate(Account.RecommendSettings) },
+            modifier = Modifier.clickable { navigator.onNavigate(Account.RecommendSettings()) },
         )
 
         ListItem(
@@ -275,7 +363,7 @@ fun AccountSettingScreen(
                 Text("GitHub 项目地址")
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Button(
+            FilledTonalButton(
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_VIEW,
@@ -300,6 +388,7 @@ fun AccountSettingScreen(
 @Composable
 fun AccountSettingScreenPreview() {
     AccountSettingScreen(
-        innerPadding = PaddingValues(16.dp),
+        innerPadding = PaddingValues(0.dp),
+        unreadCount = 5,
     )
 }

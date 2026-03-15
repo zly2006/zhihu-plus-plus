@@ -7,12 +7,14 @@ import android.widget.Toast
 import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import org.jsoup.Jsoup
 
 /**
@@ -33,17 +35,10 @@ object ContentFilterExtensions {
         val contentType: String,
         val raw: DataHolder.Content,
         val isFollowing: Boolean = false,
-    )
-
-    val `斩杀线` = FilterableContent(
-        "斯奎奇大王（牢 a）称「不是有国籍就是中国人」，如何理解此言论",
-        "我的理解：他是完全没有意识到言论是有边界的，这样下去可能就是烈火烹油了。例如有一个很火的小众UP主他天天说美国是没事的，有一天他说了泰国那段时间号就没了，这就是言论的边界。沈直播中打断了他关于器官捐献的言论，沈知道国内正在推器官捐献进校，本来抖音上那些人就反对声音一浪接一浪的，沈的边界意识是非常强的。他本地情节厚重吧，张大帅在叙事中评价非常低，因为他儿子功劳大很多时候避开了对他的评价，要知道他杀…",
-        null,
-        "斯奎奇大王（牢 a）",
-        null,
-        "1234567890",
-        ContentType.ANSWER,
-        DataHolder.DummyContent,
+        val questionId: Long? = null,
+        val url: String? = null,
+        val feedJson: String? = null,
+        val navDestinationJson: String? = null,
     )
 
     /**
@@ -153,23 +148,6 @@ object ContentFilterExtensions {
     }
 
     /**
-     * 获取过滤统计信息
-     */
-    suspend fun getFilterStatistics(context: Context): FilterStats? {
-        if (!isContentFilterEnabled(context)) return null
-
-        return withContext(Dispatchers.IO) {
-            try {
-                val filterManager = ContentFilterManager.getInstance(context)
-                filterManager.getFilterStats()
-            } catch (e: Exception) {
-                Log.e("ContentFilterExtensions", "Failed to get filter statistics", e)
-                null
-            }
-        }
-    }
-
-    /**
      * 对FeedDisplayItem列表应用内容过滤
      * 包括广告检测、关键词屏蔽、NLP语义屏蔽和用户屏蔽
      */
@@ -178,12 +156,12 @@ object ContentFilterExtensions {
         items: List<FeedDisplayItem>,
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
+            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
             var filteredItems = items
 
             // 1. 应用关注用户过滤逻辑
-            val shouldFilterFollowed = context
-                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-                .getBoolean("filterFollowedUserContent", false)
+            val shouldFilterFollowed = preferences.getBoolean("filterFollowedUserContent", false)
 
             val (followedUserItems, otherItems) = if (!shouldFilterFollowed) {
                 // 分离已关注用户的内容
@@ -220,8 +198,11 @@ object ContentFilterExtensions {
                 // 获取完整内容详情
                 val rawContent = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
+                    is com.github.zly2006.zhihu.Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     else -> DataHolder.DummyContent
                 }
+
+                val questionId = (item.feed?.target as? Feed.AnswerTarget)?.question?.id
 
                 val filterableContent = FilterableContent(
                     title = item.title,
@@ -229,6 +210,7 @@ object ContentFilterExtensions {
                     content = when (rawContent) {
                         is DataHolder.Answer -> rawContent.content
                         is DataHolder.Article -> rawContent.content
+                        is DataHolder.Pin -> rawContent.contentHtml
                         else -> null
                     } ?: item.content,
                     authorName = item.authorName,
@@ -243,6 +225,10 @@ object ContentFilterExtensions {
                         ?.target
                         ?.author
                         ?.isFollowing ?: false,
+                    questionId = questionId,
+                    url = item.feed?.target?.url,
+                    feedJson = item.feed?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
+                    navDestinationJson = item.navDestination?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
                 )
 
                 itemToFilterableMap[item] = filterableContent
@@ -251,12 +237,29 @@ object ContentFilterExtensions {
             val filterableContents = itemToFilterableMap.values.toList()
 
             // 3. 过滤广告和付费内容
+            val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
+            if (preferences.getBoolean("reverseBlock", false)) {
+                val ads = filterableContents.filter { content -> checkForAd(content) }
+                val ids = ads.map { it.contentId }
+                return@withContext items.filter { item ->
+                    val contentId = when (val dest = item.navDestination) {
+                        is com.github.zly2006.zhihu.Article -> dest.id.toString()
+                        is com.github.zly2006.zhihu.Question -> dest.questionId.toString()
+                        is com.github.zly2006.zhihu.Pin -> dest.id.toString()
+                        else -> item.navDestination.hashCode().toString()
+                    }
+                    contentId in ids
+                }
+            }
             val nonAdContents = filterableContents.filter { content ->
-                !checkForAd(content)
+                val isAd = checkForAd(content)
+                if (isAd) adBlockedContents.add(content to "广告或付费内容")
+                !isAd
             }
 
             // 4. 应用关键词和NLP过滤
-            val filteredContents = filterContents(context, nonAdContents)
+            val blockedContents = mutableListOf<Pair<FilterableContent, String>>()
+            val filteredContents = filterContents(context, nonAdContents, blockedContents)
             val filteredContentIds = filteredContents.map { it.contentId }.toSet()
 
             // 5. 根据过滤结果重新构建FeedDisplayItem，并附带raw信息
@@ -268,6 +271,7 @@ object ContentFilterExtensions {
                 val contentId = when (val dest = item.navDestination) {
                     is com.github.zly2006.zhihu.Article -> dest.id.toString()
                     is com.github.zly2006.zhihu.Question -> dest.questionId.toString()
+                    is com.github.zly2006.zhihu.Pin -> dest.id.toString()
                     else -> item.navDestination.hashCode().toString()
                 }
                 if (contentId in filteredContentIds) {
@@ -278,18 +282,12 @@ object ContentFilterExtensions {
                 }
             }
 
-            // 6. 应用用户屏蔽
-            filteredItems = if (isUserBlockingEnabled(context)) {
-                val blocklistManager = BlocklistManager.getInstance(context)
-                (followedUserItems + filteredOtherItems).filter { item ->
-                    val authorId = item.feed
-                        ?.target
-                        ?.author
-                        ?.id
-                    !blocklistManager.isUserBlocked(authorId)
-                }
-            } else {
-                followedUserItems + filteredOtherItems
+            filteredItems = followedUserItems + filteredOtherItems
+
+            // 6. 持久化所有屏蔽记录
+            val allBlocked = adBlockedContents + blockedContents
+            if (allBlocked.isNotEmpty()) {
+                saveBlockedFeedRecords(context, allBlocked)
             }
 
             filteredItems
@@ -302,32 +300,29 @@ object ContentFilterExtensions {
     /**
      * 检测内容是否为广告或付费内容
      */
-    private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
-        is DataHolder.Answer -> {
-            val isAd = "xg.zhihu.com" in raw.content
-            val isEdu = "data-edu-card-id" in raw.content
-            val isPaid = raw.paidInfo != null
-            isAd || isEdu || isPaid
-        }
-
-        is DataHolder.Article -> {
-            val isAd = "xg.zhihu.com" in raw.content
-            val isEdu = "data-edu-card-id" in raw.content
-            val isPaid = raw.paidInfo != null
-            isAd || isEdu || isPaid
-        }
-
-        else -> {
-            false
+    private fun checkForAd(content: FilterableContent): Boolean {
+        val blocklist = listOf(
+            "xg.zhihu.com", // 知乎广告平台域名，常见于广告内容中
+            "d.zhihu.com", // 知乎学堂
+            "data-edu-card-id", // 知乎学堂
+            "mp.weixin.qq.com", // 微信公众号文章链接，常见于被推广的内容中
+        )
+        return when (val raw = content.raw) {
+            is DataHolder.Answer -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
+            is DataHolder.Article -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
+            is DataHolder.Pin -> blocklist.any { blockWord -> blockWord in raw.contentHtml }
+            else -> false
         }
     }
 
     /**
-     * 对FilterableContent列表应用过滤逻辑
+     * 对FilterableContent列表进行用户自定义规则屏蔽
+     * @param blocked 收集被屏蔽内容及原因，用于后续持久化
      */
     private suspend fun filterContents(
         context: Context,
         contents: List<FilterableContent>,
+        blocked: MutableList<Pair<FilterableContent, String>>,
     ): List<FilterableContent> {
         var filteredContents = contents
 
@@ -337,22 +332,32 @@ object ContentFilterExtensions {
             val contentPairs = filteredContents.map { it.contentType to it.contentId }
             val viewedContentIds = filterManager.getAlreadyViewedContentIds(contentPairs)
 
-            filteredContents = filteredContents.filter { content ->
+            val (kept, removed) = filteredContents.partition { content ->
                 val isViewed = ContentViewRecord.generateId(content.contentType, content.contentId) in viewedContentIds
-                // 保留条件：(关注了作者) 或 (未看过)
-                // 过滤条件：(未关注作者) 且 (已看过)
                 content.isFollowing || !isViewed
             }
+            removed.forEach { blocked.add(it to "已读过且未关注作者") }
+            filteredContents = kept
+        }
+
+        // 应用作者屏蔽
+        if (isUserBlockingEnabled(context)) {
+            val blocklistManager = BlocklistManager.getInstance(context)
+            val (kept, removed) = filteredContents.partition { !blocklistManager.isUserBlocked(it.authorId) }
+            removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
+            filteredContents = kept
         }
 
         // 应用关键词屏蔽
         if (isKeywordBlockingEnabled(context)) {
             val blocklistManager = BlocklistManager.getInstance(context)
-            filteredContents = filteredContents.filter { content ->
+            val (kept, removed) = filteredContents.partition { content ->
                 !blocklistManager.containsBlockedKeyword(content.title) &&
                     !blocklistManager.containsBlockedKeyword(content.summary ?: "") &&
                     !blocklistManager.containsBlockedKeyword(content.content ?: "")
             }
+            removed.forEach { blocked.add(it to "关键词屏蔽") }
+            filteredContents = kept
         }
 
         // 应用NLP语义屏蔽
@@ -382,6 +387,8 @@ object ContentFilterExtensions {
                         authorId = content.authorId,
                         matchedKeywords = matchedKeywords,
                     )
+                    val keywordNames = matchedKeywords.joinToString("、") { it.keyword }
+                    blocked.add(content to "NLP语义屏蔽：$keywordNames")
                     blockedThisRound.add(content)
                 }
             }
@@ -404,12 +411,48 @@ object ContentFilterExtensions {
 
             filteredContents = filteredContents.filter { content ->
                 val topicIds = extractTopicIds(content.raw)
-                val blockedTopicCount = blocklistManager.countBlockedTopics(topicIds)
-                blockedTopicCount < threshold
+                val kept = blocklistManager.countBlockedTopics(topicIds) < threshold
+                if (!kept) {
+                    val topicName = topicIds
+                        ?.first { topicId ->
+                            blocklistManager.isTopicBlocked(topicId)
+                        }?.let { topicId ->
+                            blocklistManager.getTopicName(topicId)
+                        }
+                    blocked.add(content to "屏蔽主题：$topicName")
+                }
+                kept
             }
         }
 
         return filteredContents
+    }
+
+    private suspend fun saveBlockedFeedRecords(
+        context: Context,
+        blocked: List<Pair<FilterableContent, String>>,
+    ) {
+        try {
+            val dao = ContentFilterDatabase.getDatabase(context).blockedFeedRecordDao()
+            blocked.forEach { (content, reason) ->
+                dao.insert(
+                    BlockedFeedRecord(
+                        title = content.title,
+                        questionId = content.questionId,
+                        authorName = content.authorName,
+                        authorId = content.authorId,
+                        url = content.url,
+                        content = content.content,
+                        blockedReason = reason,
+                        navDestinationJson = content.navDestinationJson,
+                        feedJson = content.feedJson,
+                    ),
+                )
+            }
+            dao.maintainLimit()
+        } catch (e: Exception) {
+            Log.e("ContentFilterExtensions", "Failed to save blocked feed records", e)
+        }
     }
 
     /**
@@ -434,4 +477,10 @@ object ContentType {
     const val COLUMN = "column"
     const val VIDEO = "video"
     const val PIN = "pin"
+}
+
+/** 用于序列化屏蔽记录的 Json 实例 */
+internal val recordJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = false
 }

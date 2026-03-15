@@ -1,11 +1,13 @@
-@file:Suppress("FunctionName")
-
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -23,7 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-val ProgressIndicatorFooter: @Composable (() -> Unit)? = {
+val ProgressIndicatorFooter: @Composable () -> Unit = {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -39,11 +41,13 @@ fun <T> PaginatedList(
     items: List<T>,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
     footer: @Composable (() -> Unit)? = null,
+    key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
-    itemContent: @Composable (T) -> Unit,
+    itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -68,11 +72,20 @@ fun <T> PaginatedList(
     LazyColumn(
         state = listState,
         modifier = modifier,
+        contentPadding = contentPadding,
     ) {
         topContent(this)
 
-        items(items) { item ->
-            itemContent(item)
+        items(items, key = key) { item ->
+            Box(
+                modifier = Modifier.animateItem(
+                    fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    fadeOutSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                ),
+            ) {
+                itemContent(item)
+            }
         }
 
         item {
