@@ -13,7 +13,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
@@ -196,7 +200,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                ZhihuMain(navController = navController)
+                Box(Modifier.semantics { testTagsAsResourceId = true }) {
+                    ZhihuMain(navController = navController)
+                }
             }
         }
         if (savedInstanceState == null) {
