@@ -364,16 +364,26 @@ fun ArticleActionsMenu(
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        "【${viewModel.title} - ${viewModel.authorName} 的回答】"
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        "【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                    }
+                }
+                val uri = when (article.type) {
+                    ArticleType.Answer -> {
+                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}"
+                    }
+
+                    ArticleType.Article -> {
+                        "https://zhuanlan.zhihu.com/p/${article.id}"
                     }
                 }
                 val shareIntent = Intent().apply {
                     action = Intent.ACTION_SEND
                     type = "text/plain"
+                    putExtra(Intent.EXTRA_STREAM, uri)
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
                 val chooserIntent = Intent.createChooser(shareIntent, "分享到")
