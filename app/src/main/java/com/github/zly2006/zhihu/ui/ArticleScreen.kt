@@ -137,6 +137,7 @@ import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.components.smoothGradient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -1787,10 +1788,8 @@ fun ArticleScreen(
                         .fillMaxWidth()
                         .height(statusBarHeight + 8.dp)
                         .background(
-                            Brush.verticalGradient(
-                                colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
-                            ),
-                        ),
+                            Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
+                        )
                 ) {}
             }
         }
