@@ -217,7 +217,7 @@ fun SystemAndUpdateSettingsScreen(
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
                 Text(
-                    "你已经看了 N 个小时知乎了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。",
+                    "你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),

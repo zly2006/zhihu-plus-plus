@@ -11,7 +11,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 class ContinuousUsageReminderManager(
     private val activity: ComponentActivity,
@@ -87,7 +86,7 @@ class ContinuousUsageReminderManager(
         reminderDialog = AlertDialog
             .Builder(activity)
             .setTitle("连续浏览提醒")
-            .setMessage("你已经看了${reminder.hoursText}个小时知乎了\n\n休息一下吧")
+            .setMessage("你已经连续浏览知乎 ${reminder.durationText}\n\n休息一下吧")
             .setPositiveButton("知道了", null)
             .show()
     }
@@ -145,7 +144,7 @@ class ContinuousUsageReminderManager(
 
 data class ContinuousUsageReminder(
     val elapsedForegroundMs: Long,
-    val hoursText: String,
+    val durationText: String,
 )
 
 class ContinuousUsageReminderPolicy(
@@ -169,7 +168,7 @@ class ContinuousUsageReminderPolicy(
         lastReminderBucket = currentBucket
         return ContinuousUsageReminder(
             elapsedForegroundMs = elapsedForegroundMs,
-            hoursText = formatHours(elapsedForegroundMs.toDouble() / ONE_HOUR_MS),
+            durationText = formatDuration(elapsedForegroundMs),
         )
     }
 
@@ -188,21 +187,20 @@ class ContinuousUsageReminderPolicy(
         lastReminderBucket = 0
     }
 
-    private fun formatHours(hours: Double): String {
-        val rounded = (hours * 100).roundToInt() / 100.0
-        val integerPart = rounded.toInt()
-        if (rounded == integerPart.toDouble()) {
-            return integerPart.toString()
+    private fun formatDuration(elapsedForegroundMs: Long): String {
+        val totalMinutes = (elapsedForegroundMs / ONE_MINUTE_MS).coerceAtLeast(1L)
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+
+        return when {
+            hours > 0L && minutes > 0L -> "${hours}小时${minutes}分钟"
+            hours > 0L -> "${hours}小时"
+            else -> "${minutes}分钟"
         }
-        return rounded
-            .toString()
-            .trimEnd('0')
-            .trimEnd('.')
     }
 
     companion object {
         private const val ONE_MINUTE_MS = 60_000L
-        private const val ONE_HOUR_MS = 3_600_000.0
 
         val SUPPORTED_INTERVALS_MINUTES = setOf(15, 30, 60)
 
