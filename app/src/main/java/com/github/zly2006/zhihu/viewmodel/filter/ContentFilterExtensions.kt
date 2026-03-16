@@ -240,7 +240,7 @@ object ContentFilterExtensions {
             // 3. 过滤广告和付费内容
             val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
             if (preferences.getBoolean("reverseBlock", false)) {
-                val ads = filterableContents.filter { content -> checkForAd(content, preferences) }
+                val ads = filterableContents.filter { content -> checkForAd(content) }
                 val ids = ads.map { it.contentId }
                 return@withContext items.filter { item ->
                     val contentId = when (val dest = item.navDestination) {
@@ -298,7 +298,12 @@ object ContentFilterExtensions {
         }
     }
 
-    private fun checkForAd(content: FilterableContent, preferences: SharedPreferences): Boolean = getAdBlockReason(content, preferences) != null
+    private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
+        is DataHolder.Answer -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
+        is DataHolder.Article -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
+        is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, true, true, true) != null
+        else -> false
+    }
 
     /**
      * 获取广告或付费内容的具体屏蔽原因

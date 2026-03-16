@@ -364,12 +364,6 @@ fun ContentFilterSettingsScreen(
                 }
             }
 
-            Text(
-                text = "3. 过滤广告和付费内容",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
             val blockZhihuAdPlatform = remember { mutableStateOf(preferences.getBoolean("blockZhihuAdPlatform", true)) }
             HighlightableSettingContainer(
                 settingKey = "blockZhihuAdPlatform",
