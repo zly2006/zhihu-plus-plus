@@ -44,10 +44,13 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.buildZhidaSummaryPayload
+import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
+import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
-import com.github.zly2006.zhihu.util.parseSummaryChunkFromSseData
+import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
@@ -486,7 +489,7 @@ class ArticleViewModel(
                     ArticleType.Answer -> "answer"
                     ArticleType.Article -> "article"
                 }
-                val payload = buildZhidaSummaryPayload(
+                val request = buildZhidaSummaryRequest(
                     contentId = article.id,
                     contentType = contentType,
                     title = title.ifBlank { "知乎内容" },
@@ -495,7 +498,7 @@ class ArticleViewModel(
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
                     header("x-xsrftoken", AccountData.data.cookies["_xsrf"] ?: "")
-                    setBody(payload)
+                    setBody(request)
                     signFetchRequest()
                 }
                 if (!response.status.isSuccess()) {
@@ -506,14 +509,63 @@ class ArticleViewModel(
                 }
 
                 val channel = response.bodyAsChannel()
-                while (true) {
-                    val line = channel.readLine() ?: break
-                    if (!line.startsWith("data:")) continue
-                    val chunk = parseSummaryChunkFromSseData(line.substringAfter("data:")) ?: continue
-                    aiSummaryText = mergeSummaryChunk(aiSummaryText, chunk)
+                var seenAnswerEvent = false
+                var streamEnded = false
+                var frameEvent: String? = null
+                val frameDataLines = mutableListOf<String>()
+
+                fun handlePayload(payload: ZhidaSummarySsePayload) {
+                    when (payload.event.lowercase()) {
+                        "answer" -> {
+                            val answer = decodeZhidaAnswerData(payload.data) ?: return
+                            if (answer.summary.isBlank()) return
+                            seenAnswerEvent = true
+                            aiSummaryText = if (answer.delta) {
+                                mergeSummaryChunk(aiSummaryText, answer.summary)
+                            } else {
+                                answer.summary
+                            }
+                        }
+                        "error" -> {
+                            val message = decodeZhidaStreamErrorMessage(payload.data) ?: "总结失败"
+                            throw IllegalStateException(message)
+                        }
+                        "end" -> streamEnded = true
+                        else -> Unit
+                    }
                 }
 
-                if (aiSummaryText.isBlank()) {
+                fun flushFrame() {
+                    if (frameDataLines.isEmpty()) return
+                    val joinedData = frameDataLines.joinToString("\n")
+                    frameDataLines.clear()
+                    val payload = parseZhidaSsePayload(joinedData, frameEvent) ?: return
+                    handlePayload(payload)
+                }
+
+                while (!streamEnded) {
+                    val line = channel.readLine() ?: break
+                    when {
+                        line.startsWith("event:") -> {
+                            frameEvent = line.substringAfter("event:").trim()
+                        }
+                        line.startsWith("data:") -> {
+                            frameDataLines += line.substringAfter("data:")
+                        }
+                        line.isBlank() -> {
+                            flushFrame()
+                            frameEvent = null
+                        }
+                        line.startsWith(":") -> Unit
+                        else -> Unit
+                    }
+                }
+
+                if (!streamEnded) {
+                    flushFrame()
+                }
+
+                if (!seenAnswerEvent || aiSummaryText.isBlank()) {
                     aiSummaryError = "未返回可显示的总结内容"
                 }
             } catch (e: CancellationException) {

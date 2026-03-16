@@ -64,7 +64,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -80,6 +79,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -476,8 +476,9 @@ fun ArticleActionsMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ArticleSummaryDialog(
+private fun ArticleSummarySheet(
     showDialog: Boolean,
     summaryText: String,
     loading: Boolean,
@@ -487,10 +488,18 @@ private fun ArticleSummaryDialog(
 ) {
     if (!showDialog) return
     val scrollState = rememberScrollState()
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    MyModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        title = { Text("总结本文") },
-        text = {
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            Text("总结本文", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(12.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -521,20 +530,24 @@ private fun ArticleSummaryDialog(
                     Text(errorMessage, color = MaterialTheme.colorScheme.error)
                 }
             }
-        },
-        confirmButton = {
-            if (!loading) {
-                TextButton(onClick = onRetryRequest) {
-                    Text("重新总结")
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("关闭")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (!loading) {
+                    TextButton(onClick = onRetryRequest) {
+                        Text("重新总结")
+                    }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text("关闭")
-            }
-        },
-    )
+        }
+    }
 }
 
 /**
@@ -1954,7 +1967,7 @@ fun ArticleScreen(
         onExportRequest = { showExportDialog = true },
     )
 
-    ArticleSummaryDialog(
+    ArticleSummarySheet(
         showDialog = showSummaryDialog,
         summaryText = viewModel.aiSummaryText,
         loading = viewModel.aiSummaryLoading,

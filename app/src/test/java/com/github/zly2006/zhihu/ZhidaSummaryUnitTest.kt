@@ -1,13 +1,17 @@
 package com.github.zly2006.zhihu
 
-import com.github.zly2006.zhihu.util.buildZhidaSummaryPayload
+import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
+import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
+import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.util.encodeZhidaAttachmentValue
-import com.github.zly2006.zhihu.util.parseSummaryChunkFromSseData
+import com.github.zly2006.zhihu.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.util.serializeZhidaSummaryRequest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -25,12 +29,13 @@ class ZhidaSummaryUnitTest {
     }
 
     @Test
-    fun testBuildPayload() {
-        val payload = buildZhidaSummaryPayload(
+    fun testBuildRequestSerialization() {
+        val request = buildZhidaSummaryRequest(
             contentId = 2016563638144623487,
             contentType = "answer",
             title = "测试标题",
         )
+        val payload = serializeZhidaSummaryRequest(request)
         val json = Json.parseToJsonElement(payload).jsonObject
 
         assertEquals("QT_CHAT", json["quiz_type"]!!.jsonPrimitive.content)
@@ -48,31 +53,55 @@ class ZhidaSummaryUnitTest {
     }
 
     @Test
-    fun testParseOpenAiStyleChunk() {
-        val chunk = parseSummaryChunkFromSseData("""{"choices":[{"delta":{"content":"你好"}}]}""")
-        assertEquals("你好", chunk)
+    fun testParseSseAnswerEvent() {
+        val payload = parseZhidaSsePayload(
+            """{"event":"Answer","data":{"status":1,"delta":true,"summary":"你好"}}""",
+        )
+        assertNotNull(payload)
+        assertEquals("Answer", payload!!.event)
+
+        val answer = decodeZhidaAnswerData(payload.data)
+        assertNotNull(answer)
+        assertEquals(1, answer!!.status)
+        assertEquals(true, answer.delta)
+        assertEquals("你好", answer.summary)
     }
 
     @Test
-    fun testParseNestedDataChunk() {
-        val chunk = parseSummaryChunkFromSseData("""{"data":{"content":"总结内容"}}""")
-        assertEquals("总结内容", chunk)
+    fun testParseSseWithFallbackEvent() {
+        val payload = parseZhidaSsePayload(
+            """{"status":1,"delta":true,"summary":"分段文本"}""",
+            fallbackEvent = "Answer",
+        )
+        assertNotNull(payload)
+        assertEquals("Answer", payload!!.event)
+        val answer = decodeZhidaAnswerData(payload.data)
+        assertNotNull(answer)
+        assertEquals(true, answer!!.delta)
+        assertEquals("分段文本", answer.summary)
     }
 
     @Test
-    fun testParseRecursiveFallbackChunk() {
-        val chunk = parseSummaryChunkFromSseData("""{"foo":{"bar":{"text":"递归提取"}}}""")
-        assertEquals("递归提取", chunk)
+    fun testParseSseAnswerEventWithStringData() {
+        val payload = parseZhidaSsePayload(
+            """{"event":"Answer","data":"{\"status\":1,\"delta\":false,\"summary\":\"最终文本\"}"}""",
+        )
+        assertNotNull(payload)
+        val answer = decodeZhidaAnswerData(payload!!.data)
+        assertNotNull(answer)
+        assertEquals(false, answer!!.delta)
+        assertEquals("最终文本", answer.summary)
     }
 
     @Test
-    fun testParseRawChunk() {
-        val chunk = parseSummaryChunkFromSseData("直接文本")
-        assertEquals("直接文本", chunk)
+    fun testDecodeSseErrorMessage() {
+        val payload = parseZhidaSsePayload("""{"event":"Error","data":{"error":{"message":"请求失败"}}}""")
+        assertNotNull(payload)
+        assertEquals("请求失败", decodeZhidaStreamErrorMessage(payload!!.data))
     }
 
     @Test
-    fun testParseDoneMarker() {
-        assertNull(parseSummaryChunkFromSseData("[DONE]"))
+    fun testParseSseDoneMarker() {
+        assertNull(parseZhidaSsePayload("[DONE]"))
     }
 }
