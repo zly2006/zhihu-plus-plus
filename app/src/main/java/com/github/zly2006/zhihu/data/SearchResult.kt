@@ -264,13 +264,11 @@ object StringOrListSerializer : KSerializer<List<String>?> {
 
     override fun deserialize(decoder: Decoder): List<String>? {
         require(decoder is JsonDecoder)
-        val element = decoder.decodeJsonElement()
-
-        return when {
-            element is JsonPrimitive && element.isString -> {
+        return when (val element = decoder.decodeJsonElement()) {
+            is JsonPrimitive if element.isString -> {
                 listOf(element.content)
             }
-            element is JsonArray -> {
+            is JsonArray -> {
                 element.map { it.jsonPrimitive.content }
             }
             else -> null
