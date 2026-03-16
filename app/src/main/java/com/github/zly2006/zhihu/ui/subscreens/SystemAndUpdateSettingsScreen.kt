@@ -19,7 +19,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +57,8 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SwitchSettingItem
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
 
@@ -144,6 +150,77 @@ fun SystemAndUpdateSettingsScreen(
                     preferences.edit { putBoolean("allowTelemetry", it) }
                 },
             )
+
+            var reminderExpanded by remember { mutableStateOf(false) }
+            var reminderIntervalMinutes by remember {
+                mutableStateOf(
+                    ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
+                        preferences.getInt(
+                            ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
+                            0,
+                        ),
+                    ),
+                )
+            }
+            val reminderOptions = listOf(
+                0 to "关闭",
+                15 to "每 15 分钟",
+                30 to "每 30 分钟",
+                60 to "每 1 小时",
+            )
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    "连续浏览提醒",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    "你已经看了 N 个小时知乎了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                ExposedDropdownMenuBox(
+                    expanded = reminderExpanded,
+                    onExpandedChange = { reminderExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = reminderOptions
+                            .find { it.first == reminderIntervalMinutes }
+                            ?.second ?: "关闭",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = reminderExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                            .fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = reminderExpanded,
+                        onDismissRequest = { reminderExpanded = false },
+                    ) {
+                        reminderOptions.forEach { (minutes, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    reminderIntervalMinutes = minutes
+                                    preferences.edit {
+                                        putInt(
+                                            ContinuousUsageReminderManager
+                                                .KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
+                                            minutes,
+                                        )
+                                    }
+                                    reminderExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
 
             val updateState by UpdateManager.updateState.collectAsState()
             val coroutineScope = rememberCoroutineScope()

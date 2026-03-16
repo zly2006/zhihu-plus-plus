@@ -113,15 +113,13 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val keySurveyDone = "survey_feedback_done"
     var installed3Hours by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (!preferences.getBoolean(keySurveyDone, false)) {
-            val installTime = try {
-                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-            } catch (_: Exception) {
-                System.currentTimeMillis()
-            }
-            if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
-                installed3Hours = true
-            }
+        val installTime = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+        } catch (_: Exception) {
+            System.currentTimeMillis()
+        }
+        if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
+            installed3Hours = true
         }
     }
 

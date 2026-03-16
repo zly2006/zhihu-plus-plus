@@ -40,6 +40,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
     private var isTtsInitialized = false
 
     lateinit var navController: NavHostController
+    private var continuousUsageReminderManager: ContinuousUsageReminderManager = ContinuousUsageReminderManager(this)
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -329,6 +331,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        continuousUsageReminderManager.onAppForeground()
+    }
+
+    override fun onStop() {
+        continuousUsageReminderManager.onAppBackground()
+        super.onStop()
+    }
+
     private fun initializeTtsSettings() {
         // 设置语言
         val result = textToSpeech?.setLanguage(Locale.CHINESE)
@@ -501,6 +513,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        continuousUsageReminderManager.onDestroy()
         textToSpeech?.shutdown()
         super.onDestroy()
     }
