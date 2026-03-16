@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -140,6 +141,47 @@ fun SystemAndUpdateSettingsScreen(
                 },
             )
 
+            val updateState by UpdateManager.updateState.collectAsState()
+            val coroutineScope = rememberCoroutineScope()
+
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        when (val updateState = updateState) {
+                            is UpdateState.NoUpdate, is UpdateState.Error -> {
+                                UpdateManager.checkForUpdate(context)
+                            }
+                            is UpdateState.UpdateAvailable -> {
+                                UpdateManager.downloadUpdate(context)
+                            }
+                            is UpdateState.Downloaded -> {
+                                UpdateManager.installUpdate(
+                                    context,
+                                    updateState.file,
+                                )
+                            }
+                            UpdateState.Latest -> {
+                                UpdateManager.updateState.value = UpdateState.NoUpdate
+                            }
+                            UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    when (val updateState = updateState) {
+                        is UpdateState.NoUpdate -> "检查更新"
+                        is UpdateState.Checking -> "检查中..."
+                        is UpdateState.Latest -> "已经是最新版本"
+                        is UpdateState.UpdateAvailable -> "下载更新 ${updateState.version}"
+                        is UpdateState.Downloading -> "下载中..."
+                        is UpdateState.Downloaded -> "安装更新"
+                        is UpdateState.Error -> "检查更新失败，点击重试"
+                    },
+                )
+            }
+
             var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
             SwitchSettingItem(
                 title = "允许发送遥测统计数据",
@@ -153,7 +195,7 @@ fun SystemAndUpdateSettingsScreen(
 
             var reminderExpanded by remember { mutableStateOf(false) }
             var reminderIntervalMinutes by remember {
-                mutableStateOf(
+                mutableIntStateOf(
                     ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
                         preferences.getInt(
                             ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
@@ -220,47 +262,6 @@ fun SystemAndUpdateSettingsScreen(
                         }
                     }
                 }
-            }
-
-            val updateState by UpdateManager.updateState.collectAsState()
-            val coroutineScope = rememberCoroutineScope()
-
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        when (val updateState = updateState) {
-                            is UpdateState.NoUpdate, is UpdateState.Error -> {
-                                UpdateManager.checkForUpdate(context)
-                            }
-                            is UpdateState.UpdateAvailable -> {
-                                UpdateManager.downloadUpdate(context)
-                            }
-                            is UpdateState.Downloaded -> {
-                                UpdateManager.installUpdate(
-                                    context,
-                                    updateState.file,
-                                )
-                            }
-                            UpdateState.Latest -> {
-                                UpdateManager.updateState.value = UpdateState.NoUpdate
-                            }
-                            UpdateState.Checking, UpdateState.Downloading, UpdateState.Latest -> { /* NOOP */ }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    when (val updateState = updateState) {
-                        is UpdateState.NoUpdate -> "检查更新"
-                        is UpdateState.Checking -> "检查中..."
-                        is UpdateState.Latest -> "已经是最新版本"
-                        is UpdateState.UpdateAvailable -> "下载更新 ${updateState.version}"
-                        is UpdateState.Downloading -> "下载中..."
-                        is UpdateState.Downloaded -> "安装更新"
-                        is UpdateState.Error -> "检查更新失败，点击重试"
-                    },
-                )
             }
 
             var releaseNotes: String? by remember { mutableStateOf(null) }
