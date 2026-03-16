@@ -88,7 +88,7 @@ android {
         freeCompilerArgs += "-Xdebug"
     }
     buildTypes {
-        val gitHash = gitHash()
+        val gitHash = gitHash(rootProject.projectDir)
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }

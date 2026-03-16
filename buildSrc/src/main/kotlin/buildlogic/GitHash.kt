@@ -5,14 +5,14 @@ import java.io.File
 private const val FALLBACK_HASH = "unknown"
 private const val SHORT_HASH_LENGTH = 7
 
-fun gitHash(): String {
-    val repoRoot = findRepositoryRoot() ?: return FALLBACK_HASH
+fun gitHash(projectRoot: File): String {
+    val repoRoot = findRepositoryRoot(projectRoot.absoluteFile) ?: return FALLBACK_HASH
     val gitDir = resolveGitDir(repoRoot) ?: return FALLBACK_HASH
     val fullHash = readHeadHash(gitDir) ?: return FALLBACK_HASH
     return fullHash.take(SHORT_HASH_LENGTH)
 }
 
-private fun findRepositoryRoot(start: File = File(".").absoluteFile): File? {
+private fun findRepositoryRoot(start: File): File? {
     var current: File? = start
     while (current != null) {
         val gitPath = File(current, ".git")
