@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -63,6 +64,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -75,6 +77,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.runtime.Composable
@@ -224,6 +227,7 @@ fun ArticleActionsMenu(
     context: Context,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
+    onSummaryRequest: () -> Unit,
     onExportRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -384,6 +388,17 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        MenuActionButton(
+            icon = Icons.AutoMirrored.Filled.Comment,
+            text = "总结本文",
+            onClick = {
+                onDismissRequest()
+                onSummaryRequest()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // 复制链接按钮
         MenuActionButton(
             icon = Icons.Filled.ContentCopy,
@@ -461,6 +476,67 @@ fun ArticleActionsMenu(
     }
 }
 
+@Composable
+private fun ArticleSummaryDialog(
+    showDialog: Boolean,
+    summaryText: String,
+    loading: Boolean,
+    errorMessage: String?,
+    onDismissRequest: () -> Unit,
+    onRetryRequest: () -> Unit,
+) {
+    if (!showDialog) return
+    val scrollState = rememberScrollState()
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text("总结本文") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(scrollState),
+            ) {
+                if (loading && summaryText.isBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("正在生成总结…")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (summaryText.isNotBlank()) {
+                    SelectionContainer {
+                        Text(summaryText)
+                    }
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    if (summaryText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            if (!loading) {
+                TextButton(onClick = onRetryRequest) {
+                    Text("重新总结")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text("关闭")
+            }
+        },
+    )
+}
+
 /**
  * 修复 noscript 标签中的图片加载问题。
  * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
@@ -532,6 +608,7 @@ fun ArticleScreen(
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -1870,7 +1947,25 @@ fun ArticleScreen(
         context = context,
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
+        onSummaryRequest = {
+            showSummaryDialog = true
+            viewModel.requestAiSummary(context)
+        },
         onExportRequest = { showExportDialog = true },
+    )
+
+    ArticleSummaryDialog(
+        showDialog = showSummaryDialog,
+        summaryText = viewModel.aiSummaryText,
+        loading = viewModel.aiSummaryLoading,
+        errorMessage = viewModel.aiSummaryError,
+        onDismissRequest = {
+            showSummaryDialog = false
+            viewModel.cancelAiSummary()
+        },
+        onRetryRequest = {
+            viewModel.requestAiSummary(context)
+        },
     )
 
     BackHandler(showActionsMenu) {
@@ -2150,6 +2245,7 @@ fun ArticleActionsMenuPreview() {
                 context = LocalContext.current,
                 showMenu = true,
                 onDismissRequest = {},
+                onSummaryRequest = {},
                 onExportRequest = {},
             )
         }
