@@ -342,6 +342,8 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    fun currentContinuousUsageDurationMs(): Long = continuousUsageReminderManager.currentElapsedForegroundMs()
+
     private fun initializeTtsSettings() {
         // 设置语言
         val result = textToSpeech?.setLanguage(Locale.CHINESE)

@@ -109,7 +109,7 @@ class ContinuousUsageReminderManager(
         preferences.edit { putLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, 0L) }
     }
 
-    private fun currentElapsedForegroundMs(): Long {
+    fun currentElapsedForegroundMs(): Long {
         val startElapsed = foregroundStartElapsedMs ?: return sessionAccumulatedForegroundMs
         return sessionAccumulatedForegroundMs + (SystemClock.elapsedRealtime() - startElapsed)
     }

@@ -40,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -62,6 +63,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -80,6 +82,16 @@ fun DeveloperSettingsScreen(
     }
     val dataState by AccountData.asState()
     val data = dataState
+    val mainActivity = context as? MainActivity
+    val continuousUsageDurationMs by produceState(
+        initialValue = mainActivity?.currentContinuousUsageDurationMs() ?: 0L,
+        key1 = mainActivity,
+    ) {
+        while (true) {
+            value = mainActivity?.currentContinuousUsageDurationMs() ?: 0L
+            delay(1_000L)
+        }
+    }
 
     var showCookieDialog by remember { mutableStateOf(false) }
     var showSignedRequestDialog by remember { mutableStateOf(false) }
@@ -146,6 +158,7 @@ fun DeveloperSettingsScreen(
                         PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text("省电模式：华为傻逼模式已开启")
                         else -> {}
                     }
+                    Text("连续使用时长：${formatContinuousUsageDuration(continuousUsageDurationMs)}")
 
                     Spacer(Modifier.height(16.dp))
                 }
@@ -183,7 +196,6 @@ fun DeveloperSettingsScreen(
             }
 
             // TTS引擎信息显示
-            val mainActivity = context as? MainActivity
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -476,5 +488,18 @@ fun DeveloperSettingsScreen(
                 }
             },
         )
+    }
+}
+
+private fun formatContinuousUsageDuration(durationMs: Long): String {
+    val safeDurationMs = durationMs.coerceAtLeast(0L)
+    val totalSeconds = safeDurationMs / 1_000L
+    val hours = totalSeconds / 3_600L
+    val minutes = (totalSeconds % 3_600L) / 60L
+    val seconds = totalSeconds % 60L
+    return when {
+        hours > 0 -> "${hours}小时${minutes}分${seconds}秒"
+        minutes > 0 -> "${minutes}分${seconds}秒"
+        else -> "${seconds}秒"
     }
 }
