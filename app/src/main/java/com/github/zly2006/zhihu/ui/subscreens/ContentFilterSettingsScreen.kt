@@ -364,6 +364,60 @@ fun ContentFilterSettingsScreen(
                 }
             }
 
+            val blockZhihuAdPlatform = remember { mutableStateOf(preferences.getBoolean("blockZhihuAdPlatform", true)) }
+            HighlightableSettingContainer(
+                settingKey = "blockZhihuAdPlatform",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["blockZhihuAdPlatform"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "屏蔽知乎广告平台内容",
+                    description = "匹配并屏蔽包含 xg.zhihu.com 的推广内容",
+                    checked = blockZhihuAdPlatform.value,
+                    onCheckedChange = {
+                        blockZhihuAdPlatform.value = it
+                        preferences.edit { putBoolean("blockZhihuAdPlatform", it) }
+                    },
+                )
+            }
+
+            val blockZhihuSchool = remember { mutableStateOf(preferences.getBoolean("blockZhihuSchool", true)) }
+            HighlightableSettingContainer(
+                settingKey = "blockZhihuSchool",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["blockZhihuSchool"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "屏蔽知乎学堂内容",
+                    description = "匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容",
+                    checked = blockZhihuSchool.value,
+                    onCheckedChange = {
+                        blockZhihuSchool.value = it
+                        preferences.edit { putBoolean("blockZhihuSchool", it) }
+                    },
+                )
+            }
+
+            val blockWeChatOfficialAccount = remember { mutableStateOf(preferences.getBoolean("blockWeChatOfficialAccount", true)) }
+            HighlightableSettingContainer(
+                settingKey = "blockWeChatOfficialAccount",
+                highlightedKey = setting,
+                onPositioned = { itemPositions["blockWeChatOfficialAccount"] = it },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SwitchSettingItem(
+                    title = "屏蔽微信公众号文章",
+                    description = "匹配并屏蔽包含 mp.weixin.qq.com 的外链文章",
+                    checked = blockWeChatOfficialAccount.value,
+                    onCheckedChange = {
+                        blockWeChatOfficialAccount.value = it
+                        preferences.edit { putBoolean("blockWeChatOfficialAccount", it) }
+                    },
+                )
+            }
+
             val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
             HighlightableSettingContainer(
                 settingKey = "reverseBlock",

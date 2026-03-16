@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalEncodingApi::class)
 
+import buildlogic.gitHash
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -9,7 +10,6 @@ plugins {
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
     id("kotlin-parcelize")
-    id("org.ajoberstar.grgit") version "5.3.3"
     id("com.google.devtools.ksp")
     id("org.jlleitschuh.gradle.ktlint")
 }
@@ -88,7 +88,7 @@ android {
         freeCompilerArgs += "-Xdebug"
     }
     buildTypes {
-        val gitHash = grgit.head().abbreviatedId
+        val gitHash = gitHash(rootProject.projectDir)
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }

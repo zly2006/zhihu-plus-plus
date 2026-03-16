@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -252,9 +253,9 @@ object ContentFilterExtensions {
                 }
             }
             val nonAdContents = filterableContents.filter { content ->
-                val isAd = checkForAd(content)
-                if (isAd) adBlockedContents.add(content to "广告或付费内容")
-                !isAd
+                val blockReason = getAdBlockReason(content, preferences)
+                if (blockReason != null) adBlockedContents.add(content to blockReason)
+                blockReason == null
             }
 
             // 4. 应用关键词和NLP过滤
@@ -297,22 +298,51 @@ object ContentFilterExtensions {
         }
     }
 
+    private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
+        is DataHolder.Answer -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
+        is DataHolder.Article -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
+        is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, true, true, true) != null
+        else -> false
+    }
+
     /**
-     * 检测内容是否为广告或付费内容
+     * 获取广告或付费内容的具体屏蔽原因
      */
-    private fun checkForAd(content: FilterableContent): Boolean {
-        val blocklist = listOf(
-            "xg.zhihu.com", // 知乎广告平台域名，常见于广告内容中
-            "d.zhihu.com", // 知乎学堂
-            "data-edu-card-id", // 知乎学堂
-            "mp.weixin.qq.com", // 微信公众号文章链接，常见于被推广的内容中
-        )
+    private fun getAdBlockReason(content: FilterableContent, preferences: SharedPreferences): String? {
+        val blockZhihuAdPlatform = preferences.getBoolean("blockZhihuAdPlatform", true)
+        val blockZhihuSchool = preferences.getBoolean("blockZhihuSchool", true)
+        val blockWeChatOfficialAccount = preferences.getBoolean("blockWeChatOfficialAccount", true)
+
         return when (val raw = content.raw) {
-            is DataHolder.Answer -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
-            is DataHolder.Article -> blocklist.any { blockWord -> blockWord in raw.content } || raw.paidInfo != null
-            is DataHolder.Pin -> blocklist.any { blockWord -> blockWord in raw.contentHtml }
-            else -> false
+            is DataHolder.Answer -> {
+                if (raw.paidInfo != null) {
+                    "知乎盐选付费内容"
+                } else {
+                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+                }
+            }
+            is DataHolder.Article -> {
+                if (raw.paidInfo != null) {
+                    "知乎盐选付费内容"
+                } else {
+                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+                }
+            }
+            is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+            else -> null
         }
+    }
+
+    private fun getLinkBasedAdReason(
+        content: String,
+        blockZhihuAdPlatform: Boolean,
+        blockZhihuSchool: Boolean,
+        blockWeChatOfficialAccount: Boolean,
+    ): String? {
+        if (blockZhihuAdPlatform && "xg.zhihu.com" in content) return "知乎广告平台内容"
+        if (blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content)) return "知乎学堂内容"
+        if (blockWeChatOfficialAccount && "mp.weixin.qq.com" in content) return "微信公众号文章"
+        return null
     }
 
     /**
