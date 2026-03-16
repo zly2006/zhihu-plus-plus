@@ -110,7 +110,7 @@ class MainActivity : ComponentActivity() {
     private var isTtsInitialized = false
 
     lateinit var navController: NavHostController
-    private var continuousUsageReminderManager: ContinuousUsageReminderManager = ContinuousUsageReminderManager(this)
+    private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -141,6 +141,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
         enableEdgeToEdgeCompat()
+        continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
         ThemeManager.initialize(this)
