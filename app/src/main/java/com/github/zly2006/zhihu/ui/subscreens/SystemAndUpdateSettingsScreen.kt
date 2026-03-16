@@ -170,7 +170,7 @@ fun SystemAndUpdateSettingsScreen(
             )
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
                 Text(
-                    "连续浏览提醒",
+                    "防沉迷提醒",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
