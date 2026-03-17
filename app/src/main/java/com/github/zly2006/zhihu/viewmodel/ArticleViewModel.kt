@@ -44,19 +44,35 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
+import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
+import com.github.zly2006.zhihu.util.mergeSummaryChunk
+import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
+import io.ktor.client.request.accept
+import io.ktor.client.request.header
+import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.readLine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
@@ -87,6 +103,13 @@ class ArticleViewModel(
     var updatedAt by mutableLongStateOf(0L)
     var createdAt by mutableLongStateOf(0L)
     var ipInfo by mutableStateOf<String?>(null)
+    var aiSummaryText by mutableStateOf("")
+        private set
+    var aiSummaryError by mutableStateOf<String?>(null)
+        private set
+    var aiSummaryLoading by mutableStateOf(false)
+        private set
+    private var aiSummaryJob: Job? = null
 
     // scroll fix
     var rememberedScrollY = MutableLiveData(0)
@@ -450,6 +473,127 @@ class ArticleViewModel(
             }
         }
     }
+
+    fun requestAiSummary(context: Context) {
+        if (httpClient == null) {
+            aiSummaryError = "未初始化网络客户端"
+            return
+        }
+        aiSummaryJob?.cancel()
+        aiSummaryJob = viewModelScope.launch {
+            aiSummaryLoading = true
+            aiSummaryError = null
+            aiSummaryText = ""
+            try {
+                val contentType = when (article.type) {
+                    ArticleType.Answer -> "answer"
+                    ArticleType.Article -> "article"
+                }
+                val request = buildZhidaSummaryRequest(
+                    contentId = article.id,
+                    contentType = contentType,
+                    title = title.ifBlank { "知乎内容" },
+                )
+                val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
+                    accept(ContentType.Text.EventStream)
+                    contentType(ContentType.Application.Json)
+                    header("x-xsrftoken", AccountData.data.cookies["_xsrf"] ?: "")
+                    setBody(request)
+                    signFetchRequest()
+                }
+                if (!response.status.isSuccess()) {
+                    val errorBody = response.bodyAsText()
+                    val status = response.status.value
+                    val message = parseSummaryErrorMessage(errorBody)
+                    throw IllegalStateException(message ?: "总结请求失败（HTTP $status）")
+                }
+
+                val channel = response.bodyAsChannel()
+                var seenAnswerEvent = false
+                var streamEnded = false
+                var frameEvent: String? = null
+                val frameDataLines = mutableListOf<String>()
+
+                fun handlePayload(payload: ZhidaSummarySsePayload) {
+                    when (payload.event.lowercase()) {
+                        "answer" -> {
+                            val answer = decodeZhidaAnswerData(payload.data) ?: return
+                            if (answer.summary.isBlank()) return
+                            seenAnswerEvent = true
+                            aiSummaryText = if (answer.delta) {
+                                mergeSummaryChunk(aiSummaryText, answer.summary)
+                            } else {
+                                answer.summary
+                            }
+                        }
+                        "error" -> {
+                            val message = decodeZhidaStreamErrorMessage(payload.data) ?: "总结失败"
+                            throw IllegalStateException(message)
+                        }
+                        "end" -> streamEnded = true
+                        else -> Unit
+                    }
+                }
+
+                fun flushFrame() {
+                    if (frameDataLines.isEmpty()) return
+                    val joinedData = frameDataLines.joinToString("\n")
+                    frameDataLines.clear()
+                    val payload = parseZhidaSsePayload(joinedData, frameEvent) ?: return
+                    handlePayload(payload)
+                }
+
+                while (!streamEnded) {
+                    val line = channel.readLine() ?: break
+                    when {
+                        line.startsWith("event:") -> {
+                            frameEvent = line.substringAfter("event:").trim()
+                        }
+                        line.startsWith("data:") -> {
+                            frameDataLines += line.substringAfter("data:")
+                        }
+                        line.isBlank() -> {
+                            flushFrame()
+                            frameEvent = null
+                        }
+                        line.startsWith(":") -> Unit
+                        else -> Unit
+                    }
+                }
+
+                if (!streamEnded) {
+                    flushFrame()
+                }
+
+                if (!seenAnswerEvent || aiSummaryText.isBlank()) {
+                    aiSummaryError = "未返回可显示的总结内容"
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to summarize article", e)
+                aiSummaryError = e.message ?: "总结失败"
+            } finally {
+                aiSummaryLoading = false
+            }
+        }
+    }
+
+    fun cancelAiSummary() {
+        aiSummaryJob?.cancel()
+        aiSummaryJob = null
+        aiSummaryLoading = false
+    }
+
+    private fun parseSummaryErrorMessage(responseBody: String): String? = runCatching {
+        val json = AccountData.json.parseToJsonElement(responseBody).jsonObject
+        json["error"]
+            ?.jsonObject
+            ?.get("message")
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?: json["message"]?.jsonPrimitive?.contentOrNull
+    }.getOrNull()
 
     private val collectionOrder = mutableListOf<String>()
 
