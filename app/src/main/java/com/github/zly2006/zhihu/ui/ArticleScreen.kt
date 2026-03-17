@@ -496,15 +496,13 @@ private fun ArticleSummarySheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(scrollState),
         ) {
             Text("总结本文", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(12.dp))
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 360.dp)
-                    .verticalScroll(scrollState),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 if (loading && summaryText.isBlank()) {
                     Row(
@@ -512,7 +510,7 @@ private fun ArticleSummarySheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("正在生成总结…")
+                        Text("正在生成总结...")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
