@@ -75,8 +75,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -224,6 +226,7 @@ fun ArticleActionsMenu(
     context: Context,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
+    onSummaryRequest: () -> Unit,
     onExportRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -384,6 +387,17 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        MenuActionButton(
+            icon = Icons.AutoMirrored.Filled.Comment,
+            text = "总结本文",
+            onClick = {
+                onDismissRequest()
+                onSummaryRequest()
+            },
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // 复制链接按钮
         MenuActionButton(
             icon = Icons.Filled.ContentCopy,
@@ -461,6 +475,78 @@ fun ArticleActionsMenu(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ArticleSummarySheet(
+    showDialog: Boolean,
+    summaryText: String,
+    loading: Boolean,
+    errorMessage: String?,
+    onDismissRequest: () -> Unit,
+    onRetryRequest: () -> Unit,
+) {
+    if (!showDialog) return
+    val scrollState = rememberScrollState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    MyModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+        ) {
+            Text("总结本文", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (loading && summaryText.isBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("正在生成总结...")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (summaryText.isNotBlank()) {
+                    SelectionContainer {
+                        Text(summaryText)
+                    }
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    if (summaryText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("关闭")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (!loading) {
+                    TextButton(onClick = onRetryRequest) {
+                        Text("重新总结")
+                    }
+                }
+            }
+        }
+    }
+}
+
 /**
  * 修复 noscript 标签中的图片加载问题。
  * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
@@ -532,6 +618,7 @@ fun ArticleScreen(
     var showComments by remember { mutableStateOf(false) }
     var showCollectionDialog by remember { mutableStateOf(false) }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -1870,7 +1957,25 @@ fun ArticleScreen(
         context = context,
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
+        onSummaryRequest = {
+            showSummaryDialog = true
+            viewModel.requestAiSummary(context)
+        },
         onExportRequest = { showExportDialog = true },
+    )
+
+    ArticleSummarySheet(
+        showDialog = showSummaryDialog,
+        summaryText = viewModel.aiSummaryText,
+        loading = viewModel.aiSummaryLoading,
+        errorMessage = viewModel.aiSummaryError,
+        onDismissRequest = {
+            showSummaryDialog = false
+            viewModel.cancelAiSummary()
+        },
+        onRetryRequest = {
+            viewModel.requestAiSummary(context)
+        },
     )
 
     BackHandler(showActionsMenu) {
@@ -2150,6 +2255,7 @@ fun ArticleActionsMenuPreview() {
                 context = LocalContext.current,
                 showMenu = true,
                 onDismissRequest = {},
+                onSummaryRequest = {},
                 onExportRequest = {},
             )
         }
