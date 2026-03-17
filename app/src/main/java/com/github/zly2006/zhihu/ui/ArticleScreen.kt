@@ -1261,7 +1261,12 @@ fun ArticleScreen(
                             IconButton(onClick = {
                                 val activity = context as? MainActivity
                                 activity?.navController?.popBackStack()
-                            }) {
+                                },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                             }
                         },
@@ -1269,10 +1274,6 @@ fun ArticleScreen(
                             if (useDuo3ArticleActions) {
                                 IconButton(
                                     onClick = { showActionsMenu = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
                                 ) {
                                     Icon(
                                         Icons.Filled.MoreVert,
@@ -1350,6 +1351,10 @@ fun ArticleScreen(
                             }
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
+                        colors = TopAppBarDefaults.topAppBarColors().copy(
+                            navigationIconContentColor = TopAppBarDefaults.topAppBarColors().actionIconContentColor,
+                            actionIconContentColor = TopAppBarDefaults.topAppBarColors().navigationIconContentColor,
+                        )
                     )
                 }
             },

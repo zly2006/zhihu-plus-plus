@@ -186,6 +186,20 @@ fun SystemAndUpdateSettingsScreen(
                 )
             }
 
+            if (updateState is UpdateState.UpdateAvailable) {
+                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        val state = updateState as UpdateState.UpdateAvailable
+                        UpdateManager.skipVersion(context, state.version.toString())
+                        UpdateManager.updateState.value = UpdateState.Latest
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("跳过此版本")
+                }
+            }
+
             var releaseNotes: String? by remember { mutableStateOf(null) }
             LaunchedEffect(updateState) {
                 val updateState = updateState
