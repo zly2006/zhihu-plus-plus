@@ -1,7 +1,0 @@
-Zhihu++ is a 3rd-party Zhihu client for Android.
-
-It removes ads, promoted posts, and low-quality content to keep reading focused.
-You can choose local recommendation mode or server recommendation mode.
-The local mode runs on-device and gives you direct control over filtering.
-
-Key features include keyword and regex blocklists, user and topic filters, answer and article reading, comments, notifications, history, and favorites.
