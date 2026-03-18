@@ -276,7 +276,7 @@ fun SystemAndUpdateSettingsScreen(
 
             SettingItemGroup(
                 title = "交流 & 闲聊",
-                footer = { Text("代码和功能反馈请前往GitHub。下面的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") }
+                footer = { Text("代码和功能反馈请前往GitHub。上边的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") }
             ) {
                 SettingItem(
                     title = { Text("Discord 频道") },
