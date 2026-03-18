@@ -70,13 +70,7 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 FeedCard(
                     item,
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

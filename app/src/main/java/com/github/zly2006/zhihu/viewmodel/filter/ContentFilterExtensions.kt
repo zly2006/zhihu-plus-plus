@@ -6,6 +6,7 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
@@ -149,8 +150,10 @@ object ContentFilterExtensions {
     }
 
     /**
-     * 对FeedDisplayItem列表应用内容过滤
-     * 包括广告检测、关键词屏蔽、NLP语义屏蔽和用户屏蔽
+     * 对FeedDisplayItem列表应用内容过滤。
+     * 包括广告检测、关键词屏蔽、NLP语义屏蔽和用户屏蔽。
+     *
+     * 在吃💩模式下，只会返回广告。
      */
     suspend fun applyContentFilterToDisplayItems(
         context: Context,
@@ -250,7 +253,7 @@ object ContentFilterExtensions {
                         else -> item.navDestination.hashCode().toString()
                     }
                     contentId in ids
-                }
+                } + items.filter { it.feed is AdvertisementFeed }
             }
             val nonAdContents = filterableContents.filter { content ->
                 val blockReason = getAdBlockReason(content, preferences)

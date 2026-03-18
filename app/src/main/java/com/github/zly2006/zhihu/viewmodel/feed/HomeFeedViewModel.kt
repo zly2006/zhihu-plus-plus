@@ -52,7 +52,6 @@ class HomeFeedViewModel :
         viewModelScope.launch {
             val newItems = data
                 .flatten()
-                .filter { feed -> feed.target?.navDestination != null }
                 .map { feed -> createDisplayItem(context, feed) }
 
             // 立即展示所有内容，不等待过滤

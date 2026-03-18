@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.ui.components
 
 import android.content.Context.MODE_PRIVATE
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -83,10 +85,14 @@ fun FeedCard(
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
-    onClick: BaseFeedViewModel.FeedDisplayItem.() -> Unit,
+    /**
+     * Default onClick: navigate to feed detail if possible, otherwise do nothing
+     */
+    onClick: (BaseFeedViewModel.FeedDisplayItem.() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
+    val navigator = LocalNavigator.current
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
@@ -107,6 +113,21 @@ fun FeedCard(
     }
     val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
+    val onClick = onClick ?: {
+        this.navDestination?.let {
+            navigator.onNavigate(it)
+        } ?: run {
+            if (this.content?.startsWith("http") == true) {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW).apply {
+                        data = android.net.Uri.parse(this@run.content)
+                    },
+                )
+            } else {
+                Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -135,7 +156,9 @@ fun FeedCard(
 
     if (feedCardStyle == "divider") {
         Column(
-            modifier = modifier.fillMaxWidth().heightIn(max = maxHeight),
+            modifier = modifier
+                .fillMaxWidth()
+                .heightIn(max = maxHeight),
         ) {
             Column(
                 modifier = Modifier
@@ -454,7 +477,9 @@ private fun FeedCardContent(
             }
             if (item.details.isNotEmpty() || (item.avatarSrc != null && item.authorName != null)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (item.avatarSrc != null && item.authorName != null) {
@@ -466,7 +491,9 @@ private fun FeedCardContent(
                                 AsyncImage(
                                     model = it,
                                     contentDescription = "Avatar",
-                                    modifier = Modifier.clip(CircleShape).size(24.dp),
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .size(24.dp),
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
@@ -517,7 +544,9 @@ private fun FeedCardContent(
                     AsyncImage(
                         model = it,
                         contentDescription = "Avatar",
-                        modifier = Modifier.clip(CircleShape).size(20.dp),
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .size(20.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                 }

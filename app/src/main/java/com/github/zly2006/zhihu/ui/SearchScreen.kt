@@ -315,15 +315,7 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(
-                            item,
-                        ) {
-                            if (navDestination != null) {
-                                navigator.onNavigate(navDestination)
-                            } else {
-                                Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        FeedCard(item)
                     }
 
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

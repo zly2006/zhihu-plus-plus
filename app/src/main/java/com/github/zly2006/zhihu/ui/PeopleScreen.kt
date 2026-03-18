@@ -581,12 +581,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) {
-                            FeedCard(
-                                it,
-                                horizontalPadding = 4.dp,
-                            ) {
-                                it.navDestination?.let(navigator.onNavigate)
-                            }
+                            FeedCard(it, horizontalPadding = 4.dp)
                         }
                     }
 

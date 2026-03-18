@@ -332,12 +332,7 @@ fun QuestionScreen(
                     }
                 },
             ) { item ->
-                FeedCard(
-                    item,
-                ) {
-//                    feed?.let { DataHolder.putFeed(it) }
-                    navDestination?.let { navigator.onNavigate(it) }
-                }
+                FeedCard(item)
             }
         }
     }

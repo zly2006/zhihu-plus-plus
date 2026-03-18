@@ -143,11 +143,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
             ) { item ->
                 FeedCard(
                     item,
-                ) {
-                    item.navDestination?.let {
-                        navigator.onNavigate(it)
-                    }
-                }
+                )
             }
         }
     }

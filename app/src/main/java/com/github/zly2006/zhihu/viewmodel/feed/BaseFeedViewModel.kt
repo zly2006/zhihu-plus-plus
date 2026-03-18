@@ -75,71 +75,91 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         isPullToRefresh = false
     }
 
-    open fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem = when (feed) {
-        is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> {
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val enableQualityFilter = preferences.getBoolean("enableQualityFilter", true)
+    open fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return when (feed) {
+            is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> {
+                val enableQualityFilter = preferences.getBoolean("enableQualityFilter", true)
+                val eatShit = preferences.getBoolean("reverseBlock", false)
 
-            val filterReason = if (!enableQualityFilter) null else feed.target?.filterReason()
+                val filterReason = if (!enableQualityFilter || eatShit) null else feed.target?.filterReason()
 
-            if (filterReason != null) {
-                FeedDisplayItem(
-                    title = "已屏蔽",
-                    summary = filterReason,
-                    details = feed.target!!.detailsText,
-                    feed = feed,
-                    isFiltered = true,
-                )
-            } else {
-                when (feed.target) {
-                    is Feed.AnswerTarget,
-                    is Feed.ArticleTarget,
-                    is Feed.QuestionTarget,
-                    -> {
-                        FeedDisplayItem(
-                            title = feed.target!!.title,
-                            summary = feed.target!!.excerpt,
-                            details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
-                                .joinToString(" · "),
-                            avatarSrc = feed.target?.author?.avatarUrl,
-                            authorName = feed.target?.author?.name,
-                            feed = feed,
-                        )
-                    }
+                if (filterReason != null) {
+                    FeedDisplayItem(
+                        title = "已屏蔽",
+                        summary = filterReason,
+                        details = feed.target!!.detailsText,
+                        feed = feed,
+                        isFiltered = true,
+                    )
+                } else {
+                    when (feed.target) {
+                        is Feed.AnswerTarget,
+                        is Feed.ArticleTarget,
+                        is Feed.QuestionTarget,
+                        -> {
+                            FeedDisplayItem(
+                                title = feed.target!!.title,
+                                summary = feed.target!!.excerpt,
+                                details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
+                                    .joinToString(" · "),
+                                avatarSrc = feed.target?.author?.avatarUrl,
+                                authorName = feed.target?.author?.name,
+                                feed = feed,
+                            )
+                        }
 
-                    is Feed.PinTarget -> {
-                        FeedDisplayItem(
-                            title = feed.target!!.author!!.name + "的想法",
-                            summary = feed.target!!.excerpt,
-                            details = feed.target!!.detailsText,
-                            avatarSrc = feed.target?.author?.avatarUrl,
-                            authorName = feed.target?.author?.name,
-                            feed = feed,
-                        )
-                    }
+                        is Feed.PinTarget -> {
+                            FeedDisplayItem(
+                                title = feed.target!!.author!!.name + "的想法",
+                                summary = feed.target!!.excerpt,
+                                details = feed.target!!.detailsText,
+                                avatarSrc = feed.target?.author?.avatarUrl,
+                                authorName = feed.target?.author?.name,
+                                feed = feed,
+                            )
+                        }
 
-                    else -> {
-                        FeedDisplayItem(
-                            title = feed.target?.javaClass?.simpleName ?: "广告",
-                            summary = "Not Implemented",
-                            details = feed.target?.detailsText ?: "广告",
-                            feed = feed,
-                        )
+                        else -> {
+                            FeedDisplayItem(
+                                title = feed.target?.javaClass?.simpleName ?: "广告",
+                                summary = "Not Implemented",
+                                details = feed.target?.detailsText ?: "广告",
+                                feed = feed,
+                            )
+                        }
                     }
                 }
             }
+
+            is AdvertisementFeed -> {
+                FeedDisplayItem(
+                    title = if (preferences.getBoolean("reverseBlock", false)) {
+                        feed.ad.creatives
+                            .firstOrNull()
+                            ?.title ?: ""
+                    } else {
+                        ""
+                    },
+                    summary = if (preferences.getBoolean("reverseBlock", false)) {
+                        feed.ad.creatives
+                            .firstOrNull()
+                            ?.description ?: feed.actionText
+                    } else {
+                        feed.actionText
+                    },
+                    details = feed.actionText + "广告",
+                    feed = feed,
+                    isFiltered = !preferences.getBoolean("reverseBlock", false),
+                    content = feed.ad.creatives
+                        .firstOrNull()
+                        ?.landingUrl,
+                )
+            }
+
+            is GroupFeed -> error("GroupFeed should be flatten") // GroupFeed will be handled in the UI
+            is QuestionFeedCard -> TODO()
         }
-
-        is AdvertisementFeed -> FeedDisplayItem(
-            title = "已屏蔽",
-            summary = feed.actionText,
-            details = "广告",
-            feed = null,
-            isFiltered = true,
-        )
-
-        is GroupFeed -> error("GroupFeed should be flatten") // GroupFeed will be handled in the UI
-        is QuestionFeedCard -> TODO()
     }
 
     fun addDisplayItems(newItems: List<FeedDisplayItem>) {

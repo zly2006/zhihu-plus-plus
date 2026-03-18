@@ -245,13 +245,7 @@ fun FollowRecommendScreen() {
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             if (showRefreshFab) {
@@ -343,13 +337,7 @@ fun FollowDynamicScreen() {
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             if (showRefreshFab) {

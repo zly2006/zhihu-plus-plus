@@ -345,7 +345,27 @@ val Feed.actionText: String?
 @SerialName("feed_advert")
 class AdvertisementFeed(
     val actionText: String = "",
-) : Feed
+    val ad: Ad,
+) : Feed {
+    @Serializable
+    class ExtInfo(
+        val title: String,
+        val description: String,
+        val thumbnail: String? = null,
+    )
+
+    @Serializable
+    class Ad(
+        val creatives: List<Creative> = emptyList(),
+    )
+
+    @Serializable
+    class Creative(
+        val landingUrl: String,
+        val title: String,
+        val description: String,
+    )
+}
 
 @Serializable
 @SerialName("feed_group")

@@ -36,11 +36,7 @@ fun HistoryScreen(
         ) { item ->
             FeedCard(
                 item,
-            ) {
-                navDestination?.let {
-                    navigator.onNavigate(it)
-                }
-            }
+            )
         }
     }
 }
