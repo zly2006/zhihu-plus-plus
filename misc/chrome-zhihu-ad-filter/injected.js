@@ -119,6 +119,7 @@
       target?.excerpt_title,
       target?.excerptTitle,
       item?.title,
+      item?.ext_info?.title,
       item?.action_text,
       item?.actionText,
     ];
