@@ -168,11 +168,7 @@ fun FeedCard(
             Card(
                 colors = if (duo3CardAppearance) {
                     CardDefaults.cardColors().copy(
-                        containerColor = if (ThemeManager.isDarkTheme()) {
-                            MaterialTheme.colorScheme.surfaceContainerHigh
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
+                        containerColor = MaterialTheme.colorScheme.surfaceBright
                     )
                 } else {
                     CardDefaults.cardColors()

@@ -284,12 +284,6 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
 
-    val containerColor =
-        if (ThemeManager.isDarkTheme()) {
-            MaterialTheme.colorScheme.background
-        } else {
-            MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        }
 
     Scaffold(
         modifier = if (duo3HomeAccount) {
@@ -300,12 +294,12 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                 .fillMaxSize()
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
-        containerColor = if (duo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
+        containerColor = if (duo3HomeAccount) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.background,
         topBar = {
             if (duo3HomeAccount) {
                 Box {
                     Surface(
-                        color = containerColor,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier
                             .height(
                                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
@@ -323,7 +317,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                                 .weight(1f)
                                 .height(64.dp),
                             shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             onClick = {
                                 navigator.onNavigate(
                                     Search(query = ""),
@@ -450,6 +444,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         if (duo3HomeAccount && showAccountBottomSheet) {
             MyModalBottomSheet(
                 onDismissRequest = { showAccountBottomSheet = false },
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),

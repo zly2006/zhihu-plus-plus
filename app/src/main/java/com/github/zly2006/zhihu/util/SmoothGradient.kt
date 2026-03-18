@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.ui.components
+package com.github.zly2006.zhihu.util
 
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutLinearInEasing

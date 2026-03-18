@@ -137,7 +137,7 @@ import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.ui.components.smoothGradient
+import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -1242,7 +1242,7 @@ fun ArticleScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1352,8 +1352,8 @@ fun ArticleScreen(
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
-                            navigationIconContentColor = TopAppBarDefaults.topAppBarColors().actionIconContentColor,
-                            actionIconContentColor = TopAppBarDefaults.topAppBarColors().navigationIconContentColor,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
                     )
                 }
@@ -1787,11 +1787,11 @@ fun ArticleScreen(
                 }
                 // Status bar gradient overlay (duo3 only — not needed in master path)
                 val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                val surfaceColor = MaterialTheme.colorScheme.surface
+                val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(statusBarHeight + 8.dp)
+                        .height(statusBarHeight + 16.dp)
                         .background(
                             Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
                         )
