@@ -421,10 +421,10 @@ fun AccountSettingScreen(
 
                 SettingItem(
                     title = { Text("开源协议") },
-                    description = { Text("MIT License") },
+                    description = { Text("AGPL") },
                     icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE.md".toUri())
+                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE".toUri())
                         context.startActivity(intent)
                     },
                     endAction = {
