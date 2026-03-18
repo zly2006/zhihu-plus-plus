@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ArrowOutward
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
@@ -261,7 +262,11 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.BookmarkBorder, null)
+                            Icon(
+                                Icons.Default.Bookmark,
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "收藏夹",
@@ -282,7 +287,11 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.Notifications, null)
+                            Icon(
+                                Icons.Default.Notifications,
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "通知",
@@ -303,7 +312,11 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.History, null)
+                            Icon(
+                                Icons.Default.History,
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "浏览历史",
