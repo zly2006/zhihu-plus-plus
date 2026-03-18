@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Zhihu Feed Ad Filter",
+  "description": "Filters ad-like entries from Zhihu topstory recommend API responses.",
+  "version": "1.0.0",
+  "content_scripts": [
+    {
+      "matches": ["https://www.zhihu.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["https://www.zhihu.com/*"]
+    }
+  ]
+}
