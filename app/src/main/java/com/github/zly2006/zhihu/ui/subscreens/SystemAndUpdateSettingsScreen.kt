@@ -27,7 +27,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -365,11 +364,11 @@ fun SystemAndUpdateSettingsScreen(
             )
 
             SettingItemGroup(
-                title = "防沉迷"
+                title = "防沉迷",
             ) {
                 SettingItem(
-                    title = {Text("防沉迷提醒")},
-                    description = {Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。")},
+                    title = { Text("防沉迷提醒") },
+                    description = { Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。") },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = reminderExpanded,
@@ -411,7 +410,7 @@ fun SystemAndUpdateSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
             }
 

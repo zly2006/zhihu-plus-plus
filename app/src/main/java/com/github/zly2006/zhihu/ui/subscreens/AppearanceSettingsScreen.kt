@@ -750,16 +750,16 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
-            SettingItemWithSwitch(
-                title = { Text("点击底部导航栏回到顶部/刷新") },
-                description = { Text("点击底部导航栏当前页面按钮回到顶部，已在顶部时则刷新页面。双击可直接刷新。") },
-                checked = tapToRefresh.value,
-                onCheckedChange = {
-                    tapToRefresh.value = it
-                    preferences.edit { putBoolean("bottomBarTapScrollToTop", it) }
-                },
-            )
+                val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("点击底部导航栏回到顶部/刷新") },
+                    description = { Text("点击底部导航栏当前页面按钮回到顶部，已在顶部时则刷新页面。双击可直接刷新。") },
+                    checked = tapToRefresh.value,
+                    onCheckedChange = {
+                        tapToRefresh.value = it
+                        preferences.edit { putBoolean("bottomBarTapScrollToTop", it) }
+                    },
+                )
 
                 val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
                 SettingItemWithSwitch(

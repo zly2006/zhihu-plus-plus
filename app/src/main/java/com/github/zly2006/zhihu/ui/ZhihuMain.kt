@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -88,6 +89,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.TopLevelDestination
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -282,7 +284,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                                 alwaysShowLabel = duo3NavStyle,
                                 colors = if (duo3NavStyle) {
-                                    NavigationBarItemDefaults.colors()
+                                    if (!ThemeManager.isDarkTheme()) {
+                                        NavigationBarItemDefaults.colors().copy(
+                                            selectedIndicatorColor =
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                                    .copy(alpha = 0.92f)
+                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
+                                        )
+                                    } else {
+                                        NavigationBarItemDefaults.colors()
+                                    }
                                 } else {
                                     NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color(0xff66ccff),
