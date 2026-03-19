@@ -156,7 +156,7 @@ fun SystemAndUpdateSettingsScreen(
                                 shape = MaterialTheme.shapes.small,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Column(modifier = Modifier.padding(12.dp,8.dp)) {
+                                Column(modifier = Modifier.padding(12.dp, 8.dp)) {
                                     Text(
                                         "更新内容",
                                         style = MaterialTheme.typography.titleMedium,
@@ -197,7 +197,7 @@ fun SystemAndUpdateSettingsScreen(
                                         Icon(
                                             Icons.Default.ArrowOutward,
                                             null,
-                                            Modifier.size(20.dp)
+                                            Modifier.size(20.dp),
                                         )
                                     }
                                 }
@@ -242,7 +242,7 @@ fun SystemAndUpdateSettingsScreen(
                                         is UpdateState.Downloaded -> "安装更新"
                                         else -> "下载更新"
                                     },
-                                    Modifier.padding(0.dp, 4.dp)
+                                    Modifier.padding(0.dp, 4.dp),
                                 )
                             }
                         }
@@ -332,7 +332,7 @@ fun SystemAndUpdateSettingsScreen(
                             is UpdateState.Error -> "检查更新失败，点击重试"
                             else -> ""
                         },
-                        Modifier.padding(0.dp, 4.dp)
+                        Modifier.padding(0.dp, 4.dp),
                     )
                 }
             }
