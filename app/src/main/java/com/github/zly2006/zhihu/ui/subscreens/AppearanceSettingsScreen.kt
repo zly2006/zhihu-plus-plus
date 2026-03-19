@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,11 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.ButtonDefaults
@@ -38,17 +35,14 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -58,9 +52,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
@@ -72,7 +66,6 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import androidx.core.net.toUri
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.Daily
 import com.github.zly2006.zhihu.Follow
@@ -84,13 +77,10 @@ import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
-import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,8 +133,8 @@ fun AppearanceSettingsScreen(
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors().copy(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
             )
         },
     ) { innerPadding ->
@@ -162,9 +152,8 @@ fun AppearanceSettingsScreen(
             // ── 主题 ────────────────────────────────────────────────────────────
 
             SettingItemGroup(
-                title = "主题"
+                title = "主题",
             ) {
-
                 SettingItem(
                     title = { Text("主题模式") },
                     description = { Text("设置应用的显示主题。") },
@@ -206,7 +195,7 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
 
                 SettingItemWithSwitch(
@@ -238,7 +227,7 @@ fun AppearanceSettingsScreen(
                                     .background(customColor)
                                     .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
                             )
-                        }
+                        },
                     )
                 }
                 if (showColorPicker) {
@@ -271,7 +260,7 @@ fun AppearanceSettingsScreen(
                                 .background(luotianYiColor)
                                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         )
-                    }
+                    },
                 )
 
                 if (showLuotianYiColorPicker) {
@@ -318,7 +307,7 @@ fun AppearanceSettingsScreen(
                                 .background(backgroundColor)
                                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         )
-                    }
+                    },
                 )
 
                 if (showBackgroundColorPicker) {
@@ -339,9 +328,8 @@ fun AppearanceSettingsScreen(
             }
             // ── 阅读 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title = "阅读"
+                title = "阅读",
             ) {
-
                 var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
                 SettingItem(
                     title = { Text("字号") },
@@ -358,9 +346,9 @@ fun AppearanceSettingsScreen(
                             },
                             valueRange = 50f..200f,
                             steps = 14,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
-                    }
+                    },
                 )
 
                 var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
@@ -376,9 +364,9 @@ fun AppearanceSettingsScreen(
                             },
                             valueRange = 100f..300f,
                             steps = 19,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
-                    }
+                    },
                 )
 
                 val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
@@ -396,12 +384,10 @@ fun AppearanceSettingsScreen(
             // ── 信息流 ──────────────────────────────────────────────────────────
             val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
             SettingItemGroup(
-                title =  "信息流"
+                title = "信息流",
             ) {
-
                 val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
                 SettingItemWithSwitch(
-
                     title = { Text("显示 Feed 卡片缩略图") },
                     description = { Text("在信息流卡片中显示文章缩略图。") },
                     checked = showFeedThumbnail.value,
@@ -411,9 +397,7 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-
                 SettingItemWithSwitch(
-
                     title = { Text("显示刷新 FAB 按钮") },
                     description = { Text("在页面上显示可拖动的刷新按钮。") },
                     checked = showRefreshFab.value,
@@ -445,7 +429,8 @@ fun AppearanceSettingsScreen(
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
                                 modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).width(160.dp),
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
                             ExposedDropdownMenu(
@@ -465,16 +450,15 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
             }
 
             // ── 回答页 ──────────────────────────────────────────────────────────
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
             SettingItemGroup(
-                title =  "回答页"
+                title = "回答页",
             ) {
-
                 val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
                 SettingItemWithSwitch(
                     title = { Text("使用 WebView 显示文章") },
@@ -511,13 +495,13 @@ fun AppearanceSettingsScreen(
                         bottomAction = {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 8.dp),
                             ) {
                                 OutlinedButton(
                                     onClick = {
                                         fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
                                     },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
                                 ) {
                                     Icon(Icons.Default.FolderOpen, contentDescription = null)
                                     Text("选择", modifier = Modifier.padding(start = 4.dp))
@@ -530,14 +514,14 @@ fun AppearanceSettingsScreen(
                                             customFontName = null
                                             Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
                                         },
-                                        modifier = Modifier.weight(1f)
+                                        modifier = Modifier.weight(1f),
                                     ) {
                                         Icon(Icons.Default.Clear, contentDescription = null)
                                         Text("清除", modifier = Modifier.padding(start = 4.dp))
                                     }
                                 }
                             }
-                        }
+                        },
                     )
                     val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
                     SettingItemWithSwitch(
@@ -631,7 +615,8 @@ fun AppearanceSettingsScreen(
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
                                 modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).width(160.dp),
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
                             ExposedDropdownMenu(
@@ -651,15 +636,14 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
             }
 
             // ── 底部导航栏 ──────────────────────────────────────────────────────
             SettingItemGroup(
-                title =  "底部导航栏"
+                title = "底部导航栏",
             ) {
-
                 val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
                 val selectedKeys = remember { mutableStateOf(preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys) }
                 val allItems = listOf(
@@ -677,7 +661,7 @@ fun AppearanceSettingsScreen(
                     bottomAction = {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             allItems.forEach { (key, label) ->
                                 val isChecked = selectedKeys.value.contains(key)
@@ -705,8 +689,7 @@ fun AppearanceSettingsScreen(
                                                     Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
                                                 }
                                             }
-                                        }
-                                        .padding(vertical = 8.dp),
+                                        }.padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
@@ -723,7 +706,7 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
 
                 val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
@@ -739,7 +722,6 @@ fun AppearanceSettingsScreen(
 
                 val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
                 SettingItemWithSwitch(
-
                     title = { Text("滚动时自动隐藏底部导航栏") },
                     description = { Text("上划时隐藏底部导航栏，下划时重新显示。") },
                     checked = autoHideBottomBar.value,
@@ -752,9 +734,8 @@ fun AppearanceSettingsScreen(
 
             // ── 交互 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title =  "交互"
+                title = "交互",
             ) {
-
                 var shareActionExpanded by remember { mutableStateOf(false) }
                 val shareActionMode = remember {
                     mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
@@ -773,7 +754,7 @@ fun AppearanceSettingsScreen(
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = shareActionExpanded,
-                            onExpandedChange = { shareActionExpanded = it }
+                            onExpandedChange = { shareActionExpanded = it },
                         ) {
                             OutlinedTextField(
                                 value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
@@ -781,7 +762,8 @@ fun AppearanceSettingsScreen(
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
                                 modifier = Modifier
-                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).width(160.dp),
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
                             ExposedDropdownMenu(
@@ -801,15 +783,14 @@ fun AppearanceSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
             }
 
             // ── 搜索 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title =  "搜索"
+                title = "搜索",
             ) {
-
                 val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
                 SettingItemWithSwitch(
                     title = { Text("搜索界面显示热搜") },
@@ -827,9 +808,8 @@ fun AppearanceSettingsScreen(
 
             // ── 导航 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title =  "技术性导航设置"
+                title = "技术性导航设置",
             ) {
-
                 val useCustomNavHost = remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
                 SettingItemWithSwitch(
                     title = { Text("使用自定义导航") },
@@ -934,17 +914,18 @@ fun AppearanceSettingsScreen(
                             append("欢迎")
                             withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues")) {
                                 withStyle(
-                                    MaterialTheme.typography.bodyMedium.copy(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        textDecoration = TextDecoration.Underline,
-                                        fontWeight = FontWeight.Medium
-                                    ).toSpanStyle(),
+                                    MaterialTheme.typography.bodyMedium
+                                        .copy(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            textDecoration = TextDecoration.Underline,
+                                            fontWeight = FontWeight.Medium,
+                                        ).toSpanStyle(),
                                 ) {
                                     append("提交 Issue")
                                 }
                             }
                             append(" 讨论本次 UI/UX 修改和反馈问题")
-                        }
+                        },
                     )
                 },
             ) {
@@ -1018,7 +999,6 @@ fun AppearanceSettingsScreen(
                     },
                 )
             }
-
         }
     }
 }

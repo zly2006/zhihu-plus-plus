@@ -136,7 +136,7 @@ fun NotificationSettingsScreen(
 
             SettingItemGroup(
                 title = "应用内显示",
-                footer = { Text("选择在通知页面显示哪些通知") }
+                footer = { Text("选择在通知页面显示哪些通知") },
             ) {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(

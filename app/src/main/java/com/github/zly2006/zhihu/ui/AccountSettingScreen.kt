@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,27 +33,20 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,7 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -86,10 +77,10 @@ import com.github.zly2006.zhihu.QRCodeScanActivity
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.http.Url
@@ -125,7 +116,7 @@ fun AccountSettingScreen(
     Scaffold(
         modifier = Modifier
             .padding(innerPadding),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -155,7 +146,7 @@ fun AccountSettingScreen(
             if (data.login) {
                 Row(
                     Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AsyncImage(
                         model = data.self?.avatarUrl,
@@ -177,7 +168,7 @@ fun AccountSettingScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = data.username,
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
                     )
                     Spacer(Modifier.weight(1f))
                     val scanActivityLauncher = rememberLauncherForActivityResult(
@@ -202,12 +193,12 @@ fun AccountSettingScreen(
                             val intent = Intent(context, QRCodeScanActivity::class.java)
                             scanActivityLauncher.launch(intent)
                         },
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(40.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
                             contentDescription = "扫码登录",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                     Spacer(Modifier.width(16.dp))
@@ -218,18 +209,16 @@ fun AccountSettingScreen(
                         modifier = Modifier.size(40.dp),
                         colors = IconButtonDefaults.iconButtonColors().copy(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                        )
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        ),
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Logout,
                             contentDescription = "退出登录",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(24.dp),
                         )
                     }
                 }
-
-
             } else {
                 SettingItemGroup {
                     SettingItem(
@@ -237,11 +226,10 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         onClick = {
                             context.startActivity(Intent(context, LoginActivity::class.java))
-                        }
+                        },
                     )
                 }
             }
-
 
             if (useDuo3HomeAccount) {
                 Row(
@@ -249,7 +237,7 @@ fun AccountSettingScreen(
                         .padding(horizontal = 16.dp)
                         .padding(top = 16.dp, bottom = 32.dp)
                         .clip(RoundedCornerShape(24.dp)),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     if (data.login) {
                         Column(
@@ -258,20 +246,20 @@ fun AccountSettingScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .padding(8.dp, 16.dp)
-                                .clickable{ navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
+                                .clickable { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                             verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
                                 Icons.Default.Bookmark,
                                 null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "收藏夹",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
                         Column(
@@ -280,23 +268,23 @@ fun AccountSettingScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .padding(8.dp, 16.dp)
-                                .clickable{
+                                .clickable {
                                     onDismissRequest()
                                     navigator.onNavigate(Notification)
                                 },
                             verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
                                 Icons.Default.Notifications,
                                 null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "通知",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
                         Column(
@@ -305,23 +293,23 @@ fun AccountSettingScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .padding(8.dp, 16.dp)
-                                .clickable{
+                                .clickable {
                                     onDismissRequest()
                                     navigator.onNavigate(OnlineHistory)
                                 },
                             verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
                                 Icons.Default.History,
                                 null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "浏览历史",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
                     }
@@ -333,39 +321,39 @@ fun AccountSettingScreen(
                         SettingItem(
                             title = { Text("查看收藏夹") },
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
-                            onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) }
+                            onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
                         )
                     }
                 }
             }
 
-            SettingItemGroup{
+            SettingItemGroup {
                 SettingItem(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
-                    onClick = { navigator.onNavigate(Account.AppearanceSettings()) }
+                    onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
 
                 SettingItem(
                     title = { Text("推荐系统与内容过滤") },
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
-                    onClick = { navigator.onNavigate(Account.RecommendSettings()) }
+                    onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
 
                 SettingItem(
                     title = { Text("系统与更新") },
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
-                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) }
+                    onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
                 )
 
                 AnimatedVisibility(isDeveloper) {
                     SettingItem(
                         title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
-                        onClick = { navigator.onNavigate(Account.DeveloperSettings) }
+                        onClick = { navigator.onNavigate(Account.DeveloperSettings) },
                     )
                 }
             }
@@ -384,18 +372,18 @@ fun AccountSettingScreen(
 
             SettingItemGroup(
                 title = "关于",
-                footer = {Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。")}
+                footer = { Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。") },
             ) {
                 SettingItem(
-                    title = {Text("知乎++")},
-                    description = {Text("版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}")},
+                    title = { Text("知乎++") },
+                    description = { Text("版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}") },
                     icon = {
                         Image(
                             painterResource(R.drawable.ic_launcher_foreground),
                             contentDescription = null,
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .size(32.dp)
+                                .size(32.dp),
                         )
                     },
                     modifier = Modifier.combinedClickable(
@@ -414,7 +402,7 @@ fun AccountSettingScreen(
                             context.clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
                         },
-                    )
+                    ),
                 )
                 SettingItem(
                     title = { Text("GitHub 项目地址") },
@@ -425,11 +413,12 @@ fun AccountSettingScreen(
                         context.startActivity(intent)
                     },
                     endAction = {
-                        Icon(Icons.Default.ArrowOutward,
+                        Icon(
+                            Icons.Default.ArrowOutward,
                             null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
+                    },
                 )
 
                 SettingItem(
@@ -441,11 +430,12 @@ fun AccountSettingScreen(
                         context.startActivity(intent)
                     },
                     endAction = {
-                        Icon(Icons.Default.ArrowOutward,
+                        Icon(
+                            Icons.Default.ArrowOutward,
                             null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
+                    },
                 )
             }
         }

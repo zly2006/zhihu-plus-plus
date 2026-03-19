@@ -10,7 +10,6 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,7 +34,6 @@ import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,18 +44,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
@@ -71,7 +71,6 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -82,6 +81,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -96,10 +96,6 @@ import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
-import androidx.core.content.edit
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.Alignment
-import com.github.zly2006.zhihu.updater.UpdateManager
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 
@@ -284,7 +280,6 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
 
-
     Scaffold(
         modifier = if (duo3HomeAccount) {
             Modifier.fillMaxSize()
@@ -454,7 +449,6 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
             }
         }
 
-
         FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
             PaginatedList(
                 items = viewModel.displayItems,
@@ -484,15 +478,15 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                                     dismissedUpdateVersion = versionStr
                                 }
                             },
-                            colors = AnnouncementCardDefaults.colorsImportant()
+                            colors = AnnouncementCardDefaults.colorsImportant(),
                         )
                         AnnouncementCard(
                             visible = showFilterExplainDialog,
                             title = "为什么有的内容突然消失了？",
                             leadingIcon = { Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null) },
                             content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                                    "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                                    "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
+                                "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
+                                "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
                             dismiss = { Text("好") },
                             onDismiss = {
                                 preferences.edit { putBoolean("filterExplainDialogShown", true) }
@@ -515,10 +509,10 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                                 preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
                                 uiChanges = false
                             },
-                            colors = AnnouncementCardDefaults.colorsVariant()
+                            colors = AnnouncementCardDefaults.colorsVariant(),
                         )
                     }
-                }
+                },
             ) { item ->
                 FeedCard(
                     item,

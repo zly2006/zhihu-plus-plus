@@ -139,10 +139,10 @@ import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
+import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import com.materialkolor.ktx.harmonize
@@ -1345,9 +1345,10 @@ fun ArticleScreen(
                 ) {
                     TwoRowsTopAppBar(
                         navigationIcon = {
-                            IconButton(onClick = {
-                                val activity = context as? MainActivity
-                                activity?.navController?.popBackStack()
+                            IconButton(
+                                onClick = {
+                                    val activity = context as? MainActivity
+                                    activity?.navController?.popBackStack()
                                 },
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -1440,8 +1441,8 @@ fun ArticleScreen(
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
+                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
                     )
                 }
             },
@@ -1881,7 +1882,7 @@ fun ArticleScreen(
                         .height(statusBarHeight + 16.dp)
                         .background(
                             Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
-                        )
+                        ),
                 ) {}
             }
         }

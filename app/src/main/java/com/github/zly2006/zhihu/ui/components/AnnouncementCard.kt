@@ -1,14 +1,10 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,42 +43,47 @@ fun AnnouncementCard(
     visible: Boolean,
     title: String,
     leadingIcon: @Composable () -> Unit,
-    content: String?= null,
-    accept: (@Composable () -> Unit)?= null,
+    content: String? = null,
+    accept: (@Composable () -> Unit)? = null,
     onAccept: () -> Unit = {},
     dismiss: @Composable () -> Unit,
     onDismiss: () -> Unit,
     shape: Shape = RoundedCornerShape(24.dp),
-    colors: AnnouncementCardColors = AnnouncementCardDefaults.colors()
+    colors: AnnouncementCardColors = AnnouncementCardDefaults.colors(),
 ) {
     AnnouncementCard(
-        modifier.padding(16.dp, 8.dp), visible, title, leadingIcon, content,
+        modifier.padding(16.dp, 8.dp),
+        visible,
+        title,
+        leadingIcon,
+        content,
         actions = {
             Row(
                 Modifier
                     .padding(16.dp, 0.dp, 16.dp, 12.dp)
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(
                     onClick = onDismiss,
                     colors = ButtonDefaults.textButtonColors().copy(
-                        contentColor = colors.buttonContainerColor
-                    )
+                        contentColor = colors.buttonContainerColor,
+                    ),
                 ) { dismiss() }
                 accept?.let {
                     Button(
                         onClick = onAccept,
                         colors = ButtonDefaults.buttonColors().copy(
                             containerColor = colors.buttonContainerColor,
-                            contentColor = colors.buttonContentColor
-                        )
+                            contentColor = colors.buttonContentColor,
+                        ),
                     ) { accept() }
                 }
             }
         },
-        shape, colors
+        shape,
+        colors,
     )
 }
 
@@ -94,43 +94,43 @@ fun AnnouncementCard(
     visible: Boolean,
     title: String,
     leadingIcon: @Composable () -> Unit,
-    content: String?= null,
+    content: String? = null,
     actions: @Composable () -> Unit,
     shape: Shape = CardDefaults.shape,
     colors: AnnouncementCardColors = AnnouncementCardDefaults.colors(),
     elevation: CardElevation = CardDefaults.cardElevation(),
-    border: BorderStroke? = null
+    border: BorderStroke? = null,
 ) {
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + expandVertically(
-            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         ),
         exit = shrinkVertically(
-            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
-        ) + fadeOut()
+            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        ) + fadeOut(),
     ) {
         Card(
             modifier,
             shape,
             CardDefaults.cardColors(
                 containerColor = colors.containerColor,
-                contentColor = colors.contentColor
+                contentColor = colors.contentColor,
             ),
             elevation,
-            border
+            border,
         ) {
             Column {
                 Row(
                     Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Surface(
                         modifier = Modifier,
                         color = colors.iconContainerColor,
                         contentColor = colors.iconColor,
-                        shape = CircleShape
+                        shape = CircleShape,
                     ) {
                         Box(Modifier.padding(8.dp)) {
                             leadingIcon()
@@ -138,14 +138,14 @@ fun AnnouncementCard(
                     }
                     Text(
                         title,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 }
                 if (content != null) {
                     Text(
                         text = content,
                         modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
                 actions()
@@ -163,16 +163,14 @@ object AnnouncementCardDefaults {
         iconColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
         buttonContainerColor: Color = MaterialTheme.colorScheme.primary,
         buttonContentColor: Color = MaterialTheme.colorScheme.onPrimary,
-    ): AnnouncementCardColors {
-        return AnnouncementCardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-            iconContainerColor = iconContainerColor,
-            iconColor = iconColor,
-            buttonContainerColor = buttonContainerColor,
-            buttonContentColor = buttonContentColor,
-        )
-    }
+    ): AnnouncementCardColors = AnnouncementCardColors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+        iconContainerColor = iconContainerColor,
+        iconColor = iconColor,
+        buttonContainerColor = buttonContainerColor,
+        buttonContentColor = buttonContentColor,
+    )
 
     @Composable
     fun colorsVariant(
@@ -181,17 +179,15 @@ object AnnouncementCardDefaults {
         iconContainerColor: Color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.2f),
         iconColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
         buttonContainerColor: Color = MaterialTheme.colorScheme.onTertiaryContainer,
-        buttonContentColor: Color = MaterialTheme.colorScheme.tertiaryContainer
-    ): AnnouncementCardColors {
-        return AnnouncementCardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-            iconContainerColor = iconContainerColor,
-            iconColor = iconColor,
-            buttonContainerColor = buttonContainerColor,
-            buttonContentColor = buttonContentColor,
-        )
-    }
+        buttonContentColor: Color = MaterialTheme.colorScheme.tertiaryContainer,
+    ): AnnouncementCardColors = AnnouncementCardColors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+        iconContainerColor = iconContainerColor,
+        iconColor = iconColor,
+        buttonContainerColor = buttonContainerColor,
+        buttonContentColor = buttonContentColor,
+    )
 
     @Composable
     fun colorsImportant(
@@ -200,17 +196,15 @@ object AnnouncementCardDefaults {
         iconContainerColor: Color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
         iconColor: Color = MaterialTheme.colorScheme.onPrimary,
         buttonContainerColor: Color = MaterialTheme.colorScheme.onPrimary,
-        buttonContentColor: Color = MaterialTheme.colorScheme.primary
-    ): AnnouncementCardColors {
-        return AnnouncementCardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-            iconContainerColor = iconContainerColor,
-            iconColor = iconColor,
-            buttonContainerColor = buttonContainerColor,
-            buttonContentColor = buttonContentColor,
-        )
-    }
+        buttonContentColor: Color = MaterialTheme.colorScheme.primary,
+    ): AnnouncementCardColors = AnnouncementCardColors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+        iconContainerColor = iconContainerColor,
+        iconColor = iconColor,
+        buttonContainerColor = buttonContainerColor,
+        buttonContentColor = buttonContentColor,
+    )
 }
 
 @Immutable
@@ -249,6 +243,6 @@ fun AnnouncementCardPreview() {
         content = "我很好",
         dismiss = { Text("不好") },
         onDismiss = { /*TODO*/ },
-        modifier = Modifier.width(360.dp)
+        modifier = Modifier.width(360.dp),
     )
 }

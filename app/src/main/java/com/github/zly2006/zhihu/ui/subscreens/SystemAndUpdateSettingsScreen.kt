@@ -1,11 +1,9 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,7 +13,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -25,13 +22,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -101,8 +96,8 @@ fun SystemAndUpdateSettingsScreen(
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors().copy(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
             )
         },
     ) { innerPadding ->
@@ -122,7 +117,7 @@ fun SystemAndUpdateSettingsScreen(
                     title = { Text("GitHub Token") },
                     description = {
                         Text(
-                            "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问，检查更新可能会失败。"
+                            "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问，检查更新可能会失败。",
                         )
                     },
                     bottomAction = {
@@ -144,9 +139,8 @@ fun SystemAndUpdateSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             singleLine = true,
                         )
-                    }
+                    },
                 )
-
 
                 var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
                 SettingItemWithSwitch(
@@ -197,7 +191,7 @@ fun SystemAndUpdateSettingsScreen(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().padding(16.dp,0.dp,16.dp,16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp, 0.dp, 16.dp, 16.dp),
             ) {
                 Text(
                     when (val updateState = updateState) {
@@ -276,17 +270,19 @@ fun SystemAndUpdateSettingsScreen(
 
             SettingItemGroup(
                 title = "交流 & 闲聊",
-                footer = { Text("代码和功能反馈请前往GitHub。上边的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") }
+                footer = { Text("代码和功能反馈请前往GitHub。上边的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") },
             ) {
                 SettingItem(
                     title = { Text("Discord 频道") },
                     description = { Text("请在 my-other-apps/zhihu-plus-plus 频道讨论") },
                     icon = { Icon(painterResource(R.drawable.ic_discord_24dp), null) },
                     endAction = {
-                        Icon(Icons.Default.ArrowOutward,
+                        Icon(
+                            Icons.Default.ArrowOutward,
                             null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        ) },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     onClick = { luoTianYiUrlLauncher(context, "https://discord.gg/YCPFZV5XSA".toUri()) },
                 )
 
@@ -295,10 +291,12 @@ fun SystemAndUpdateSettingsScreen(
                     description = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
                     icon = { Icon(painterResource(R.drawable.ic_telegram_24dp), null) },
                     endAction = {
-                        Icon(Icons.Default.ArrowOutward,
+                        Icon(
+                            Icons.Default.ArrowOutward,
                             null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        ) },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     onClick = { luoTianYiUrlLauncher(context, "https://t.me/+_A1Yto6EpyIyODA1".toUri()) },
                 )
 
@@ -307,10 +305,12 @@ fun SystemAndUpdateSettingsScreen(
                     description = { Text("欢迎提交 issue 讨论功能和反馈问题") },
                     icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
                     endAction = {
-                        Icon(Icons.Default.ArrowOutward,
+                        Icon(
+                            Icons.Default.ArrowOutward,
                             null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        ) },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     onClick = { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/issues".toUri()) },
                 )
             }

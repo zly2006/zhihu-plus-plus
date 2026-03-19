@@ -3,13 +3,11 @@ package com.github.zly2006.zhihu.ui.subscreens
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,13 +29,12 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +44,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -59,7 +55,6 @@ import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.components.HighlightableSettingContainer
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -118,8 +113,8 @@ fun ContentFilterSettingsScreen(
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors().copy(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
             )
         },
     ) { innerPadding ->
@@ -181,7 +176,7 @@ fun ContentFilterSettingsScreen(
                                 }
                             }
                         }
-                    }
+                    },
                 )
 
                 val isLoginForRecommendation = remember {
@@ -290,7 +285,6 @@ fun ContentFilterSettingsScreen(
                 )
 
                 AnimatedVisibility(visible = enableTopicBlocking.value) {
-
                     val topicThreshold = remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
                     var showThresholdDialog by remember { mutableStateOf(false) }
 
@@ -298,7 +292,7 @@ fun ContentFilterSettingsScreen(
                         title = { Text("主题屏蔽阈值") },
                         description = {
                             Text(
-                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容"
+                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
                             )
                         },
                         endAction = {
@@ -306,11 +300,10 @@ fun ContentFilterSettingsScreen(
                                 topicThreshold.value.toString(),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp)
+                                modifier = Modifier.padding(horizontal = 16.dp),
                             )
                         },
-                        onClick = { showThresholdDialog = true }
-
+                        onClick = { showThresholdDialog = true },
                     )
                     if (showThresholdDialog) {
                         var inputValue by remember { mutableStateOf(topicThreshold.value.toString()) }
@@ -422,7 +415,7 @@ fun ContentFilterSettingsScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
                 )
@@ -436,7 +429,7 @@ fun ContentFilterSettingsScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
                 )
@@ -461,10 +454,10 @@ fun ContentFilterSettingsScreen(
                         title = { Text("过滤统计") },
                         description = {
                             Text(
-                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情"
+                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
                             )
                         },
-                        onClick = { showStatsDialog = true }
+                        onClick = { showStatsDialog = true },
                     )
                 }
             }
