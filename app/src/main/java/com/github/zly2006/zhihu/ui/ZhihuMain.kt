@@ -215,18 +215,14 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
     // 底部导航栏功能
     var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
-    var duo3HomeScrollTop by remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
-    var tapToRefreshEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
     var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
     val preferenceListener = remember(preferences) {
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
             when (key) {
                 "duo3_home_account" -> duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
-                "duo3_home_scroll_top" -> duo3HomeScrollTop = preferences.getBoolean("duo3_home_scroll_top", false)
                 "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
-                "bottomBarTapRefresh" -> tapToRefreshEnabled = preferences.getBoolean("bottomBarTapRefresh", true)
                 "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
                 "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
             }
@@ -240,7 +236,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
-    var refreshTrigger by remember { mutableIntStateOf(0) }
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
@@ -371,8 +366,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    } else if (if (duo3HomeScrollTop) tapToScrollToTopEnabled else tapToRefreshEnabled) {
-                                        if (duo3HomeScrollTop) scrollToTopTrigger++ else refreshTrigger++
+                                    } else if (tapToScrollToTopEnabled) {
+                                        scrollToTopTrigger++
                                     }
                                 },
                                 label = {
@@ -445,7 +440,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             ) {
                 composable<Home> {
                     HomeScreen(
-                        refreshTrigger = refreshTrigger,
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
                     )

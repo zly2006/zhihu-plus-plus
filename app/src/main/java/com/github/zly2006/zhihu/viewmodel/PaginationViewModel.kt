@@ -27,6 +27,7 @@ import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -220,7 +221,9 @@ abstract class PaginationViewModel<T : Any>(
     }
 
     protected fun errorHandle(e: Exception) {
-        errorMessage = e.message
-        isLoading = false
+        if (e !is CancellationException) {
+            errorMessage = e.message
+            isLoading = false
+        }
     }
 }

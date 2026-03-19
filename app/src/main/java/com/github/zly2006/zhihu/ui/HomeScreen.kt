@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -156,7 +157,7 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -182,26 +183,17 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
-    val listState = androidx.compose.foundation.lazy
-        .rememberLazyListState()
+    val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger != cachedScrollToTopTrigger) {
-            if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-                // 如果已经在顶部，则触发刷新
+            if ((scrollToTopTrigger - cachedScrollToTopTrigger) >= 2 || (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0)) {
+                // 如果2次以上点击，或已经在顶部，则触发刷新
                 viewModel.refresh(context)
             } else {
                 listState.animateScrollToItem(0)
             }
             cachedScrollToTopTrigger = scrollToTopTrigger
-        }
-    }
-
-    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
-    LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger != cachedRefreshTrigger) {
-            viewModel.refresh(context)
-            cachedRefreshTrigger = refreshTrigger
         }
     }
 
