@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -216,6 +217,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.height(
                             (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
                         ),
