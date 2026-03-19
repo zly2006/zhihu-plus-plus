@@ -10,9 +10,12 @@ fun smoothGradient(
     steps: Int = 16,
     easing: Easing = FastOutLinearInEasing,
     reverse: Boolean = false,
-): List<Color> = List(steps) { i ->
-    val linearFraction = i.toFloat() / (steps - 1)
-    val fraction = if (reverse) linearFraction else 1f - linearFraction
-    val alpha = easing.transform(fraction) * maxAlpha
-    color.copy(alpha = alpha)
+): List<Color> {
+    require(steps >= 2) { "steps must be at least 2" }
+    return List(steps) { i ->
+        val linearFraction = i.toFloat() / (steps - 1)
+        val fraction = if (reverse) linearFraction else 1f - linearFraction
+        val alpha = easing.transform(fraction) * maxAlpha
+        color.copy(alpha = alpha)
+    }
 }

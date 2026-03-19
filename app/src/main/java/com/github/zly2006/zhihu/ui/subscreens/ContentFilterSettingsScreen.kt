@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -49,6 +50,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.Account
@@ -62,7 +64,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ContentFilterSettingsScreen(
     innerPadding: PaddingValues,
@@ -82,16 +84,30 @@ fun ContentFilterSettingsScreen(
     val itemPositions = remember { mutableMapOf<String, Int>() }
     var scrollColumnRootY by remember { mutableIntStateOf(0) }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollAnimationSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val density = LocalDensity.current
+
+    var scrolledSetting by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(setting, itemPositions[setting]) {
-        if (setting.isNotEmpty()) {
-            kotlinx.coroutines.delay(200)
+        if (setting.isNotEmpty() && scrolledSetting != setting) {
             itemPositions[setting]?.let { itemRootY ->
-                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
+                scrolledSetting = setting
+                kotlinx.coroutines.delay(200)
+                // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
+                scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
+                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY)
+                val maxScroll = scrollState.maxValue +
+                    scrollBehavior.state.heightOffsetLimit.toInt() -
+                    with(density) { 16.dp.toPx() }.toInt()
+                scrollState.animateScrollTo(
+                    minOf(targetScroll, maxScroll),
+                    scrollAnimationSpec,
+                )
             }
         }
     }
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),

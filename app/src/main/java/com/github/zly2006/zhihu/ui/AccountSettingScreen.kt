@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,8 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -115,12 +118,13 @@ fun AccountSettingScreen(
 
     Scaffold(
         modifier = Modifier
-            .padding(innerPadding),
+            .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {
@@ -275,11 +279,19 @@ fun AccountSettingScreen(
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
+                            BadgedBox(
+                                badge = {
+                                    if (unreadCount > 0) {
+                                        Badge { Text(unreadCount.toString()) }
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 "通知",

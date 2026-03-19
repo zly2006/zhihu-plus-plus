@@ -497,7 +497,7 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
                             visible = uiChanges,
                             title = "UI 新变化！",
                             leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
-                            content = "知乎++正在测试一套新的UI。欢迎尝试。如有任何意见，请在GitHub issues提出。",
+                            content = "知乎++正在测试一套新的UI，欢迎尝试。如有任何意见，请在GitHub issues提出。",
                             accept = { Text("去看看") },
                             onAccept = {
                                 preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }

@@ -29,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -58,6 +59,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -82,7 +84,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppearanceSettingsScreen(
     innerPadding: PaddingValues,
@@ -102,16 +104,30 @@ fun AppearanceSettingsScreen(
     val itemPositions = remember { mutableMapOf<String, Int>() }
     var scrollColumnRootY by remember { mutableIntStateOf(0) }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollAnimationSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
+    val density = LocalDensity.current
+
+    var scrolledSetting by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(setting, itemPositions[setting]) {
-        if (setting.isNotEmpty()) {
-            kotlinx.coroutines.delay(200)
+        if (setting.isNotEmpty() && scrolledSetting != setting) {
             itemPositions[setting]?.let { itemRootY ->
-                scrollState.animateScrollTo(maxOf(0, itemRootY - scrollColumnRootY))
+                scrolledSetting = setting
+                kotlinx.coroutines.delay(200)
+                // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
+                scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
+                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY)
+                val maxScroll = scrollState.maxValue +
+                    scrollBehavior.state.heightOffsetLimit.toInt() -
+                    with(density) { 16.dp.toPx() }.toInt()
+                scrollState.animateScrollTo(
+                    minOf(targetScroll, maxScroll),
+                    scrollAnimationSpec,
+                )
             }
         }
     }
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -523,17 +539,17 @@ fun AppearanceSettingsScreen(
                             }
                         },
                     )
-                    val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("WebView 硬件加速") },
-                        description = { Text("提高渲染性能，可能导致兼容性问题。") },
-                        checked = useHardwareAcceleration.value,
-                        onCheckedChange = {
-                            useHardwareAcceleration.value = it
-                            preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                        },
-                    )
                 }
+                val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("WebView 硬件加速") },
+                    description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                    checked = useHardwareAcceleration.value,
+                    onCheckedChange = {
+                        useHardwareAcceleration.value = it
+                        preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
+                    },
+                )
 
                 val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
                 SettingItemWithSwitch(
@@ -657,7 +673,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItem(
                     title = { Text("选择要在底部栏显示的页面") },
-                    description = { Text("建议选择 3-5 项，长按可查看全名。") },
+                    description = { Text("建议选择 3-5 项。") },
                     bottomAction = {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -911,7 +927,7 @@ fun AppearanceSettingsScreen(
                 footer = {
                     Text(
                         text = buildAnnotatedString {
-                            append("欢迎")
+                            append("以上设置项可能随时更改，或并入主线。\n欢迎")
                             withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues")) {
                                 withStyle(
                                     MaterialTheme.typography.bodyMedium
@@ -924,7 +940,7 @@ fun AppearanceSettingsScreen(
                                     append("提交 Issue")
                                 }
                             }
-                            append(" 讨论本次 UI/UX 修改和反馈问题")
+                            append(" 讨论本次 UI/UX 修改和反馈问题。")
                         },
                     )
                 },
@@ -971,7 +987,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItemWithSwitch(
                     title = { Text("信息流卡片：更改内容排版") },
-                    description = { Text("作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），标题/摘要/作者名改用 Material 规范字体样式") },
+                    description = { Text("作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），规范字体样式。") },
                     checked = duo3CardLayout.value,
                     onCheckedChange = {
                         duo3CardLayout.value = it
