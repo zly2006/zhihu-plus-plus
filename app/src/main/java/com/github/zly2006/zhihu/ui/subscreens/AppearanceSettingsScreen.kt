@@ -166,7 +166,7 @@ fun AppearanceSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         ) {
                             val themeModes = listOf(
-                                ThemeMode.SYSTEM to "跟随系统",
+                                ThemeMode.SYSTEM to "自动",
                                 ThemeMode.LIGHT to "亮色",
                                 ThemeMode.DARK to "暗色",
                             )
