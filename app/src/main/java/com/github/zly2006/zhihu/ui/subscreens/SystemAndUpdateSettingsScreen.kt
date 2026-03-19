@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -21,7 +22,12 @@ import androidx.compose.material.icons.filled.ArrowOutward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -37,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,6 +70,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
 
@@ -335,6 +344,75 @@ fun SystemAndUpdateSettingsScreen(
                         Modifier.padding(0.dp, 4.dp),
                     )
                 }
+            }
+
+            var reminderExpanded by remember { mutableStateOf(false) }
+            var reminderIntervalMinutes by remember {
+                mutableIntStateOf(
+                    ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
+                        preferences.getInt(
+                            ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
+                            0,
+                        ),
+                    ),
+                )
+            }
+            val reminderOptions = listOf(
+                0 to "关闭",
+                15 to "每 15 分钟",
+                30 to "每 30 分钟",
+                60 to "每 1 小时",
+            )
+
+            SettingItemGroup(
+                title = "防沉迷"
+            ) {
+                SettingItem(
+                    title = {Text("防沉迷提醒")},
+                    description = {Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。")},
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = reminderExpanded,
+                            onExpandedChange = { reminderExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = reminderOptions
+                                    .find { it.first == reminderIntervalMinutes }
+                                    ?.second ?: "关闭",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = reminderExpanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = reminderExpanded,
+                                onDismissRequest = { reminderExpanded = false },
+                            ) {
+                                reminderOptions.forEach { (minutes, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            reminderIntervalMinutes = minutes
+                                            preferences.edit {
+                                                putInt(
+                                                    ContinuousUsageReminderManager
+                                                        .KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
+                                                    minutes,
+                                                )
+                                            }
+                                            reminderExpanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
             }
 
             SettingItemGroup(

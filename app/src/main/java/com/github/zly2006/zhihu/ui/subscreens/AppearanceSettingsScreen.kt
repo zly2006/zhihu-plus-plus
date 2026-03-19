@@ -750,16 +750,16 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-                val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapRefresh", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("点击底部导航栏刷新") },
-                    description = { Text("在当前页面时，点击底部导航栏对应按钮刷新页面。") },
-                    checked = tapToRefresh.value,
-                    onCheckedChange = {
-                        tapToRefresh.value = it
-                        preferences.edit { putBoolean("bottomBarTapRefresh", it) }
-                    },
-                )
+            val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+            SettingItemWithSwitch(
+                title = { Text("点击底部导航栏回到顶部/刷新") },
+                description = { Text("点击底部导航栏当前页面按钮回到顶部，已在顶部时则刷新页面。双击可直接刷新。") },
+                checked = tapToRefresh.value,
+                onCheckedChange = {
+                    tapToRefresh.value = it
+                    preferences.edit { putBoolean("bottomBarTapScrollToTop", it) }
+                },
+            )
 
                 val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
                 SettingItemWithSwitch(
@@ -879,7 +879,6 @@ fun AppearanceSettingsScreen(
             // 先声明所有子开关状态，以便主开关可以批量操作
             val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
             val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
-            val duo3HomeScrollTop = remember { mutableStateOf(preferences.getBoolean("duo3_home_scroll_top", false)) }
             val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
@@ -889,7 +888,6 @@ fun AppearanceSettingsScreen(
             fun enableAllSubs() {
                 preferences.edit {
                     putBoolean("duo3_home_account", true)
-                    putBoolean("duo3_home_scroll_top", true)
                     putBoolean("duo3_nav_style", true)
                     putBoolean("duo3_card_appearance", true)
                     putBoolean("duo3_card_layout", true)
@@ -899,7 +897,6 @@ fun AppearanceSettingsScreen(
                     putBoolean("buttonSkipAnswer", false)
                 }
                 duo3HomeAccount.value = true
-                duo3HomeScrollTop.value = true
                 duo3NavStyle.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
@@ -913,7 +910,6 @@ fun AppearanceSettingsScreen(
             fun disableAllSubs() {
                 preferences.edit {
                     putBoolean("duo3_home_account", false)
-                    putBoolean("duo3_home_scroll_top", false)
                     putBoolean("duo3_nav_style", false)
                     putBoolean("duo3_card_appearance", false)
                     putBoolean("duo3_card_layout", false)
@@ -921,7 +917,6 @@ fun AppearanceSettingsScreen(
                     putBoolean("duo3_article_actions", false)
                 }
                 duo3HomeAccount.value = false
-                duo3HomeScrollTop.value = false
                 duo3NavStyle.value = false
                 duo3CardAppearance.value = false
                 duo3CardLayout.value = false
@@ -977,16 +972,6 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         duo3HomeAccount.value = it
                         preferences.edit { putBoolean("duo3_home_account", it) }
-                    },
-                )
-
-                SettingItemWithSwitch(
-                    title = { Text("主页：点击当前 Tab 回到顶部") },
-                    description = { Text("点击已激活的底部 Tab，行为将会从触发刷新改为滚动回列表顶部，已在顶部时再触发刷新。") },
-                    checked = duo3HomeScrollTop.value,
-                    onCheckedChange = {
-                        duo3HomeScrollTop.value = it
-                        preferences.edit { putBoolean("duo3_home_scroll_top", it) }
                     },
                 )
 

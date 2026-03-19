@@ -165,7 +165,7 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -221,21 +221,13 @@ fun HomeScreen(refreshTrigger: Int = 0, scrollToTopTrigger: Int = 0, innerPaddin
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger != cachedScrollToTopTrigger) {
-            if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-                // 如果已经在顶部，则触发刷新
+            if ((scrollToTopTrigger - cachedScrollToTopTrigger) >= 2 || (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0)) {
+                // 如果2次以上点击，或已经在顶部，则触发刷新
                 viewModel.refresh(context)
             } else {
                 listState.animateScrollToItem(0)
             }
             cachedScrollToTopTrigger = scrollToTopTrigger
-        }
-    }
-
-    var cachedRefreshTrigger by remember { mutableIntStateOf(refreshTrigger) }
-    LaunchedEffect(refreshTrigger) {
-        if (refreshTrigger != cachedRefreshTrigger) {
-            viewModel.refresh(context)
-            cachedRefreshTrigger = refreshTrigger
         }
     }
 

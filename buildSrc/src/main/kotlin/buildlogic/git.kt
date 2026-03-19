@@ -3,13 +3,22 @@ package buildlogic
 import java.io.File
 
 private const val FALLBACK_HASH = "unknown"
+private const val FALLBACK_BRANCH = "unknown"
 private const val SHORT_HASH_LENGTH = 7
+private const val HEADS_REF_PREFIX = "refs/heads/"
 
 fun gitHash(projectRoot: File): String {
     val repoRoot = findRepositoryRoot(projectRoot.absoluteFile) ?: return FALLBACK_HASH
     val gitDir = resolveGitDir(repoRoot) ?: return FALLBACK_HASH
     val fullHash = readHeadHash(gitDir) ?: return FALLBACK_HASH
     return fullHash.take(SHORT_HASH_LENGTH)
+}
+
+fun gitBranch(projectRoot: File): String {
+    val repoRoot = findRepositoryRoot(projectRoot.absoluteFile) ?: return FALLBACK_BRANCH
+    val gitDir = resolveGitDir(repoRoot) ?: return FALLBACK_BRANCH
+    val headContent = readHeadContent(gitDir) ?: return FALLBACK_BRANCH
+    return readBranchName(headContent) ?: FALLBACK_BRANCH
 }
 
 private fun findRepositoryRoot(start: File): File? {
@@ -41,9 +50,7 @@ private fun resolveGitDir(repositoryRoot: File): File? {
 }
 
 private fun readHeadHash(gitDir: File): String? {
-    val headFile = File(gitDir, "HEAD")
-    if (!headFile.isFile) return null
-    val headContent = headFile.readText().trim()
+    val headContent = readHeadContent(gitDir) ?: return null
 
     return if (headContent.startsWith("ref:")) {
         val refPath = headContent.substringAfter("ref:").trim()
@@ -51,6 +58,25 @@ private fun readHeadHash(gitDir: File): String? {
     } else {
         headContent.takeIf(::isCommitHash)
     }
+}
+
+private fun readHeadContent(gitDir: File): String? {
+    val headFile = File(gitDir, "HEAD")
+    if (!headFile.isFile) return null
+    return headFile.readText().trim().ifEmpty { null }
+}
+
+private fun readBranchName(headContent: String): String? {
+    if (!headContent.startsWith("ref:")) return null
+    val refPath = headContent.substringAfter("ref:").trim()
+    if (refPath.isEmpty()) return null
+
+    val branchName = if (refPath.startsWith(HEADS_REF_PREFIX)) {
+        refPath.removePrefix(HEADS_REF_PREFIX)
+    } else {
+        refPath.substringAfterLast('/')
+    }
+    return branchName.ifEmpty { null }
 }
 
 private fun readRefHash(gitDir: File, refPath: String): String? {
