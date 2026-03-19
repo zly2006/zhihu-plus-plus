@@ -610,16 +610,17 @@ fun AppearanceSettingsScreen(
                 )
 
                 val autoHideSkipAnswerButton = remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("滚动时自动隐藏跳转按钮") },
-                    description = { Text("上划时淡出「下一个回答」按钮，下划时淡入显示。") },
-                    checked = autoHideSkipAnswerButton.value,
-                    enabled = buttonSkipAnswer.value,
-                    onCheckedChange = {
-                        autoHideSkipAnswerButton.value = it
-                        preferences.edit { putBoolean("autoHideSkipAnswerButton", it) }
-                    },
-                )
+                AnimatedVisibility(buttonSkipAnswer.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("滚动时自动隐藏跳转按钮") },
+                        description = { Text("上划时淡出「下一个回答」按钮，下划时淡入显示。") },
+                        checked = autoHideSkipAnswerButton.value,
+                        onCheckedChange = {
+                            autoHideSkipAnswerButton.value = it
+                            preferences.edit { putBoolean("autoHideSkipAnswerButton", it) }
+                        },
+                    )
+                }
 
                 val pinAnswerDate = remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
                 SettingItemWithSwitch(
