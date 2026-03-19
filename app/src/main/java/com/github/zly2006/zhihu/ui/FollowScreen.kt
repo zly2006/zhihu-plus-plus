@@ -222,13 +222,17 @@ fun FollowRecommendScreen() {
     var showBlockUserDialog by remember { mutableStateOf(false) }
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
+    val showFollowingList = remember { preferences.getBoolean("showFollowingListInRecommend", true) }
+
     Column {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
                 topContent = {
-                    item {
-                        FollowingUsersRow()
+                    if (showFollowingList) {
+                        item {
+                            FollowingUsersRow()
+                        }
                     }
                 },
                 onLoadMore = { viewModel.loadMore(context) },

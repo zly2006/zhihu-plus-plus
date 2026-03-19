@@ -429,6 +429,17 @@ fun AppearanceSettingsScreen(
                 },
             )
 
+            val showFollowingListInRecommend = remember { mutableStateOf(preferences.getBoolean("showFollowingListInRecommend", true)) }
+            SwitchSettingItem(
+                title = "关注推荐页显示关注列表",
+                description = "在关注推荐页顶部显示已关注用户的头像列表",
+                checked = showFollowingListInRecommend.value,
+                onCheckedChange = {
+                    showFollowingListInRecommend.value = it
+                    preferences.edit { putBoolean("showFollowingListInRecommend", it) }
+                },
+            )
+
             var feedCardStyleExpanded by remember { mutableStateOf(false) }
             val feedCardStyle = remember {
                 mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
