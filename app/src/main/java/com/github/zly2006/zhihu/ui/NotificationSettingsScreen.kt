@@ -3,39 +3,34 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 
 enum class NotificationType(
     val displayName: String,
@@ -83,6 +78,7 @@ fun NotificationSettingsScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     var systemNotificationSettings by remember {
         mutableStateOf(
@@ -101,136 +97,69 @@ fun NotificationSettingsScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding),
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = { Text("通知设置") },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors().copy(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
-                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(innerPadding)
+                .padding(vertical = 16.dp),
         ) {
-            // 系统通知设置
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                ) {
-                    Text(
-                        text = "系统通知",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
+            SettingItemGroup(title = "系统通知") {
+                NotificationType.entries.forEach { type ->
+                    SettingItemWithSwitch(
+                        title = { Text(type.displayName) },
+                        checked = systemNotificationSettings[type] ?: false,
+                        onCheckedChange = { checked ->
+                            systemNotificationSettings = systemNotificationSettings.toMutableMap().apply {
+                                put(type, checked)
+                            }
+                            NotificationPreferences.setSystemNotificationEnabled(context, type, checked)
+                        },
                     )
-                    Text(
-                        text = "选择哪些消息会发送系统通知",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    NotificationType.entries.forEach { type ->
-                        NotificationSettingItem(
-                            label = type.displayName,
-                            checked = systemNotificationSettings[type] ?: true,
-                            onCheckedChange = { checked ->
-                                systemNotificationSettings = systemNotificationSettings.toMutableMap().apply {
-                                    put(type, checked)
-                                }
-                                NotificationPreferences.setSystemNotificationEnabled(context, type, checked)
-                            },
-                        )
-                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 应用内显示设置
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
+            SettingItemGroup(
+                title = "应用内显示",
+                footer = { Text("选择在通知页面显示哪些通知") },
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                ) {
-                    Text(
-                        text = "应用内显示",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                NotificationType.entries.forEach { type ->
+                    SettingItemWithSwitch(
+                        title = { Text(type.displayName) },
+                        checked = displayInAppSettings[type] ?: true,
+                        onCheckedChange = { checked ->
+                            displayInAppSettings = displayInAppSettings.toMutableMap().apply {
+                                put(type, checked)
+                            }
+                            NotificationPreferences.setDisplayInAppEnabled(context, type, checked)
+                        },
                     )
-                    Text(
-                        text = "选择在通知页面显示哪些通知",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    NotificationType.entries.forEach { type ->
-                        NotificationSettingItem(
-                            label = type.displayName,
-                            checked = displayInAppSettings[type] ?: true,
-                            onCheckedChange = { checked ->
-                                displayInAppSettings = displayInAppSettings.toMutableMap().apply {
-                                    put(type, checked)
-                                }
-                                NotificationPreferences.setDisplayInAppEnabled(context, type, checked)
-                            },
-                        )
-                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun NotificationSettingItem(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 8.dp),
-        )
     }
 }
