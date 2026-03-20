@@ -14,10 +14,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import kotlinx.coroutines.launch
+
+private val DataHolder.Content.author: DataHolder.Author
+    get() = when (this) {
+        is DataHolder.Article -> this.author
+        is DataHolder.Answer -> this.author
+        is DataHolder.Pin -> this.author
+        else -> throw IllegalStateException("Unsupported content type for blocking")
+    }
 
 @Composable
 fun BlockUserConfirmDialog(
@@ -53,17 +61,15 @@ fun BlockUserConfirmDialog(
                                     val blocklistManager = BlocklistManager.getInstance(context)
                                     displayItems
                                         .find { item ->
-                                            item.feed
-                                                ?.target
+                                            item.raw
                                                 ?.author
                                                 ?.id == userId
-                                        }?.feed
-                                        ?.target
+                                        }?.raw
                                         ?.author
                                         ?.let { author ->
                                             blocklistManager.addBlockedUser(
-                                                userId = author.id,
-                                                userName = author.name,
+                                                userId = userId,
+                                                userName = userName,
                                                 urlToken = author.urlToken,
                                                 avatarUrl = author.avatarUrl,
                                             )
