@@ -142,6 +142,7 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
+import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import com.materialkolor.ktx.harmonize
@@ -602,6 +603,16 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
+    val articleUseSurfaceLight by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceLight", false)) }
+    val articleUseSurfaceDark by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceDark", false)) }
+    val isDarkTheme = ThemeManager.isDarkTheme()
+    val articleSurfaceColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
     var isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     var autoHideArticleBottomBar by remember {
         mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
@@ -1328,7 +1339,7 @@ fun ArticleScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = articleSurfaceColor,
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1344,10 +1355,16 @@ fun ArticleScreen(
                 ) {
                     TwoRowsTopAppBar(
                         navigationIcon = {
-                            IconButton(onClick = {
-                                val activity = context as? MainActivity
-                                activity?.navController?.popBackStack()
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    val activity = context as? MainActivity
+                                    activity?.navController?.popBackStack()
+                                },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                             }
                         },
@@ -1355,10 +1372,6 @@ fun ArticleScreen(
                             if (useDuo3ArticleActions) {
                                 IconButton(
                                     onClick = { showActionsMenu = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    ),
                                 ) {
                                     Icon(
                                         Icons.Filled.MoreVert,
@@ -1436,6 +1449,14 @@ fun ArticleScreen(
                             }
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
+                        colors = TopAppBarDefaults.topAppBarColors().copy(
+                            containerColor = articleSurfaceColor,
+                            scrolledContainerColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
+                                TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHigh
+                            },
+                        ),
                     )
                 }
             },
@@ -1868,15 +1889,13 @@ fun ArticleScreen(
                 }
                 // Status bar gradient overlay (duo3 only — not needed in master path)
                 val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                val surfaceColor = MaterialTheme.colorScheme.surface
+                val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(statusBarHeight + 8.dp)
+                        .height(statusBarHeight + 16.dp)
                         .background(
-                            Brush.verticalGradient(
-                                colors = listOf(surfaceColor, surfaceColor.copy(alpha = 0f)),
-                            ),
+                            Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
                         ),
                 ) {}
             }

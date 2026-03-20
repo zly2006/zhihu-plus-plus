@@ -24,16 +24,15 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -46,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -89,6 +89,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.TopLevelDestination
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
@@ -109,107 +110,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
-
-    val keySurveyDone = "survey_feedback_done"
-    var installed3Hours by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        val installTime = try {
-            context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-        } catch (_: Exception) {
-            System.currentTimeMillis()
-        }
-        if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
-            installed3Hours = true
-        }
-    }
-
-    // 首次启动提示
-    var showFilterExplainDialog by remember {
-        mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
-    }
-    var uiChanges by remember {
-        mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
-    }
-    // 首次启动过滤说明对话框
-    if (showFilterExplainDialog) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("为什么有的内容突然消失了？") },
-            text = {
-                Text(
-                    "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                        "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                        "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    preferences.edit().putBoolean("filterExplainDialogShown", true).apply()
-                    showFilterExplainDialog = false
-                }) {
-                    Text("好")
-                }
-            },
-        )
-    }
-    if (uiChanges && installed3Hours) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("UI新变化！") },
-            text = {
-                Text(
-                    "知乎++正在测试一套新的UI。欢迎尝试。如有任何意见，请在GitHub issues提出。",
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    preferences.edit().putBoolean("duo3uiChangesDialogShown", true).apply()
-                    uiChanges = false
-                }) {
-                    Text("算了")
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    preferences.edit().putBoolean("duo3uiChangesDialogShown", true).apply()
-                    uiChanges = false
-                    activity.navigate(Account.AppearanceSettings("123Duo3"))
-                }) {
-                    Text("去看看")
-                }
-            },
-        )
-    }
-    if (installed3Hours) {
-        // 暂停显示调查问卷对话框
-//        AlertDialog(
-//            onDismissRequest = { showSurveyDialog = false },
-//            title = { Text("希望听到您的声音") },
-//            text = {
-//                Text("我们诚挚地邀请您填写一份简短的调查问卷，帮助我们了解您的使用体验和需求，以便为您带来更好的产品。只需 1~2 分钟，非常感谢您的支持！")
-//            },
-//            confirmButton = {
-//                TextButton(onClick = {
-//                    showSurveyDialog = false
-//                    preferences.edit { putBoolean(keySurveyDone, true) }
-//                    val intent = Intent(
-//                        Intent.ACTION_VIEW,
-//                        SURVEY_URL.toUri(),
-//                    )
-//                    context.startActivity(intent)
-//                }) { Text("去填写") }
-//            },
-//            dismissButton = {
-//                androidx.compose.foundation.layout.Row {
-//                    TextButton(onClick = { showSurveyDialog = false }) { Text("取消") }
-//                    TextButton(onClick = {
-//                        showSurveyDialog = false
-//                        preferences.edit { putBoolean(keySurveyDone, true) }
-//                    }) { Text("我已填写") }
-//                }
-//            },
-//        )
-    }
 
     // 底部导航栏功能
     var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
@@ -319,6 +219,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     exit = slideOutVertically(tween(200)) { it },
                 ) {
                     NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.height(
                             (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
                         ),
@@ -383,7 +284,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                                 alwaysShowLabel = duo3NavStyle,
                                 colors = if (duo3NavStyle) {
-                                    NavigationBarItemDefaults.colors()
+                                    if (!ThemeManager.isDarkTheme()) {
+                                        NavigationBarItemDefaults.colors().copy(
+                                            selectedIndicatorColor =
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                                    .copy(alpha = 0.92f)
+                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
+                                        )
+                                    } else {
+                                        NavigationBarItemDefaults.colors()
+                                    }
                                 } else {
                                     NavigationBarItemDefaults.colors(
                                         selectedIconColor = Color(0xff66ccff),

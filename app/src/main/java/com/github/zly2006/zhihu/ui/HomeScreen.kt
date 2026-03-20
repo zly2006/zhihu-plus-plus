@@ -26,7 +26,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowCircleUp
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -41,9 +44,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,18 +57,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Notification
+import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
-import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.components.AnnouncementCard
+import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -74,6 +81,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -183,6 +191,32 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
 
+    val keySurveyDone = "survey_feedback_done"
+    var installed3Hours by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!preferences.getBoolean(keySurveyDone, false)) {
+            val installTime = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
+            } catch (_: Exception) {
+                System.currentTimeMillis()
+            }
+            if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
+                installed3Hours = true
+            }
+        }
+    }
+
+    val updateState by UpdateManager.updateState.collectAsState()
+    var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
+
+    // 首次启动提示
+    var showFilterExplainDialog by remember {
+        mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
+    }
+    var uiChanges by remember {
+        mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
+    }
+
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
@@ -238,13 +272,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     var showBlockByKeywordsDialog by remember { mutableStateOf(false) }
     var feedToBlockByKeywords by remember { mutableStateOf<Pair<String, String?>?>(null) } // Pair of title and excerpt
 
-    val containerColor =
-        if (ThemeManager.isDarkTheme()) {
-            MaterialTheme.colorScheme.background
-        } else {
-            MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        }
-
     Scaffold(
         modifier = if (duo3HomeAccount) {
             Modifier.fillMaxSize()
@@ -254,12 +281,12 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .fillMaxSize()
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
-        containerColor = if (duo3HomeAccount) containerColor else MaterialTheme.colorScheme.background,
+        containerColor = if (duo3HomeAccount) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.background,
         topBar = {
             if (duo3HomeAccount) {
                 Box {
                     Surface(
-                        color = containerColor,
+                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier
                             .height(
                                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
@@ -277,11 +304,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 .weight(1f)
                                 .height(64.dp),
                             shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surfaceColorAtElevation(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             onClick = {
                                 navigator.onNavigate(
-                                    com.github.zly2006.zhihu
-                                        .Search(query = ""),
+                                    Search(query = ""),
                                 )
                             },
                         ) {
@@ -358,8 +384,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             onClick = {
                                 navigator.onNavigate(
-                                    com.github.zly2006.zhihu
-                                        .Search(query = ""),
+                                    Search(query = ""),
                                 )
                             },
                         ) {
@@ -406,6 +431,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         if (duo3HomeAccount && showAccountBottomSheet) {
             MyModalBottomSheet(
                 onDismissRequest = { showAccountBottomSheet = false },
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
@@ -415,79 +441,130 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
             }
         }
 
-        Box {
-            FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
-                PaginatedList(
-                    items = viewModel.displayItems,
-                    listState = listState,
-                    contentPadding = PaddingValues(
-                        top = scaffoldPadding.calculateTopPadding() + 8.dp,
-                        bottom = innerPadding.calculateBottomPadding(),
-                    ),
-                    onLoadMore = { viewModel.loadMore(context) },
-                    footer = ProgressIndicatorFooter,
-                    key = { item -> item.navDestination.toString() },
-                ) { item ->
-                    FeedCard(
-                        item,
-                        thumbnailUrl = when (val target = item.feed?.target) {
-                            is Feed.AnswerTarget -> target.thumbnail
-                            else -> null
-                        },
-                        onLike = {
-                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
-                        },
-                        onDislike = {
-                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
-                        },
-                        onBlockUser = { feedItem ->
-                            viewModel.handleBlockUser(context, feedItem) { authorInfo ->
-                                userToBlock = authorInfo
-                                showBlockUserDialog = true
-                            }
-                        },
-                        onBlockByKeywords = { feedItem ->
-                            viewModel.handleBlockByKeywords(context, feedItem) { (item, contentInfo) ->
-                                feedToBlockByKeywords = contentInfo.first to contentInfo.second
-                                showBlockByKeywordsDialog = true
-                            }
-                        },
-                        onBlockTopic = { topicId, topicName ->
-                            viewModel.handleBlockTopic(context, topicId, topicName)
-                        },
-                    ) {
-                        feed?.let {
+        FeedPullToRefresh(viewModel, PaddingValues(top = scaffoldPadding.calculateTopPadding())) {
+            PaginatedList(
+                items = viewModel.displayItems,
+                listState = listState,
+                contentPadding = PaddingValues(
+                    top = scaffoldPadding.calculateTopPadding() + 8.dp,
+                    bottom = innerPadding.calculateBottomPadding(),
+                ),
+                onLoadMore = { viewModel.loadMore(context) },
+                footer = ProgressIndicatorFooter,
+                key = { item -> item.navDestination.toString() },
+                topContent = {
+                    item {
+                        val availableUpdate = updateState as? UpdateManager.UpdateState.UpdateAvailable
+
+                        AnnouncementCard(
+                            visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version.toString(),
+                            title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
+                            leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
+                            accept = { Text("查看更新") },
+                            onAccept = {
+                                context.navigate(Account.SystemAndUpdateSettings)
+                            },
+                            dismiss = { Text("以后") },
+                            onDismiss = {
+                                availableUpdate?.version?.toString()?.let { versionStr ->
+                                    dismissedUpdateVersion = versionStr
+                                }
+                            },
+                            colors = AnnouncementCardDefaults.colorsImportant(),
+                        )
+                        AnnouncementCard(
+                            visible = showFilterExplainDialog,
+                            title = "为什么有的内容突然消失了？",
+                            leadingIcon = { Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null) },
+                            content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
+                                "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
+                                "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
+                            dismiss = { Text("好") },
+                            onDismiss = {
+                                preferences.edit { putBoolean("filterExplainDialogShown", true) }
+                                showFilterExplainDialog = false
+                            },
+                        )
+                        AnnouncementCard(
+                            visible = uiChanges,
+                            title = "UI 新变化！",
+                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                            content = "知乎++正在测试一套新的UI，欢迎尝试。如有任何意见，请在GitHub issues提出。",
+                            accept = { Text("去看看") },
+                            onAccept = {
+                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
+                                uiChanges = false
+                                context.navigate(Account.AppearanceSettings("123Duo3"))
+                            },
+                            dismiss = { Text("算了") },
+                            onDismiss = {
+                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
+                                uiChanges = false
+                            },
+                            colors = AnnouncementCardDefaults.colorsVariant(),
+                        )
+                    }
+                },
+            ) { item ->
+                FeedCard(
+                    item,
+                    thumbnailUrl = when (val target = item.feed?.target) {
+                        is Feed.AnswerTarget -> target.thumbnail
+                        else -> null
+                    },
+                    onLike = {
+                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onDislike = {
+                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                    },
+                    onBlockUser = { feedItem ->
+                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                            userToBlock = authorInfo
+                            showBlockUserDialog = true
+                        }
+                    },
+                    onBlockByKeywords = { feedItem ->
+                        viewModel.handleBlockByKeywords(context, feedItem) { (item, contentInfo) ->
+                            feedToBlockByKeywords = contentInfo.first to contentInfo.second
+                            showBlockByKeywordsDialog = true
+                        }
+                    },
+                    onBlockTopic = { topicId, topicName ->
+                        viewModel.handleBlockTopic(context, topicId, topicName)
+                    },
+                ) {
+                    feed?.let {
 //                            DataHolder.putFeed(feed)
-                            (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
-                        }
-                        if (navDestination != null) {
-                            navigator.onNavigate(navDestination)
-                        }
+                        (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
+                    }
+                    if (navDestination != null) {
+                        navigator.onNavigate(navDestination)
                     }
                 }
+            }
 
-                if (showRefreshFab) {
-                    if (BuildConfig.DEBUG) {
-                        DraggableRefreshButton(
-                            onClick = {
-                                val data = Json.encodeToString(viewModel.debugData)
-                                val clip = ClipData.newPlainText("data", data)
-                                context.clipboardManager.setPrimaryClip(clip)
-                                Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                            },
-                            preferenceName = "copyAll",
-                        ) {
-                            Icon(Icons.Default.CopyAll, contentDescription = "复制")
-                        }
-                    }
+            if (showRefreshFab) {
+                if (BuildConfig.DEBUG) {
                     DraggableRefreshButton(
-                        onClick = { viewModel.refresh(context) },
+                        onClick = {
+                            val data = Json.encodeToString(viewModel.debugData)
+                            val clip = ClipData.newPlainText("data", data)
+                            context.clipboardManager.setPrimaryClip(clip)
+                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                        },
+                        preferenceName = "copyAll",
                     ) {
-                        if (viewModel.isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                        }
+                        Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                    }
+                }
+                DraggableRefreshButton(
+                    onClick = { viewModel.refresh(context) },
+                ) {
+                    if (viewModel.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
             }
