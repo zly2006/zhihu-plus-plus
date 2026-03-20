@@ -148,17 +148,18 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
-                // 立即展示所有内容
                 val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                // 前台先做本地已读过滤，再立即展示
+                val foregroundFilteredItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(context, itemsToDisplay)
                 if (!preferences.getBoolean("reverseBlock", false)) {
                     withContext(Dispatchers.Main) {
-                        addDisplayItems(itemsToDisplay)
+                        addDisplayItems(foregroundFilteredItems)
                     }
                 }
 
-                // 后台运行内容过滤
-                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, itemsToDisplay)
-                val newDestinations = itemsToDisplay.map { it.navDestination }.toSet()
+                // 后台继续运行其余内容过滤
+                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, foregroundFilteredItems)
+                val newDestinations = foregroundFilteredItems.map { it.navDestination }.toSet()
 
                 if (preferences.getBoolean("reverseBlock", false)) {
                     addDisplayItems(filteredItems)

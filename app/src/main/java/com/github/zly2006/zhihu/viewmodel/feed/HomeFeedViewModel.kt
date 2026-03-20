@@ -54,24 +54,22 @@ class HomeFeedViewModel :
                 .flatten()
                 .map { feed -> createDisplayItem(context, feed) }
 
-            // 立即展示所有内容，不等待过滤
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            // 前台先做本地已读过滤，再立即展示
+            val foregroundFilteredItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(context, newItems)
             if (!preferences.getBoolean("reverseBlock", false)) {
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(newItems)
+                    addDisplayItems(foregroundFilteredItems)
                 }
             }
 
-            // 后台运行内容过滤
-            val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, newItems)
-            val newDestinations = newItems.map { it.navDestination }.toSet()
+            // 后台继续运行其余内容过滤
+            val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, foregroundFilteredItems)
+            val newDestinations = foregroundFilteredItems.map { it.navDestination }.toSet()
 
             if (preferences.getBoolean("reverseBlock", false)) {
                 addDisplayItems(filteredItems)
             }
-
-            // 记录内容展示
-            recordContentDisplays(context, filteredItems)
 
             // 移除被过滤的条目，并更新已保留条目的 raw 内容
             withContext(Dispatchers.Main) {
@@ -82,40 +80,6 @@ class HomeFeedViewModel :
                     // remove if no filtered version exists, which means it was filtered out
                     filteredVersion == null
                 }
-            }
-        }
-    }
-
-    private suspend fun recordContentDisplays(context: Context, items: List<FeedDisplayItem>) {
-        withContext(Dispatchers.IO) {
-            try {
-                items.forEach { item ->
-                    when (val dest = item.navDestination) {
-                        is com.github.zly2006.zhihu.Article -> {
-                            val contentType = when (dest.type) {
-                                com.github.zly2006.zhihu.ArticleType.Answer -> ContentType.ANSWER
-                                com.github.zly2006.zhihu.ArticleType.Article -> ContentType.ARTICLE
-                            }
-                            ContentFilterExtensions.recordContentDisplay(
-                                context,
-                                contentType,
-                                dest.id.toString(),
-                            )
-                        }
-                        is com.github.zly2006.zhihu.Question -> {
-                            ContentFilterExtensions.recordContentDisplay(
-                                context,
-                                ContentType.QUESTION,
-                                dest.questionId.toString(),
-                            )
-                        }
-                        else -> {
-                            // 其他类型暂不处理
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("HomeFeedViewModel", "Failed to record content displays", e)
             }
         }
     }
