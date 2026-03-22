@@ -746,6 +746,7 @@ fun AppearanceSettingsScreen(
                         putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, currentSet)
                         putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
                     }
+                    Toast.makeText(context, "重启后生效", Toast.LENGTH_SHORT).show()
                 }
 
                 SettingItem(
@@ -782,7 +783,7 @@ fun AppearanceSettingsScreen(
                                             startDestinationKey = key
                                             preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, key) }
                                             startDestinationExpanded = false
-                                            Toast.makeText(context, "已设置启动页：$label", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "已设置启动页：$label，重启后生效", Toast.LENGTH_SHORT).show()
                                         },
                                     )
                                 }
