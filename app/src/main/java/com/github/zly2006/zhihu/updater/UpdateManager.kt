@@ -8,6 +8,7 @@ import androidx.core.content.edit
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -20,7 +21,7 @@ import java.io.File
 import java.net.URI
 
 object UpdateManager {
-    // private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
+    private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
     private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
 
@@ -131,6 +132,23 @@ object UpdateManager {
         )
     }
 
+    suspend fun getLatestVersion(context: Context): GithubRelease {
+        val client = AccountData.httpClient(context)
+        return runCatching {
+            client.get(REDEN_API_LATEST).raiseForStatus().body<GithubRelease>()
+        }.getOrNull() ?: run {
+            client
+                .get(GITHUB_API_LATEST) {
+                    getGitHubToken(context)?.let { token ->
+                        headers {
+                            append(HttpHeaders.Authorization, "Bearer $token")
+                        }
+                    }
+                }.raiseForStatus()
+                .body<GithubRelease>()
+        }
+    }
+
     /**
      * 自动检查更新（在应用启动时调用）
      */
@@ -142,21 +160,13 @@ object UpdateManager {
             updateState.value = UpdateState.Checking
             updateLastCheckTime(context)
 
-            val client = AccountData.httpClient(context)
             val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
             val skippedVersion = getSkippedVersion(context)
 
             var latestVersion: SchematicVersion?
 
             // 检查正式版本
-            val latestResponse = client
-                .get(REDEN_API_LATEST) {
-                    getGitHubToken(context)?.let { token ->
-                        headers {
-                            append(HttpHeaders.Authorization, "Bearer $token")
-                        }
-                    }
-                }.body<GithubRelease>()
+            val latestResponse = getLatestVersion(context)
             Log.i("UpdateManager", "Latest version response: $latestResponse")
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             val latestDownloadInfo = latestResponse.extractDownloadInfo()
@@ -201,14 +211,7 @@ object UpdateManager {
             var releaseNotes: String?
 
             // 检查正式版本
-            val latestResponse = client
-                .get(REDEN_API_LATEST) {
-                    getGitHubToken(context)?.let { token ->
-                        headers {
-                            append(HttpHeaders.Authorization, "Bearer $token")
-                        }
-                    }
-                }.body<GithubRelease>()
+            val latestResponse = getLatestVersion(context)
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             releaseNotes = latestResponse.body?.extractReleaseNotes()
             var downloadInfo = latestResponse.extractDownloadInfo()
