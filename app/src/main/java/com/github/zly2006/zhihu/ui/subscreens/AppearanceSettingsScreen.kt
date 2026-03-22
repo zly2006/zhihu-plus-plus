@@ -590,17 +590,18 @@ fun AppearanceSettingsScreen(
                             }
                         },
                     )
+
+                    val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+                    SettingItemWithSwitch(
+                        title = { Text("WebView 硬件加速") },
+                        description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                        checked = useHardwareAcceleration.value,
+                        onCheckedChange = {
+                            useHardwareAcceleration.value = it
+                            preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
+                        },
+                    )
                 }
-                val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("WebView 硬件加速") },
-                    description = { Text("提高渲染性能，可能导致兼容性问题。") },
-                    checked = useHardwareAcceleration.value,
-                    onCheckedChange = {
-                        useHardwareAcceleration.value = it
-                        preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                    },
-                )
 
                 val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
                 SettingItemWithSwitch(
