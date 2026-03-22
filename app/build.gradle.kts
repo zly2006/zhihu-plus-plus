@@ -84,9 +84,7 @@ android {
             }
         }
     }
-    kotlinOptions {
-        freeCompilerArgs += "-Xdebug"
-    }
+
     buildTypes {
         val gitHash = gitHash(rootProject.projectDir)
         debug {
@@ -103,11 +101,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        jvmToolchain(17)
     }
     buildFeatures {
         viewBinding = true

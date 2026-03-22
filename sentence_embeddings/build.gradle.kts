@@ -1,6 +1,6 @@
 plugins {
     id("com.android.library") version "8.12.3"
-    kotlin("android") version "2.2.21"
+    kotlin("android") version "2.3.10"
 }
 
 // Used in GitHub CI to pass the path of the installed Android NDK
@@ -36,7 +36,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions { jvmTarget = "11" }
 
     androidResources {
         noCompress += "onnx"
