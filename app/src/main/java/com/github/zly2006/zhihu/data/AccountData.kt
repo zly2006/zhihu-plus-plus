@@ -186,7 +186,7 @@ object AccountData {
             return this.json.decodeFromJsonElement<T>(json)
         } catch (e: SerializationException) {
             Log.e("AccountData", "Failed to parse JSON: $json", e)
-            throw SerializationException("Failed to parse JSON: $json", e)
+            throw SerializationException("Failed to parse JSON: ${e.message}\n\n$json", e)
         }
     }
 

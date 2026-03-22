@@ -720,6 +720,16 @@ object DataHolder {
             val dataContentType: String,
             val url: String,
         ) : ContentItem
+
+        @Serializable
+        @SerialName("image")
+        data class ContentImage(
+            val url: String,
+            val width: Int,
+            val height: Int,
+            val isGif: Boolean = false,
+            val originalUrl: String? = null,
+        ) : ContentItem
     }
 
     @Serializable
