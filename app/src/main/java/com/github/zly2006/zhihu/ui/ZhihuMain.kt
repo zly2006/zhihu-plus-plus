@@ -92,11 +92,14 @@ import com.github.zly2006.zhihu.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
@@ -147,6 +150,40 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 return Offset.Zero
             }
         }
+    }
+
+    val allBottomBarItems = if (duo3HomeAccount) {
+        listOf(
+            Triple(Home, "主页", Icons.Filled.Home),
+            Triple(Follow, "关注", Icons.Filled.Group),
+            Triple(HotList, "热榜", Icons.Filled.Whatshot),
+            Triple(Daily, "日报", Icons.Filled.Newspaper),
+        )
+    } else {
+        listOf(
+            Triple(Home, "主页", Icons.Filled.Home),
+            Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
+            Triple(HotList, "热榜", Icons.Filled.Whatshot),
+            Triple(Daily, "日报", Icons.Filled.Newspaper),
+            Triple(OnlineHistory, "历史", Icons.Filled.History),
+            Triple(Account, "账号", Icons.Filled.ManageAccounts),
+        )
+    }
+    val defaultBottomBarItemKeys = if (duo3HomeAccount) {
+        setOf(Home.name, Follow.name, Daily.name)
+    } else {
+        setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
+    }
+    val selectedBottomBarItemKeys = preferences
+        .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarItemKeys)
+        ?.toSet()
+        ?: defaultBottomBarItemKeys
+    val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
+
+    val startDestination = remember {
+        navDestinationFromName(
+            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
+        )
     }
 
     // 获取页面索引的函数
@@ -224,31 +261,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
                         ),
                     ) {
-                        val allItems = if (duo3HomeAccount) {
-                            listOf(
-                                Triple(Home, "主页", Icons.Filled.Home),
-                                Triple(Follow, "关注", Icons.Filled.Group),
-                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
-                                Triple(Daily, "日报", Icons.Filled.Newspaper),
-                            )
-                        } else {
-                            listOf(
-                                Triple(Home, "主页", Icons.Filled.Home),
-                                Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
-                                Triple(HotList, "热榜", Icons.Filled.Whatshot),
-                                Triple(Daily, "日报", Icons.Filled.Newspaper),
-                                Triple(OnlineHistory, "历史", Icons.Filled.History),
-                                Triple(Account, "账号", Icons.Filled.ManageAccounts),
-                            )
-                        }
-                        val defaultKeys = if (duo3HomeAccount) {
-                            setOf(Home.name, Follow.name, Daily.name)
-                        } else {
-                            setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
-                        }
-                        val selectedKeys = preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys
-                        val bottomBarItems = allItems.filter { it.first.name in selectedKeys }
-
                         @Composable
                         fun Item(
                             destination: NavDestination,
@@ -261,7 +273,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 onClick = {
                                     if (!navEntry.hasRoute(destination::class)) {
                                         navController.navigate(destination) {
-                                            popUpTo(Home)
+                                            popUpTo(startDestination)
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -324,7 +336,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             MyNavHost(
                 navController,
                 modifier = Modifier,
-                startDestination = Home,
+                startDestination = startDestination,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)

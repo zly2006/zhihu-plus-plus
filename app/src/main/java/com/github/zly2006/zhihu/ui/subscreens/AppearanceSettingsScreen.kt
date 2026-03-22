@@ -74,6 +74,7 @@ import com.github.zly2006.zhihu.Follow
 import com.github.zly2006.zhihu.Home
 import com.github.zly2006.zhihu.HotList
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
@@ -83,6 +84,32 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+
+const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
+const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
+
+private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
+    Home.name to Home,
+    Follow.name to Follow,
+    HotList.name to HotList,
+    Daily.name to Daily,
+    OnlineHistory.name to OnlineHistory,
+    Account.name to Account,
+)
+
+internal fun navDestinationFromName(name: String): NavDestination = topLevelDestinationsInOrder
+    .firstOrNull { it.first == name }
+    ?.second
+    ?: Home
+
+internal fun resolveValidStartDestinationKey(
+    preferredKey: String?,
+    availableKeysInOrder: List<String>,
+): String = when {
+    !preferredKey.isNullOrEmpty() && preferredKey in availableKeysInOrder -> preferredKey
+    availableKeysInOrder.isNotEmpty() -> availableKeysInOrder.first()
+    else -> Home.name
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -563,17 +590,18 @@ fun AppearanceSettingsScreen(
                             }
                         },
                     )
+
+                    val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+                    SettingItemWithSwitch(
+                        title = { Text("WebView 硬件加速") },
+                        description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                        checked = useHardwareAcceleration.value,
+                        onCheckedChange = {
+                            useHardwareAcceleration.value = it
+                            preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
+                        },
+                    )
                 }
-                val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("WebView 硬件加速") },
-                    description = { Text("提高渲染性能，可能导致兼容性问题。") },
-                    checked = useHardwareAcceleration.value,
-                    onCheckedChange = {
-                        useHardwareAcceleration.value = it
-                        preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                    },
-                )
 
                 val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
                 SettingItemWithSwitch(
@@ -686,7 +714,11 @@ fun AppearanceSettingsScreen(
                 title = "底部导航栏",
             ) {
                 val defaultKeys = setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
-                val selectedKeys = remember { mutableStateOf(preferences.getStringSet("bottom_bar_items", defaultKeys) ?: defaultKeys) }
+                val selectedKeys = remember {
+                    mutableStateOf(
+                        preferences.getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultKeys)?.toSet() ?: defaultKeys,
+                    )
+                }
                 val allItems = listOf(
                     Home.name to "主页",
                     Follow.name to "关注",
@@ -694,6 +726,71 @@ fun AppearanceSettingsScreen(
                     Daily.name to "日报",
                     OnlineHistory.name to "历史",
                     Account.name to "账号设置",
+                )
+                var startDestinationExpanded by remember { mutableStateOf(false) }
+                var startDestinationKey by remember {
+                    mutableStateOf(
+                        resolveValidStartDestinationKey(
+                            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                            allItems.map { it.first }.filter { it in selectedKeys.value },
+                        ),
+                    )
+                }
+                val startDestinationItems = allItems.filter { it.first in selectedKeys.value }
+
+                fun persistBottomBarSelection(currentSet: Set<String>) {
+                    val availableKeys = allItems.map { it.first }.filter { it in currentSet }
+                    val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
+                    selectedKeys.value = currentSet
+                    startDestinationKey = resolvedStartDestination
+                    preferences.edit {
+                        putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, currentSet)
+                        putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
+                    }
+                    Toast.makeText(context, "重启后生效", Toast.LENGTH_SHORT).show()
+                }
+
+                SettingItem(
+                    title = { Text("应用启动默认页面") },
+                    description = { Text("仅可选择已在底部导航栏中显示的页面。") },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = startDestinationExpanded,
+                            onExpandedChange = {
+                                if (startDestinationItems.isNotEmpty()) {
+                                    startDestinationExpanded = it
+                                }
+                            },
+                        ) {
+                            OutlinedTextField(
+                                value = startDestinationItems.find { it.first == startDestinationKey }?.second ?: "主页",
+                                onValueChange = {},
+                                readOnly = true,
+                                enabled = startDestinationItems.isNotEmpty(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDestinationExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = startDestinationExpanded,
+                                onDismissRequest = { startDestinationExpanded = false },
+                            ) {
+                                startDestinationItems.forEach { (key, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            startDestinationKey = key
+                                            preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, key) }
+                                            startDestinationExpanded = false
+                                            Toast.makeText(context, "已设置启动页：$label，重启后生效", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
                 )
 
                 SettingItem(
@@ -706,7 +803,7 @@ fun AppearanceSettingsScreen(
                         ) {
                             allItems.forEach { (key, label) ->
                                 val isChecked = selectedKeys.value.contains(key)
-                                val isEnabled = key != "Account"
+                                val isEnabled = key != Account.name
 
                                 Row(
                                     modifier = Modifier
@@ -716,16 +813,14 @@ fun AppearanceSettingsScreen(
                                             if (isChecked) {
                                                 if (currentSet.size > 3) {
                                                     currentSet.remove(key)
-                                                    selectedKeys.value = currentSet
-                                                    preferences.edit { putStringSet("bottom_bar_items", currentSet) }
+                                                    persistBottomBarSelection(currentSet)
                                                 } else {
                                                     Toast.makeText(context, "至少保留3项", Toast.LENGTH_SHORT).show()
                                                 }
                                             } else {
                                                 if (currentSet.size < 5) {
                                                     currentSet.add(key)
-                                                    selectedKeys.value = currentSet
-                                                    preferences.edit { putStringSet("bottom_bar_items", currentSet) }
+                                                    persistBottomBarSelection(currentSet)
                                                 } else {
                                                     Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
                                                 }
