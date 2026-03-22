@@ -556,51 +556,55 @@ fun AppearanceSettingsScreen(
                         customFontName = name
                         Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
                     }
-                    SettingItem(
-                        title = { Text("WebView 自定义字体") },
-                        description = { Text(customFontName ?: "未设置") },
-                        bottomAction = {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(top = 8.dp),
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
-                                    },
-                                    modifier = Modifier.weight(1f),
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        SettingItem(
+                            title = { Text("WebView 自定义字体") },
+                            description = { Text(customFontName ?: "未设置") },
+                            bottomAction = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp),
                                 ) {
-                                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-                                    Text("选择", modifier = Modifier.padding(start = 4.dp))
-                                }
-                                if (customFontName != null) {
                                     OutlinedButton(
                                         onClick = {
-                                            java.io.File(context.filesDir, "custom_font").delete()
-                                            preferences.edit { remove("webviewCustomFontName") }
-                                            customFontName = null
-                                            Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                                            fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
                                         },
                                         modifier = Modifier.weight(1f),
                                     ) {
-                                        Icon(Icons.Default.Clear, contentDescription = null)
-                                        Text("清除", modifier = Modifier.padding(start = 4.dp))
+                                        Icon(Icons.Default.FolderOpen, contentDescription = null)
+                                        Text("选择", modifier = Modifier.padding(start = 4.dp))
+                                    }
+                                    if (customFontName != null) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                java.io.File(context.filesDir, "custom_font").delete()
+                                                preferences.edit { remove("webviewCustomFontName") }
+                                                customFontName = null
+                                                Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Icon(Icons.Default.Clear, contentDescription = null)
+                                            Text("清除", modifier = Modifier.padding(start = 4.dp))
+                                        }
                                     }
                                 }
-                            }
-                        },
-                    )
+                            },
+                        )
 
-                    val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
-                    SettingItemWithSwitch(
-                        title = { Text("WebView 硬件加速") },
-                        description = { Text("提高渲染性能，可能导致兼容性问题。") },
-                        checked = useHardwareAcceleration.value,
-                        onCheckedChange = {
-                            useHardwareAcceleration.value = it
-                            preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
-                        },
-                    )
+                        val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+                        SettingItemWithSwitch(
+                            title = { Text("WebView 硬件加速") },
+                            description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                            checked = useHardwareAcceleration.value,
+                            onCheckedChange = {
+                                useHardwareAcceleration.value = it
+                                preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
+                            },
+                        )
+                    }
                 }
 
                 val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }

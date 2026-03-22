@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.tooling.preview.Preview
@@ -118,12 +119,41 @@ fun SettingItemGroup(
 
         header?.let { it() }
 
-        Column(
-            modifier = modifier
-                .clip(RoundedCornerShape(16.dp)),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            content()
+        Layout(
+            content = content,
+            modifier = modifier.clip(RoundedCornerShape(16.dp)),
+        ) { measurables, constraints ->
+            val placeables = measurables.map { it.measure(constraints) }
+            val spacing = 2.dp.roundToPx()
+            val baseItemHeight = 48.dp.toPx()
+
+            var yPosition = 0
+            val positions = mutableListOf<Int>()
+            var hasVisibleBefore = false
+
+            for (i in placeables.indices) {
+                val placeable = placeables[i]
+                val scale = (placeable.height / baseItemHeight).coerceIn(0f, 1f)
+
+                // Add proportional spacing BEFORE this element if it's not the first visible element.
+                // It smoothly scales down its own preceding gap as it shrinks.
+                if (hasVisibleBefore && scale > 0f) {
+                    yPosition += (spacing * scale).toInt()
+                }
+
+                positions.add(yPosition)
+                yPosition += placeable.height
+
+                if (scale > 0f) {
+                    hasVisibleBefore = true
+                }
+            }
+
+            layout(constraints.maxWidth, yPosition) {
+                for (i in placeables.indices) {
+                    placeables[i].placeRelative(0, positions[i])
+                }
+            }
         }
 
         footer?.let {
