@@ -20,7 +20,7 @@ import java.io.File
 import java.net.URI
 
 object UpdateManager {
-    private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
+    // private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
     private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
 
@@ -46,9 +46,9 @@ object UpdateManager {
         data class UpdateAvailable(
             val version: SchematicVersion,
             val isNightly: Boolean = false,
-            val releaseNotes: String? = null,
-            val downloadUrl: String? = null,
-            val cnDownloadUrl: String? = null,
+            val releaseNotes: String?,
+            val downloadUrl: String,
+            val cnDownloadUrl: String?,
         ) : UpdateState()
 
         object Downloading : UpdateState()
@@ -118,13 +118,13 @@ object UpdateManager {
         .substringBefore("\n**Full Changelog**:")
         .trimEnd('\n')
 
-    private fun GithubRelease.extractDownloadInfo(): DownloadInfo? {
+    private fun GithubRelease.extractDownloadInfo(): DownloadInfo {
         val apkAssets = assets.filter {
             it.contentType == "application/vnd.android.package-archive"
         }
 
         @Suppress("KotlinConstantConditions")
-        val selectedAsset = selectApkAsset(apkAssets, BuildConfig.IS_LITE) ?: return null
+        val selectedAsset = selectApkAsset(apkAssets, BuildConfig.IS_LITE) ?: apkAssets.first()
         return DownloadInfo(
             browserDownloadUrl = selectedAsset.browserDownloadUrl,
             cnDownloadUrl = selectedAsset.cnDownloadUrl,
@@ -169,8 +169,8 @@ object UpdateManager {
                         latestVersion,
                         false,
                         latestResponse.body?.extractReleaseNotes(),
-                        latestDownloadInfo?.browserDownloadUrl,
-                        latestDownloadInfo?.cnDownloadUrl,
+                        latestDownloadInfo.browserDownloadUrl,
+                        latestDownloadInfo.cnDownloadUrl,
                     )
                     return true // 有可用更新且未被跳过
                 } else {
@@ -247,8 +247,8 @@ object UpdateManager {
                     latestVersion,
                     isNightly,
                     releaseNotes,
-                    downloadInfo?.browserDownloadUrl,
-                    downloadInfo?.cnDownloadUrl,
+                    downloadInfo.browserDownloadUrl,
+                    downloadInfo.cnDownloadUrl,
                 )
             } else {
                 updateState.value = UpdateState.Latest
