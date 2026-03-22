@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -115,10 +116,11 @@ fun SystemAndUpdateSettingsScreen(
             )
         },
     ) { innerPadding ->
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
@@ -213,6 +215,22 @@ fun SystemAndUpdateSettingsScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
+                        val cnDownloadUrl = (updateState as? UpdateState.UpdateAvailable)?.cnDownloadUrl
+                        if (!cnDownloadUrl.isNullOrBlank()) {
+                            Button(
+                                onClick = {
+                                    runCatching {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, cnDownloadUrl.toUri()))
+                                    }.onFailure {
+                                        UpdateManager.updateState.value = UpdateState.Error(it.message ?: "无法打开浏览器")
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("使用国内网盘加速下载", Modifier.padding(0.dp, 4.dp))
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -235,7 +253,7 @@ fun SystemAndUpdateSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         when (val state = updateState) {
-                                            is UpdateState.UpdateAvailable -> UpdateManager.downloadUpdate(context)
+                                            is UpdateState.UpdateAvailable -> UpdateManager.downloadUpdate(context, state.downloadUrl)
                                             is UpdateState.Downloaded -> UpdateManager.installUpdate(context, state.file)
                                             else -> {}
                                         }
@@ -322,6 +340,9 @@ fun SystemAndUpdateSettingsScreen(
                             when (updateState) {
                                 is UpdateState.NoUpdate, is UpdateState.Error -> {
                                     UpdateManager.checkForUpdate(context)
+                                    if (UpdateManager.updateState.value is UpdateState.UpdateAvailable) {
+                                        scrollState.animateScrollTo(0)
+                                    }
                                 }
                                 UpdateState.Latest -> {
                                     UpdateManager.updateState.value = UpdateState.NoUpdate
