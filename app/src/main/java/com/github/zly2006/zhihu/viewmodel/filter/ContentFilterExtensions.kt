@@ -293,7 +293,18 @@ object ContentFilterExtensions {
                 saveBlockedFeedRecords(context, allBlocked)
             }
 
-            filteredItems
+            filteredItems.filter {
+                listOf(
+                    "感兴趣",
+                    "购买",
+                ).none { keyword ->
+                    val shouldFilter = it.details.contains(keyword)
+                    if (shouldFilter) {
+                        Log.e("ContentFilterExtensions", "Filtered item '${it.title}' due to keyword '$keyword' in details: ${it.content}")
+                    }
+                    shouldFilter
+                }
+            }
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply content filter to display items", e)
             items
