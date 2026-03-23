@@ -872,22 +872,18 @@ fun AppearanceSettingsScreen(
                         ) {
                             allBottomBarItems.forEach { (key, label) ->
                                 val isChecked = selectedBottomBarItemKeys.value.contains(key)
+                                val candidateSet = normalizeBottomBarSelection(
+                                    selectedBottomBarItemKeys.value.toMutableSet().apply {
+                                        if (isChecked) remove(key) else add(key)
+                                    },
+                                    duo3HomeAccount.value,
+                                )
                                 val isEnabled = key != Account.name
 
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable(enabled = isEnabled) {
-                                            val currentSet = selectedBottomBarItemKeys.value.toMutableSet()
-                                            if (isChecked) {
-                                                currentSet.remove(key)
-                                            } else {
-                                                currentSet.add(key)
-                                            }
-                                            if (duo3HomeAccount.value && key == Home.name && isChecked) {
-                                                currentSet.add(Account.name)
-                                            }
-                                            val candidateSet = normalizeBottomBarSelection(currentSet, duo3HomeAccount.value)
                                             when {
                                                 candidateSet.size < 3 -> {
                                                     Toast.makeText(context, "至少保留3项", Toast.LENGTH_SHORT).show()
