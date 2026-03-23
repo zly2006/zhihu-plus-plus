@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
@@ -113,6 +114,7 @@ fun FeedCard(
     }
     val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
     val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
+    val duo3CardLargeTitle = remember { preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
@@ -176,6 +178,7 @@ fun FeedCard(
                     onBlockByKeywords = onBlockByKeywords,
                     onBlockTopic = onBlockTopic,
                     duo3CardLayout = duo3CardLayout,
+                    duo3CardLargeTitle = duo3CardLargeTitle,
                 )
             }
             HorizontalDivider(thickness = 0.3.dp)
@@ -263,6 +266,7 @@ fun FeedCard(
                         onBlockByKeywords = onBlockByKeywords,
                         onBlockTopic = onBlockTopic,
                         duo3CardLayout = duo3CardLayout,
+                        duo3CardLargeTitle = duo3CardLargeTitle,
                     )
                 }
             }
@@ -435,6 +439,7 @@ private fun FeedCardContent(
     onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     duo3CardLayout: Boolean,
+    duo3CardLargeTitle: Boolean,
 ) {
     val navigator = LocalNavigator.current
     if (duo3CardLayout) {
@@ -443,7 +448,11 @@ private fun FeedCardContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = parseHtmlTextWithTheme(item.title),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (duo3CardLargeTitle) {
+                        MaterialTheme.typography.titleLarge
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
                     maxLines = 2,
                     color = MaterialTheme.colorScheme.onSurface,
                     overflow = TextOverflow.Ellipsis,
