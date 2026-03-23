@@ -5,8 +5,8 @@ import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -34,7 +34,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen() {
+fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
@@ -63,24 +63,14 @@ fun HotListScreen() {
             PaginatedList(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
-                topContent = {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                },
+                modifier = Modifier.padding(innerPadding),
                 isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
                     item,
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

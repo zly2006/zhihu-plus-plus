@@ -13,7 +13,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
@@ -27,7 +31,6 @@ import coil3.disk.DiskCache
 import coil3.disk.directory
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
-import coil3.svg.SvgDecoder
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
@@ -37,6 +40,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.updater.UpdateManager
+import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -106,6 +110,7 @@ class MainActivity : ComponentActivity() {
     private var isTtsInitialized = false
 
     lateinit var navController: NavHostController
+    private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +141,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         clearShareImageCache(this)
         enableEdgeToEdgeCompat()
+        continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
         ThemeManager.initialize(this)
@@ -196,7 +202,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             navController = rememberNavController()
             ZhihuTheme {
-                ZhihuMain(navController = navController)
+                Box(Modifier.semantics { testTagsAsResourceId = true }) {
+                    ZhihuMain(navController = navController)
+                }
             }
         }
         if (savedInstanceState == null) {
@@ -229,7 +237,7 @@ class MainActivity : ComponentActivity() {
             .Builder(this)
             .crossfade(true)
             .components {
-                add(SvgDecoder.Factory())
+                // add(SvgDecoder.Factory())
             }.memoryCache {
                 MemoryCache
                     .Builder()
@@ -306,23 +314,25 @@ class MainActivity : ComponentActivity() {
             @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch {
                 try {
-                    val hasUpdate = UpdateManager.autoCheckForUpdate(this@MainActivity)
-                    if (hasUpdate) {
-                        val updateState = UpdateManager.updateState.value
-                        if (updateState is UpdateManager.UpdateState.UpdateAvailable) {
-                            showUpdateDialog(
-                                updateState.version.toString(),
-                                updateState.isNightly,
-                                updateState.releaseNotes?.replace("https://github.com/zly2006/zhihu-plus-plus/pull/", "#"),
-                            )
-                        }
-                    }
+                    UpdateManager.autoCheckForUpdate(this@MainActivity)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to check for updates", e)
                 }
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        continuousUsageReminderManager.onAppForeground()
+    }
+
+    override fun onStop() {
+        continuousUsageReminderManager.onAppBackground()
+        super.onStop()
+    }
+
+    fun currentContinuousUsageDurationMs(): Long = continuousUsageReminderManager.currentElapsedForegroundMs()
 
     private fun initializeTtsSettings() {
         // 设置语言
@@ -453,49 +463,8 @@ class MainActivity : ComponentActivity() {
         history.add(dest)
     }
 
-    /**
-     * 显示更新提醒对话框
-     */
-    private fun showUpdateDialog(version: String, isNightly: Boolean, releaseNotes: String?) {
-        val versionType = if (isNightly) "Nightly" else "正式版本"
-        val currentVersion = BuildConfig.VERSION_NAME
-        val changelogText = if (!releaseNotes.isNullOrBlank()) "\n\n$releaseNotes" else ""
-
-        runOnUiThread {
-            AlertDialog
-                .Builder(this)
-                .apply {
-                    setTitle("发现新版本")
-                    setMessage("当前版本：$currentVersion\n新版本：$version ($versionType)$changelogText")
-                    setCancelable(false)
-
-                    // 立即更新按钮
-                    setPositiveButton("立即更新") { dialog, _ ->
-                        dialog.dismiss()
-
-                        lifecycleScope.launch {
-                            Log.i(TAG, "Starting download for version $version")
-                            UpdateManager.downloadUpdate(this@MainActivity)
-                        }
-                        navController.navigate(Account.SystemAndUpdateSettings)
-                    }
-
-                    // 跳过此版本按钮
-                    setNeutralButton("跳过此版本") { _, _ ->
-                        Log.i(TAG, "User chose to skip version $version")
-                        UpdateManager.skipVersion(this@MainActivity, version)
-                    }
-
-                    // 稍后提醒按钮
-                    setNegativeButton("稍后提醒") { _, _ ->
-                        Log.i(TAG, "User chose to be reminded later")
-                        // 不做任何操作，下次启动时会再次检查
-                    }
-                }.show()
-        }
-    }
-
     override fun onDestroy() {
+        continuousUsageReminderManager.onDestroy()
         textToSpeech?.shutdown()
         super.onDestroy()
     }

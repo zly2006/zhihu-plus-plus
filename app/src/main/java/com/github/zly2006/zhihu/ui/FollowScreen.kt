@@ -70,7 +70,7 @@ class FollowScreenData : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun FollowScreen() {
+fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -87,8 +87,13 @@ fun FollowScreen() {
         }
     }
 
-    Column {
-        PrimaryTabRow(selectedTabIndex = viewModel.selectedTabIndex) {
+    Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
+        PrimaryTabRow(
+            selectedTabIndex = viewModel.selectedTabIndex,
+            modifier = Modifier.padding(
+                top = innerPadding.calculateTopPadding(),
+            ),
+        ) {
             titles.forEachIndexed { index, title ->
                 Tab(
                     selected = viewModel.selectedTabIndex == index,
@@ -240,13 +245,7 @@ fun FollowRecommendScreen() {
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             if (showRefreshFab) {
@@ -338,13 +337,7 @@ fun FollowDynamicScreen() {
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                ) {
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
-                    } else {
-                        Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                )
             }
 
             if (showRefreshFab) {

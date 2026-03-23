@@ -6,6 +6,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -77,6 +78,7 @@ private data class HotSearchItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    innerPadding: PaddingValues,
     search: Search,
 ) {
     val navigator = LocalNavigator.current
@@ -118,6 +120,7 @@ fun SearchScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -312,15 +315,7 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(
-                            item,
-                        ) {
-                            if (navDestination != null) {
-                                navigator.onNavigate(navDestination)
-                            } else {
-                                Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                        FeedCard(item)
                     }
 
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

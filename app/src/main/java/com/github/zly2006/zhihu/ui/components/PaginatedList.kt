@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui.components
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,6 +41,7 @@ fun <T> PaginatedList(
     items: List<T>,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
     footer: @Composable (() -> Unit)? = null,
@@ -70,6 +72,7 @@ fun <T> PaginatedList(
     LazyColumn(
         state = listState,
         modifier = modifier,
+        contentPadding = contentPadding,
     ) {
         topContent(this)
 

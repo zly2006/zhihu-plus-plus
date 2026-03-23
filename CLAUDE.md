@@ -64,18 +64,7 @@ adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
 
 # 4. 等待加载（关键！）
-sleep 10
-
-# 5. 截图验证
-adb shell screencap -p /sdcard/screenshot.png
-adb pull /sdcard/screenshot.png /tmp/screenshot.png
-# 使用 view 工具查看
-
-# 6. 测试交互
-adb shell input swipe 350 800 350 400  # 上滑
-sleep 1
-adb shell screencap -p /sdcard/screenshot2.png
-adb pull /sdcard/screenshot2.png /tmp/screenshot2.png
+sleep 3
 ```
 
 ### UI 调试强制清单
@@ -84,11 +73,12 @@ adb pull /sdcard/screenshot2.png /tmp/screenshot2.png
 2. ✅ 安装到设备
 3. ✅ 正确启动应用（检查包名！）
 4. ✅ 等待加载完成（至少 8-10 秒）
-5. ✅ 截图并 adb pull 到本地，注意不要在一个response中同时包括截图和第七步的Read命令，因为截图需要时间，此时要read的文件还不存在。
-6. ✅ 使用 Read 工具查看，记得要用ls检查文件是否存在，路径是否正确
-7. ✅ 测试交互（滚动、点击）
-8. ✅ 再次截图验证
-9. ❌ 不对则检查 logcat：`adb logcat | grep -i error`
+5. ✅ 使用 ui-test 技能查看当前页面状态：`python3 .github/skills/ui-test/llm_test_helper.py dump`
+6. ✅ 先 `dump` 再 `tap`，优先通过 `--tag/--text/--desc` 交互，不使用硬编码坐标 tap
+7. ✅ 若目标是无标识可点击节点，使用 `--text "" --index N`（N 来自当前页面 dump）
+8. ✅ 交互后再次 `dump` 或截图验证状态
+9. ✅ 仅在无 tag/文字可用且必须手势操作时，才使用 `adb shell input swipe` 等手势
+10. ❌ 异常时检查 logcat：`adb logcat | grep -i error`
 
 ## 代码风格
 - Kotlin Serialization with `@Serializable`

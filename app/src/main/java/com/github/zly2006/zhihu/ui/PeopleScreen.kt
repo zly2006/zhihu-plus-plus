@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,6 +59,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.FeedCard
+import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -138,7 +140,9 @@ class PeopleFollowersViewModel(
         typeOf<DataHolder.People>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
+        // 签名有bug，暂时无法使用新的API，先回退到旧的API
+        // get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
+        get() = "https://api.zhihu.com/people/${person.id}/followers"
 
     override val include: String
         get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
@@ -386,6 +390,7 @@ suspend fun HttpResponse.raiseForStatus() = apply {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
+    innerPadding: PaddingValues,
     person: Person,
 ) {
     val navigator = LocalNavigator.current
@@ -438,7 +443,7 @@ fun PeopleScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -576,12 +581,7 @@ fun PeopleScreen(
                             isEnd = { viewModel.activitiesFeedModel.isEnd },
                             footer = ProgressIndicatorFooter,
                         ) {
-                            FeedCard(
-                                it,
-                                horizontalPadding = 4.dp,
-                            ) {
-                                it.navDestination?.let(navigator.onNavigate)
-                            }
+                            FeedCard(it, horizontalPadding = 4.dp)
                         }
                     }
 
@@ -941,7 +941,14 @@ private fun UserInfoHeader(
                 modifier = Modifier
                     .padding(end = 16.dp)
                     .size(80.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .clickable {
+                        OpenImageDislog(
+                            context,
+                            AccountData.httpClient(context),
+                            viewModel.avatar.substringBefore("_") + ".jpg",
+                        ).show()
+                    },
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(viewModel.name, style = MaterialTheme.typography.titleLarge)

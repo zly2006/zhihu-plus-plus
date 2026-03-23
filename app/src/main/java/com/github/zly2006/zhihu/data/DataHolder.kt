@@ -672,7 +672,7 @@ object DataHolder {
         val id: String,
         val url: String = "",
         val author: Author,
-        val content: List<JsonElement> = emptyList(),
+        val content: List<ContentItem> = emptyList(),
         val excerptTitle: String = "",
         val contentHtml: String = "",
         val likeCount: Int = 0,
@@ -702,7 +702,35 @@ object DataHolder {
         val virtuals: JsonObject? = null,
         val reactionRelation: JsonObject? = null,
         val topReactions: JsonObject? = null,
-    ) : Content
+    ) : Content {
+        @Serializable
+        sealed interface ContentItem
+
+        @Serializable
+        @SerialName("text")
+        data class ContentText(
+            val content: String,
+            val title: String,
+        ) : ContentItem
+
+        @Serializable
+        @SerialName("link_card")
+        data class ContentLinkCard(
+            val dataContentId: String,
+            val dataContentType: String,
+            val url: String,
+        ) : ContentItem
+
+        @Serializable
+        @SerialName("image")
+        data class ContentImage(
+            val url: String,
+            val width: Int,
+            val height: Int,
+            val isGif: Boolean = false,
+            val originalUrl: String? = null,
+        ) : ContentItem
+    }
 
     @Serializable
     data class Column(

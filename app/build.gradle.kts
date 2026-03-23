@@ -1,5 +1,6 @@
 @file:OptIn(ExperimentalEncodingApi::class)
 
+import buildlogic.gitHash
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -9,7 +10,6 @@ plugins {
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
     id("kotlin-parcelize")
-    id("org.ajoberstar.grgit") version "5.3.3"
     id("com.google.devtools.ksp")
     id("org.jlleitschuh.gradle.ktlint")
 }
@@ -84,11 +84,9 @@ android {
             }
         }
     }
-    kotlinOptions {
-        freeCompilerArgs += "-Xdebug"
-    }
+
     buildTypes {
-        val gitHash = grgit.head().abbreviatedId
+        val gitHash = gitHash(rootProject.projectDir)
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
         }
@@ -103,11 +101,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        jvmToolchain(17)
     }
     buildFeatures {
         viewBinding = true
@@ -152,7 +150,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")
 }
 
-val ktor = "3.3.3"
+val ktor = "3.4.1"
+val coil = "3.4.0"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -170,10 +169,10 @@ dependencies {
     implementation("io.github.huarangmeng:latex-parser:$latex")
     implementation("io.github.huarangmeng:latex-renderer:$latex")
 
-    implementation("io.coil-kt.coil3:coil-compose:3.3.0")
-    implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.3.0")
-    implementation("io.coil-kt.coil3:coil-gif:3.3.0")
-    implementation("io.coil-kt.coil3:coil-svg:3.3.0")
+    implementation("io.coil-kt.coil3:coil-compose:$coil")
+    implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
+    implementation("io.coil-kt.coil3:coil-gif:$coil")
+    implementation("io.coil-kt.coil3:coil-svg:$coil")
 
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.materialkolor:material-kolor:4.1.1")

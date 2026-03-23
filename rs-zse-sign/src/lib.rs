@@ -2,14 +2,16 @@ use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
 
-const ZK: [u32; 32] = [
+pub mod decrypt;
+
+pub(crate) const ZK: [u32; 32] = [
     1170614578, 1024848638, 1413669199, 3951632832, 3528873006, 2921909214, 4151847688, 3997739139,
     1933479194, 3323781115, 3888513386, 460404854, 3747539722, 2403641034, 2615871395, 2119585428,
     2265697227, 2035090028, 2773447226, 4289380121, 4217216195, 2200601443, 3051914490, 1579901135,
     1321810770, 456816404, 2903323407, 4065664991, 330002838, 3506006750, 363569021, 2347096187,
 ];
 
-const ZB: [u8; 256] = [
+pub(crate) const ZB: [u8; 256] = [
     20, 223, 245, 7, 248, 2, 194, 209, 87, 6, 227, 253, 240, 128, 222, 91, 237, 9, 125, 157, 230,
     93, 252, 205, 90, 79, 144, 199, 159, 197, 186, 167, 39, 37, 156, 198, 38, 42, 43, 168, 217,
     153, 15, 103, 80, 189, 71, 191, 97, 84, 247, 95, 36, 69, 14, 35, 12, 171, 28, 114, 178, 148,
@@ -25,8 +27,9 @@ const ZB: [u8; 256] = [
     202, 220, 50, 221, 152, 140, 33, 235, 214,
 ];
 
-const ALPHABET: &str = "6fpLRqJO8M/c3jnYxFkUVC4ZIG12SiH=5v0mXDazWBTsuw7QetbKdoPyAl+hN9rgE";
-const KEY16: [u8; 16] = *b"059053f7d15e01d7";
+pub(crate) const ALPHABET: &str =
+    "6fpLRqJO8M/c3jnYxFkUVC4ZIG12SiH=5v0mXDazWBTsuw7QetbKdoPyAl+hN9rgE";
+pub(crate) const KEY16: [u8; 16] = *b"059053f7d15e01d7";
 
 fn encode_uri_component(input: &str) -> Vec<u8> {
     fn is_unescaped(b: u8) -> bool {
@@ -50,17 +53,17 @@ fn encode_uri_component(input: &str) -> Vec<u8> {
 }
 
 #[inline]
-fn read_u32_be(b: &[u8], off: usize) -> u32 {
+pub(crate) fn read_u32_be(b: &[u8], off: usize) -> u32 {
     u32::from_be_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]])
 }
 
 #[inline]
-fn write_u32_be(v: u32, out: &mut [u8], off: usize) {
+pub(crate) fn write_u32_be(v: u32, out: &mut [u8], off: usize) {
     out[off..off + 4].copy_from_slice(&v.to_be_bytes());
 }
 
 #[inline]
-fn g_transform(tt: u32) -> u32 {
+pub(crate) fn g_transform(tt: u32) -> u32 {
     let te = tt.to_be_bytes();
     let tr = [
         ZB[te[0] as usize],
@@ -72,7 +75,7 @@ fn g_transform(tt: u32) -> u32 {
     ti ^ ti.rotate_left(2) ^ ti.rotate_left(10) ^ ti.rotate_left(18) ^ ti.rotate_left(24)
 }
 
-fn r_block(input16: &[u8]) -> [u8; 16] {
+pub(crate) fn r_block(input16: &[u8]) -> [u8; 16] {
     let mut tr = [0u32; 36];
     tr[0] = read_u32_be(input16, 0);
     tr[1] = read_u32_be(input16, 4);
@@ -144,7 +147,7 @@ fn custom_encode(mut bytes: Vec<u8>) -> String {
     out
 }
 
-pub fn encrypt_zse_v4(input: &str, _now_ms: i64) -> String {
+pub fn encrypt_zse_v4(input: &str) -> String {
     let seed = 12u8; // matches zse-v4.js: Math.random = () => 0.1 → Math.floor(0.1 * 127)
 
     let mut plain = Vec::new();
@@ -177,13 +180,12 @@ pub extern "system" fn Java_com_github_zly2006_zhihu_util_ZseRustSigner_encrypt(
     mut env: JNIEnv,
     _class: JClass,
     input: JString,
-    now_ms: i64,
 ) -> jstring {
     let input: String = env
         .get_string(&input)
         .map(|s| s.into())
         .unwrap_or_else(|_| String::new());
-    let out = encrypt_zse_v4(&input, now_ms);
+    let out = encrypt_zse_v4(&input);
     match env.new_string(out) {
         Ok(s) => s.into_raw(),
         Err(_) => std::ptr::null_mut(),

@@ -15,4 +15,5 @@ data class GithubAsset(
     val name: String,
     @SerialName("content_type") val contentType: String,
     @SerialName("browser_download_url") val browserDownloadUrl: String,
+    @SerialName("cn_download_url") val cnDownloadUrl: String? = null,
 )

@@ -5,17 +5,20 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +46,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +60,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import kotlin.math.tanh
 
@@ -193,12 +199,56 @@ fun AnswerVerticalOverscroll(
                     // Use Unit key so the gesture handler is never rebuilt mid-gesture;
                     // current* refs (rememberUpdatedState) handle live value updates.
                     Modifier.pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragStart = {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                                 rawDragAccumulator = 0f
                                 hasTriggeredHaptic = false
-                            },
-                            onDragEnd = {
+                                var dragStarted = false
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                    if (!change.pressed) break
+
+                                    val delta = change.positionChange().y
+                                    if (!dragStarted) {
+                                        val totalDx = change.position.x - down.position.x
+                                        val totalDy = change.position.y - down.position.y
+                                        if (totalDy.absoluteValue <= viewConfiguration.touchSlop ||
+                                            totalDy.absoluteValue <= totalDx.absoluteValue
+                                        ) {
+                                            continue
+                                        }
+                                        dragStarted = true
+                                    }
+
+                                    val canDragDown = delta > 0 && currentCanGoPrevious
+                                    val canDragUp = delta < 0 && currentCanGoNext
+                                    val continuing = (overscrollOffset.value > 0 && delta > 0) ||
+                                        (overscrollOffset.value < 0 && delta < 0)
+                                    val reversing = (overscrollOffset.value > 0 && delta < 0) ||
+                                        (overscrollOffset.value < 0 && delta > 0)
+
+                                    if (canDragDown || canDragUp || continuing || reversing) {
+                                        change.consume()
+                                        rawDragAccumulator += delta
+                                        if ((rawDragAccumulator > 0 && !currentCanGoPrevious) ||
+                                            (rawDragAccumulator < 0 && !currentCanGoNext)
+                                        ) {
+                                            rawDragAccumulator = 0f
+                                        }
+                                        val newOffset = dampedOffset(rawDragAccumulator)
+                                        coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
+                                        if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
+                                            hasTriggeredHaptic = true
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                        if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
+                                            hasTriggeredHaptic = false
+                                        }
+                                    }
+                                }
+
                                 val currentOffset = overscrollOffset.value
                                 if (abs(currentOffset) >= triggerThresholdPx) {
                                     if (currentOffset > 0 && currentCanGoPrevious) {
@@ -217,37 +267,6 @@ fun AnswerVerticalOverscroll(
                                             stiffness = Spring.StiffnessMedium,
                                         ),
                                     )
-                                }
-                            },
-                            onDragCancel = {
-                                rawDragAccumulator = 0f
-                                hasTriggeredHaptic = false
-                                coroutineScope.launch { overscrollOffset.snapTo(0f) }
-                            },
-                        ) { _, dragAmount ->
-                            val canDragDown = dragAmount > 0 && currentCanGoPrevious
-                            val canDragUp = dragAmount < 0 && currentCanGoNext
-                            val continuing = (overscrollOffset.value > 0 && dragAmount > 0) ||
-                                (overscrollOffset.value < 0 && dragAmount < 0)
-                            val reversing = (overscrollOffset.value > 0 && dragAmount < 0) ||
-                                (overscrollOffset.value < 0 && dragAmount > 0)
-
-                            if (canDragDown || canDragUp || continuing || reversing) {
-                                rawDragAccumulator += dragAmount
-                                // Clamp to zero crossing
-                                if ((rawDragAccumulator > 0 && !currentCanGoPrevious) ||
-                                    (rawDragAccumulator < 0 && !currentCanGoNext)
-                                ) {
-                                    rawDragAccumulator = 0f
-                                }
-                                val newOffset = dampedOffset(rawDragAccumulator)
-                                coroutineScope.launch { overscrollOffset.snapTo(newOffset) }
-                                if (!hasTriggeredHaptic && abs(newOffset) >= triggerThresholdPx) {
-                                    hasTriggeredHaptic = true
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                                if (hasTriggeredHaptic && abs(newOffset) < triggerThresholdPx) {
-                                    hasTriggeredHaptic = false
                                 }
                             }
                         }
@@ -273,7 +292,7 @@ fun AnswerVerticalOverscroll(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .padding(top = 8.dp),
+                    .padding(top = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()),
             )
         }
 
@@ -292,7 +311,7 @@ fun AnswerVerticalOverscroll(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 8.dp),
+                    .padding(bottom = 8.dp + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()),
             )
         }
 

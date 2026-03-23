@@ -136,39 +136,11 @@ object ZseSigner {
         return out.toString()
     }
 
-    private fun isUnescapedUriByte(value: Int): Boolean = (value in 'A'.code..'Z'.code) ||
-        (value in 'a'.code..'z'.code) ||
-        (value in '0'.code..'9'.code) ||
-        value == '-'.code ||
-        value == '_'.code ||
-        value == '.'.code ||
-        value == '!'.code ||
-        value == '~'.code ||
-        value == '*'.code ||
-        value == '\''.code ||
-        value == '('.code ||
-        value == ')'.code
-
-    private fun encodeUriComponent(input: String): ByteArray {
-        val out = StringBuilder(input.length * 3)
-        for (byte in input.encodeToByteArray()) {
-            val value = byte.toInt() and 0xFF
-            if (isUnescapedUriByte(value)) {
-                out.append(value.toChar())
-            } else {
-                out.append('%')
-                out.append(HEX[value ushr 4])
-                out.append(HEX[value and 0x0F])
-            }
-        }
-        return out.toString().encodeToByteArray()
-    }
-
     fun encryptZseV4(input: String): String {
         val plain = ArrayList<Byte>(input.length + 32)
         plain += 210.toByte()
         plain += 0.toByte()
-        plain.addAll(encodeUriComponent(input).asList())
+        plain.addAll(input.encodeToByteArray().asList())
 
         val pad = 16 - (plain.size % 16)
         repeat(pad) { plain += pad.toByte() }

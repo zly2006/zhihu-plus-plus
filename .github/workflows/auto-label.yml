@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.PRPAT }}
           script: |
             const title = context.payload.pull_request.title;
             let label = null;
