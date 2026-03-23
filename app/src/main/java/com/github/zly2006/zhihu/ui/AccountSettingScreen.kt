@@ -265,8 +265,7 @@ fun AccountSettingScreen(
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
                                     navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!))
-                                }
-                                .padding(8.dp, 16.dp),
+                                }.padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -290,8 +289,7 @@ fun AccountSettingScreen(
                                 .clickable {
                                     onDismissRequest()
                                     navigator.onNavigate(Notification)
-                                }
-                                .padding(8.dp, 16.dp),
+                                }.padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -324,8 +322,7 @@ fun AccountSettingScreen(
                                     .clickable {
                                         onDismissRequest()
                                         navigator.onNavigate(OnlineHistory)
-                                    }
-                                    .padding(8.dp, 16.dp),
+                                    }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
