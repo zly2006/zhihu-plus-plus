@@ -229,6 +229,10 @@ fun SystemAndUpdateSettingsScreen(
                             ) {
                                 Text("使用国内网盘加速下载", Modifier.padding(0.dp, 4.dp))
                             }
+                            Text(
+                                "使用国内网盘下载，不需要梯，还可以帮助作者获得流量。您也可以选择使用GitHub下载。",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 

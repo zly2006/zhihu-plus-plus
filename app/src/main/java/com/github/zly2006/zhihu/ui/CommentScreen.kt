@@ -615,9 +615,14 @@ fun CommentScreen(
                                                     dampingRatio = Spring.DampingRatioMediumBouncy,
                                                 ),
                                             ),
-                                        ) { comment ->
-                                            if (comment.clickTarget != null) {
-                                                onChildCommentClick(comment)
+                                        ) { _ ->
+                                            if (activeCommentItem == null) {
+                                                if (commentItem.clickTarget != null) {
+                                                    onChildCommentClick(commentItem)
+                                                }
+                                            } else {
+                                                // Set reply target when swiping to reply
+                                                replyToComment = commentItem
                                             }
                                         }
                                     }
@@ -972,36 +977,34 @@ private fun CommentItem(
             Spacer(modifier = Modifier.weight(1f))
 
             // 回复按钮
-            if (comment.clickTarget != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onChildCommentClick(comment) },
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onChildCommentClick(comment) },
+            ) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Column(
+                    modifier = Modifier.height(24.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Column(
-                        modifier = Modifier.height(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.Comment,
-                            contentDescription = "回复",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    if (comment.item.childCommentCount > 0) {
-                        Text(
-                            text = comment.item.childCommentCount.toString(),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+                    Icon(
+                        Icons.AutoMirrored.Outlined.Comment,
+                        contentDescription = "回复",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                if (comment.item.childCommentCount > 0) {
+                    Text(
+                        text = comment.item.childCommentCount.toString(),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             // 点赞
             Row(
