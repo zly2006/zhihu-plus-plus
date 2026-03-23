@@ -16,29 +16,27 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.viewmodel.CommentItem
-import io.ktor.client.HttpClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreenComponent(
     showComments: Boolean,
     onDismiss: () -> Unit,
-    httpClient: HttpClient,
     content: NavDestination,
 ) {
-    if (!showComments) {
-        return
-    }
-
+    val context = LocalContext.current
+    val httpClient = remember { AccountData.httpClient(context) }
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
     val rootSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -67,7 +65,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (activeChildComment == null) {
+    if (showComments) {
         MyModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = rootSheetState,
@@ -87,7 +85,7 @@ fun CommentScreenComponent(
         }
     }
 
-    if (activeChildComment != null && childTarget != null) {
+    if (showComments && activeChildComment != null && childTarget != null) {
         MyModalBottomSheet(
             onDismissRequest = { activeChildComment = null },
             sheetState = childSheetState,
@@ -106,10 +104,5 @@ fun CommentScreenComponent(
                 onChildCommentClick = { },
             )
         }
-    }
-
-    // 返回键处理
-    BackHandler(enabled = activeChildComment != null) {
-        activeChildComment = null
     }
 }

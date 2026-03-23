@@ -336,14 +336,11 @@ fun QuestionScreen(
             }
         }
     }
-    if (context is MainActivity) {
-        CommentScreenComponent(
-            showComments = showComments,
-            onDismiss = { showComments = false },
-            httpClient = context.httpClient,
-            content = question,
-        )
-    }
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
+        content = question,
+    )
 
     // 分享对话框
     val shareText = getShareText(question, title)

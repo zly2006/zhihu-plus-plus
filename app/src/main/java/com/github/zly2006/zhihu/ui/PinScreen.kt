@@ -183,7 +183,6 @@ fun PinScreen(
                         CommentScreenComponent(
                             showComments = showComments,
                             onDismiss = { showComments = false },
-                            httpClient = httpClient,
                             content = pin,
                         )
                     }
