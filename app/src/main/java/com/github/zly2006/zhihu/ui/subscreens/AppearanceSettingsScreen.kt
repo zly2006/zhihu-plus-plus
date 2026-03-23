@@ -878,7 +878,7 @@ fun AppearanceSettingsScreen(
                                     },
                                     duo3HomeAccount.value,
                                 )
-                                val isEnabled = candidateSet != selectedBottomBarItemKeys.value
+                                val isEnabled = key != Account.name
 
                                 Row(
                                     modifier = Modifier
