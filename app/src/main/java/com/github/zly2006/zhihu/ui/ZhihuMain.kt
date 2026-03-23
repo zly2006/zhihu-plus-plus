@@ -142,7 +142,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
     var startDestination by remember { mutableStateOf(computeStartDestination(selectedBottomBarItemKeys)) }
 
-    fun reloadBottomBarPreferences() {
+    val reloadBottomBarPreferences = {
         val updatedDuo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
         val updatedSelectedBottomBarItemKeys = computeSelectedKeys(updatedDuo3HomeAccount)
         duo3HomeAccount = updatedDuo3HomeAccount
@@ -464,7 +464,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     AppearanceSettingsScreen(
                         innerPadding,
                         setting = args.setting,
-                        onExit = ::reloadBottomBarPreferences,
+                        onExit = reloadBottomBarPreferences,
                     )
                 }
                 composable<Account.RecommendSettings> {
