@@ -359,6 +359,10 @@ fun CommentScreen(
         is CommentHolder -> content.article
         else -> content
     }
+    val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     val listState = rememberLazyListState()
 
@@ -426,7 +430,7 @@ fun CommentScreen(
                 .fillMaxHeight()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = commentBackgroundColor,
         ) {
             Column(
                 modifier = Modifier
@@ -531,7 +535,7 @@ fun CommentScreen(
                                                     .height(28.dp),
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                    containerColor = actionChipColor,
                                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                                 ),
                                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
@@ -540,7 +544,7 @@ fun CommentScreen(
                                                     Icons.AutoMirrored.Outlined.Comment,
                                                     contentDescription = "查看子评论",
                                                     modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.surfaceTint,
+                                                    tint = actionChipIconColor,
                                                 )
                                                 Text(
                                                     "查看 ${commentItem.item.childCommentCount} 条子评论",
@@ -645,6 +649,7 @@ fun CommentScreen(
                 Surface(
                     tonalElevation = 2.dp,
                     modifier = Modifier.fillMaxWidth(),
+                    color = commentInputBarColor,
                 ) {
                     Column {
                         // Reply indicator bar

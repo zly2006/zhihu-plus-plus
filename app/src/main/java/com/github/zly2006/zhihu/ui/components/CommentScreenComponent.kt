@@ -53,8 +53,6 @@ fun CommentScreenComponent(
         },
         sheetState = sheetState,
         sheetGesturesEnabled = dismissEnabled,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
         scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
         properties = ModalBottomSheetProperties(
             shouldDismissOnBackPress = dismissEnabled,
