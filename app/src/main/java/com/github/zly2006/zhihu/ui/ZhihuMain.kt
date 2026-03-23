@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
+import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -34,6 +35,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -116,10 +118,68 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
 
     // 底部导航栏功能
-    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
-    val duo3NavStyle = remember { preferences.getBoolean("duo3_nav_style", false) }
-    val tapToScrollToTopEnabled = remember { preferences.getBoolean("bottomBarTapScrollToTop", true) }
-    val autoHideBottomBar = remember { preferences.getBoolean("autoHideBottomBar", false) }
+    var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+    var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+    var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+
+    fun computeSelectedKeys(isDuo3HomeAccount: Boolean) = normalizeBottomBarSelection(
+        preferences
+            .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarSelectionKeys(isDuo3HomeAccount))
+            ?.toSet() ?: defaultBottomBarSelectionKeys(isDuo3HomeAccount),
+        isDuo3HomeAccount,
+    )
+
+    var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
+    var startDestination by remember {
+        mutableStateOf(
+            navDestinationFromName(
+                resolveValidStartDestinationKey(
+                    preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                    selectedBottomBarItemKeys.toList(),
+                ),
+            ),
+        )
+    }
+
+    fun reloadStartDestination(keys: Set<String>) {
+        startDestination = navDestinationFromName(
+            resolveValidStartDestinationKey(
+                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                keys.toList(),
+            ),
+        )
+    }
+
+    fun reloadBottomBarKeys() {
+        computeSelectedKeys(duo3HomeAccount).also {
+            selectedBottomBarItemKeys = it
+            reloadStartDestination(it)
+        }
+    }
+
+    val preferenceListener = remember(preferences) {
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "duo3_home_account" -> {
+                    duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+                    reloadBottomBarKeys()
+                }
+                "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
+                "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+                "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+                BOTTOM_BAR_ITEMS_PREFERENCE_KEY -> reloadBottomBarKeys()
+                START_DESTINATION_PREFERENCE_KEY -> reloadStartDestination(selectedBottomBarItemKeys)
+            }
+        }
+    }
+
+    DisposableEffect(preferences, preferenceListener) {
+        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        }
+    }
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
@@ -144,26 +204,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         Triple(OnlineHistory, "历史", Icons.Filled.History),
         Triple(Account, "账号", Icons.Filled.ManageAccounts),
     )
-    val selectedBottomBarItemKeys = remember {
-        normalizeBottomBarSelection(
-            preferences
-                .getStringSet(
-                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                    defaultBottomBarSelectionKeys(duo3HomeAccount),
-                )?.toSet() ?: defaultBottomBarSelectionKeys(duo3HomeAccount),
-            duo3HomeAccount,
-        )
-    }
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
 
-    val startDestination = remember {
-        navDestinationFromName(
-            resolveValidStartDestinationKey(
-                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                bottomBarItems.map { it.first.name },
-            ),
-        )
-    }
     val navEntry by navController.currentBackStackEntryAsState()
 
     // 获取页面索引的函数
