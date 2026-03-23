@@ -130,10 +130,24 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     )
 
     var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
+    var startDestination by remember {
+        mutableStateOf(
+            navDestinationFromName(
+                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
+            ),
+        )
+    }
+
+    fun reloadStartDestination() {
+        startDestination = navDestinationFromName(
+            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
+        )
+    }
 
     fun reloadBottomBarKeys() {
         computeSelectedKeys(duo3HomeAccount).also {
             selectedBottomBarItemKeys = it
+            reloadStartDestination()
         }
     }
 
@@ -147,6 +161,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
                 "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
                 "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+                BOTTOM_BAR_ITEMS_PREFERENCE_KEY -> reloadBottomBarKeys()
             }
         }
     }
@@ -182,12 +197,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         Triple(Account, "账号", Icons.Filled.ManageAccounts),
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
-
-    val startDestination = remember {
-        navDestinationFromName(
-            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
-        )
-    }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
