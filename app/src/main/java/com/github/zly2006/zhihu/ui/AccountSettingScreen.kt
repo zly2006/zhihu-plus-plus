@@ -254,7 +254,7 @@ fun AccountSettingScreen(
                     Modifier
                         .padding(horizontal = 16.dp)
                         .padding(top = 16.dp, bottom = 32.dp)
-                        .clip(RoundedCornerShape(16.dp)),
+                        .clip(RoundedCornerShape(24.dp)),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     if (data.login) {
