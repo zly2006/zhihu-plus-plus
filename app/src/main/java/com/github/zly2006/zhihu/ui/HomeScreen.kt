@@ -71,6 +71,7 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -172,9 +173,28 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
 
-    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
-    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+    val feedCardStyle = preferences.getString("feedCardStyle", "card") ?: "card"
+    val showRefreshFab = preferences.getBoolean("showRefreshFab", true)
     var showAccountBottomSheet by remember { mutableStateOf(false) }
+    val useSurfaceHomeBackground = duo3HomeAccount && feedCardStyle == "divider"
+    val isDarkTheme = ThemeManager.isDarkTheme()
+    val articleUseSurface = if (isDarkTheme) {
+        preferences.getBoolean("articleUseSurfaceDark", false)
+    } else {
+        preferences.getBoolean("articleUseSurfaceLight", false)
+    }
+    val homeContainerColor = if (useSurfaceHomeBackground) {
+        if (articleUseSurface) {
+            MaterialTheme.colorScheme.surface
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        }
+    } else if (duo3HomeAccount) {
+        MaterialTheme.colorScheme.surfaceContainer
+    } else {
+        MaterialTheme.colorScheme.background
+    }
 
     // 获取当前推荐算法设置
     val currentRecommendationMode = remember {
@@ -281,12 +301,12 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .fillMaxSize()
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
-        containerColor = if (duo3HomeAccount) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.background,
+        containerColor = homeContainerColor,
         topBar = {
             if (duo3HomeAccount) {
                 Box {
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        color = homeContainerColor,
                         modifier = Modifier
                             .height(
                                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
