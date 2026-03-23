@@ -886,13 +886,7 @@ fun AppearanceSettingsScreen(
                 SettingItem(
                     title = { Text("选择要在底部栏显示的页面") },
                     description = {
-                        Text(
-                            if (duo3HomeAccount.value) {
-                                "建议选择 3-5 项。保留主页时「账号设置」会自动关闭；取消主页时会自动开启；启用「历史」后账号页不再重复显示历史入口。"
-                            } else {
-                                "建议选择 3-5 项。"
-                            },
-                        )
+                        Text("建议选择 3-5 项。")
                     },
                     bottomAction = {
                         Column(
@@ -1170,7 +1164,7 @@ fun AppearanceSettingsScreen(
             ) {
                 SettingItemWithSwitch(
                     title = { Text("主页：账号入口迁移至顶部头像") },
-                    description = { Text("搜索栏样式变更；点击头像弹出账号面板；底部导航保留主页时隐藏「账号设置」入口，取消主页时会自动显示；「历史」入口可单独启用。") },
+                    description = { Text("搜索栏样式变更；点击头像弹出账号与设置；「历史」入口可挪入账号设置页。") },
                     checked = duo3HomeAccount.value,
                     onCheckedChange = {
                         duo3HomeAccount.value = it
