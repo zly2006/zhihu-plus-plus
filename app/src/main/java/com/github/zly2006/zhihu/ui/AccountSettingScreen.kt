@@ -82,6 +82,10 @@ import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.shouldShowAccountHistoryShortcut
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -106,6 +110,16 @@ fun AccountSettingScreen(
     }
 
     val useDuo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
+    val selectedBottomBarItemKeys = remember {
+        normalizeBottomBarSelection(
+            preferences
+                .getStringSet(
+                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                    defaultBottomBarSelectionKeys(useDuo3HomeAccount),
+                )?.toSet() ?: defaultBottomBarSelectionKeys(useDuo3HomeAccount),
+            useDuo3HomeAccount,
+        )
+    }
     var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
@@ -299,30 +313,32 @@ fun AccountSettingScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
                         }
-                        Column(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(8.dp, 16.dp)
-                                .clickable {
-                                    onDismissRequest()
-                                    navigator.onNavigate(OnlineHistory)
-                                },
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(
-                                Icons.Default.History,
-                                null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "浏览历史",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
+                        if (shouldShowAccountHistoryShortcut(useDuo3HomeAccount, selectedBottomBarItemKeys)) {
+                            Column(
+                                Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(8.dp, 16.dp)
+                                    .clickable {
+                                        onDismissRequest()
+                                        navigator.onNavigate(OnlineHistory)
+                                    },
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(
+                                    Icons.Default.History,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "浏览历史",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
                         }
                     }
                 }
