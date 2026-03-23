@@ -87,6 +87,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
+const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 
 private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
     Home.name to Home,
@@ -511,7 +512,7 @@ fun AppearanceSettingsScreen(
                                             feedCardStyle.value = mode
                                             preferences.edit { putString("feedCardStyle", mode) }
                                             feedCardStyleExpanded = false
-                                            Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
                                         },
                                     )
                                 }
@@ -981,6 +982,9 @@ fun AppearanceSettingsScreen(
             val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
             val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
             val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
+            val duo3CardLargeTitle = remember {
+                mutableStateOf(preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true))
+            }
             val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
             val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
 
@@ -1103,6 +1107,18 @@ fun AppearanceSettingsScreen(
                         preferences.edit { putBoolean("duo3_card_layout", it) }
                     },
                 )
+
+                AnimatedVisibility(visible = duo3CardLayout.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("信息流卡片：使用更大的标题字体") },
+                        description = { Text("默认启用；关闭后标题会缩小一档。") },
+                        checked = duo3CardLargeTitle.value,
+                        onCheckedChange = {
+                            duo3CardLargeTitle.value = it
+                            preferences.edit { putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, it) }
+                        },
+                    )
+                }
 
                 SettingItemWithSwitch(
                     title = { Text("文章阅读页：更改整体顶/底栏框架") },
