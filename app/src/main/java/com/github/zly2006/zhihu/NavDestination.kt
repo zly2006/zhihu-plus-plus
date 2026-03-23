@@ -271,6 +271,9 @@ fun resolveContent(uri: Uri): NavDestination? {
         } else if (uri.host == "search") {
             val query = uri.getQueryParameter("q") ?: ""
             return Search(query)
+        } else if (uri.host == "pin") {
+            val pinId = uri.pathSegments[0].toLong()
+            return Pin(id = pinId)
         }
         Log.w("NavDestination", "Cannot resolve content from uri: $uri")
     }
