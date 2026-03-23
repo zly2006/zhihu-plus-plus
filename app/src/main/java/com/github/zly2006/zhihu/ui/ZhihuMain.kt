@@ -162,7 +162,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
                 "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY -> reloadBottomBarKeys()
-                START_DESTINATION_PREFERENCE_KEY -> reloadStartDestination()
             }
         }
     }
