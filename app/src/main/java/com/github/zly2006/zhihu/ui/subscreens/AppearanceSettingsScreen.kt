@@ -150,11 +150,6 @@ internal fun normalizeBottomBarSelection(
     return normalized
 }
 
-internal fun isAccountBottomBarItemEnabled(
-    _duo3HomeAccount: Boolean,
-    _selectedKeys: Set<String>,
-): Boolean = false
-
 internal fun shouldShowAccountHistoryShortcut(
     duo3HomeAccount: Boolean,
     selectedKeys: Set<String>,
@@ -877,14 +872,7 @@ fun AppearanceSettingsScreen(
                         ) {
                             allBottomBarItems.forEach { (key, label) ->
                                 val isChecked = selectedBottomBarItemKeys.value.contains(key)
-                                val isEnabled = if (key == Account.name) {
-                                    isAccountBottomBarItemEnabled(
-                                        duo3HomeAccount.value,
-                                        selectedBottomBarItemKeys.value,
-                                    )
-                                } else {
-                                    true
-                                }
+                                val isEnabled = key != Account.name
 
                                 Row(
                                     modifier = Modifier
