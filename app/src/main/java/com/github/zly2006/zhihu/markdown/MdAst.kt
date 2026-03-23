@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.markdown
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -248,14 +249,18 @@ fun AnnotatedString.Builder.RenderInline(
                         placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
                     ),
                 ) {
-                    Latex(
-                        latex = d.math,
-                        config = LatexConfig(
-                            fontSize = fontSize.value.sp,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            darkColor = MaterialTheme.colorScheme.onBackground,
-                        ),
-                    )
+                    Box(
+                        modifier = Modifier.border(1.dp, Color(0xff66ccff)),
+                    ) {
+                        Latex(
+                            latex = d.math,
+                            config = LatexConfig(
+                                fontSize = fontSize.value.sp,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                darkColor = MaterialTheme.colorScheme.onBackground,
+                            ),
+                        )
+                    }
                 }
             }
 
