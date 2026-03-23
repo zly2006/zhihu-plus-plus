@@ -206,7 +206,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
 
-    val navEntry by navController.currentBackStackEntryAsState()
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -268,6 +267,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             .nestedScroll(bottomBarScrollConnection)
             .semantics { testTagsAsResourceId = true },
         bottomBar = {
+            val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
                 // 页面切换时重置底部导航栏可见状态
                 LaunchedEffect(navEntry) { isBottomBarVisible = true }
