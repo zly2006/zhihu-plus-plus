@@ -254,7 +254,7 @@ fun AccountSettingScreen(
                     Modifier
                         .padding(horizontal = 16.dp)
                         .padding(top = 16.dp, bottom = 32.dp)
-                        .clip(RoundedCornerShape(24.dp)),
+                        .clip(RoundedCornerShape(16.dp)),
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     if (data.login) {
@@ -263,8 +263,10 @@ fun AccountSettingScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(8.dp, 16.dp)
-                                .clickable { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
+                                .clickable {
+                                    navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!))
+                                }
+                                .padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -285,11 +287,11 @@ fun AccountSettingScreen(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(8.dp, 16.dp)
                                 .clickable {
                                     onDismissRequest()
                                     navigator.onNavigate(Notification)
-                                },
+                                }
+                                .padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
@@ -319,11 +321,11 @@ fun AccountSettingScreen(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(MaterialTheme.colorScheme.primaryContainer)
-                                    .padding(8.dp, 16.dp)
                                     .clickable {
                                         onDismissRequest()
                                         navigator.onNavigate(OnlineHistory)
-                                    },
+                                    }
+                                    .padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
