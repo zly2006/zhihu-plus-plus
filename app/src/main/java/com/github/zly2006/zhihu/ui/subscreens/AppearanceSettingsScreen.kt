@@ -519,17 +519,6 @@ fun AppearanceSettingsScreen(
                         )
                     },
                 )
-
-                val commentTopTextExtraSpacing = remember { mutableStateOf(preferences.getBoolean("commentTopTextExtraSpacing", false)) }
-                SettingItemWithSwitch(
-                    title = { Text("评论区标题上下留白") },
-                    description = { Text("为评论区卡片顶部\"评论/回复\"标题增加间距，提升视觉层次感。") },
-                    checked = commentTopTextExtraSpacing.value,
-                    onCheckedChange = {
-                        commentTopTextExtraSpacing.value = it
-                        preferences.edit { putBoolean("commentTopTextExtraSpacing", it) }
-                    },
-                )
             }
 
             // ── 信息流 ──────────────────────────────────────────────────────────
