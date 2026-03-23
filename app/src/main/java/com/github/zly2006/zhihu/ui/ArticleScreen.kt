@@ -137,6 +137,7 @@ import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -1902,6 +1903,19 @@ fun ArticleScreen(
         }
     } // end answerSwitchContent
 
+    val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+        if (useDuo3ArticleBar) {
+            64.dp
+        } else {
+            24.dp
+        }
+    val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() +
+        if (useDuo3ArticleBar) {
+            96.dp
+        } else {
+            64.dp
+        }
+
     Box(
         modifier = if (useDuo3ArticleBar) Modifier else Modifier.padding(innerPadding),
     ) {
@@ -1967,6 +1981,17 @@ fun ArticleScreen(
         } else {
             (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
         }
+
+        VerticalReadingProgressBar(
+            scrollState = scrollState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(
+                    top = progressBarTopPadding,
+                    bottom = progressBarBottomPadding,
+                    end = 2.dp,
+                ),
+        )
     }
 
     // 全屏菜单
