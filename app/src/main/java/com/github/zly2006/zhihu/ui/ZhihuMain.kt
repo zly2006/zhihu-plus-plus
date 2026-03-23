@@ -206,7 +206,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
 
-
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
         route.hasRoute<Home>() -> 0
