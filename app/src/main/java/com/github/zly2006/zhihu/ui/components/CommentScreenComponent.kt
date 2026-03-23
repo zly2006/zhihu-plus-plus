@@ -40,53 +40,72 @@ fun CommentScreenComponent(
     }
 
     var activeChildComment by remember { mutableStateOf<CommentItem?>(null) }
-    val dismissEnabled = activeChildComment == null
+    val rootSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childTarget = activeChildComment?.clickTarget
-    val currentContent = childTarget ?: content
-    val currentActiveComment = activeChildComment.takeIf { childTarget != null }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    MyModalBottomSheet(
-        onDismissRequest = {
-            activeChildComment = null
-            onDismiss()
-        },
-        sheetState = sheetState,
-        sheetGesturesEnabled = dismissEnabled,
-        scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-        properties = ModalBottomSheetProperties(
-            shouldDismissOnBackPress = dismissEnabled,
-            shouldDismissOnClickOutside = dismissEnabled,
-        ),
-        dragHandle = {
-            Column {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    if (currentContent is CommentHolder) {
-                        "回复"
-                    } else {
-                        "评论"
-                    },
-                    style = Typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(26.dp),
-                    textAlign = TextAlign.Center,
-                    fontSize = 18.sp,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        },
-    ) {
-        CommentScreen(
-            httpClient = httpClient,
-            content = { currentContent },
-            activeCommentItem = currentActiveComment,
-            topPadding = 0.dp,
-            onChildCommentClick = { activeChildComment = it },
-        )
+    @Composable
+    fun DragHandleTitle(targetContent: NavDestination) {
+        Column {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                if (targetContent is CommentHolder) {
+                    "回复"
+                } else {
+                    "评论"
+                },
+                style = Typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(26.dp),
+                textAlign = TextAlign.Center,
+                fontSize = 18.sp,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+
+    if (activeChildComment == null) {
+        MyModalBottomSheet(
+            onDismissRequest = onDismiss,
+            sheetState = rootSheetState,
+            scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            properties = ModalBottomSheetProperties(
+                shouldDismissOnBackPress = true,
+                shouldDismissOnClickOutside = true,
+            ),
+            dragHandle = { DragHandleTitle(content) },
+        ) {
+            CommentScreen(
+                httpClient = httpClient,
+                content = { content },
+                topPadding = 0.dp,
+                onChildCommentClick = { activeChildComment = it },
+            )
+        }
+    }
+
+    if (activeChildComment != null && childTarget != null) {
+        MyModalBottomSheet(
+            onDismissRequest = { activeChildComment = null },
+            sheetState = childSheetState,
+            scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            properties = ModalBottomSheetProperties(
+                shouldDismissOnBackPress = true,
+                shouldDismissOnClickOutside = true,
+            ),
+            dragHandle = { DragHandleTitle(childTarget) },
+        ) {
+            CommentScreen(
+                httpClient = httpClient,
+                content = { childTarget },
+                activeCommentItem = activeChildComment,
+                topPadding = 0.dp,
+                onChildCommentClick = { },
+            )
+        }
     }
 
     // 返回键处理
