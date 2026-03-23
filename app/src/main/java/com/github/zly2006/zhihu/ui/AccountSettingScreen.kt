@@ -118,6 +118,7 @@ fun AccountSettingScreen(
                     defaultBottomBarSelectionKeys(useDuo3HomeAccount),
                 )?.toSet() ?: defaultBottomBarSelectionKeys(useDuo3HomeAccount),
             useDuo3HomeAccount,
+            enforceMinimumSelection = true,
         )
     }
     var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }

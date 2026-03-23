@@ -45,6 +45,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -121,6 +122,7 @@ internal fun defaultBottomBarSelectionKeys(duo3HomeAccount: Boolean): Set<String
 internal fun normalizeBottomBarSelection(
     selectedKeys: Set<String>,
     duo3HomeAccount: Boolean,
+    enforceMinimumSelection: Boolean = false,
 ): Set<String> {
     val allowedKeys = topLevelDestinationsInOrder.map { it.first }.toSet()
     val normalized = selectedKeys
@@ -147,6 +149,23 @@ internal fun normalizeBottomBarSelection(
         }
     }
 
+    if (enforceMinimumSelection) {
+        val fillOrder = if (duo3HomeAccount) {
+            if (Home.name in normalized) {
+                listOf(Follow.name, Daily.name, HotList.name, OnlineHistory.name)
+            } else {
+                listOf(Follow.name, Daily.name, HotList.name, OnlineHistory.name, Home.name)
+            }
+        } else {
+            listOf(Home.name, Follow.name, Daily.name, HotList.name, OnlineHistory.name, Account.name)
+        }
+        fillOrder.forEach { key ->
+            if (normalized.size < 3) {
+                normalized.add(key)
+            }
+        }
+    }
+
     return normalized
 }
 
@@ -160,6 +179,7 @@ internal fun shouldShowAccountHistoryShortcut(
 fun AppearanceSettingsScreen(
     innerPadding: PaddingValues,
     setting: String = "",
+    onExit: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val preferences = remember {
@@ -190,8 +210,15 @@ fun AppearanceSettingsScreen(
                         defaultBottomBarSelectionKeys(duo3HomeAccount.value),
                     )?.toSet() ?: defaultBottomBarSelectionKeys(duo3HomeAccount.value),
                 duo3HomeAccount.value,
+                enforceMinimumSelection = true,
             ),
         )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onExit()
+        }
     }
 
     LaunchedEffect(setting, itemPositions[setting]) {
@@ -793,7 +820,11 @@ fun AppearanceSettingsScreen(
                 currentSet: Set<String>,
                 duo3HomeAccountEnabled: Boolean = duo3HomeAccount.value,
             ) {
-                val normalizedSet = normalizeBottomBarSelection(currentSet, duo3HomeAccountEnabled)
+                val normalizedSet = normalizeBottomBarSelection(
+                    currentSet,
+                    duo3HomeAccountEnabled,
+                    enforceMinimumSelection = true,
+                )
                 val availableKeys = allBottomBarItems.map { it.first }.filter { it in normalizedSet }
                 val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
                 selectedBottomBarItemKeys.value = normalizedSet
@@ -802,7 +833,6 @@ fun AppearanceSettingsScreen(
                     putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalizedSet)
                     putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
                 }
-                Toast.makeText(context, "已保存，重启后生效", Toast.LENGTH_SHORT).show()
             }
 
             SettingItemGroup(

@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
-import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -35,7 +34,6 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -102,6 +100,7 @@ import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
@@ -121,58 +120,40 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
     var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+    val allBottomBarItemKeys = remember {
+        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
+    }
 
     fun computeSelectedKeys(isDuo3HomeAccount: Boolean) = normalizeBottomBarSelection(
         preferences
             .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarSelectionKeys(isDuo3HomeAccount))
             ?.toSet() ?: defaultBottomBarSelectionKeys(isDuo3HomeAccount),
         isDuo3HomeAccount,
+        enforceMinimumSelection = true,
+    )
+
+    fun computeStartDestination(selectedKeys: Set<String>) = navDestinationFromName(
+        resolveValidStartDestinationKey(
+            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+            allBottomBarItemKeys.filter { it in selectedKeys },
+        ),
     )
 
     var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
-    var startDestination by remember {
-        mutableStateOf(
-            navDestinationFromName(
-                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
-            ),
-        )
+    var startDestination by remember { mutableStateOf(computeStartDestination(selectedBottomBarItemKeys)) }
+
+    fun reloadBottomBarPreferences() {
+        val updatedDuo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+        val updatedSelectedBottomBarItemKeys = computeSelectedKeys(updatedDuo3HomeAccount)
+        duo3HomeAccount = updatedDuo3HomeAccount
+        duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
+        tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+        autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+        selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
+        startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
     }
 
-    fun reloadStartDestination() {
-        startDestination = navDestinationFromName(
-            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
-        )
-    }
-
-    fun reloadBottomBarKeys() {
-        computeSelectedKeys(duo3HomeAccount).also {
-            selectedBottomBarItemKeys = it
-            reloadStartDestination()
-        }
-    }
-
-    val preferenceListener = remember(preferences) {
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            when (key) {
-                "duo3_home_account" -> {
-                    duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
-                    reloadBottomBarKeys()
-                }
-                "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
-                "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
-                "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
-                BOTTOM_BAR_ITEMS_PREFERENCE_KEY -> reloadBottomBarKeys()
-                START_DESTINATION_PREFERENCE_KEY -> reloadStartDestination()
-            }
-        }
-    }
-
-    DisposableEffect(preferences, preferenceListener) {
-        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
-        onDispose {
-            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-        }
-    }
+    val navEntry by navController.currentBackStackEntryAsState()
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
@@ -259,7 +240,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             .nestedScroll(bottomBarScrollConnection)
             .semantics { testTagsAsResourceId = true },
         bottomBar = {
-            val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
                 // 页面切换时重置底部导航栏可见状态
                 LaunchedEffect(navEntry) { isBottomBarVisible = true }
@@ -484,6 +464,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     AppearanceSettingsScreen(
                         innerPadding,
                         setting = args.setting,
+                        onExit = ::reloadBottomBarPreferences,
                     )
                 }
                 composable<Account.RecommendSettings> {
