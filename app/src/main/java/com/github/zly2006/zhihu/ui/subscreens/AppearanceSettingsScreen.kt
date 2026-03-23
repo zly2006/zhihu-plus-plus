@@ -150,11 +150,6 @@ internal fun normalizeBottomBarSelection(
     return normalized
 }
 
-internal fun shouldShowAccountHistoryShortcut(
-    duo3HomeAccount: Boolean,
-    selectedKeys: Set<String>,
-): Boolean = duo3HomeAccount && OnlineHistory.name !in selectedKeys
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppearanceSettingsScreen(
@@ -181,16 +176,6 @@ fun AppearanceSettingsScreen(
 
     var scrolledSetting by remember { mutableStateOf<String?>(null) }
     val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
-    val allBottomBarItems = remember {
-        listOf(
-            Home.name to "主页",
-            Follow.name to "关注",
-            HotList.name to "热榜",
-            Daily.name to "日报",
-            OnlineHistory.name to "历史",
-            Account.name to "账号设置",
-        )
-    }
     val selectedBottomBarItemKeys = remember {
         mutableStateOf(
             normalizeBottomBarSelection(
@@ -202,31 +187,6 @@ fun AppearanceSettingsScreen(
                 duo3HomeAccount.value,
             ),
         )
-    }
-    var startDestinationExpanded by remember { mutableStateOf(false) }
-    var startDestinationKey by remember {
-        mutableStateOf(
-            resolveValidStartDestinationKey(
-                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                allBottomBarItems.map { it.first }.filter { it in selectedBottomBarItemKeys.value },
-            ),
-        )
-    }
-
-    fun persistBottomBarSelection(
-        currentSet: Set<String>,
-        duo3HomeAccountEnabled: Boolean = duo3HomeAccount.value,
-    ) {
-        val normalizedSet = normalizeBottomBarSelection(currentSet, duo3HomeAccountEnabled)
-        val availableKeys = allBottomBarItems.map { it.first }.filter { it in normalizedSet }
-        val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
-        selectedBottomBarItemKeys.value = normalizedSet
-        startDestinationKey = resolvedStartDestination
-        preferences.edit {
-            putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalizedSet)
-            putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
-        }
-        Toast.makeText(context, "已保存，重启后生效", Toast.LENGTH_SHORT).show()
     }
 
     LaunchedEffect(setting, itemPositions[setting]) {
@@ -603,7 +563,7 @@ fun AppearanceSettingsScreen(
                                             feedCardStyle.value = mode
                                             preferences.edit { putString("feedCardStyle", mode) }
                                             feedCardStyleExpanded = false
-                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "已设置为：$label，重启应用后生效", Toast.LENGTH_SHORT).show()
                                         },
                                     )
                                 }
@@ -806,6 +766,40 @@ fun AppearanceSettingsScreen(
             }
 
             // ── 底部导航栏 ──────────────────────────────────────────────────────
+            val allBottomBarItems = listOf(
+                Home.name to "主页",
+                Follow.name to "关注",
+                HotList.name to "热榜",
+                Daily.name to "日报",
+                OnlineHistory.name to "历史",
+                Account.name to "账号设置",
+            )
+            var startDestinationExpanded by remember { mutableStateOf(false) }
+            var startDestinationKey by remember {
+                mutableStateOf(
+                    resolveValidStartDestinationKey(
+                        preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                        allBottomBarItems.map { it.first }.filter { it in selectedBottomBarItemKeys.value },
+                    ),
+                )
+            }
+
+            fun persistBottomBarSelection(
+                currentSet: Set<String>,
+                duo3HomeAccountEnabled: Boolean = duo3HomeAccount.value,
+            ) {
+                val normalizedSet = normalizeBottomBarSelection(currentSet, duo3HomeAccountEnabled)
+                val availableKeys = allBottomBarItems.map { it.first }.filter { it in normalizedSet }
+                val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
+                selectedBottomBarItemKeys.value = normalizedSet
+                startDestinationKey = resolvedStartDestination
+                preferences.edit {
+                    putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalizedSet)
+                    putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
+                }
+                Toast.makeText(context, "已保存，重启后生效", Toast.LENGTH_SHORT).show()
+            }
+
             SettingItemGroup(
                 title = "底部导航栏",
             ) {
@@ -1157,7 +1151,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItemWithSwitch(
                     title = { Text("底部导航栏：改为 Material 样式") },
-                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
+                    description = { Text("移除自定义样式；更改「关注」Tab 图标。") },
                     checked = duo3NavStyle.value,
                     onCheckedChange = {
                         duo3NavStyle.value = it
@@ -1207,17 +1201,15 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-                AnimatedVisibility(visible = duo3ArticleBar.value) {
-                    SettingItemWithSwitch(
-                        title = { Text("文章阅读页：更改操作栏样式") },
-                        description = { Text("底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。") },
-                        checked = duo3ArticleActions.value,
-                        onCheckedChange = {
-                            duo3ArticleActions.value = it
-                            preferences.edit { putBoolean("duo3_article_actions", it) }
-                        },
-                    )
-                }
+                SettingItemWithSwitch(
+                    title = { Text("文章阅读页：更改操作栏样式") },
+                    description = { Text("底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。上一项启用时生效。") },
+                    checked = duo3ArticleActions.value,
+                    onCheckedChange = {
+                        duo3ArticleActions.value = it
+                        preferences.edit { putBoolean("duo3_article_actions", it) }
+                    },
+                )
             }
         }
     }

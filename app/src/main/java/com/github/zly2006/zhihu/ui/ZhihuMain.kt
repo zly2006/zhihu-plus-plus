@@ -102,7 +102,6 @@ import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
@@ -134,27 +133,21 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var startDestination by remember {
         mutableStateOf(
             navDestinationFromName(
-                resolveValidStartDestinationKey(
-                    preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                    selectedBottomBarItemKeys.toList(),
-                ),
+                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
             ),
         )
     }
 
-    fun reloadStartDestination(keys: Set<String>) {
+    fun reloadStartDestination() {
         startDestination = navDestinationFromName(
-            resolveValidStartDestinationKey(
-                preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-                keys.toList(),
-            ),
+            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
         )
     }
 
     fun reloadBottomBarKeys() {
         computeSelectedKeys(duo3HomeAccount).also {
             selectedBottomBarItemKeys = it
-            reloadStartDestination(it)
+            reloadStartDestination()
         }
     }
 
@@ -169,7 +162,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
                 "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY -> reloadBottomBarKeys()
-                START_DESTINATION_PREFERENCE_KEY -> reloadStartDestination(selectedBottomBarItemKeys)
+                START_DESTINATION_PREFERENCE_KEY -> reloadStartDestination()
             }
         }
     }
