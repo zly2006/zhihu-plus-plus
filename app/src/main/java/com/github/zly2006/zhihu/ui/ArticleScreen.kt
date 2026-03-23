@@ -22,13 +22,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,11 +36,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -141,6 +137,7 @@ import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -160,124 +157,6 @@ import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
-private const val ARTICLE_PROGRESS_BAR_FADE_OUT_DELAY_MS = 600L
-
-internal fun calculateArticleReadingProgress(
-    scrollValue: Int,
-    maxValue: Int,
-): Float {
-    if (maxValue <= 0 || maxValue == Int.MAX_VALUE) return 0f
-    return (scrollValue.toFloat() / maxValue.toFloat()).coerceIn(0f, 1f)
-}
-
-internal fun calculateArticleScrollbarThumbHeightPx(
-    viewportHeightPx: Float,
-    maxScrollPx: Int,
-    minThumbHeightPx: Float,
-): Float {
-    if (viewportHeightPx <= 0f || maxScrollPx < 0 || maxScrollPx == Int.MAX_VALUE) return 0f
-    val contentHeightPx = viewportHeightPx + maxScrollPx
-    if (contentHeightPx <= 0f) return 0f
-    val rawThumbHeight = viewportHeightPx * (viewportHeightPx / contentHeightPx)
-    return rawThumbHeight.coerceIn(minThumbHeightPx, viewportHeightPx)
-}
-
-internal fun calculateArticleScrollbarThumbOffsetPx(
-    progress: Float,
-    viewportHeightPx: Float,
-    thumbHeightPx: Float,
-): Float {
-    val clampedProgress = progress.coerceIn(0f, 1f)
-    val trackRangePx = (viewportHeightPx - thumbHeightPx).coerceAtLeast(0f)
-    return (trackRangePx * clampedProgress).coerceIn(0f, trackRangePx)
-}
-
-@Composable
-private fun ArticleReadingProgressBar(
-    scrollState: ScrollState,
-    modifier: Modifier = Modifier,
-) {
-    val showProgressBar by remember(scrollState) {
-        derivedStateOf { scrollState.maxValue > 0 && scrollState.maxValue != Int.MAX_VALUE }
-    }
-    var shouldKeepVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(showProgressBar, scrollState.isScrollInProgress) {
-        if (!showProgressBar) {
-            shouldKeepVisible = false
-            return@LaunchedEffect
-        }
-        shouldKeepVisible = true
-        if (!scrollState.isScrollInProgress) {
-            delay(ARTICLE_PROGRESS_BAR_FADE_OUT_DELAY_MS)
-            if (!scrollState.isScrollInProgress) {
-                shouldKeepVisible = false
-            }
-        }
-    }
-
-    val progress by remember(scrollState) {
-        derivedStateOf {
-            calculateArticleReadingProgress(
-                scrollValue = scrollState.value,
-                maxValue = scrollState.maxValue,
-            )
-        }
-    }
-    val alpha by animateFloatAsState(
-        targetValue = if (shouldKeepVisible) 1f else 0f,
-        animationSpec = tween(durationMillis = if (shouldKeepVisible) 120 else 260),
-        label = "articleProgressBarAlpha",
-    )
-    if (alpha <= 0f) return
-
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
-    val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
-
-    BoxWithConstraints(
-        modifier = modifier
-            .width(12.dp)
-            .fillMaxHeight()
-            .graphicsLayer { this.alpha = alpha },
-    ) {
-        val density = LocalDensity.current
-        val viewportHeightPx = with(density) { maxHeight.toPx() }
-        val minThumbHeightPx = with(density) { 24.dp.toPx() }
-        val thumbHeightPx = calculateArticleScrollbarThumbHeightPx(
-            viewportHeightPx = viewportHeightPx,
-            maxScrollPx = scrollState.maxValue,
-            minThumbHeightPx = minThumbHeightPx,
-        )
-        if (thumbHeightPx <= 0f) return@BoxWithConstraints
-        val thumbHeight = with(density) { thumbHeightPx.toDp() }
-        val thumbOffsetY = with(density) {
-            calculateArticleScrollbarThumbOffsetPx(
-                progress = progress,
-                viewportHeightPx = viewportHeightPx,
-                thumbHeightPx = thumbHeightPx,
-            ).toDp()
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxHeight()
-                .width(2.dp)
-                .clip(RoundedCornerShape(50))
-                .background(trackColor),
-        )
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .offset(y = thumbOffsetY)
-                .width(4.dp)
-                .height(thumbHeight)
-                .clip(RoundedCornerShape(50))
-                .background(indicatorColor),
-        )
-    }
-}
 
 @Serializable
 data class Collection(
@@ -2103,7 +1982,7 @@ fun ArticleScreen(
             (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
         }
 
-        ArticleReadingProgressBar(
+        VerticalReadingProgressBar(
             scrollState = scrollState,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
