@@ -1331,7 +1331,6 @@ fun ArticleScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = articleSurfaceColor,
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1442,7 +1441,6 @@ fun ArticleScreen(
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
-                            containerColor = articleSurfaceColor,
                             scrolledContainerColor = if (MaterialTheme.colorScheme.surfaceContainer != MaterialTheme.colorScheme.background) {
                                 MaterialTheme.colorScheme.surfaceContainer
                             } else {
