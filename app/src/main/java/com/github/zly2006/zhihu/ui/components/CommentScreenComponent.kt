@@ -19,7 +19,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.theme.Typography
@@ -41,15 +40,11 @@ fun CommentScreenComponent(
     val childTarget = activeChildComment?.clickTarget
 
     @Composable
-    fun DragHandleTitle(targetContent: NavDestination) {
+    fun DragHandleTitle(text: String) {
         Column {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                if (targetContent is CommentHolder) {
-                    "回复"
-                } else {
-                    "评论"
-                },
+                text,
                 style = Typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
                 ),
@@ -70,12 +65,11 @@ fun CommentScreenComponent(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,
             ),
-            dragHandle = { DragHandleTitle(content) },
+            dragHandle = { DragHandleTitle("评论") },
         ) {
             CommentScreen(
                 httpClient = httpClient,
                 content = { content },
-                topPadding = 0.dp,
                 onChildCommentClick = { activeChildComment = it },
             )
         }
@@ -90,13 +84,12 @@ fun CommentScreenComponent(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,
             ),
-            dragHandle = { DragHandleTitle(childTarget) },
+            dragHandle = { DragHandleTitle("回复") },
         ) {
             CommentScreen(
                 httpClient = httpClient,
                 content = { childTarget },
                 activeCommentItem = activeChildComment,
-                topPadding = 0.dp,
                 onChildCommentClick = { },
             )
         }

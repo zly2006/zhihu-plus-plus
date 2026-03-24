@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -84,7 +83,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -92,6 +90,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
+import com.github.zly2006.zhihu.DummyLocalNavigator
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
@@ -336,7 +335,6 @@ fun CommentScreen(
     httpClient: HttpClient,
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
-    topPadding: Dp = 100.dp,
     onChildCommentClick: (CommentModel) -> Unit,
 ) {
     val context = LocalContext.current
@@ -425,9 +423,7 @@ fun CommentScreen(
         // 评论内容区域
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = topPadding)
-                .fillMaxHeight()
+                .fillMaxSize()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
             color = commentBackgroundColor,
@@ -1020,14 +1016,14 @@ private fun isSameYear(date1: Date, date2: Date): Boolean {
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
 }
 
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
+@Preview(backgroundColor = 0xFFFFFF, showBackground = true)
 @Composable
 @Suppress("SpellCheckingInspection")
 private fun CommentItemPreview() {
     val comment = CommentModel(
         item = DataHolder.Comment(
             id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
+            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
             createdTime = System.currentTimeMillis() / 1000,
             author = DataHolder.Comment.Author(
                 name = "作者",
@@ -1058,11 +1054,13 @@ private fun CommentItemPreview() {
         ),
         clickTarget = null,
     )
-    CommentItem(
-        comment,
-        httpClient = HttpClient(),
-        onChildCommentClick = { },
-    )
+    DummyLocalNavigator {
+        CommentItem(
+            comment,
+            httpClient = HttpClient(),
+            onChildCommentClick = { },
+        )
+    }
 }
 
 @Composable
@@ -1114,75 +1112,4 @@ fun CommentAuthorTagPreview() {
             modifier = Modifier.clickable { },
         )
     }
-}
-
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
-@Composable
-@Suppress("SpellCheckingInspection")
-private fun NestedCommentPreview() {
-    val comment = CommentModel(
-        item = DataHolder.Comment(
-            id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
-            createdTime = System.currentTimeMillis() / 1000,
-            author = DataHolder.Comment.Author(
-                name = "作者",
-                avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",
-                isOrg = false,
-                type = "people",
-                url = "",
-                urlToken = "",
-                id = "",
-                headline = "个人介绍",
-                avatarUrlTemplate = "",
-                isAdvertiser = false,
-                gender = 0,
-                userType = "",
-            ),
-            likeCount = 10,
-            childCommentCount = 5,
-            type = "",
-            url = "",
-            resourceType = "",
-            collapsed = false,
-            top = false,
-            isDelete = false,
-            reviewing = false,
-            isAuthor = false,
-            canCollapse = false,
-            childComments = listOf(
-                DataHolder.Comment(
-                    id = "千早爱音",
-                    content = "<p>我喜欢你</p>",
-                    createdTime = System.currentTimeMillis() / 1000,
-                    author = DataHolder.Comment.Author(
-                        name = "长期素食",
-                        avatarUrl = "",
-                        isOrg = false,
-                        type = "people",
-                        url = "",
-                        urlToken = "",
-                        id = "",
-                        headline = "个人介绍",
-                        avatarUrlTemplate = "",
-                        isAdvertiser = false,
-                        gender = 0,
-                        userType = "people",
-                    ),
-                    type = "",
-                    isDelete = false,
-                    url = "",
-                    resourceType = "",
-                    collapsed = false,
-                    reviewing = false,
-                ),
-            ),
-        ),
-        clickTarget = null,
-    )
-    CommentItem(
-        comment,
-        httpClient = HttpClient(),
-        onChildCommentClick = { },
-    )
 }
