@@ -605,15 +605,6 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
 
-    val articleUseSurfaceLight by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceLight", false)) }
-    val articleUseSurfaceDark by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceDark", false)) }
-    val isDarkTheme = ThemeManager.isDarkTheme()
-    val articleSurfaceColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
-        MaterialTheme.colorScheme.surface
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-
     var isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     var autoHideArticleBottomBar by remember {
         mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
@@ -1340,7 +1331,6 @@ fun ArticleScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = articleSurfaceColor,
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1451,9 +1441,8 @@ fun ArticleScreen(
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
-                            containerColor = articleSurfaceColor,
-                            scrolledContainerColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
-                                TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+                            scrolledContainerColor = if (MaterialTheme.colorScheme.surfaceContainer != MaterialTheme.colorScheme.background) {
+                                MaterialTheme.colorScheme.surfaceContainer
                             } else {
                                 MaterialTheme.colorScheme.surfaceContainerHigh
                             },
