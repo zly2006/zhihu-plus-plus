@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -54,11 +53,9 @@ fun CommentScreenComponent(
                 style = Typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
                 ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(26.dp),
                 textAlign = TextAlign.Center,
                 fontSize = 18.sp,
+                lineHeight = 26.sp,
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -68,7 +65,7 @@ fun CommentScreenComponent(
         MyModalBottomSheet(
             onDismissRequest = onDismiss,
             sheetState = rootSheetState,
-            scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             properties = ModalBottomSheetProperties(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,
@@ -88,7 +85,7 @@ fun CommentScreenComponent(
         MyModalBottomSheet(
             onDismissRequest = { activeChildComment = null },
             sheetState = childSheetState,
-            scrimColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             properties = ModalBottomSheetProperties(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,

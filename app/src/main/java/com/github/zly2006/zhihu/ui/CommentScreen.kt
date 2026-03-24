@@ -360,8 +360,8 @@ fun CommentScreen(
         else -> content
     }
     val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainerHigh
-    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
+    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
     val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     val listState = rememberLazyListState()
