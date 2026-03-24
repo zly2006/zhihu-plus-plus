@@ -200,6 +200,11 @@ jobs:
             如果要使用，请下载最新的 APK 文件进行安装。不需要下载 mapping.zip，除非你是开发人员且需要调试混淆后的代码。
             Full 版本包含 AI 功能和 AI 模型，可处理NLP任务；Lite 版本体积更小，只有不到 4 MB 的大小。
 
+            > 关于Full和Lite两个版本的说明：
+            > Full版本包含了一个onnx框架，可以在端侧进行离线AI推理，支持基于LLM embedding的智能内容过滤功能，
+            > 这实际上主要是本人对端侧AI的技术尝试，实际功能还有很多没开发的，比如人本地知识库（懒）；
+            > Lite版本不支持智能内容过滤，但体积更小，性能更好。您可以根据自己的需求选择下载哪个版本。
+
             ${{ steps.release_notes.outputs.result }}
           files: |
             app/build/upload/zhihu++-lite.apk
