@@ -418,43 +418,40 @@ fun AppearanceSettingsScreen(
                 }
 
                 val currentIsDarkTheme = ThemeManager.isDarkTheme()
+                var showBackgroundColorPicker by remember { mutableStateOf(false) }
+                val backgroundColor = ThemeManager.getBackgroundColor()
 
-                Column {
-                    var showBackgroundColorPicker by remember { mutableStateOf(false) }
-                    val backgroundColor = ThemeManager.getBackgroundColor()
+                SettingItem(
+                    title = { Text("自定义背景颜色") },
+                    description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
+                    onClick = { showBackgroundColorPicker = true },
+                    endAction = {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(backgroundColor)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    },
+                )
 
-                    SettingItem(
-                        title = { Text("自定义背景颜色") },
-                        description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
-                        onClick = { showBackgroundColorPicker = true },
-                        endAction = {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .background(backgroundColor)
-                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                            )
+                if (showBackgroundColorPicker) {
+                    ColorPickerDialog(
+                        title = "选择背景颜色",
+                        initialColor = backgroundColor,
+                        presetColors = listOfNotNull(
+                            Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
+                            MaterialTheme.colorScheme.surfaceContainer,
+                            if (ThemeManager.isDarkTheme()) Color.Black else null,
+                        ),
+                        onDismiss = { showBackgroundColorPicker = false },
+                        onColorSelected = { color ->
+                            ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
+                            Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
+                            showBackgroundColorPicker = false
                         },
                     )
-
-                    if (showBackgroundColorPicker) {
-                        ColorPickerDialog(
-                            title = "选择背景颜色",
-                            initialColor = backgroundColor,
-                            presetColors = listOfNotNull(
-                                Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
-                                MaterialTheme.colorScheme.surfaceContainer,
-                                if (ThemeManager.isDarkTheme()) Color.Black else null,
-                            ),
-                            onDismiss = { showBackgroundColorPicker = false },
-                            onColorSelected = { color ->
-                                ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
-                                Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
-                                showBackgroundColorPicker = false
-                            },
-                        )
-                    }
                 }
             }
             // ── 阅读 ────────────────────────────────────────────────────────────
