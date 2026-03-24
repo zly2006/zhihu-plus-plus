@@ -2034,15 +2034,11 @@ fun ArticleScreen(
         context = context,
     )
 
-    viewModel.httpClient?.let {
-        CommentScreenComponent(
-            showComments = showComments,
-            onDismiss = { showComments = false },
-            httpClient = it,
-            content = article,
-        )
-    }
-
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
+        content = article,
+    )
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,

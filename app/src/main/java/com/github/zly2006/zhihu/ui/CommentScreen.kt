@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context.MODE_PRIVATE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -84,7 +83,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -98,7 +96,6 @@ import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
@@ -362,6 +359,10 @@ fun CommentScreen(
         is CommentHolder -> content.article
         else -> content
     }
+    val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
+    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     val listState = rememberLazyListState()
 
@@ -429,14 +430,13 @@ fun CommentScreen(
                 .fillMaxHeight()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = commentBackgroundColor,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding(),
             ) {
-                CommentTopText(content())
                 Box(modifier = Modifier.weight(1f)) {
                     when {
                         viewModel.isLoading && viewModel.allData.isEmpty() -> {
@@ -535,7 +535,7 @@ fun CommentScreen(
                                                     .height(28.dp),
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                    containerColor = actionChipColor,
                                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                                 ),
                                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
@@ -544,7 +544,7 @@ fun CommentScreen(
                                                     Icons.AutoMirrored.Outlined.Comment,
                                                     contentDescription = "查看子评论",
                                                     modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.surfaceTint,
+                                                    tint = actionChipIconColor,
                                                 )
                                                 Text(
                                                     "查看 ${commentItem.item.childCommentCount} 条子评论",
@@ -649,6 +649,7 @@ fun CommentScreen(
                 Surface(
                     tonalElevation = 2.dp,
                     modifier = Modifier.fillMaxWidth(),
+                    color = commentInputBarColor,
                 ) {
                     Column {
                         // Reply indicator bar
@@ -755,42 +756,6 @@ fun CommentScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun CommentTopText(content: NavDestination? = null) {
-    val context = LocalContext.current
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
-    val commentTopTextExtraSpacing = remember {
-        preferences.getBoolean("commentTopTextExtraSpacing", false)
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (commentTopTextExtraSpacing) {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        Text(
-            if (content is CommentHolder) {
-                "回复"
-            } else {
-                "评论"
-            },
-            style = Typography.bodyMedium.copy(
-                fontWeight = FontWeight.Bold,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(26.dp),
-            textAlign = TextAlign.Center,
-            fontSize = 18.sp,
-        )
-        if (commentTopTextExtraSpacing) {
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
