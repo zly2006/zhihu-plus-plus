@@ -35,6 +35,7 @@ class LoginActivity : ComponentActivity() {
                     .systemBarsPadding(),
             ) {
                 WebviewComp(
+                    modifier = Modifier.fillMaxSize(),
                     onLoad = { webView ->
                         webView.setupUpWebviewClient()
                         @SuppressLint("SetJavaScriptEnabled")
@@ -83,12 +84,14 @@ class LoginActivity : ComponentActivity() {
                                                     setMessage("欢迎回来，${data.username}")
                                                     setPositiveButton("OK") { _, _ ->
                                                     }
+                                                    setOnDismissListener {
+                                                        // back to the main activity
+                                                        this@LoginActivity.finish()
+                                                    }
                                                 }.create()
                                                 .show()
                                             AccountData.saveData(this@LoginActivity, data)
                                             telemetry(this@LoginActivity, "login")
-                                            // back to the main activity
-                                            this@LoginActivity.finish()
                                             return@runBlocking true
                                         } else {
                                             AlertDialog
