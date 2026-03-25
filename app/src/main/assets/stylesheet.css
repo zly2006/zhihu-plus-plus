@@ -562,6 +562,7 @@ html[data-focus-visible] .dark-theme a:focus {
 }
 
 #zhihu-plus-footnotes ol {
+  width: auto;
   padding-left: 20px;
   line-height: 1.8;
 }
