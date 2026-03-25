@@ -509,7 +509,7 @@ class OpenImageDislog(
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun WebviewComp(
-    modifier: Modifier = Modifier.fillMaxSize(),
+    modifier: Modifier = Modifier.wrapContentSize(),
     scrollState: ScrollState? = null,
     existingWebView: CustomWebView? = null,
     onLoad: (CustomWebView) -> Unit,
@@ -555,7 +555,7 @@ fun WebviewComp(
         modifier = if (contentHeightDp > 0) {
             modifier.height(contentHeightDp.dp)
         } else {
-            modifier.wrapContentSize()
+            modifier
         },
         onRelease = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
