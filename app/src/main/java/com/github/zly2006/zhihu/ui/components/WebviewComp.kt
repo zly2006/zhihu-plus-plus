@@ -26,7 +26,6 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
