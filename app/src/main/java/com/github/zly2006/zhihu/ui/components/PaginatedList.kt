@@ -32,7 +32,7 @@ val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (state.canScrollBackward || state.canScrollForward) {
+        if (!LocalPullToRefreshViewModel.current.isPullToRefresh) {
             CircularProgressIndicator()
         }
     }
