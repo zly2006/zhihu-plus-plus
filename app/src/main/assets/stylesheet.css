@@ -471,6 +471,10 @@ html[data-focus-visible] .dark-theme a:focus {
   box-shadow: 0 0 0 2px #191b1f, 0 0 0 4px rgba(85, 142, 255, 0.3);
 }
 
+.dark-theme img[eeimg] {
+  filter: invert(100%);
+}
+
 .dark-theme a.ztext-link,
 .dark-theme a.internal,
 .dark-theme a.external,
