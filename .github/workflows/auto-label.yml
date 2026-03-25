@@ -10,11 +10,11 @@ permissions:
 jobs:
   label:
     runs-on: ubuntu-latest
-    env:
-      PRPAT: ${{ secrets.PRPAT }}
-    if: ${{ env.PRPAT != '' }}
     steps:
       - uses: actions/github-script@v7
+        env:
+          PRPAT: ${{ secrets.PRPAT }}
+        if: ${{ env.PRPAT != '' }}
         with:
           github-token: ${{ secrets.PRPAT }}
           script: |
