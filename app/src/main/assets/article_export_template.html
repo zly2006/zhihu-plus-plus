@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            color-scheme: light;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #f5f7fb;
+            color: #0f172a;
+            font-family: 'PingFang SC', 'Helvetica Neue', STHeiti, 'Microsoft Yahei', sans-serif;
+        }
+        body {
+            padding: 20px 16px 32px;
+        }
+        .page {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 28px 20px 36px;
+            border-radius: 24px;
+            background: #ffffff;
+            box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+        }
+        .title {
+            margin: 0 0 24px;
+            font-size: 30px;
+            line-height: 1.35;
+            font-weight: 700;
+        }
+        .author-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .author-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 999px;
+            object-fit: cover;
+            flex: 0 0 auto;
+            background: #e2e8f0;
+        }
+        .author-avatar-placeholder {
+            border: 1px solid #cbd5e1;
+        }
+        .author-name {
+            font-size: 17px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .author-bio {
+            margin-top: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #64748b;
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 26px;
+        }
+        .stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .stat-chip-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 auto;
+        }
+        .stat-chip-value {
+            color: #1e3a8a;
+            letter-spacing: 0.01em;
+        }
+        .content {
+            font-size: 18px;
+            line-height: 1.9;
+            color: #1e293b;
+        }
+        .content p,
+        .content li,
+        .content blockquote {
+            margin: 0 0 1em;
+        }
+        .content img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 16px auto;
+            border-radius: 16px;
+            background: #e2e8f0;
+        }
+        .content figure {
+            margin: 18px 0;
+        }
+        .content pre,
+        .content code {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .content a {
+            color: #2563eb;
+            word-break: break-all;
+        }
+        .comments-title {
+            margin: 36px 0 18px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .comment {
+            margin-bottom: 16px;
+            padding: 16px;
+            border-radius: 16px;
+            background: #f8fafc;
+            border-left: 4px solid #2563eb;
+        }
+        .comment-author {
+            margin-bottom: 6px;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+        .comment-content {
+            color: #334155;
+            line-height: 1.7;
+        }
+        .comment-time {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <h1 class="title">{{title}}</h1>
+        <section class="author-card">
+            {{authorAvatar}}
+            <div>
+                <div class="author-name">{{authorName}}</div>
+                {{authorBio}}
+            </div>
+        </section>
+        <section class="stats">
+            <div class="stat-chip">
+                <svg
+                    class="stat-chip-icon vote-chip-icon"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M6.63257 10.25C7.43892 10.25 8.16648 9.80416 8.6641 9.16967C9.43726 8.18384 10.4117 7.3634 11.5255 6.77021C12.2477 6.38563 12.8743 5.81428 13.1781 5.05464C13.3908 4.5231 13.5 3.95587 13.5 3.38338V2.75C13.5 2.33579 13.8358 2 14.25 2C15.4926 2 16.5 3.00736 16.5 4.25C16.5 5.40163 16.2404 6.49263 15.7766 7.46771C15.511 8.02604 15.8836 8.75 16.5019 8.75M16.5019 8.75H19.6277C20.6544 8.75 21.5733 9.44399 21.682 10.4649C21.7269 10.8871 21.75 11.3158 21.75 11.75C21.75 14.5976 20.7581 17.2136 19.101 19.2712C18.7134 19.7525 18.1142 20 17.4962 20H13.4802C12.9966 20 12.5161 19.922 12.0572 19.7691L8.94278 18.7309C8.48393 18.578 8.00342 18.5 7.51975 18.5H5.90421M16.5019 8.75H14.25M5.90421 18.5C5.98702 18.7046 6.07713 18.9054 6.17423 19.1022C6.37137 19.5017 6.0962 20 5.65067 20H4.74289C3.85418 20 3.02991 19.482 2.77056 18.632C2.43208 17.5226 2.25 16.3451 2.25 15.125C2.25 13.5725 2.54481 12.0889 3.08149 10.7271C3.38655 9.95303 4.16733 9.5 4.99936 9.5H6.05212C6.52404 9.5 6.7973 10.0559 6.5523 10.4593C5.72588 11.8198 5.25 13.4168 5.25 15.125C5.25 16.3185 5.48232 17.4578 5.90421 18.5Z"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+                <span class="stat-chip-value">{{voteCount}}</span>
+            </div>
+            <div class="stat-chip">
+                <svg
+                    class="stat-chip-icon comment-chip-icon"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M20.25 8.51104C21.1341 8.79549 21.75 9.6392 21.75 10.6082V14.8938C21.75 16.0304 20.9026 16.9943 19.7697 17.0867C19.4308 17.1144 19.0909 17.1386 18.75 17.1592V20.25L15.75 17.25C14.3963 17.25 13.0556 17.1948 11.7302 17.0866C11.4319 17.0623 11.1534 16.9775 10.9049 16.8451M20.25 8.51104C20.0986 8.46232 19.9393 8.43 19.7739 8.41628C18.4472 8.30616 17.1051 8.25 15.75 8.25C14.3948 8.25 13.0528 8.30616 11.7261 8.41627C10.595 8.51015 9.75 9.47323 9.75 10.6082V14.8937C9.75 15.731 10.2099 16.4746 10.9049 16.8451M20.25 8.51104V6.63731C20.25 5.01589 19.0983 3.61065 17.4903 3.40191C15.4478 3.13676 13.365 3 11.2503 3C9.13533 3 7.05233 3.13678 5.00963 3.40199C3.40173 3.61074 2.25 5.01598 2.25 6.63738V12.8626C2.25 14.484 3.40173 15.8893 5.00964 16.098C5.58661 16.1729 6.16679 16.2376 6.75 16.2918V21L10.9049 16.8451"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+                <span class="stat-chip-value">{{commentCount}}</span>
+            </div>
+        </section>
+        <article class="content">
+            {{bodyHtml}}
+        </article>
+        {{extraSections}}
+    </main>
+</body>
+</html>
