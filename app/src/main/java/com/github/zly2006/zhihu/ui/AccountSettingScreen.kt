@@ -164,7 +164,15 @@ fun AccountSettingScreen(
 
             if (data.login) {
                 Row(
-                    Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp),
+                    Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp).clickable {
+                        navigator.onNavigate(
+                            Person(
+                                id = data.self?.id ?: "",
+                                urlToken = data.self?.urlToken ?: "",
+                                name = data.username,
+                            ),
+                        )
+                    },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AsyncImage(
@@ -173,16 +181,7 @@ fun AccountSettingScreen(
                         modifier = Modifier
                             .size(64.dp)
                             .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
-                            .clip(CircleShape)
-                            .clickable {
-                                navigator.onNavigate(
-                                    Person(
-                                        id = data.self?.id ?: "",
-                                        urlToken = data.self?.urlToken ?: "",
-                                        name = data.username,
-                                    ),
-                                )
-                            },
+                            .clip(CircleShape),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -69,6 +70,7 @@ fun ExportDialogComponent(
         val coroutineScope = rememberCoroutineScope()
         var commentCount by remember { mutableIntStateOf(3) }
         var isExporting by remember { mutableStateOf(false) }
+        var includeAppAttribution by remember { mutableStateOf(true) }
 
         Dialog(onDismissRequest = onDismiss) {
             Card(
@@ -95,22 +97,10 @@ fun ExportDialogComponent(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
-                        onClick = {
-                            if (!isExporting) {
-                                isExporting = true
-                                coroutineScope.launch {
-                                    viewModel.exportToPdf(context) { success ->
-                                        isExporting = false
-                                        if (success) {
-                                            onDismiss()
-                                        }
-                                    }
-                                }
-                            }
-                        },
+                        onClick = {},
                         shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        enabled = !isExporting,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        enabled = false,
                     ) {
                         Row(
                             modifier = Modifier
@@ -122,14 +112,21 @@ fun ExportDialogComponent(
                                 Icons.Filled.PictureAsPdf,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "导出为 PDF",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
+                            Column {
+                                Text(
+                                    text = "导出为 PDF",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = "暂时禁用，后续切第三方库实现",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
 
@@ -142,7 +139,7 @@ fun ExportDialogComponent(
                             if (!isExporting) {
                                 isExporting = true
                                 coroutineScope.launch {
-                                    viewModel.exportToImage(context) { success ->
+                                    viewModel.exportToImage(context, includeAppAttribution) { success ->
                                         isExporting = false
                                         if (success) {
                                             onDismiss()
@@ -249,7 +246,7 @@ fun ExportDialogComponent(
                             if (!isExporting) {
                                 isExporting = true
                                 coroutineScope.launch {
-                                    viewModel.exportToImageWithComments(context, commentCount) { success ->
+                                    viewModel.exportToImageWithComments(context, commentCount, includeAppAttribution) { success ->
                                         isExporting = false
                                         if (success) {
                                             onDismiss()
@@ -284,6 +281,23 @@ fun ExportDialogComponent(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = includeAppAttribution,
+                            onCheckedChange = { includeAppAttribution = it },
+                            enabled = !isExporting,
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "在导出底部加入知乎++开源项目说明",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
 
                     // 加载状态指示器
                     if (isExporting) {

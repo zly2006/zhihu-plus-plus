@@ -423,23 +423,10 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 复制 Markdown 按钮
-        MenuActionButton(
-            icon = Icons.Filled.ContentCopy,
-            text = "复制 Markdown",
-            onClick = {
-                onDismissRequest()
-                viewModel.exportToClipboard(context)
-                Toast.makeText(context, "已复制 Markdown", Toast.LENGTH_SHORT).show()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
         // 导出按钮
         MenuActionButton(
             icon = Icons.Filled.GetApp,
-            text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
+            text = "导出文章 (Markdown、图片、PDF)",
             onClick = {
                 onDismissRequest()
                 onExportRequest()
