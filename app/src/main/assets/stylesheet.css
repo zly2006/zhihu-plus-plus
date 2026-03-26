@@ -63,11 +63,6 @@ body.dark-theme code {
   color: #fff;
 }
 
-body.dark-theme blockquote {
-  background-color: #444;
-  color: #fff;
-}
-
 body.dark-theme hr {
   border-color: #666;
 }
@@ -76,7 +71,7 @@ body.dark-theme img {
   background-color: white;
 }
 
-blockquote.dark-theme {
+.dark-theme blockquote {
   color: #c2c6cf;
   border-left: 3px solid #282b30;
 }
@@ -88,9 +83,7 @@ blockquote.dark-theme {
 
 /* 脚注样式 */
 #zhihu-plus-footnotes {
-  margin-top: 40px;
   padding-top: 20px;
-  border-top: 1px solid #e0e0e0;
   font-size: 14px;
 }
 
