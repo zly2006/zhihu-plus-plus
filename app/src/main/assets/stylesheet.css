@@ -34,6 +34,21 @@ figure {
   margin: 0;
 }
 
+figure figcaption {
+  margin-top: 0.5em;
+  font-size: 0.9em;
+  line-height: 1.5;
+  text-align: center;
+  color: #9196a1;
+}
+
+blockquote {
+  margin: 1.4em 0;
+  padding-left: 1em;
+  color: #535861;
+  border-left: 3px solid #c4c7ce;
+}
+
 /* 暗色主题样式 */
 body.dark-theme {
   color: #fff;
@@ -59,6 +74,11 @@ body.dark-theme hr {
 
 body.dark-theme img {
   background-color: white;
+}
+
+/* 公式深色反色 */
+.dark-theme img[eeimg] {
+  filter: invert(100%);
 }
 
 /* 脚注样式 */
