@@ -272,15 +272,17 @@ fun buildArticleExportFileName(
     timestamp: String,
     extension: String,
 ): String {
-    val (title, typeLabel, typeKey, articleId) = when (content) {
+    val (title, authorName, typeLabel, typeKey, articleId) = when (content) {
         is DataHolder.Answer -> ExportFileMeta(
             title = content.question.title,
+            authorName = content.author.name,
             typeLabel = "回答",
             typeKey = "answer",
             articleId = content.id,
         )
         is DataHolder.Article -> ExportFileMeta(
             title = content.title,
+            authorName = content.author.name,
             typeLabel = "文章",
             typeKey = "article",
             articleId = content.id,
@@ -290,9 +292,11 @@ fun buildArticleExportFileName(
     val safeTitle = sanitizeArticleExportFileNamePart(title)
         .take(ARTICLE_EXPORT_FILE_TITLE_LIMIT)
         .ifBlank { "untitled" }
+    val safeAuthorName = sanitizeArticleExportFileNamePart(authorName)
+        .ifBlank { "匿名作者" }
     val normalizedExtension = extension.trimStart('.')
 
-    return "zhihu++_title_${safeTitle}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
+    return "zhihu++_title_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
 private fun resolveArticleExportImageUrl(image: Element): String? = extractImageUrl(image)
@@ -311,6 +315,7 @@ private fun sanitizeArticleExportFileNamePart(text: String): String = text
 
 private data class ExportFileMeta(
     val title: String,
+    val authorName: String,
     val typeLabel: String,
     val typeKey: String,
     val articleId: Long,
