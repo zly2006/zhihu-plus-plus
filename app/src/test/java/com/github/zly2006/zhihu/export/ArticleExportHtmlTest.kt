@@ -1,0 +1,231 @@
+package com.github.zly2006.zhihu.export
+
+import com.github.zly2006.zhihu.util.ArticleExportComment
+import com.github.zly2006.zhihu.util.ArticleExportData
+import com.github.zly2006.zhihu.util.ArticleExportFooterData
+import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.prepareArticleExportComment
+import com.github.zly2006.zhihu.util.renderArticleExportHtml
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+
+class ArticleExportHtmlTest {
+    @Test
+    fun exportTemplateAssetContainsPreviewPlaceholders() {
+        val template = loadExportTemplateAsset()
+
+        assertTrue("导出模板需要保存在 assets 下，便于预览", template.isNotBlank())
+        assertTrue(template.contains("{{title}}"))
+        assertTrue(template.contains("{{authorAvatar}}"))
+        assertTrue(template.contains("{{authorName}}"))
+        assertTrue(template.contains("{{authorBio}}"))
+        assertTrue(template.contains("{{voteCount}}"))
+        assertTrue(template.contains("{{commentCount}}"))
+        assertTrue(template.contains("{{bodyHtml}}"))
+        assertTrue(template.contains("{{exportedDate}}"))
+        assertTrue(template.contains("{{publishedDate}}"))
+        assertTrue(template.contains("{{editedDate}}"))
+        assertTrue(template.contains("{{editedDateClass}}"))
+        assertTrue(template.contains("{{appAttributionClass}}"))
+        assertTrue(template.contains("{{githubUrl}}"))
+    }
+
+    @Test
+    fun exportHtmlContainsRequiredArticleMetadata() {
+        val html = createExportHtml(
+            title = "导出标题",
+            authorName = "导出作者",
+            authorBio = "作者简介",
+            authorAvatarSrc = "https://pic1.zhimg.com/avatar.jpg",
+            voteUpCount = 128,
+            commentCount = 7,
+            content = "<p>正文内容</p>",
+        )
+
+        assertTrue(html.contains("导出标题"))
+        assertTrue(html.contains("导出作者"))
+        assertTrue(html.contains("作者简介"))
+        assertTrue("导出 HTML 需要包含作者头像", html.contains("https://pic1.zhimg.com/avatar.jpg"))
+        assertTrue("导出 HTML 需要包含赞同数", html.contains("128"))
+        assertTrue("导出 HTML 需要包含评论数", html.contains("7"))
+    }
+
+    @Test
+    fun exportHtmlUsesReadableMobileLayoutAndPromotesImageSources() {
+        val html = createExportHtml(
+            title = "移动端导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 1,
+            commentCount = 2,
+            content =
+                """
+                <noscript><img class="content_image" data-thumbnail="https://pic1.zhimg.com/thumbnail.jpg" /></noscript>
+                <figure>
+                    <img
+                        class="origin_image"
+                        src="https://pic1.zhimg.com/low-res.jpg"
+                        data-original="https://pic1.zhimg.com/original.jpg"
+                    />
+                </figure>
+                """.trimIndent(),
+        )
+
+        assertTrue("导出 HTML 需要限制到移动端阅读宽度", html.contains("max-width: 720px"))
+        assertTrue("导出 HTML 需要使用原图地址", html.contains("https://pic1.zhimg.com/original.jpg"))
+        assertFalse("导出 HTML 处理 content 时应忽略 noscript 内容", html.contains("https://pic1.zhimg.com/thumbnail.jpg"))
+        assertTrue("统计信息需要改成 chip 样式", html.contains("stat-chip"))
+        assertTrue("导出 HTML 需要内嵌赞同图标", html.contains("vote-chip-icon"))
+        assertTrue("导出 HTML 需要内嵌评论图标", html.contains("comment-chip-icon"))
+        assertTrue("导出模板需要提供打印样式", html.contains("@media print"))
+        assertTrue("打印导出时不应保留卡片阴影", html.contains("box-shadow: none"))
+        assertFalse("导出 HTML 不应继续使用 card 统计样式", html.contains("stat-card"))
+        assertFalse("导出 HTML 不应显示赞同大字标签", html.contains(">赞同<"))
+        assertFalse("导出 HTML 不应显示评论大字标签", html.contains(">评论<"))
+    }
+
+    @Test
+    fun exportHtmlShowsDatesAndHidesEditedDateWhenSameAsPublished() {
+        val html = createExportHtml(
+            title = "日期导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            footerData = ArticleExportFooterData(
+                exportEpochMillis = 1_774_519_200_000,
+                createdEpochSeconds = 1_773_914_400,
+                updatedEpochSeconds = 1_773_914_400,
+                includeAppAttribution = true,
+            ),
+        )
+
+        // 避免时区等因素导致日期显示不一致，测试中只验证日期标签的存在与否，而不验证具体日期文本
+        assertTrue(html.contains("导出日期："))
+        assertTrue(html.contains("发布日期："))
+        assertFalse("编辑和发布同一时间时不应显示编辑日期", html.contains("编辑日期："))
+        assertTrue(html.contains("知乎++"))
+        assertTrue(html.contains("GitHub地址：https://github.com/zly2006/zhihu-plus-plus"))
+    }
+
+    @Test
+    fun exportHtmlCanHideAppAttributionAndShowEditedDate() {
+        val html = createExportHtml(
+            title = "日期导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            footerData = ArticleExportFooterData(
+                exportEpochMillis = 1_774_519_200_000,
+                createdEpochSeconds = 1_773_914_400,
+                updatedEpochSeconds = 1_774_000_800,
+                includeAppAttribution = false,
+            ),
+        )
+
+        // 同样不验证具体日期文本，只验证标签显示与否
+        assertTrue(html.contains("导出日期："))
+        assertTrue(html.contains("编辑日期："))
+        assertTrue(html.contains("export-credit is-hidden"))
+    }
+
+    @Test
+    fun exportCommentContentUsesRealCommentDataInsteadOfMockPlaceholders() {
+        val commentsHtml = buildArticleExportCommentsHtml(
+            listOf(
+                ArticleExportComment(
+                    authorName = "真实评论用户",
+                    contentHtml = "<p>这是一条真实评论</p>",
+                    createdTimeText = "2026-03-26 18:30",
+                    imageSrc = "https://pic1.zhimg.com/comment-image.jpg",
+                ),
+            ),
+        )
+        val html = createExportHtml(
+            title = "带评论导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            extraSectionsHtml = commentsHtml,
+        )
+
+        assertTrue(html.contains("热门评论"))
+        assertTrue(html.contains("真实评论用户"))
+        assertTrue(html.contains("这是一条真实评论"))
+        assertTrue(html.contains("2026-03-26 18:30"))
+        assertTrue(html.contains("https://pic1.zhimg.com/comment-image.jpg"))
+        assertFalse("导出评论不应继续包含 mock 用户名", html.contains("用户1"))
+        assertFalse("导出评论不应继续包含 mock 文案", html.contains("这篇文章写得很好"))
+    }
+
+    @Test
+    fun exportCommentPreparationStripsCommentAnchorsAndPromotesCommentImage() {
+        val comment = prepareArticleExportComment(
+            authorName = "评论作者",
+            content =
+                """
+                <p>评论正文<a class="comment_img" href="https://pic1.zhimg.com/comment-image.jpg">[图片]</a></p>
+                <p><a class="comment_sticker" href="https://pic1.zhimg.com/sticker.png">[表情]</a></p>
+                """.trimIndent(),
+            createdTimeText = "2026-03-26 18:31",
+        )
+
+        assertTrue(comment.contentHtml.contains("评论正文"))
+        assertFalse(comment.contentHtml.contains("comment_img"))
+        assertFalse(comment.contentHtml.contains("comment_sticker"))
+        assertTrue(comment.imageSrc == "https://pic1.zhimg.com/comment-image.jpg")
+    }
+
+    private fun createExportHtml(
+        title: String,
+        authorName: String,
+        authorBio: String,
+        authorAvatarSrc: String,
+        voteUpCount: Int,
+        commentCount: Int,
+        content: String,
+        extraSectionsHtml: String = "",
+        footerData: ArticleExportFooterData = ArticleExportFooterData(
+            exportEpochMillis = 1_774_519_200_000,
+            createdEpochSeconds = 1_773_914_400,
+            updatedEpochSeconds = 1_774_000_800,
+            includeAppAttribution = true,
+        ),
+    ): String {
+        val template = loadExportTemplateAsset()
+        return renderArticleExportHtml(
+            template = template,
+            exportData = ArticleExportData(
+                title = title,
+                authorName = authorName,
+                authorBio = authorBio,
+                authorAvatarSrc = authorAvatarSrc,
+                voteUpCount = voteUpCount,
+                commentCount = commentCount,
+                content = content,
+                footerData = footerData,
+            ),
+            extraSectionsHtml = extraSectionsHtml,
+        )
+    }
+
+    private fun loadExportTemplateAsset(): String {
+        val templateFile = listOf(
+            File("app/src/main/assets/article_export_template.html"),
+            File("src/main/assets/article_export_template.html"),
+        ).firstOrNull(File::exists)
+            ?: throw java.io.FileNotFoundException("article_export_template.html")
+        return templateFile.readText()
+    }
+}

@@ -74,3 +74,9 @@ jobs:
         with:
           name: PR Debug artifacts
           path: app/build/upload/
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PR Test Reports
+          path: app/build/reports
