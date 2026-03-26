@@ -18,6 +18,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -1203,7 +1204,7 @@ class ArticleViewModel(
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu++")
         }
 
         val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
@@ -1229,6 +1230,7 @@ class ArticleViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun saveHtmlToDownloadsWithMediaStore(
         context: Context,
         displayName: String,
@@ -1238,7 +1240,7 @@ class ArticleViewModel(
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
@@ -1253,7 +1255,7 @@ class ArticleViewModel(
             contentValues.clear()
             contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
             resolver.update(uri, contentValues, null, null)
-            "下载/Zhihu/$displayName"
+            "Zhihu++/$displayName"
         } catch (e: Exception) {
             resolver.delete(uri, null, null)
             throw e
@@ -1264,7 +1266,7 @@ class ArticleViewModel(
     private fun saveHtmlToLegacyDownloads(displayName: String, htmlContent: String): String {
         val downloadsDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Zhihu",
+            "Zhihu++",
         )
         if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
             throw IllegalStateException("无法创建下载目录")
