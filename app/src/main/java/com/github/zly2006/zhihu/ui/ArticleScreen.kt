@@ -426,7 +426,7 @@ fun ArticleActionsMenu(
         // 导出按钮
         MenuActionButton(
             icon = Icons.Filled.GetApp,
-            text = "导出文章 (Markdown、图片、PDF)",
+            text = "导出文章 (Markdown、图片、HTML、PDF)",
             onClick = {
                 onDismissRequest()
                 onExportRequest()

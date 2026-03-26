@@ -51,24 +51,29 @@ import com.github.zly2006.zhihu.util.ArticleExportData
 import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
+import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readLine
@@ -86,7 +91,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.net.URLConnection
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -122,6 +131,7 @@ class ArticleViewModel(
     var aiSummaryLoading by mutableStateOf(false)
         private set
     private var aiSummaryJob: Job? = null
+    private var exportSourceContent: DataHolder.Content? = null
 
     // scroll fix
     var rememberedScrollY = MutableLiveData(0)
@@ -344,6 +354,7 @@ class ArticleViewModel(
                         val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
                         val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
                         if (answer != null) {
+                            exportSourceContent = answer
                             title = answer.question.title
                             authorName = answer.author.name
                             authorId = answer.author.id
@@ -414,6 +425,7 @@ class ArticleViewModel(
                     } else if (article.type == ArticleType.Article) {
                         val article = DataHolder.getContentDetail(context, article) as? DataHolder.Article
                         if (article != null) {
+                            exportSourceContent = article
                             title = article.title
                             content = article.content
                             voteUpCount = article.voteupCount
@@ -704,7 +716,6 @@ class ArticleViewModel(
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
-            suffix = "",
             successMessage = "图片已保存到相册",
             onComplete = onComplete,
         )
@@ -722,10 +733,50 @@ class ArticleViewModel(
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
-            suffix = "with_comments",
             successMessage = "带评论图片已保存到相册",
             onComplete = onComplete,
         )
+    }
+
+    suspend fun exportToHtml(
+        context: Context,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        runCatching { requireExportSourceContent() }.onFailure { error ->
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
+            withContext(Dispatchers.Main) {
+                requestStoragePermission(context as Activity)
+                permissionRequested.value = Unit
+                Toast.makeText(context, "需要存储权限才能导出 HTML，正在请求权限", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
+        try {
+            val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
+            val savedLocation = withContext(Dispatchers.IO) {
+                saveHtmlToDownloads(context, htmlContent)
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "HTML 已保存到 $savedLocation", Toast.LENGTH_LONG).show()
+                onComplete(true)
+            }
+        } catch (e: Exception) {
+            Log.e("ArticleViewModel", "HTML export failed", e)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "HTML 导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+        }
     }
 
     private suspend fun exportToImageInternal(
@@ -733,10 +784,17 @@ class ArticleViewModel(
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
-        suffix: String,
         successMessage: String,
         onComplete: (Boolean) -> Unit,
     ) {
+        runCatching { requireExportSourceContent() }.onFailure { error ->
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
         if (!hasStoragePermission(context)) {
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
@@ -762,7 +820,7 @@ class ArticleViewModel(
             )
             bitmap = captureExportBitmap(preparedWebView)
             withContext(Dispatchers.IO) {
-                saveImageToMediaStore(context, bitmap, suffix)
+                saveImageToMediaStore(context, bitmap)
             }
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, successMessage, Toast.LENGTH_LONG).show()
@@ -1015,6 +1073,27 @@ class ArticleViewModel(
         )
     }
 
+    private suspend fun createOfflineHtmlContent(
+        context: Context,
+        includeAppAttribution: Boolean,
+    ): String {
+        val htmlContent = createHtmlContent(
+            context = context,
+            includeComments = false,
+            commentCount = 0,
+            includeAppAttribution = includeAppAttribution,
+        )
+        val imageCache = mutableMapOf<String, String>()
+
+        return withContext(Dispatchers.IO) {
+            inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
+                imageCache[imageUrl] ?: fetchExportImageDataUrl(context, imageUrl).also {
+                    imageCache[imageUrl] = it
+                }
+            }
+        }
+    }
+
     private suspend fun fetchExportComments(
         context: Context,
         requestedCount: Int,
@@ -1065,12 +1144,61 @@ class ArticleViewModel(
         ),
     )
 
+    private suspend fun fetchExportImageDataUrl(context: Context, imageUrl: String): String = withContext(Dispatchers.IO) {
+        val response = (httpClient ?: AccountData.httpClient(context)).get(imageUrl)
+        if (!response.status.isSuccess()) {
+            throw IllegalStateException("下载图片失败: ${response.status.value}")
+        }
+
+        val bytes = response.readRawBytes()
+        if (bytes.isEmpty()) {
+            throw IllegalStateException("图片内容为空")
+        }
+
+        val mimeType = resolveExportImageMimeType(
+            contentTypeHeader = response.headers[HttpHeaders.ContentType],
+            imageUrl = imageUrl,
+            imageBytes = bytes,
+        )
+
+        "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
+    }
+
+    private fun resolveExportImageMimeType(
+        contentTypeHeader: String?,
+        imageUrl: String,
+        imageBytes: ByteArray,
+    ): String {
+        contentTypeHeader
+            ?.substringBefore(';')
+            ?.trim()
+            ?.takeIf { it.startsWith("image/") }
+            ?.let { return it }
+
+        URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
+        ByteArrayInputStream(imageBytes).use { stream ->
+            URLConnection.guessContentTypeFromStream(stream)?.let { return it }
+        }
+
+        return "image/jpeg"
+    }
+
+    private fun buildExportFileName(extension: String): String {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
+        return buildArticleExportFileName(
+            content = requireExportSourceContent(),
+            timestamp = timeStamp,
+            extension = extension,
+        )
+    }
+
+    private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
+        ?: throw IllegalStateException("内容未加载完成")
+
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(context: Context, bitmap: Bitmap, suffix: String = "") {
+    private fun saveImageToMediaStore(context: Context, bitmap: Bitmap) {
         val contentResolver = context.contentResolver
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val suffixStr = if (suffix.isNotEmpty()) "_$suffix" else ""
-        val displayName = "Zhihu_${article.type}_${article.id}_$timeStamp$suffixStr.png"
+        val displayName = buildExportFileName("png")
 
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
@@ -1090,6 +1218,61 @@ class ArticleViewModel(
                 throw e
             }
         } ?: throw Exception("Failed to create MediaStore entry")
+    }
+
+    private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
+        val displayName = buildExportFileName("html")
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveHtmlToDownloadsWithMediaStore(context, displayName, htmlContent)
+        } else {
+            saveHtmlToLegacyDownloads(displayName, htmlContent)
+        }
+    }
+
+    private fun saveHtmlToDownloadsWithMediaStore(
+        context: Context,
+        displayName: String,
+        htmlContent: String,
+    ): String {
+        val resolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw IllegalStateException("无法创建下载文件")
+
+        return try {
+            resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                writer.write(htmlContent)
+            } ?: throw IllegalStateException("无法打开下载文件")
+
+            contentValues.clear()
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, contentValues, null, null)
+            "下载/Zhihu/$displayName"
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun saveHtmlToLegacyDownloads(displayName: String, htmlContent: String): String {
+        val downloadsDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Zhihu",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
+        }
+
+        val file = File(downloadsDir, displayName)
+        file.writeText(htmlContent)
+        return file.absolutePath
     }
 
     // 转换为Markdown格式

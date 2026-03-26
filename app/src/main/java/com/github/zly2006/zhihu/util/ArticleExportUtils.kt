@@ -1,8 +1,10 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import com.github.zly2006.zhihu.data.DataHolder
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.jsoup.nodes.Entities
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -10,6 +12,7 @@ import java.util.Locale
 
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+private const val ARTICLE_EXPORT_FILE_TITLE_LIMIT = 24
 
 data class ArticleExportFooterData(
     val exportEpochMillis: Long = System.currentTimeMillis(),
@@ -107,6 +110,30 @@ fun renderArticleExportHtml(
             "{{githubUrl}}" to escapeHtml(footerPlaceholders.githubUrl),
         ),
     )
+}
+
+suspend fun inlineArticleExportImagesInHtml(
+    html: String,
+    resolveDataUrl: suspend (String) -> String,
+): String {
+    val document = Jsoup.parse(html)
+    document.outputSettings().prettyPrint(false)
+    inlineArticleExportImages(document.select("img"), resolveDataUrl)
+    return document.outerHtml()
+}
+
+suspend fun inlineArticleExportImages(
+    imageNodes: Iterable<Element>,
+    resolveDataUrl: suspend (String) -> String,
+) {
+    imageNodes.forEach { image ->
+        val imageUrl = resolveArticleExportImageUrl(image) ?: return@forEach
+        image.attr("src", resolveDataUrl(imageUrl))
+        image.removeClass("lazy")
+        image.removeAttr("srcset")
+        image.removeAttr("sizes")
+        image.attr("loading", "eager")
+    }
 }
 
 private fun loadArticleExportTemplate(context: Context): String = context.assets.open(ARTICLE_EXPORT_TEMPLATE_ASSET).use { inputStream ->
@@ -239,3 +266,52 @@ fun normalizeArticleExportUrl(url: String): String = when {
     url.startsWith("//") -> "https:$url"
     else -> url
 }
+
+fun buildArticleExportFileName(
+    content: DataHolder.Content,
+    timestamp: String,
+    extension: String,
+): String {
+    val (title, typeLabel, typeKey, articleId) = when (content) {
+        is DataHolder.Answer -> ExportFileMeta(
+            title = content.question.title,
+            typeLabel = "回答",
+            typeKey = "answer",
+            articleId = content.id,
+        )
+        is DataHolder.Article -> ExportFileMeta(
+            title = content.title,
+            typeLabel = "文章",
+            typeKey = "article",
+            articleId = content.id,
+        )
+        else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
+    }
+    val safeTitle = sanitizeArticleExportFileNamePart(title)
+        .take(ARTICLE_EXPORT_FILE_TITLE_LIMIT)
+        .ifBlank { "untitled" }
+    val normalizedExtension = extension.trimStart('.')
+
+    return "zhihu++_title_${safeTitle}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
+}
+
+private fun resolveArticleExportImageUrl(image: Element): String? = extractImageUrl(image)
+    ?.let(::normalizeArticleExportUrl)
+    ?: image
+        .attr("src")
+        .takeIf { it.isNotBlank() && !it.startsWith("data:") }
+        ?.let(::normalizeArticleExportUrl)
+
+private fun sanitizeArticleExportFileNamePart(text: String): String = text
+    .trim()
+    .replace(Regex("\\s+"), "_")
+    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+    .replace(Regex("_+"), "_")
+    .trim('_')
+
+private data class ExportFileMeta(
+    val title: String,
+    val typeLabel: String,
+    val typeKey: String,
+    val articleId: Long,
+)
