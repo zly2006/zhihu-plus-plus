@@ -18,70 +18,20 @@ data class ArticleExportData(
     val content: String,
 )
 
-fun prepareContentDocumentForExport(content: String): Document {
-    val expandedNoscriptContent = Regex("(?is)<noscript>(.*?)</noscript>").replace(content) { match ->
-        val rawHtml = Entities.unescape(match.groupValues[1])
-        val parsed = Jsoup.parseBodyFragment(rawHtml)
-        val image = parsed.selectFirst("img")
-        val fallbackUrl = Regex(
-            """(?:data-original|data-default-watermark-src|data-actualsrc|data-thumbnail|src)\s*=\s*"([^"]+)"""",
-        ).find(rawHtml)?.groupValues?.getOrNull(1)
-        val resolvedUrl = image?.let(::extractImageUrl) ?: fallbackUrl
-        resolvedUrl
-            ?.let {
-                """
-                <img
-                    src="${escapeHtml(normalizeExportUrl(it))}"
-                    loading="eager"
-                />
-                """.trimIndent()
-            }.orEmpty()
+fun prepareContentDocumentForExport(content: String): Document = Jsoup.parse(content).apply {
+    select("noscript").remove()
+    select("img").forEach { image ->
+        extractImageUrl(image)?.let { src ->
+            image.attr("src", normalizeArticleExportUrl(src))
+        }
+        image.removeClass("lazy")
+        image.removeAttr("srcset")
+        image.removeAttr("sizes")
+        image.attr("loading", "eager")
     }
 
-    return Jsoup.parse(expandedNoscriptContent).apply {
-        select("noscript").forEach { noscript ->
-            val rawHtml = sequenceOf(
-                noscript.wholeText(),
-                noscript.data(),
-                noscript.html(),
-            ).firstOrNull { it.isNotBlank() }.orEmpty()
-            val parsed = Jsoup.parseBodyFragment(Entities.unescape(rawHtml))
-            val image = parsed.selectFirst("img")
-            val fallbackUrl = Regex(
-                """(?:data-original|data-default-watermark-src|data-actualsrc|data-thumbnail|src)\s*=\s*"([^"]+)"""",
-            ).find(rawHtml)?.groupValues?.getOrNull(1)
-            val resolvedUrl = image?.let(::extractImageUrl) ?: fallbackUrl
-            if (image != null && resolvedUrl != null) {
-                image.attr("src", normalizeExportUrl(resolvedUrl))
-                image.removeClass("lazy")
-                image.attr("loading", "eager")
-                noscript.after(image.outerHtml())
-            } else if (resolvedUrl != null) {
-                noscript.after(
-                    """
-                    <img
-                        src="${escapeHtml(normalizeExportUrl(resolvedUrl))}"
-                        loading="eager"
-                    />
-                    """.trimIndent(),
-                )
-            }
-            noscript.remove()
-        }
-
-        select("img").forEach { image ->
-            extractImageUrl(image)?.let { src ->
-                image.attr("src", normalizeExportUrl(src))
-            }
-            image.removeClass("lazy")
-            image.removeAttr("srcset")
-            image.removeAttr("sizes")
-            image.attr("loading", "eager")
-        }
-
-        select("a[href^=//]").forEach { anchor ->
-            anchor.attr("href", normalizeExportUrl(anchor.attr("href")))
-        }
+    select("a[href^=//]").forEach { anchor ->
+        anchor.attr("href", normalizeArticleExportUrl(anchor.attr("href")))
     }
 }
 
@@ -106,7 +56,7 @@ fun renderArticleExportHtml(
             """
             <img
                 class="author-avatar"
-                src="${escapeHtml(normalizeExportUrl(it))}"
+                src="${escapeHtml(normalizeArticleExportUrl(it))}"
                 alt="作者头像"
             />
             """.trimIndent()
@@ -145,7 +95,7 @@ private fun String.replacePlaceholders(placeholders: Map<String, String>): Strin
 
 private fun escapeHtml(text: String): String = Entities.escape(text)
 
-private fun normalizeExportUrl(url: String): String = when {
+fun normalizeArticleExportUrl(url: String): String = when {
     url.startsWith("//") -> "https:$url"
     else -> url
 }
