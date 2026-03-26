@@ -4,9 +4,20 @@ import android.content.Context
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Entities
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-const val ARTICLE_EXPORT_MAX_WIDTH_PX = 720
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
+const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+
+data class ArticleExportFooterData(
+    val exportEpochMillis: Long = System.currentTimeMillis(),
+    val createdEpochSeconds: Long = 0L,
+    val updatedEpochSeconds: Long = 0L,
+    val includeAppAttribution: Boolean = true,
+    val githubUrl: String = ARTICLE_EXPORT_GITHUB_URL,
+)
 
 data class ArticleExportData(
     val title: String,
@@ -16,6 +27,7 @@ data class ArticleExportData(
     val voteUpCount: Int,
     val commentCount: Int,
     val content: String,
+    val footerData: ArticleExportFooterData = ArticleExportFooterData(),
 )
 
 fun prepareContentDocumentForExport(content: String): Document = Jsoup.parse(content).apply {
@@ -50,6 +62,7 @@ fun renderArticleExportHtml(
     exportData: ArticleExportData,
     extraSectionsHtml: String = "",
 ): String {
+    val footerPlaceholders = buildArticleExportFooterPlaceholders(exportData.footerData)
     val authorAvatarHtml = exportData.authorAvatarSrc
         .takeIf { it.isNotBlank() }
         ?.let {
@@ -79,6 +92,12 @@ fun renderArticleExportHtml(
             "{{commentCount}}" to exportData.commentCount.toString(),
             "{{bodyHtml}}" to processedContent,
             "{{extraSections}}" to extraSectionsHtml,
+            "{{exportedDate}}" to footerPlaceholders.exportedDate,
+            "{{publishedDate}}" to footerPlaceholders.publishedDate,
+            "{{editedDate}}" to footerPlaceholders.editedDate,
+            "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
+            "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
+            "{{githubUrl}}" to escapeHtml(footerPlaceholders.githubUrl),
         ),
     )
 }
@@ -94,6 +113,40 @@ private fun String.replacePlaceholders(placeholders: Map<String, String>): Strin
 }
 
 private fun escapeHtml(text: String): String = Entities.escape(text)
+
+private data class ArticleExportFooterPlaceholders(
+    val exportedDate: String,
+    val publishedDate: String,
+    val editedDate: String,
+    val editedDateClass: String,
+    val appAttributionClass: String,
+    val githubUrl: String,
+)
+
+private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooterData): ArticleExportFooterPlaceholders {
+    val publishedDate = footerData.createdEpochSeconds
+        .takeIf { it > 0L }
+        ?.let { "发布日期：" + formatArticleExportDate(it * 1000L) }
+        .orEmpty()
+    val editedDate = footerData.updatedEpochSeconds
+        .takeIf { it > 0L && it != footerData.createdEpochSeconds }
+        ?.let { "编辑日期：" + formatArticleExportDate(it * 1000L) }
+        .orEmpty()
+
+    return ArticleExportFooterPlaceholders(
+        exportedDate = "导出日期：" + formatArticleExportDate(footerData.exportEpochMillis),
+        publishedDate = publishedDate,
+        editedDate = editedDate,
+        editedDateClass = if (editedDate.isBlank()) "export-footer-line is-hidden" else "export-footer-line",
+        appAttributionClass = if (footerData.includeAppAttribution) "export-credit" else "export-credit is-hidden",
+        githubUrl = footerData.githubUrl,
+    )
+}
+
+private fun formatArticleExportDate(epochMillis: Long): String = SimpleDateFormat(
+    "yyyy-MM-dd HH:mm",
+    Locale.getDefault(),
+).format(Date(epochMillis))
 
 fun normalizeArticleExportUrl(url: String): String = when {
     url.startsWith("//") -> "https:$url"

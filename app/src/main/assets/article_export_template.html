@@ -148,6 +148,59 @@
             font-size: 12px;
             color: #64748b;
         }
+        .export-footer {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .export-footer-line {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #64748b;
+        }
+        .export-credit-brand {
+            color: #66ccff;
+            font-weight: 700;
+        }
+        .export-credit {
+            margin: 8px 0 0;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #94a3b8;
+            word-break: break-all;
+        }
+        .is-hidden {
+            display: none !important;
+        }
+        @page {
+            margin: 12mm 10mm;
+        }
+        @media print {
+            html, body {
+                background: #ffffff;
+            }
+            body {
+                padding: 0;
+            }
+            .page {
+                max-width: none;
+                margin: 0;
+                padding: 0;
+                border-radius: 0;
+                background: #ffffff;
+                box-shadow: none;
+            }
+            .title,
+            .author-card,
+            .stats,
+            .content figure,
+            .content img,
+            .comment,
+            .export-footer {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body>
@@ -206,6 +259,14 @@
             {{bodyHtml}}
         </article>
         {{extraSections}}
+        <footer class="export-footer">
+            <div class="export-footer-line">{{exportedDate}}</div>
+            <div class="export-footer-line">{{publishedDate}}</div>
+            <div class="{{editedDateClass}}">{{editedDate}}</div>
+            <p class="{{appAttributionClass}}">
+                本回答使用<span class="export-credit-brand">知乎++</span>导出，这是一个完全开源的去广告免费知乎第三方客户端，请点个star吧！（GitHub地址：{{githubUrl}}）
+            </p>
+        </footer>
     </main>
 </body>
 </html>

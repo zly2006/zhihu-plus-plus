@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
@@ -47,6 +46,7 @@ import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.ArticleExportData
+import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
@@ -81,8 +81,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
-import java.io.File
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -694,38 +692,13 @@ class ArticleViewModel(
         val contentHeightPx: Int,
     )
 
-    // 导出为PDF
-    suspend fun exportToPdf(context: Context, onComplete: (Boolean) -> Unit) {
-        var preparedWebView: PreparedExportWebView? = null
-        try {
-            preparedWebView = prepareExportWebView(
-                context = context,
-                includeComments = false,
-                commentCount = 0,
-                timeoutMs = 15_000L,
-            )
-            val file = renderWebViewToPdf(context, preparedWebView)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "PDF已保存到: ${file.absolutePath}", Toast.LENGTH_LONG).show()
-                onComplete(true)
-            }
-        } catch (e: Exception) {
-            Log.e("ArticleViewModel", "PDF export failed", e)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "PDF导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-        } finally {
-            preparedWebView?.let { destroyExportWebView(it.webView) }
-        }
-    }
-
     // 导出为图片 - 使用WebView渲染
-    suspend fun exportToImage(context: Context, onComplete: (Boolean) -> Unit) {
+    suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
         exportToImageInternal(
             context = context,
             includeComments = false,
             commentCount = 0,
+            includeAppAttribution = includeAppAttribution,
             suffix = "",
             successMessage = "图片已保存到相册",
             onComplete = onComplete,
@@ -733,11 +706,17 @@ class ArticleViewModel(
     }
 
     // 导出为带评论的图片 - 使用WebView渲染
-    suspend fun exportToImageWithComments(context: Context, commentCount: Int, onComplete: (Boolean) -> Unit) {
+    suspend fun exportToImageWithComments(
+        context: Context,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
         exportToImageInternal(
             context = context,
             includeComments = true,
             commentCount = commentCount,
+            includeAppAttribution = includeAppAttribution,
             suffix = "with_comments",
             successMessage = "带评论图片已保存到相册",
             onComplete = onComplete,
@@ -748,6 +727,7 @@ class ArticleViewModel(
         context: Context,
         includeComments: Boolean,
         commentCount: Int,
+        includeAppAttribution: Boolean,
         suffix: String,
         successMessage: String,
         onComplete: (Boolean) -> Unit,
@@ -767,8 +747,12 @@ class ArticleViewModel(
         try {
             preparedWebView = prepareExportWebView(
                 context = context,
-                includeComments = includeComments,
-                commentCount = commentCount,
+                htmlContent = createHtmlContent(
+                    context = context,
+                    includeComments = includeComments,
+                    commentCount = commentCount,
+                    includeAppAttribution = includeAppAttribution,
+                ),
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
             bitmap = captureExportBitmap(preparedWebView)
@@ -794,8 +778,7 @@ class ArticleViewModel(
 
     private suspend fun prepareExportWebView(
         context: Context,
-        includeComments: Boolean,
-        commentCount: Int,
+        htmlContent: String,
         timeoutMs: Long,
     ): PreparedExportWebView = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
@@ -896,7 +879,7 @@ class ArticleViewModel(
             mainHandler.postDelayed(timeoutRunnable, timeoutMs)
             webView.loadDataWithBaseURL(
                 "https://www.zhihu.com",
-                createHtmlContent(context = context, includeComments = includeComments, commentCount = commentCount),
+                htmlContent,
                 "text/html",
                 "UTF-8",
                 null,
@@ -937,59 +920,10 @@ class ArticleViewModel(
     private fun resolveExportViewportWidthPx(context: Context): Int = context.resources.displayMetrics.widthPixels
         .coerceAtLeast(1)
 
-    private fun resolvePdfPageHeightPx(context: Context, pageWidthPx: Int): Int {
-        val screenHeightPx = context.resources.displayMetrics.heightPixels
-            .coerceAtLeast(pageWidthPx)
-        val readableHeightPx = (pageWidthPx * 4f / 3f).roundToInt()
-        return maxOf(screenHeightPx, readableHeightPx)
-    }
-
     private fun computeExportContentHeightPx(webView: WebView): Int {
         val density = webView.resources.displayMetrics.density
         val contentHeightPx = (webView.contentHeight * density).roundToInt()
         return maxOf(contentHeightPx, webView.measuredHeight, webView.height, 1)
-    }
-
-    private suspend fun renderWebViewToPdf(context: Context, preparedWebView: PreparedExportWebView): File {
-        val pdfDocument = withContext(Dispatchers.Main) {
-            val document = PdfDocument()
-            val pageWidthPx = preparedWebView.viewportWidthPx
-            val pageHeightPx = resolvePdfPageHeightPx(context, pageWidthPx)
-            var pageNumber = 1
-            var currentTopPx = 0
-            val totalHeightPx = preparedWebView.contentHeightPx.coerceAtLeast(1)
-
-            while (currentTopPx < totalHeightPx) {
-                val pageInfo = PdfDocument.PageInfo.Builder(pageWidthPx, pageHeightPx, pageNumber).create()
-                val page = document.startPage(pageInfo)
-                page.canvas.drawColor(android.graphics.Color.WHITE)
-                page.canvas.save()
-                page.canvas.clipRect(0, 0, pageWidthPx, pageHeightPx)
-                page.canvas.translate(0f, -currentTopPx.toFloat())
-                preparedWebView.webView.draw(page.canvas)
-                page.canvas.restore()
-                document.finishPage(page)
-
-                currentTopPx += pageHeightPx
-                pageNumber += 1
-            }
-
-            document
-        }
-
-        return try {
-            withContext(Dispatchers.IO) {
-                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                val fileName = "Zhihu_${article.type}_${article.id}_$timeStamp.pdf"
-                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
-                FileOutputStream(file).use { outputStream ->
-                    pdfDocument.writeTo(outputStream)
-                }
-                file
-            }
-        } finally {
-            pdfDocument.close()
-        }
     }
 
     private suspend fun captureExportBitmap(preparedWebView: PreparedExportWebView): Bitmap = withContext(Dispatchers.Main) {
@@ -1022,7 +956,12 @@ class ArticleViewModel(
     }
 
     // 创建HTML内容
-    private fun createHtmlContent(context: Context, includeComments: Boolean, commentCount: Int): String {
+    private fun createHtmlContent(
+        context: Context,
+        includeComments: Boolean,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+    ): String {
         var commentsHtml = ""
         if (includeComments && commentCount > 0) {
             commentsHtml = "<div class='comments-title'>热门评论 (前 $commentCount 条)</div>"
@@ -1051,18 +990,26 @@ class ArticleViewModel(
 
         return buildArticleExportHtml(
             context = context,
-            exportData = ArticleExportData(
-                title = title,
-                authorName = authorName,
-                authorBio = authorBio,
-                authorAvatarSrc = authorAvatarSrc,
-                voteUpCount = voteUpCount,
-                commentCount = this.commentCount,
-                content = content,
-            ),
+            exportData = buildExportData(includeAppAttribution),
             extraSectionsHtml = commentsHtml,
         )
     }
+
+    private fun buildExportData(includeAppAttribution: Boolean): ArticleExportData = ArticleExportData(
+        title = title,
+        authorName = authorName,
+        authorBio = authorBio,
+        authorAvatarSrc = authorAvatarSrc,
+        voteUpCount = voteUpCount,
+        commentCount = commentCount,
+        content = content,
+        footerData = ArticleExportFooterData(
+            exportEpochMillis = System.currentTimeMillis(),
+            createdEpochSeconds = createdAt,
+            updatedEpochSeconds = updatedAt,
+            includeAppAttribution = includeAppAttribution,
+        ),
+    )
 
     // 使用MediaStore保存图片到公共目录
     private fun saveImageToMediaStore(context: Context, bitmap: Bitmap, suffix: String = "") {

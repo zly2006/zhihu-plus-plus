@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.export
 
 import com.github.zly2006.zhihu.util.ArticleExportData
+import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,6 +21,12 @@ class ArticleExportHtmlTest {
         assertTrue(template.contains("{{voteCount}}"))
         assertTrue(template.contains("{{commentCount}}"))
         assertTrue(template.contains("{{bodyHtml}}"))
+        assertTrue(template.contains("{{exportedDate}}"))
+        assertTrue(template.contains("{{publishedDate}}"))
+        assertTrue(template.contains("{{editedDate}}"))
+        assertTrue(template.contains("{{editedDateClass}}"))
+        assertTrue(template.contains("{{appAttributionClass}}"))
+        assertTrue(template.contains("{{githubUrl}}"))
     }
 
     @Test
@@ -70,9 +77,58 @@ class ArticleExportHtmlTest {
         assertTrue("统计信息需要改成 chip 样式", html.contains("stat-chip"))
         assertTrue("导出 HTML 需要内嵌赞同图标", html.contains("vote-chip-icon"))
         assertTrue("导出 HTML 需要内嵌评论图标", html.contains("comment-chip-icon"))
+        assertTrue("导出模板需要提供打印样式", html.contains("@media print"))
+        assertTrue("打印导出时不应保留卡片阴影", html.contains("box-shadow: none"))
         assertFalse("导出 HTML 不应继续使用 card 统计样式", html.contains("stat-card"))
         assertFalse("导出 HTML 不应显示赞同大字标签", html.contains(">赞同<"))
         assertFalse("导出 HTML 不应显示评论大字标签", html.contains(">评论<"))
+    }
+
+    @Test
+    fun exportHtmlShowsDatesAndHidesEditedDateWhenSameAsPublished() {
+        val html = createExportHtml(
+            title = "日期导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            footerData = ArticleExportFooterData(
+                exportEpochMillis = 1_774_519_200_000,
+                createdEpochSeconds = 1_773_914_400,
+                updatedEpochSeconds = 1_773_914_400,
+                includeAppAttribution = true,
+            ),
+        )
+
+        assertTrue(html.contains("导出日期：2026-03-26 18:00"))
+        assertTrue(html.contains("发布日期：2026-03-19 18:00"))
+        assertFalse("编辑和发布同一时间时不应显示编辑日期", html.contains("编辑日期："))
+        assertTrue(html.contains("知乎++"))
+        assertTrue(html.contains("GitHub地址：https://github.com/zly2006/zhihu-plus-plus"))
+    }
+
+    @Test
+    fun exportHtmlCanHideAppAttributionAndShowEditedDate() {
+        val html = createExportHtml(
+            title = "日期导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            footerData = ArticleExportFooterData(
+                exportEpochMillis = 1_774_519_200_000,
+                createdEpochSeconds = 1_773_914_400,
+                updatedEpochSeconds = 1_774_000_800,
+                includeAppAttribution = false,
+            ),
+        )
+
+        assertTrue(html.contains("编辑日期：2026-03-20 18:00"))
+        assertTrue(html.contains("export-credit is-hidden"))
     }
 
     private fun createExportHtml(
@@ -83,6 +139,12 @@ class ArticleExportHtmlTest {
         voteUpCount: Int,
         commentCount: Int,
         content: String,
+        footerData: ArticleExportFooterData = ArticleExportFooterData(
+            exportEpochMillis = 1_774_519_200_000,
+            createdEpochSeconds = 1_773_914_400,
+            updatedEpochSeconds = 1_774_000_800,
+            includeAppAttribution = true,
+        ),
     ): String {
         val template = loadExportTemplateAsset()
         return renderArticleExportHtml(
@@ -95,6 +157,7 @@ class ArticleExportHtmlTest {
                 voteUpCount = voteUpCount,
                 commentCount = commentCount,
                 content = content,
+                footerData = footerData,
             ),
         )
     }
