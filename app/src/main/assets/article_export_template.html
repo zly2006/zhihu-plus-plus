@@ -122,6 +122,27 @@
             color: #2563eb;
             word-break: break-all;
         }
+        .content #zhihu-plus-footnotes {
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .content #zhihu-plus-footnotes h4 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            line-height: 1.5;
+        }
+        .content #zhihu-plus-footnotes ol {
+            margin: 0;
+            padding-left: 1.5em;
+        }
+        .content #zhihu-plus-footnotes li {
+            margin-bottom: 0.75em;
+        }
+        .content #zhihu-plus-footnotes a {
+            color: #2563eb;
+            word-break: break-all;
+        }
         .comments-title {
             margin: 36px 0 18px;
             font-size: 22px;
@@ -270,7 +291,7 @@
                 <span class="stat-chip-value">{{commentCount}}</span>
             </div>
         </section>
-        <article class="content">
+        <article class="content RichContent-inner">
             {{bodyHtml}}
         </article>
         {{extraSections}}

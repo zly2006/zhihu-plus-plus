@@ -860,7 +860,11 @@ class ArticleViewModel(
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     if (!isFinished) {
-                        scheduleReadinessCheck()
+                        injectExportFootnoteScript(context, webView) {
+                            if (!isFinished) {
+                                scheduleReadinessCheck()
+                            }
+                        }
                     }
                 }
 
@@ -902,7 +906,7 @@ class ArticleViewModel(
     }
 
     private fun createExportWebView(context: Context): WebView = WebView(context).apply {
-        settings.javaScriptEnabled = false
+        settings.javaScriptEnabled = true
         settings.domStorageEnabled = false
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = false
@@ -911,6 +915,34 @@ class ArticleViewModel(
         setBackgroundColor(android.graphics.Color.WHITE)
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
+    }
+
+    private fun injectExportFootnoteScript(context: Context, webView: WebView, onInjected: () -> Unit) {
+        val jsCode = loadExportAssetText(context, "footnotes.js")
+        if (jsCode.isBlank()) {
+            onInjected()
+            return
+        }
+
+        runCatching {
+            webView.evaluateJavascript(jsCode) {
+                onInjected()
+            }
+        }.onFailure { error ->
+            Log.e("ArticleViewModel", "Failed to inject export footnotes", error)
+            onInjected()
+        }
+    }
+
+    private fun loadExportAssetText(context: Context, fileName: String): String = try {
+        context.assets.open(fileName).use { inputStream ->
+            inputStream.bufferedReader().use { reader ->
+                reader.readText()
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
+        ""
     }
 
     private fun measureAndLayoutExportWebView(webView: WebView, widthPx: Int, heightPx: Int) {
