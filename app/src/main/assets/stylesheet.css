@@ -76,6 +76,11 @@ body.dark-theme img {
   background-color: white;
 }
 
+blockquote.dark-theme {
+  color: #c2c6cf;
+  border-left: 3px solid #282b30;
+}
+
 /* 公式深色反色 */
 .dark-theme img[eeimg] {
   filter: invert(100%);
