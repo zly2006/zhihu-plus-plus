@@ -39,15 +39,18 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigator.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator
+import com.github.zly2006.zhihu.rootCommentUrl
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.ArticleExportData
 import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -55,6 +58,7 @@ import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
@@ -77,6 +81,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -956,36 +961,19 @@ class ArticleViewModel(
     }
 
     // 创建HTML内容
-    private fun createHtmlContent(
+    private suspend fun createHtmlContent(
         context: Context,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
     ): String {
-        var commentsHtml = ""
-        if (includeComments && commentCount > 0) {
-            commentsHtml = "<div class='comments-title'>热门评论 (前 $commentCount 条)</div>"
-
-            // 这里应该从实际评论数据中获取评论
-            // 暂时使用示例评论，实际使用时需要从CommentScreenComponent获取数据
-            val sampleComments = listOf(
-                mapOf("author" to "用户1", "content" to "这篇文章写得很好！", "time" to "2024-01-01"),
-                mapOf("author" to "用户2", "content" to "很有启发性，谢谢分享。", "time" to "2024-01-02"),
-                mapOf("author" to "用户3", "content" to "观点很独特，支持！", "time" to "2024-01-03"),
-                mapOf("author" to "用户4", "content" to "学习了，感谢作者。", "time" to "2024-01-04"),
-                mapOf("author" to "用户5", "content" to "内容详实，值得一看。", "time" to "2024-01-05"),
+        val commentsHtml = if (includeComments && commentCount > 0) {
+            buildArticleExportCommentsHtml(
+                comments = fetchExportComments(context, commentCount),
+                requestedCount = commentCount,
             )
-
-            for (i in 0 until minOf(commentCount, sampleComments.size)) {
-                val comment = sampleComments[i]
-                commentsHtml += """
-                    <div class='comment'>
-                        <div class='comment-author'>${comment["author"]}</div>
-                        <div class='comment-content'>${comment["content"]}</div>
-                        <div class='comment-time'>${comment["time"]}</div>
-                    </div>
-                """
-            }
+        } else {
+            ""
         }
 
         return buildArticleExportHtml(
@@ -994,6 +982,40 @@ class ArticleViewModel(
             extraSectionsHtml = commentsHtml,
         )
     }
+
+    private suspend fun fetchExportComments(
+        context: Context,
+        requestedCount: Int,
+    ): List<ArticleExportComment> {
+        val safeRequestedCount = requestedCount.coerceAtLeast(0)
+        if (safeRequestedCount == 0) return emptyList()
+
+        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
+            url {
+                parameters.append("order", "score")
+                parameters.append("limit", safeRequestedCount.coerceAtMost(20).toString())
+                parameters.append("include", "data[*].content,excerpt,headline")
+            }
+            signFetchRequest()
+        } ?: return emptyList()
+
+        return json["data"]
+            ?.jsonArray
+            ?.mapNotNull { element ->
+                runCatching {
+                    AccountData.decodeJson<DataHolder.Comment>(element)
+                }.getOrNull()
+            }?.take(safeRequestedCount)
+            ?.map(::mapExportComment)
+            .orEmpty()
+    }
+
+    private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(
+        authorName = comment.author.name,
+        content = comment.content,
+        createdTimeText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            .format(Date(comment.createdTime * 1000)),
+    )
 
     private fun buildExportData(includeAppAttribution: Boolean): ArticleExportData = ArticleExportData(
         title = title,

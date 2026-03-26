@@ -30,6 +30,13 @@ data class ArticleExportData(
     val footerData: ArticleExportFooterData = ArticleExportFooterData(),
 )
 
+data class ArticleExportComment(
+    val authorName: String,
+    val contentHtml: String,
+    val createdTimeText: String,
+    val imageSrc: String = "",
+)
+
 fun prepareContentDocumentForExport(content: String): Document = Jsoup.parse(content).apply {
     select("noscript").remove()
     select("img").forEach { image ->
@@ -147,6 +154,86 @@ private fun formatArticleExportDate(epochMillis: Long): String = SimpleDateForma
     "yyyy-MM-dd HH:mm",
     Locale.getDefault(),
 ).format(Date(epochMillis))
+
+fun prepareArticleExportComment(
+    authorName: String,
+    content: String,
+    createdTimeText: String,
+): ArticleExportComment {
+    val document = Jsoup.parseBodyFragment(content)
+    val imageSrc = document
+        .selectFirst("a.comment_img, a.comment_gif, a.comment_sticker")
+        ?.attr("href")
+        ?.takeIf { it.isNotBlank() }
+        ?.let(::normalizeArticleExportUrl)
+        .orEmpty()
+
+    document.select("noscript").remove()
+    document.select("a.comment_img, a.comment_gif, a.comment_sticker").remove()
+    document.select("a[href^=//]").forEach { anchor ->
+        anchor.attr("href", normalizeArticleExportUrl(anchor.attr("href")))
+    }
+    document.select("img").forEach { image ->
+        extractImageUrl(image)?.let { src ->
+            image.attr("src", normalizeArticleExportUrl(src))
+        }
+        image.removeClass("lazy")
+        image.removeAttr("srcset")
+        image.removeAttr("sizes")
+        image.attr("loading", "eager")
+    }
+    document.body().select("p, div").forEach { element ->
+        if (element.text().isBlank() && element.select("img").isEmpty()) {
+            element.remove()
+        }
+    }
+
+    return ArticleExportComment(
+        authorName = authorName,
+        contentHtml = document.body().html().trim(),
+        createdTimeText = createdTimeText,
+        imageSrc = imageSrc,
+    )
+}
+
+fun buildArticleExportCommentsHtml(
+    comments: List<ArticleExportComment>,
+    requestedCount: Int? = null,
+): String {
+    if (comments.isEmpty()) return ""
+    val titleSuffix = requestedCount
+        ?.takeIf { it > 0 }
+        ?.let { " (前 ${minOf(it, comments.size)} 条)" }
+        .orEmpty()
+
+    return buildString {
+        append("<div class='comments-title'>热门评论$titleSuffix</div>")
+        comments.forEach { comment ->
+            append(
+                """
+                <div class="comment">
+                    <div class="comment-author">${escapeHtml(comment.authorName)}</div>
+                    <div class="comment-content">${comment.contentHtml}</div>
+                    ${buildArticleExportCommentImageHtml(comment.imageSrc)}
+                    <div class="comment-time">${escapeHtml(comment.createdTimeText)}</div>
+                </div>
+                """.trimIndent(),
+            )
+        }
+    }
+}
+
+private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc
+    .takeIf { it.isNotBlank() }
+    ?.let {
+        """
+        <img
+            class="comment-image"
+            src="${escapeHtml(it)}"
+            alt="评论图片"
+        />
+        """.trimIndent()
+    }.orEmpty()
 
 fun normalizeArticleExportUrl(url: String): String = when {
     url.startsWith("//") -> "https:$url"

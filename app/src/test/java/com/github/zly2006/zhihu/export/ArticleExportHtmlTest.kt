@@ -1,7 +1,10 @@
 package com.github.zly2006.zhihu.export
 
+import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.ArticleExportData
 import com.github.zly2006.zhihu.util.ArticleExportFooterData
+import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -131,6 +134,56 @@ class ArticleExportHtmlTest {
         assertTrue(html.contains("export-credit is-hidden"))
     }
 
+    @Test
+    fun exportCommentContentUsesRealCommentDataInsteadOfMockPlaceholders() {
+        val commentsHtml = buildArticleExportCommentsHtml(
+            listOf(
+                ArticleExportComment(
+                    authorName = "真实评论用户",
+                    contentHtml = "<p>这是一条真实评论</p>",
+                    createdTimeText = "2026-03-26 18:30",
+                    imageSrc = "https://pic1.zhimg.com/comment-image.jpg",
+                ),
+            ),
+        )
+        val html = createExportHtml(
+            title = "带评论导出",
+            authorName = "作者",
+            authorBio = "",
+            authorAvatarSrc = "",
+            voteUpCount = 12,
+            commentCount = 3,
+            content = "<p>正文内容</p>",
+            extraSectionsHtml = commentsHtml,
+        )
+
+        assertTrue(html.contains("热门评论"))
+        assertTrue(html.contains("真实评论用户"))
+        assertTrue(html.contains("这是一条真实评论"))
+        assertTrue(html.contains("2026-03-26 18:30"))
+        assertTrue(html.contains("https://pic1.zhimg.com/comment-image.jpg"))
+        assertFalse("导出评论不应继续包含 mock 用户名", html.contains("用户1"))
+        assertFalse("导出评论不应继续包含 mock 文案", html.contains("这篇文章写得很好"))
+    }
+
+    @Test
+    fun exportCommentPreparationStripsCommentAnchorsAndPromotesCommentImage() {
+        val comment = prepareArticleExportComment(
+            authorName = "评论作者",
+            content =
+                """
+                <p>评论正文<a class="comment_img" href="https://pic1.zhimg.com/comment-image.jpg">[图片]</a></p>
+                <p><a class="comment_sticker" href="https://pic1.zhimg.com/sticker.png">[表情]</a></p>
+                """.trimIndent(),
+            createdTimeText = "2026-03-26 18:31",
+        )
+
+        assertTrue(comment.contentHtml.contains("评论正文"))
+        assertFalse(comment.contentHtml.contains("comment_img"))
+        assertFalse(comment.contentHtml.contains("comment_sticker"))
+        assertTrue(comment.imageSrc == "https://pic1.zhimg.com/comment-image.jpg")
+    }
+
     private fun createExportHtml(
         title: String,
         authorName: String,
@@ -139,6 +192,7 @@ class ArticleExportHtmlTest {
         voteUpCount: Int,
         commentCount: Int,
         content: String,
+        extraSectionsHtml: String = "",
         footerData: ArticleExportFooterData = ArticleExportFooterData(
             exportEpochMillis = 1_774_519_200_000,
             createdEpochSeconds = 1_773_914_400,
@@ -159,6 +213,7 @@ class ArticleExportHtmlTest {
                 content = content,
                 footerData = footerData,
             ),
+            extraSectionsHtml = extraSectionsHtml,
         )
     }
 
