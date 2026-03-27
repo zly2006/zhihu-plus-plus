@@ -40,7 +40,6 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigator.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator
-import com.github.zly2006.zhihu.rootCommentUrl
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -63,6 +62,7 @@ import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
@@ -1184,14 +1184,10 @@ class ArticleViewModel(
         return "image/jpeg"
     }
 
-    private fun buildExportFileName(extension: String): String {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-        return buildArticleExportFileName(
-            content = requireExportSourceContent(),
-            timestamp = timeStamp,
-            extension = extension,
-        )
-    }
+    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
+        content = requireExportSourceContent(),
+        extension = extension,
+    )
 
     private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
         ?: throw IllegalStateException("内容未加载完成")

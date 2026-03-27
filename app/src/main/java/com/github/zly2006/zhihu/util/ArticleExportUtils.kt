@@ -12,7 +12,6 @@ import java.util.Locale
 
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
-private const val ARTICLE_EXPORT_FILE_TITLE_LIMIT = 24
 
 data class ArticleExportFooterData(
     val exportEpochMillis: Long = System.currentTimeMillis(),
@@ -269,9 +268,9 @@ fun normalizeArticleExportUrl(url: String): String = when {
 
 fun buildArticleExportFileName(
     content: DataHolder.Content,
-    timestamp: String,
     extension: String,
 ): String {
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
     val (title, authorName, typeLabel, typeKey, articleId) = when (content) {
         is DataHolder.Answer -> ExportFileMeta(
             title = content.question.title,
@@ -289,14 +288,12 @@ fun buildArticleExportFileName(
         )
         else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
     }
-    val safeTitle = sanitizeArticleExportFileNamePart(title)
-        .take(ARTICLE_EXPORT_FILE_TITLE_LIMIT)
-        .ifBlank { "untitled" }
+    val safeTitle = sanitizeArticleExportFileNamePart(title).ifBlank { "无标题" }
     val safeAuthorName = sanitizeArticleExportFileNamePart(authorName)
         .ifBlank { "匿名作者" }
     val normalizedExtension = extension.trimStart('.')
 
-    return "zhihu++_title_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
+    return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
 private fun resolveArticleExportImageUrl(image: Element): String? = extractImageUrl(image)
