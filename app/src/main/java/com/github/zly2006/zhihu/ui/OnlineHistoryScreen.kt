@@ -61,7 +61,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = { Text("历史记录") },
@@ -96,7 +96,6 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
                         }
                     }
                 },
-                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { innerPadding ->
