@@ -284,16 +284,16 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
         topBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Column(
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
-                ) {
-                    if (duo3HomeAccount) {
+            Column {
+                if (duo3HomeAccount) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .windowInsetsPadding(WindowInsets.statusBars)
                                 .padding(16.dp, 8.dp, 16.dp, 0.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -363,8 +363,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 }
                             }
                         }
-                    } else {
-                        Surface(shadowElevation = 4.dp) {
+                    }
+                } else {
+                    Surface(
+                        shadowElevation = 4.dp,
+                        color = MaterialTheme.colorScheme.background,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -372,7 +378,9 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Surface(
-                                    modifier = Modifier.height(36.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(36.dp),
                                     shape = RoundedCornerShape(24.dp),
                                     color = MaterialTheme.colorScheme.surfaceVariant,
                                     onClick = {
