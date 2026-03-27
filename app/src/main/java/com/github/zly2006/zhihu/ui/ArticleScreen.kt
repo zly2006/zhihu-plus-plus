@@ -114,7 +114,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -842,15 +841,6 @@ fun ArticleScreen(
         if (prev != null) {
             sharedData?.pendingInitialContent = prev
             sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
-            val activity = context as? MainActivity
-            if (activity != null &&
-                activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                activity.navController.currentBackStackEntry
-                    ?.toRoute<Article>()
-                    ?.type == ArticleType.Answer
-            ) {
-                activity.navController.popBackStack()
-            }
             navigator.onNavigate(prev.article)
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
@@ -860,15 +850,6 @@ fun ArticleScreen(
                 val prevCached = sharedData?.navigator?.loadPrevious(context)
                 if (prevCached != null) {
                     sharedData?.pendingInitialContent = prevCached
-                    val activity = context as? MainActivity
-                    if (activity != null &&
-                        activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                        activity.navController.currentBackStackEntry
-                            ?.toRoute<Article>()
-                            ?.type == ArticleType.Answer
-                    ) {
-                        activity.navController.popBackStack()
-                    }
                     navigator.onNavigate(prevCached.article)
                 }
             }
@@ -889,15 +870,6 @@ fun ArticleScreen(
         if (historyNext != null) {
             sharedData?.pendingInitialContent = historyNext
             sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
-            val activity = context as? MainActivity
-            if (activity != null &&
-                activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                activity.navController.currentBackStackEntry
-                    ?.toRoute<Article>()
-                    ?.type == ArticleType.Answer
-            ) {
-                activity.navController.popBackStack()
-            }
             navigator.onNavigate(historyNext.article)
         } else {
             // 没有前向历史，从导航器加载
@@ -906,15 +878,6 @@ fun ArticleScreen(
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext(context)
                 if (nextArticle != null) {
-                    val activity = context as? MainActivity
-                    if (activity != null &&
-                        activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                        activity.navController.currentBackStackEntry
-                            ?.toRoute<Article>()
-                            ?.type == ArticleType.Answer
-                    ) {
-                        activity.navController.popBackStack()
-                    }
                     navigator.onNavigate(nextArticle)
                 }
             }

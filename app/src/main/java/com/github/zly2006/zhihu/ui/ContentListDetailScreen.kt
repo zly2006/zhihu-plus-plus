@@ -1,17 +1,32 @@
 package com.github.zly2006.zhihu.ui
 
 import android.os.Parcelable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -25,6 +40,30 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
+
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
+private val ContentListDetailBackBehavior = BackNavigationBehavior.PopUntilContentChange
+private val ContentListDetailPaneSpacer = 0.dp
+
+@Composable
+private fun EmptyDetailPane(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Outlined.Article,
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).padding(bottom = 8.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(text = text, color = Color.Gray)
+    }
+}
 
 @Parcelize
 data class ContentPaneDestination(
@@ -109,7 +148,12 @@ fun ContentListDetailScreen(
     listPane: @Composable (Navigator) -> Unit,
 ) {
     val activity = androidx.activity.compose.LocalActivity.current as MainActivity
-    val paneNavigator = rememberListDetailPaneScaffoldNavigator<ContentPaneDestination>()
+    val scaffoldDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo()).copy(
+        horizontalPartitionSpacerSize = ContentListDetailPaneSpacer,
+    )
+    val paneNavigator = rememberListDetailPaneScaffoldNavigator<ContentPaneDestination>(
+        scaffoldDirective = scaffoldDirective,
+    )
     val coroutineScope = rememberCoroutineScope()
     val detailDestination = paneNavigator.currentDestination?.contentKey
     val rootNavigator = LocalNavigator.current
@@ -127,8 +171,8 @@ fun ContentListDetailScreen(
         },
         onNavigateBack = {
             coroutineScope.launch {
-                if (paneNavigator.canNavigateBack()) {
-                    paneNavigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+                if (paneNavigator.canNavigateBack(ContentListDetailBackBehavior)) {
+                    paneNavigator.navigateBack(ContentListDetailBackBehavior)
                 } else {
                     rootNavigator.onNavigateBack()
                 }
@@ -138,6 +182,7 @@ fun ContentListDetailScreen(
 
     NavigableListDetailPaneScaffold(
         navigator = paneNavigator,
+        defaultBackBehavior = ContentListDetailBackBehavior,
         listPane = {
             AnimatedPane {
                 CompositionLocalProvider(LocalNavigator provides localNavigator) {
@@ -149,7 +194,7 @@ fun ContentListDetailScreen(
             AnimatedPane {
                 val destination = detailDestination?.toNavDestination()
                 if (destination == null) {
-                    Text(text = "选择一条内容开始阅读")
+                    EmptyDetailPane(text = "请选择内容")
                     return@AnimatedPane
                 }
                 CompositionLocalProvider(LocalNavigator provides localNavigator) {
@@ -187,7 +232,7 @@ fun ContentListDetailScreen(
                         }
 
                         else -> {
-                            Text(text = "暂不支持在详情窗格中打开该内容")
+                            EmptyDetailPane(text = "暂不支持在详情窗格中打开该内容")
                         }
                     }
                 }

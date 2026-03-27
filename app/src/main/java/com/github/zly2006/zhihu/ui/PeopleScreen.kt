@@ -461,11 +461,13 @@ fun PeopleScreen(
                 windowInsets = WindowInsets(0.dp),
             )
         },
-    ) { innerPadding ->
+    ) { contentPadding ->
         Column(
             modifier = Modifier
-                .padding(innerPadding)
-                .padding(horizontal = 8.dp),
+                .padding(
+                    top = contentPadding.calculateTopPadding(),
+                    bottom = contentPadding.calculateBottomPadding() + innerPadding.calculateBottomPadding(),
+                ).padding(horizontal = 8.dp),
         ) {
             PrimaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,

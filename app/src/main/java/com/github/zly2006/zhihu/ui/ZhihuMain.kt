@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.LocalActivity
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -12,9 +11,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -24,44 +21,26 @@ import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -87,7 +66,6 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.TopLevelDestination
-import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -103,14 +81,12 @@ import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
-import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
 
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 @SuppressLint("RestrictedApi")
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
-    val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val activity = LocalActivity.current as MainActivity
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
@@ -119,7 +95,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
-    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
     val allBottomBarItemKeys = remember {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
     }
@@ -148,28 +123,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         duo3HomeAccount = updatedDuo3HomeAccount
         duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
         tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
-        autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
         selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
         startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
     }
 
     val navEntry by navController.currentBackStackEntryAsState()
-
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
-    // 滚动时自动隐藏底部导航栏
-    var isBottomBarVisible by remember { mutableStateOf(true) }
-    val bottomBarScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                when {
-                    available.y < -3f -> isBottomBarVisible = false
-                    available.y > 3f -> isBottomBarVisible = true
-                }
-                return Offset.Zero
-            }
-        }
-    }
-
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),
         Triple(Follow, "关注", if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1),
@@ -179,6 +138,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         Triple(Account, "账号", Icons.Filled.ManageAccounts),
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
+
+    fun topLevelKey(destination: NavDestination): String = (destination as? TopLevelDestination)?.name ?: Home.name
+    var currentTopLevelDestinationKey by rememberSaveable { mutableStateOf(topLevelKey(startDestination)) }
+
+    when {
+        navEntry?.hasRoute(Home::class) == true -> currentTopLevelDestinationKey = Home.name
+        navEntry?.hasRoute(Follow::class) == true -> currentTopLevelDestinationKey = Follow.name
+        navEntry?.hasRoute(HotList::class) == true -> currentTopLevelDestinationKey = HotList.name
+        navEntry?.hasRoute(Daily::class) == true -> currentTopLevelDestinationKey = Daily.name
+        navEntry?.hasRoute(OnlineHistory::class) == true -> currentTopLevelDestinationKey = OnlineHistory.name
+        navEntry?.hasRoute(Account::class) == true -> currentTopLevelDestinationKey = Account.name
+    }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -235,101 +206,46 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
-    Scaffold(
-        modifier = modifier
-            .nestedScroll(bottomBarScrollConnection)
-            .semantics { testTagsAsResourceId = true },
-        bottomBar = {
-            if (navEntry != null) {
-                // 页面切换时重置底部导航栏可见状态
-                LaunchedEffect(navEntry) { isBottomBarVisible = true }
-                AnimatedVisibility(
-                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
-                    enter = slideInVertically(tween(200)) { it },
-                    exit = slideOutVertically(tween(200)) { it },
-                ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.height(
-                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
-                        ),
-                    ) {
-                        @Composable
-                        fun Item(
-                            destination: NavDestination,
-                            label: String,
-                            icon: ImageVector,
-                        ) {
-                            val tag = "nav_tab_${(destination as? TopLevelDestination)?.name?.lowercase() ?: label.lowercase()}"
-                            NavigationBarItem(
-                                navEntry.hasRoute(destination::class),
-                                onClick = {
-                                    if (!navEntry.hasRoute(destination::class)) {
-                                        navController.navigate(destination) {
-                                            popUpTo(startDestination)
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    } else if (tapToScrollToTopEnabled) {
-                                        scrollToTopTrigger++
-                                    }
-                                },
-                                label = {
-                                    if (duo3NavStyle) {
-                                        Text(label)
-                                    } else {
-                                        Text(
-                                            label,
-                                            style = TextStyle(
-                                                fontSize = 9.sp,
-                                                color = LocalContentColor.current.copy(alpha = 0.6f),
-                                            ),
-                                        )
-                                    }
-                                },
-                                alwaysShowLabel = duo3NavStyle,
-                                colors = if (duo3NavStyle) {
-                                    if (!ThemeManager.isDarkTheme()) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    }
-                                } else {
-                                    NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color(0xff66ccff),
-                                        indicatorColor = Color.Transparent,
-                                    )
-                                },
-                                icon = {
-                                    Icon(icon, contentDescription = label)
-                                },
-                                modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
-                            )
+    NavigationSuiteScaffold(
+        modifier = modifier,
+        navigationSuiteItems = {
+            bottomBarItems.forEach { item ->
+                val destination = item.first
+                item(
+                    selected = currentTopLevelDestinationKey == destination.name,
+                    onClick = {
+                        if (!navEntry.hasRoute(destination::class)) {
+                            currentTopLevelDestinationKey = destination.name
+                            navController.navigate(destination) {
+                                popUpTo(startDestination)
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        } else if (tapToScrollToTopEnabled) {
+                            scrollToTopTrigger++
                         }
-
-                        bottomBarItems.forEach { item ->
-                            Item(item.first, item.second, item.third)
-                        }
-                    }
-                }
+                    },
+                    icon = {
+                        Icon(item.third, contentDescription = item.second)
+                    },
+                    label = {
+                        Text(item.second)
+                    },
+                    alwaysShowLabel = duo3NavStyle,
+                )
             }
         },
-    ) { innerPadding ->
+    ) {
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = activity::navigate,
                 onNavigateBack = navController::popBackStack,
             ),
         ) {
-            MyNavHost(
+            NavHost(
                 navController,
-                modifier = Modifier,
                 startDestination = startDestination,
+                modifier = modifier,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
@@ -354,12 +270,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 composable<Home> {
                     HomeListDetailScreen(
                         scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
+                        innerPadding = PaddingValues(),
                     )
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question, innerPadding)
+                    QuestionScreen(question, PaddingValues())
                 }
                 composable<Article>(
                     enterTransition = {
@@ -404,46 +320,46 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     val viewModel: ArticleViewModel = viewModel(navEntry) {
                         ArticleViewModel(article, activity.httpClient, navEntry)
                     }
-                    ArticleScreen(article, viewModel, innerPadding)
+                    ArticleScreen(article, viewModel, PaddingValues())
                 }
                 composable<HotList> {
-                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
                         HotListScreen(
-                            innerPadding = innerPadding,
+                            innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
                         )
                     }
                 }
                 composable<Follow> {
-                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
                         FollowScreen(
-                            innerPadding = innerPadding,
+                            innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
                         )
                     }
                 }
                 composable<Daily> {
-                    DailyScreen(innerPadding)
+                    DailyScreen(PaddingValues())
                 }
                 composable<History> {
-                    HistoryScreen(innerPadding)
+                    HistoryScreen(PaddingValues())
                 }
                 composable<OnlineHistory> {
-                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
                         OnlineHistoryScreen(
-                            innerPadding = innerPadding,
+                            innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
                         )
                     }
                 }
                 composable<Account> {
-                    AccountSettingScreen(innerPadding)
+                    AccountSettingScreen(PaddingValues())
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
                         SearchScreen(
-                            innerPadding = innerPadding,
+                            innerPadding = PaddingValues(),
                             search = search,
                             onContentNavigate = navigator.onNavigate,
                         )
@@ -451,39 +367,39 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken, innerPadding)
+                    CollectionScreen(data.userToken, PaddingValues())
                 }
                 composable<CollectionContent> {
                     val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId, innerPadding)
+                    CollectionContentScreen(content.collectionId, PaddingValues())
                 }
                 composable<Person> {
                     val person: Person = it.toRoute()
-                    PeopleScreen(innerPadding, person)
+                    PeopleScreen(PaddingValues(), person)
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
-                    PinScreen(innerPadding, pin)
+                    PinScreen(PaddingValues(), pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(innerPadding)
+                    BlocklistSettingsScreen(PaddingValues())
                 }
                 composable<Account.RecommendSettings.BlockedFeedHistory> {
                     BlockedFeedHistoryScreen()
                 }
                 composable<Notification> {
-                    NotificationScreen(innerPadding)
+                    NotificationScreen(PaddingValues())
                 }
                 composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen(innerPadding)
+                    NotificationSettingsScreen(PaddingValues())
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen(innerPadding)
+                    SentenceSimilarityTestScreen(PaddingValues())
                 }
                 composable<Account.AppearanceSettings> {
                     val args = it.toRoute<Account.AppearanceSettings>()
                     AppearanceSettingsScreen(
-                        innerPadding,
+                        PaddingValues(),
                         setting = args.setting,
                         onExit = reloadBottomBarPreferences,
                     )
@@ -491,18 +407,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 composable<Account.RecommendSettings> {
                     val args = it.toRoute<Account.RecommendSettings>()
                     ContentFilterSettingsScreen(
-                        innerPadding,
+                        PaddingValues(),
                         setting = args.setting,
                     )
                 }
                 composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen(innerPadding)
+                    SystemAndUpdateSettingsScreen(PaddingValues())
                 }
                 composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen(innerPadding)
+                    DeveloperSettingsScreen(PaddingValues())
                 }
                 composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen(innerPadding)
+                    ColorSchemeScreen(PaddingValues())
                 }
             }
         }
