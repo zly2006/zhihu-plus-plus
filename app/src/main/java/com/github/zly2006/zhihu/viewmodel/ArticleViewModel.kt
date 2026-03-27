@@ -1184,14 +1184,10 @@ class ArticleViewModel(
         return "image/jpeg"
     }
 
-    private fun buildExportFileName(extension: String): String {
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
-        return buildArticleExportFileName(
-            content = requireExportSourceContent(),
-            timestamp = timeStamp,
-            extension = extension,
-        )
-    }
+    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
+        content = requireExportSourceContent(),
+        extension = extension,
+    )
 
     private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
         ?: throw IllegalStateException("内容未加载完成")
