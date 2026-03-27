@@ -131,12 +131,6 @@ data class Article(
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
 }
 
-val Article.rootCommentUrl: String
-    get() = when (type) {
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/root_comment"
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/root_comment"
-    }
-
 @Serializable
 data class CommentHolder(
     val commentId: String,

@@ -11,7 +11,6 @@ import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.rootCommentUrl
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import io.ktor.client.HttpClient
@@ -49,25 +48,31 @@ class RootCommentViewModel(
 
                 else -> ""
             }
-    }
 
-    override val initialUrl: String
-        get() {
-            val baseUrl = when (article) {
+        val NavDestination.rootCommentUrl: String
+            get() = when (this) {
                 is Article -> {
-                    article.rootCommentUrl
+                    when (type) {
+                        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/root_comment"
+                        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/root_comment"
+                    }
                 }
 
                 is Pin -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/pins/${article.id}/root_comment"
+                    "https://www.zhihu.com/api/v4/comment_v5/pins/$id/root_comment"
                 }
 
                 is Question -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/questions/${article.questionId}/root_comment"
+                    "https://www.zhihu.com/api/v4/comment_v5/questions/$questionId/root_comment"
                 }
 
                 else -> ""
             }
+    }
+
+    override val initialUrl: String
+        get() {
+            val baseUrl = article.rootCommentUrl
             // 添加排序参数
             val orderParam = when (sortOrder) {
                 CommentSortOrder.SCORE -> "score"
