@@ -82,6 +82,17 @@ fun SearchScreen(
     search: Search,
 ) {
     val navigator = LocalNavigator.current
+    SearchScreen(innerPadding, search, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchScreen(
+    innerPadding: PaddingValues,
+    search: Search,
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val viewModel = viewModel { SearchViewModel(search.query) }
@@ -315,7 +326,11 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(item)
+                        FeedCard(item) {
+                            if (navDestination != null) {
+                                onContentNavigate(navDestination)
+                            }
+                        }
                     }
 
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

@@ -152,6 +152,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 val ktor = "3.4.1"
 val coil = "3.4.0"
+val composeAdaptive = "1.2.0"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -196,6 +197,9 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3.adaptive:adaptive:$composeAdaptive")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:$composeAdaptive")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:$composeAdaptive")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")

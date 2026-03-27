@@ -36,6 +36,15 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 @Composable
 fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
+    HotListScreen(innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HotListScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
     val preferences = remember {
@@ -70,6 +79,11 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 FeedCard(
                     item,
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
+                    onClick = {
+                        if (navDestination != null) {
+                            onContentNavigate(navDestination)
+                        }
+                    },
                 )
             }
 

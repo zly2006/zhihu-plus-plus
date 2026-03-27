@@ -843,16 +843,15 @@ fun ArticleScreen(
             sharedData?.pendingInitialContent = prev
             sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
-                }
-                navigator.onNavigate(prev.article)
+            if (activity != null &&
+                activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                activity.navController.currentBackStackEntry
+                    ?.toRoute<Article>()
+                    ?.type == ArticleType.Answer
+            ) {
+                activity.navController.popBackStack()
             }
+            navigator.onNavigate(prev.article)
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
             sharedData?.pendingInitialContent = sharedData?.navigator?.previousAnswerPreview
@@ -862,16 +861,15 @@ fun ArticleScreen(
                 if (prevCached != null) {
                     sharedData?.pendingInitialContent = prevCached
                     val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
-                        navigator.onNavigate(prevCached.article)
+                    if (activity != null &&
+                        activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                        activity.navController.currentBackStackEntry
+                            ?.toRoute<Article>()
+                            ?.type == ArticleType.Answer
+                    ) {
+                        activity.navController.popBackStack()
                     }
+                    navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -892,16 +890,15 @@ fun ArticleScreen(
             sharedData?.pendingInitialContent = historyNext
             sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
-                }
-                navigator.onNavigate(historyNext.article)
+            if (activity != null &&
+                activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                activity.navController.currentBackStackEntry
+                    ?.toRoute<Article>()
+                    ?.type == ArticleType.Answer
+            ) {
+                activity.navController.popBackStack()
             }
+            navigator.onNavigate(historyNext.article)
         } else {
             // 没有前向历史，从导航器加载
             sharedData?.pendingInitialContent = sharedData?.navigator?.nextAnswer
@@ -910,16 +907,15 @@ fun ArticleScreen(
                 val nextArticle = sharedData?.navigator?.loadNext(context)
                 if (nextArticle != null) {
                     val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
-                        navigator.onNavigate(nextArticle)
+                    if (activity != null &&
+                        activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
+                        activity.navController.currentBackStackEntry
+                            ?.toRoute<Article>()
+                            ?.type == ArticleType.Answer
+                    ) {
+                        activity.navController.popBackStack()
                     }
+                    navigator.onNavigate(nextArticle)
                 }
             }
         }
@@ -1335,8 +1331,7 @@ fun ArticleScreen(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
-                                    val activity = context as? MainActivity
-                                    activity?.navController?.popBackStack()
+                                    navigator.onNavigateBack()
                                 },
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,

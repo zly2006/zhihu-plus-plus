@@ -47,6 +47,16 @@ import kotlinx.serialization.json.put
 @Composable
 fun OnlineHistoryScreen(innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
+    OnlineHistoryScreen(innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OnlineHistoryScreen(
+    innerPadding: PaddingValues,
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
+    val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -140,6 +150,11 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
             ) { item ->
                 FeedCard(
                     item,
+                    onClick = {
+                        if (navDestination != null) {
+                            onContentNavigate(navDestination)
+                        }
+                    },
                 )
             }
         }

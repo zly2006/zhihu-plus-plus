@@ -167,6 +167,17 @@ interface IHomeFeedViewModel {
 @Composable
 fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
+    HomeScreen(scrollToTopTrigger, innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues,
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
@@ -549,7 +560,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         localHomeViewModel.onLocalItemOpened(context, item)
                     }
                     if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
+                        onContentNavigate(navDestination)
                     }
                 }
             }

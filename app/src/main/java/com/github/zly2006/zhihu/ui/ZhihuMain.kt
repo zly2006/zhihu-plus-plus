@@ -352,7 +352,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 },
             ) {
                 composable<Home> {
-                    HomeScreen(
+                    HomeListDetailScreen(
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = innerPadding,
                     )
@@ -407,10 +407,20 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel, innerPadding)
                 }
                 composable<HotList> {
-                    HotListScreen(innerPadding)
+                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                        HotListScreen(
+                            innerPadding = innerPadding,
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Follow> {
-                    FollowScreen(innerPadding)
+                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                        FollowScreen(
+                            innerPadding = innerPadding,
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Daily> {
                     DailyScreen(innerPadding)
@@ -419,14 +429,25 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HistoryScreen(innerPadding)
                 }
                 composable<OnlineHistory> {
-                    OnlineHistoryScreen(innerPadding)
+                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                        OnlineHistoryScreen(
+                            innerPadding = innerPadding,
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Account> {
                     AccountSettingScreen(innerPadding)
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(innerPadding, search)
+                    ContentListDetailScreen(innerPadding = innerPadding) { navigator ->
+                        SearchScreen(
+                            innerPadding = innerPadding,
+                            search = search,
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()

@@ -71,6 +71,16 @@ class FollowScreenData : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+    val navigator = LocalNavigator.current
+    FollowScreen(innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun FollowScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -113,8 +123,8 @@ fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> FollowRecommendScreen()
-                1 -> FollowDynamicScreen()
+                0 -> FollowRecommendScreen(onContentNavigate = onContentNavigate)
+                1 -> FollowDynamicScreen(onContentNavigate = onContentNavigate)
             }
         }
     }
@@ -197,8 +207,9 @@ fun FollowingUsersRow() {
 }
 
 @Composable
-fun FollowRecommendScreen() {
-    val navigator = LocalNavigator.current
+fun FollowRecommendScreen(
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowRecommendViewModel by context.viewModels()
     val preferences = remember {
@@ -245,6 +256,11 @@ fun FollowRecommendScreen() {
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
+                    onClick = {
+                        if (navDestination != null) {
+                            onContentNavigate(navDestination)
+                        }
+                    },
                 )
             }
 
@@ -283,8 +299,9 @@ fun FollowRecommendScreen() {
 }
 
 @Composable
-fun FollowDynamicScreen() {
-    val navigator = LocalNavigator.current
+fun FollowDynamicScreen(
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowViewModel by context.viewModels()
     val preferences = remember {
@@ -336,6 +353,11 @@ fun FollowDynamicScreen() {
                     },
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
+                    },
+                    onClick = {
+                        if (navDestination != null) {
+                            onContentNavigate(navDestination)
+                        }
                     },
                 )
             }
