@@ -102,7 +102,7 @@ fun DeveloperSettingsScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             LargeTopAppBar(
                 title = { Text("开发者选项") },
@@ -119,8 +119,8 @@ fun DeveloperSettingsScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
                 ),
             )
         },

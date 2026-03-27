@@ -43,7 +43,6 @@ import kotlinx.parcelize.Parcelize
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 private val ContentListDetailBackBehavior = BackNavigationBehavior.PopUntilContentChange
-private val ContentListDetailPaneSpacer = 0.dp
 
 @Composable
 private fun EmptyDetailPane(
@@ -148,8 +147,11 @@ fun ContentListDetailScreen(
     listPane: @Composable (Navigator) -> Unit,
 ) {
     val activity = androidx.activity.compose.LocalActivity.current as MainActivity
-    val scaffoldDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo()).copy(
-        horizontalPartitionSpacerSize = ContentListDetailPaneSpacer,
+    val listPaneDefaultWidthDp = rememberListPaneDefaultWidthDp()
+    val defaultDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
+    val scaffoldDirective = defaultDirective.copy(
+        horizontalPartitionSpacerSize = 0.dp,
+        defaultPanePreferredWidth = listPaneDefaultWidthDp.dp,
     )
     val paneNavigator = rememberListDetailPaneScaffoldNavigator<ContentPaneDestination>(
         scaffoldDirective = scaffoldDirective,

@@ -353,7 +353,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Account> {
-                    AccountSettingScreen(PaddingValues())
+                    SettingsListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onExit = reloadBottomBarPreferences,
+                    )
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()

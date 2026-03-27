@@ -134,7 +134,7 @@ fun AccountSettingScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
             modifier = Modifier
