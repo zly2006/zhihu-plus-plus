@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -299,10 +300,11 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                     ) {
                         Surface(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth()
                                 .height(64.dp),
                             shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest
+                                .compositeOver(MaterialTheme.colorScheme.background),
                             onClick = {
                                 navigator.onNavigate(
                                     Search(query = ""),
