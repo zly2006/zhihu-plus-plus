@@ -284,23 +284,103 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
         topBar = {
-            Column {
-                if (duo3HomeAccount) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.background,
-                        modifier = Modifier.fillMaxWidth(),
+            if (duo3HomeAccount) {
+                Surface(
+                    color = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .padding(16.dp, 8.dp, 16.dp, 0.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Surface(
+                            modifier = Modifier.height(64.dp),
+                            shape = RoundedCornerShape(32.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            onClick = {
+                                navigator.onNavigate(
+                                    Search(query = ""),
+                                )
+                            },
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "搜索",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "搜索",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.weight(1f),
+                                )
+
+                                IconButton(
+                                    onClick = { showAccountBottomSheet = true },
+                                    modifier = Modifier.size(64.dp),
+                                ) {
+                                    Box(Modifier.padding(12.dp)) {
+                                        BadgedBox(
+                                            badge = {
+                                                if (unreadCount > 0) {
+                                                    Badge { }
+                                                }
+                                            },
+                                        ) {
+                                            val avatarUrl = AccountData.data.self?.avatarUrl
+                                            if (avatarUrl != null) {
+                                                AsyncImage(
+                                                    model = avatarUrl,
+                                                    contentDescription = "账号",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .size(40.dp)
+                                                        .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
+                                                        .clip(CircleShape),
+                                                )
+                                            } else {
+                                                Icon(
+                                                    Icons.Default.AccountCircle,
+                                                    contentDescription = "账号",
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.size(40.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Surface(
+                    shadowElevation = 4.dp,
+                    color = MaterialTheme.colorScheme.background,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .windowInsetsPadding(WindowInsets.statusBars)
-                                .padding(16.dp, 8.dp, 16.dp, 0.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Surface(
-                                modifier = Modifier.height(64.dp),
-                                shape = RoundedCornerShape(32.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(36.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 onClick = {
                                     navigator.onNavigate(
                                         Search(query = ""),
@@ -310,7 +390,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(start = 16.dp),
+                                        .padding(horizontal = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Icon(
@@ -320,111 +400,27 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
-                                        text = "搜索",
+                                        text = "搜索内容",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        modifier = Modifier.weight(1f),
                                     )
-
-                                    IconButton(
-                                        onClick = { showAccountBottomSheet = true },
-                                        modifier = Modifier.size(64.dp),
-                                    ) {
-                                        Box(Modifier.padding(12.dp)) {
-                                            BadgedBox(
-                                                badge = {
-                                                    if (unreadCount > 0) {
-                                                        Badge { }
-                                                    }
-                                                },
-                                            ) {
-                                                val avatarUrl = AccountData.data.self?.avatarUrl
-                                                if (avatarUrl != null) {
-                                                    AsyncImage(
-                                                        model = avatarUrl,
-                                                        contentDescription = "账号",
-                                                        contentScale = ContentScale.Crop,
-                                                        modifier = Modifier
-                                                            .size(40.dp)
-                                                            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), CircleShape)
-                                                            .clip(CircleShape),
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        contentDescription = "账号",
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier.size(40.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                             }
-                        }
-                    }
-                } else {
-                    Surface(
-                        shadowElevation = 4.dp,
-                        color = MaterialTheme.colorScheme.background,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(36.dp),
-                                    shape = RoundedCornerShape(24.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    onClick = {
-                                        navigator.onNavigate(
-                                            Search(query = ""),
-                                        )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(onClick = { navigator.onNavigate(Notification) }) {
+                                BadgedBox(
+                                    badge = {
+                                        if (unreadCount > 0) {
+                                            Badge { Text("$unreadCount") }
+                                        }
                                     },
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Search,
-                                            contentDescription = "搜索",
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = "搜索内容",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                        )
-                                    }
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "通知",
+                                        tint = MaterialTheme.colorScheme.onSurface,
+                                    )
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(onClick = { navigator.onNavigate(Notification) }) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (unreadCount > 0) {
-                                                Badge { Text("$unreadCount") }
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "通知",
-                                            tint = MaterialTheme.colorScheme.onSurface,
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
                 }
