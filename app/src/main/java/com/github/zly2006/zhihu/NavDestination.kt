@@ -137,12 +137,6 @@ val Article.rootCommentUrl: String
         ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/root_comment"
     }
 
-val Article.submitCommentUrl: String
-    get() = when (type) {
-        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/comment"
-        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/comment"
-    }
-
 @Serializable
 data class CommentHolder(
     val commentId: String,

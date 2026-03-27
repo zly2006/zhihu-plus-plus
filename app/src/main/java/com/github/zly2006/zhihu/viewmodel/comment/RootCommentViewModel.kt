@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.text.htmlEncode
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Pin
@@ -11,7 +12,6 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.rootCommentUrl
-import com.github.zly2006.zhihu.submitCommentUrl
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import io.ktor.client.HttpClient
@@ -33,7 +33,10 @@ class RootCommentViewModel(
         val NavDestination.submitCommentUrl: String
             get() = when (this) {
                 is Article -> {
-                    this.submitCommentUrl
+                    when (type) {
+                        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/comment"
+                        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/comment"
+                    }
                 }
 
                 is Pin -> {
