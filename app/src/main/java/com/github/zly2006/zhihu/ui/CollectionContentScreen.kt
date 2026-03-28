@@ -70,6 +70,7 @@ fun CollectionContentScreen(
     } else {
         null
     }
+    val horizontalPadding = rememberAdaptiveCardHorizontalPadding()
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
@@ -137,7 +138,7 @@ fun CollectionContentScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(innerPadding),
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(0) {

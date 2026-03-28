@@ -383,7 +383,7 @@ fun HomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = rememberAdaptiveCardHorizontalPadding(), vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(

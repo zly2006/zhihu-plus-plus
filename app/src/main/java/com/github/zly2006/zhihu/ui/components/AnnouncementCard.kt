@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.ui.rememberAdaptiveCardHorizontalPadding
 
 @Composable
 fun AnnouncementCard(
@@ -51,8 +52,9 @@ fun AnnouncementCard(
     shape: Shape = RoundedCornerShape(24.dp),
     colors: AnnouncementCardColors = AnnouncementCardDefaults.colors(),
 ) {
+    val horizontalPadding = rememberAdaptiveCardHorizontalPadding()
     AnnouncementCard(
-        modifier.padding(16.dp, 8.dp),
+        modifier.padding(horizontal = horizontalPadding, vertical = 8.dp),
         visible,
         title,
         leadingIcon,

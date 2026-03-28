@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.rememberAdaptiveCardHorizontalPadding
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -80,7 +81,7 @@ fun FeedCard(
     modifier: Modifier = Modifier,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
-    horizontalPadding: Dp = 16.dp,
+    horizontalPadding: Dp? = null,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
@@ -94,6 +95,7 @@ fun FeedCard(
     val density = LocalDensity.current
     val context = LocalContext.current
     val navigator = LocalNavigator.current
+    val resolvedHorizontalPadding = horizontalPadding ?: rememberAdaptiveCardHorizontalPadding()
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
@@ -166,7 +168,7 @@ fun FeedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onClick(item) }
-                    .padding(horizontal = horizontalPadding, vertical = 12.dp),
+                    .padding(horizontal = resolvedHorizontalPadding, vertical = 12.dp),
             ) {
                 FeedCardContent(
                     item = item,
@@ -188,7 +190,7 @@ fun FeedCard(
             modifier = modifier
                 .fillMaxWidth()
                 .heightIn(max = maxHeight)
-                .padding(horizontal = horizontalPadding, vertical = 8.dp),
+                .padding(horizontal = resolvedHorizontalPadding, vertical = 8.dp),
         ) {
             Card(
                 colors = if (duo3CardAppearance) {
