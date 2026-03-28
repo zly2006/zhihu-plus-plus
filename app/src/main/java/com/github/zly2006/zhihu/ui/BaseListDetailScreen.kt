@@ -25,10 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Navigator
+import com.github.zly2006.zhihu.ui.subscreens.LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,7 +67,13 @@ fun <T : Parcelable> BaseListDetailScreen(
     onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     paneContainer: @Composable (@Composable () -> Unit) -> Unit = { content -> content() },
 ) {
-    val listPaneDefaultWidthDp = rememberListPaneDefaultWidthDp()
+    val context = LocalContext.current
+    val prefs = androidx.compose.runtime.remember {
+        context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
+    }
+    val listPaneDefaultWidthDp = androidx.compose.runtime.remember {
+        prefs.getInt(LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY, 320)
+    }
     val defaultDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
     val scaffoldDirective = defaultDirective.copy(
         horizontalPartitionSpacerSize = 0.dp,
@@ -74,9 +82,11 @@ fun <T : Parcelable> BaseListDetailScreen(
     val paneNavigator = rememberListDetailPaneScaffoldNavigator<T>(
         scaffoldDirective = scaffoldDirective,
     )
+    val useCustomNavHost = androidx.compose.runtime.remember {
+        prefs.getBoolean("use_custom_nav_host", true)
+    }
     val coroutineScope = rememberCoroutineScope()
     val rootNavigator = LocalNavigator.current
-    val clearDetailPaneHistoryOnNavigate = rememberClearDetailPaneHistoryOnNavigate()
     val detailDestination = paneNavigator.currentDestination?.contentKey
     val isSinglePane = scaffoldDirective.maxHorizontalPartitions == 1
 
@@ -91,7 +101,7 @@ fun <T : Parcelable> BaseListDetailScreen(
             val paneDestination = toPaneDestination(destination)
             if (paneDestination != null) {
                 coroutineScope.launch {
-                    if (clearDetailHistoryBeforeNavigate && clearDetailPaneHistoryOnNavigate) {
+                    if (clearDetailHistoryBeforeNavigate && useCustomNavHost) {
                         while (paneNavigator.currentDestination?.contentKey != null) {
                             paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
                         }

@@ -89,7 +89,7 @@ fun SettingsListDetailScreen(
             ListDetailEmptyPane(
                 text = "选择一个设置项",
                 icon = Icons.Outlined.Settings,
-                iconTint = Color.Gray,
+                iconTint = MaterialTheme.colorScheme.primary,
             )
         },
         onSinglePaneDetailChanged = onSinglePaneDetailChanged,
