@@ -22,9 +22,16 @@ import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigationsuite.ExperimentalMaterial3AdaptiveNavigationSuiteApi
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
+import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -85,6 +92,7 @@ import kotlin.reflect.KClass
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 @SuppressLint("RestrictedApi")
+@OptIn(ExperimentalMaterial3AdaptiveApi::class, ExperimentalMaterial3AdaptiveNavigationSuiteApi::class)
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val activity = LocalActivity.current as MainActivity
@@ -128,6 +136,38 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     val navEntry by navController.currentBackStackEntryAsState()
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val paneDirective = calculatePaneScaffoldDirective(adaptiveInfo)
+    val navigationSuiteState = rememberNavigationSuiteScaffoldState()
+    val isSinglePaneWindow = paneDirective.maxHorizontalPartitions == 1
+    var isSinglePaneListDetailShowingDetail by rememberSaveable { mutableStateOf(false) }
+    val isStandaloneDetailRoute = when {
+        navEntry?.destination?.hasRoute(Article::class) == true -> true
+        navEntry?.destination?.hasRoute(Question::class) == true -> true
+        navEntry?.destination?.hasRoute(Person::class) == true -> true
+        navEntry?.destination?.hasRoute(Pin::class) == true -> true
+        navEntry?.destination?.hasRoute(CollectionContent::class) == true -> true
+        navEntry?.destination?.hasRoute(Notification.NotificationSettings::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.AppearanceSettings::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.RecommendSettings::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.SystemAndUpdateSettings::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.DeveloperSettings::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.DeveloperSettings.ColorScheme::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.RecommendSettings.Blocklist::class) == true -> true
+        navEntry?.destination?.hasRoute(Account.RecommendSettings.BlockedFeedHistory::class) == true -> true
+        else -> false
+    }
+
+    LaunchedEffect(isSinglePaneWindow, isSinglePaneListDetailShowingDetail, isStandaloneDetailRoute) {
+        val shouldHideNavigationSuite = isSinglePaneWindow && (isSinglePaneListDetailShowingDetail || isStandaloneDetailRoute)
+        navigationSuiteState.snapTo(
+            if (shouldHideNavigationSuite) {
+                NavigationSuiteScaffoldValue.Hidden
+            } else {
+                NavigationSuiteScaffoldValue.Visible
+            },
+        )
+    }
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),
@@ -208,6 +248,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
     NavigationSuiteScaffold(
         modifier = modifier,
+        state = navigationSuiteState,
         navigationSuiteItems = {
             bottomBarItems.forEach { item ->
                 val destination = item.first
@@ -271,6 +312,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HomeListDetailScreen(
                         scrollToTopTrigger = scrollToTopTrigger,
                         innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
                     )
                 }
                 composable<Question> { navEntry ->
@@ -323,7 +365,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ArticleScreen(article, viewModel, PaddingValues())
                 }
                 composable<HotList> {
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         HotListScreen(
                             innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
@@ -331,7 +376,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Follow> {
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         FollowScreen(
                             innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
@@ -339,7 +387,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Daily> {
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         DailyScreen(
                             innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
@@ -350,7 +401,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HistoryScreen(PaddingValues())
                 }
                 composable<OnlineHistory> {
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         OnlineHistoryScreen(
                             innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,
@@ -360,12 +414,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 composable<Account> {
                     SettingsListDetailScreen(
                         innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
                         onExit = reloadBottomBarPreferences,
                     )
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         SearchScreen(
                             innerPadding = PaddingValues(),
                             search = search,
@@ -396,7 +454,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     BlockedFeedHistoryScreen()
                 }
                 composable<Notification> {
-                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
                         NotificationScreen(
                             innerPadding = PaddingValues(),
                             onContentNavigate = navigator.onNavigate,

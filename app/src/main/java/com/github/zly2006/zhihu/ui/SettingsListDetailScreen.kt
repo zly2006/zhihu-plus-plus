@@ -79,6 +79,7 @@ private fun SettingsPaneContainer(
 fun SettingsListDetailScreen(
     innerPadding: PaddingValues,
     unreadCount: Int = 0,
+    onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     onExit: () -> Unit = {},
 ) {
     BaseListDetailScreen(
@@ -91,6 +92,7 @@ fun SettingsListDetailScreen(
                 iconTint = Color.Gray,
             )
         },
+        onSinglePaneDetailChanged = onSinglePaneDetailChanged,
         listPane = {
             AccountSettingScreen(
                 innerPadding = innerPadding,

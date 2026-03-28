@@ -102,6 +102,7 @@ private fun ContentPaneDestination.toNavDestination(): NavDestination? = when (t
 @Composable
 fun ContentListDetailScreen(
     innerPadding: PaddingValues,
+    onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     listPane: @Composable (Navigator) -> Unit,
 ) {
     val activity = androidx.activity.compose.LocalActivity.current as MainActivity
@@ -114,6 +115,7 @@ fun ContentListDetailScreen(
                 icon = Icons.AutoMirrored.Outlined.Article,
             )
         },
+        onSinglePaneDetailChanged = onSinglePaneDetailChanged,
         listPane = {
             listPane(it)
         },
@@ -175,9 +177,11 @@ fun ContentListDetailScreen(
 fun HomeListDetailScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues,
+    onSinglePaneDetailChanged: (Boolean) -> Unit = {},
 ) {
     ContentListDetailScreen(
         innerPadding = innerPadding,
+        onSinglePaneDetailChanged = onSinglePaneDetailChanged,
     ) { navigator ->
         HomeScreen(
             scrollToTopTrigger = scrollToTopTrigger,

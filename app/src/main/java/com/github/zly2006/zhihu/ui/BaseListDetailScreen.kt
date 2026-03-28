@@ -19,6 +19,7 @@ import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneSca
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ fun <T : Parcelable> BaseListDetailScreen(
     emptyPane: @Composable () -> Unit,
     listPane: @Composable (Navigator) -> Unit,
     detailPane: @Composable (T, Navigator) -> Unit,
+    onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     paneContainer: @Composable (@Composable () -> Unit) -> Unit = { content -> content() },
 ) {
     val listPaneDefaultWidthDp = rememberListPaneDefaultWidthDp()
@@ -75,6 +77,11 @@ fun <T : Parcelable> BaseListDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val rootNavigator = LocalNavigator.current
     val detailDestination = paneNavigator.currentDestination?.contentKey
+    val isSinglePane = scaffoldDirective.maxHorizontalPartitions == 1
+
+    LaunchedEffect(isSinglePane, detailDestination) {
+        onSinglePaneDetailChanged(isSinglePane && detailDestination != null)
+    }
 
     val localNavigator = Navigator(
         onNavigate = { destination ->
