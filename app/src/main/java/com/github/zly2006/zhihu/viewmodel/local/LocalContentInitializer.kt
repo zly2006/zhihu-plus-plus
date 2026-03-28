@@ -235,8 +235,11 @@ class LocalContentInitializer(
     }
 
     private fun extractQuestionIdFromContentId(contentId: String): String? {
-        // 从内容ID中提取问题ID（假设内容ID包含问题信息）
-        val regex = """(\d+)""".toRegex()
-        return regex.find(contentId)?.value
+        val identity = parseLocalContentIdentity(contentId, "")
+        return when {
+            identity?.type == "question" -> identity.id
+            ':' !in contentId -> contentId.filter(Char::isDigit).ifBlank { null }
+            else -> null
+        }
     }
 }
