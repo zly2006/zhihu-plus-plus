@@ -90,7 +90,6 @@ const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY = "listPaneDefaultWidthDp"
-const val CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY = "clearDetailPaneHistoryOnNavigate"
 
 private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
     Home.name to Home,
@@ -1053,23 +1052,6 @@ fun AppearanceSettingsScreen(
                             steps = 7,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
-                    },
-                )
-
-                val clearDetailPaneHistoryOnNavigate = remember {
-                    mutableStateOf(
-                        preferences.getBoolean(CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY, false),
-                    )
-                }
-                SettingItemWithSwitch(
-                    title = { Text("双栏布局时不保留返回栈") },
-                    description = { Text("开启后，在双栏布局中从左侧列表打开右侧内容前，会先清空右栏历史记录；这样右侧返回会直接回到空页面。") },
-                    checked = clearDetailPaneHistoryOnNavigate.value,
-                    onCheckedChange = {
-                        clearDetailPaneHistoryOnNavigate.value = it
-                        preferences.edit {
-                            putBoolean(CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY, it)
-                        }
                     },
                 )
             }

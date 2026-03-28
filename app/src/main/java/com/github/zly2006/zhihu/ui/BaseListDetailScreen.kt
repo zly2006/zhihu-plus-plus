@@ -82,9 +82,6 @@ fun <T : Parcelable> BaseListDetailScreen(
     val paneNavigator = rememberListDetailPaneScaffoldNavigator<T>(
         scaffoldDirective = scaffoldDirective,
     )
-    val useCustomNavHost = androidx.compose.runtime.remember {
-        prefs.getBoolean("use_custom_nav_host", true)
-    }
     val coroutineScope = rememberCoroutineScope()
     val rootNavigator = LocalNavigator.current
     val detailDestination = paneNavigator.currentDestination?.contentKey
@@ -101,7 +98,7 @@ fun <T : Parcelable> BaseListDetailScreen(
             val paneDestination = toPaneDestination(destination)
             if (paneDestination != null) {
                 coroutineScope.launch {
-                    if (clearDetailHistoryBeforeNavigate && useCustomNavHost) {
+                    if (clearDetailHistoryBeforeNavigate) {
                         while (paneNavigator.currentDestination?.contentKey != null) {
                             paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
                         }
