@@ -133,7 +133,8 @@ fun SearchScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding)
+        modifier = Modifier
+            .padding(innerPadding)
             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         topBar = {
             TopAppBar(

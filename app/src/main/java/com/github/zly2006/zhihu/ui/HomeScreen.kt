@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -417,14 +418,16 @@ fun HomeScreen(
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = { navigator.onNavigate(Notification) }) {
-                            BadgedBox(
-                                badge = {
-                                    if (unreadCount > 0) {
-                                        Badge { Text("$unreadCount") }
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge(modifier = Modifier.offset(x = (-8).dp, y = 8.dp)) {
+                                        Text("$unreadCount")
                                     }
-                                },
-                            ) {
+                                }
+                            },
+                        ) {
+                            IconButton(onClick = { navigator.onNavigate(Notification) }) {
                                 Icon(
                                     Icons.Default.Notifications,
                                     contentDescription = "通知",

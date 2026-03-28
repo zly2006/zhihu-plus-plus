@@ -102,8 +102,9 @@ fun SentenceSimilarityTestScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding)
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+        modifier = Modifier
+            .padding(innerPadding)
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         topBar = {
             TopAppBar(
                 title = {

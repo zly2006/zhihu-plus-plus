@@ -396,7 +396,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     BlockedFeedHistoryScreen()
                 }
                 composable<Notification> {
-                    NotificationScreen(PaddingValues())
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                        NotificationScreen(
+                            innerPadding = PaddingValues(),
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Notification.NotificationSettings> {
                     NotificationSettingsScreen(PaddingValues())

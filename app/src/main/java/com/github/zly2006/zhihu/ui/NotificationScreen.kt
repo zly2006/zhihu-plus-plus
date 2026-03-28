@@ -78,6 +78,16 @@ fun NotificationScreen(
     innerPadding: PaddingValues,
 ) {
     val navigator = LocalNavigator.current
+    NotificationScreen(innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationScreen(
+    innerPadding: PaddingValues,
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel<NotificationViewModel>()
     val coroutineScope = rememberCoroutineScope()
@@ -89,8 +99,9 @@ fun NotificationScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding)
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+        modifier = Modifier
+            .padding(innerPadding)
+            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         topBar = {
             TopAppBar(
                 title = {
@@ -153,20 +164,20 @@ fun NotificationScreen(
                                 -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
-                                        navigator.onNavigate(it)
+                                        onContentNavigate(it)
                                     } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                                 }
 
                                 is NotificationTarget.Question -> {
-                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                    onContentNavigate(Question(notification.target.id.toLong(), notification.target.title))
                                 }
 
                                 is NotificationTarget.People -> {
-                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
+                                    onContentNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                 }
 
                                 is NotificationTarget.Answer -> {
-                                    navigator.onNavigate(
+                                    onContentNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Answer,
@@ -176,7 +187,7 @@ fun NotificationScreen(
                                     )
                                 }
                                 is NotificationTarget.Article -> {
-                                    navigator.onNavigate(
+                                    onContentNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Article,
