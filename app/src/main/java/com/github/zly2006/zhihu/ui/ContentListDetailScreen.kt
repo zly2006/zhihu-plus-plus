@@ -1,36 +1,15 @@
 package com.github.zly2006.zhihu.ui
 
 import android.os.Parcelable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.adaptive.layout.AnimatedPane
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
-import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Navigator
@@ -38,31 +17,10 @@ import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 private val ContentListDetailBackBehavior = BackNavigationBehavior.PopUntilContentChange
-
-@Composable
-private fun EmptyDetailPane(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Outlined.Article,
-            contentDescription = null,
-            modifier = Modifier.size(40.dp).padding(bottom = 8.dp),
-            tint = MaterialTheme.colorScheme.primary,
-        )
-        Text(text = text, color = Color.Gray)
-    }
-}
 
 @Parcelize
 data class ContentPaneDestination(
@@ -147,96 +105,65 @@ fun ContentListDetailScreen(
     listPane: @Composable (Navigator) -> Unit,
 ) {
     val activity = androidx.activity.compose.LocalActivity.current as MainActivity
-    val listPaneDefaultWidthDp = rememberListPaneDefaultWidthDp()
-    val defaultDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
-    val scaffoldDirective = defaultDirective.copy(
-        horizontalPartitionSpacerSize = 0.dp,
-        defaultPanePreferredWidth = listPaneDefaultWidthDp.dp,
-    )
-    val paneNavigator = rememberListDetailPaneScaffoldNavigator<ContentPaneDestination>(
-        scaffoldDirective = scaffoldDirective,
-    )
-    val coroutineScope = rememberCoroutineScope()
-    val detailDestination = paneNavigator.currentDestination?.contentKey
-    val rootNavigator = LocalNavigator.current
-
-    val localNavigator = Navigator(
-        onNavigate = { destination ->
-            val paneDestination = destination.toContentPaneDestination()
-            if (paneDestination != null) {
-                coroutineScope.launch {
-                    paneNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail, paneDestination)
-                }
-            } else {
-                rootNavigator.onNavigate(destination)
-            }
+    BaseListDetailScreen(
+        backBehavior = ContentListDetailBackBehavior,
+        toPaneDestination = { it.toContentPaneDestination() },
+        emptyPane = {
+            ListDetailEmptyPane(
+                text = "请选择内容",
+                icon = Icons.AutoMirrored.Outlined.Article,
+            )
         },
-        onNavigateBack = {
-            coroutineScope.launch {
-                if (paneNavigator.canNavigateBack(ContentListDetailBackBehavior)) {
-                    paneNavigator.navigateBack(ContentListDetailBackBehavior)
-                } else {
-                    rootNavigator.onNavigateBack()
-                }
-            }
-        },
-    )
-
-    NavigableListDetailPaneScaffold(
-        navigator = paneNavigator,
-        defaultBackBehavior = ContentListDetailBackBehavior,
         listPane = {
-            AnimatedPane {
-                CompositionLocalProvider(LocalNavigator provides localNavigator) {
-                    listPane(localNavigator)
-                }
-            }
+            listPane(it)
         },
-        detailPane = {
-            AnimatedPane {
-                val destination = detailDestination?.toNavDestination()
-                if (destination == null) {
-                    EmptyDetailPane(text = "请选择内容")
-                    return@AnimatedPane
-                }
-                CompositionLocalProvider(LocalNavigator provides localNavigator) {
-                    when (destination) {
-                        is Article -> {
-                            val viewModel: ArticleViewModel = viewModel(key = detailDestination.toString()) {
-                                ArticleViewModel(destination, activity.httpClient, null)
-                            }
-                            ArticleScreen(
-                                article = destination,
-                                viewModel = viewModel,
-                                innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                            )
-                        }
-
-                        is Question -> {
-                            QuestionScreen(
-                                question = destination,
-                                innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                            )
-                        }
-
-                        is Pin -> {
-                            PinScreen(
-                                innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                                pin = destination,
-                            )
-                        }
-
-                        is Person -> {
-                            PeopleScreen(
-                                innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                                person = destination,
-                            )
-                        }
-
-                        else -> {
-                            EmptyDetailPane(text = "暂不支持在详情窗格中打开该内容")
-                        }
+        detailPane = { paneDestination, _ ->
+            val destination = paneDestination.toNavDestination()
+            if (destination == null) {
+                ListDetailEmptyPane(
+                    text = "暂不支持在详情窗格中打开该内容",
+                    icon = Icons.AutoMirrored.Outlined.Article,
+                )
+                return@BaseListDetailScreen
+            }
+            when (destination) {
+                is Article -> {
+                    val viewModel: ArticleViewModel = viewModel(key = paneDestination.toString()) {
+                        ArticleViewModel(destination, activity.httpClient, null)
                     }
+                    ArticleScreen(
+                        article = destination,
+                        viewModel = viewModel,
+                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                    )
+                }
+
+                is Question -> {
+                    QuestionScreen(
+                        question = destination,
+                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                    )
+                }
+
+                is Pin -> {
+                    PinScreen(
+                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        pin = destination,
+                    )
+                }
+
+                is Person -> {
+                    PeopleScreen(
+                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        person = destination,
+                    )
+                }
+
+                else -> {
+                    ListDetailEmptyPane(
+                        text = "暂不支持在详情窗格中打开该内容",
+                        icon = Icons.AutoMirrored.Outlined.Article,
+                    )
                 }
             }
         },

@@ -378,7 +378,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                Surface(shadowElevation = 4.dp) {
+                Surface {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
