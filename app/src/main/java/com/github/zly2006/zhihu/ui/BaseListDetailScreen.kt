@@ -76,6 +76,7 @@ fun <T : Parcelable> BaseListDetailScreen(
     )
     val coroutineScope = rememberCoroutineScope()
     val rootNavigator = LocalNavigator.current
+    val clearDetailPaneHistoryOnNavigate = rememberClearDetailPaneHistoryOnNavigate()
     val detailDestination = paneNavigator.currentDestination?.contentKey
     val isSinglePane = scaffoldDirective.maxHorizontalPartitions == 1
 
@@ -83,11 +84,18 @@ fun <T : Parcelable> BaseListDetailScreen(
         onSinglePaneDetailChanged(isSinglePane && detailDestination != null)
     }
 
-    val localNavigator = Navigator(
+    fun buildLocalNavigator(
+        clearDetailHistoryBeforeNavigate: Boolean,
+    ) = Navigator(
         onNavigate = { destination ->
             val paneDestination = toPaneDestination(destination)
             if (paneDestination != null) {
                 coroutineScope.launch {
+                    if (clearDetailHistoryBeforeNavigate && clearDetailPaneHistoryOnNavigate) {
+                        while (paneNavigator.currentDestination?.contentKey != null) {
+                            paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
+                        }
+                    }
                     paneNavigator.navigateTo(ListDetailPaneScaffoldRole.Detail, paneDestination)
                 }
             } else {
@@ -104,6 +112,8 @@ fun <T : Parcelable> BaseListDetailScreen(
             }
         },
     )
+    val listPaneNavigator = buildLocalNavigator(clearDetailHistoryBeforeNavigate = true)
+    val detailPaneNavigator = buildLocalNavigator(clearDetailHistoryBeforeNavigate = false)
 
     NavigableListDetailPaneScaffold(
         navigator = paneNavigator,
@@ -111,8 +121,8 @@ fun <T : Parcelable> BaseListDetailScreen(
         listPane = {
             AnimatedPane {
                 paneContainer {
-                    CompositionLocalProvider(LocalNavigator provides localNavigator) {
-                        listPane(localNavigator)
+                    CompositionLocalProvider(LocalNavigator provides listPaneNavigator) {
+                        listPane(listPaneNavigator)
                     }
                 }
             }
@@ -125,8 +135,8 @@ fun <T : Parcelable> BaseListDetailScreen(
                         emptyPane()
                         return@paneContainer
                     }
-                    CompositionLocalProvider(LocalNavigator provides localNavigator) {
-                        detailPane(destination, localNavigator)
+                    CompositionLocalProvider(LocalNavigator provides detailPaneNavigator) {
+                        detailPane(destination, detailPaneNavigator)
                     }
                 }
             }

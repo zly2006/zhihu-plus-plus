@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -17,6 +18,7 @@ import com.github.zly2006.zhihu.ui.subscreens.LIST_PANE_DEFAULT_WIDTH_DP_PREFERE
 
 private val SinglePaneCardHorizontalPadding = 16.dp
 private val MultiPaneCardHorizontalPadding = 4.dp
+const val CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY = "clearDetailPaneHistoryOnNavigate"
 
 @Composable
 fun rememberListPaneDefaultWidthDp(): Int {
@@ -58,4 +60,43 @@ fun rememberAdaptiveCardHorizontalPadding(): Dp {
     } else {
         SinglePaneCardHorizontalPadding
     }
+}
+
+@Composable
+fun rememberClearDetailPaneHistoryOnNavigate(): Boolean {
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    }
+    return rememberBooleanPreference(
+        preferences = preferences,
+        key = CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY,
+        defaultValue = false,
+    )
+}
+
+@Composable
+private fun rememberBooleanPreference(
+    preferences: android.content.SharedPreferences,
+    key: String,
+    defaultValue: Boolean,
+): Boolean {
+    var value by remember {
+        mutableStateOf(preferences.getBoolean(key, defaultValue))
+    }
+
+    DisposableEffect(preferences, key) {
+        val listener =
+            android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, changedKey ->
+                if (changedKey == key) {
+                    value = sharedPreferences.getBoolean(key, defaultValue)
+                }
+            }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            preferences.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+
+    return value
 }

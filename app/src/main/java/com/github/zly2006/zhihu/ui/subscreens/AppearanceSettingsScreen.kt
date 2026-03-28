@@ -79,6 +79,7 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.ui.CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -1052,6 +1053,23 @@ fun AppearanceSettingsScreen(
                             steps = 7,
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
+                    },
+                )
+
+                val clearDetailPaneHistoryOnNavigate = remember {
+                    mutableStateOf(
+                        preferences.getBoolean(CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY, false),
+                    )
+                }
+                SettingItemWithSwitch(
+                    title = { Text("双栏布局时不保留返回栈") },
+                    description = { Text("开启后，在双栏布局中从左侧列表打开右侧内容前，会先清空右栏历史记录；这样右侧返回会直接回到空页面。") },
+                    checked = clearDetailPaneHistoryOnNavigate.value,
+                    onCheckedChange = {
+                        clearDetailPaneHistoryOnNavigate.value = it
+                        preferences.edit {
+                            putBoolean(CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY, it)
+                        }
                     },
                 )
             }
