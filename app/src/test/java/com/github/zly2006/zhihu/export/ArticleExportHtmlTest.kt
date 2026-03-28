@@ -4,8 +4,11 @@ import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.ArticleExportData
 import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -185,6 +188,90 @@ class ArticleExportHtmlTest {
         assertFalse(comment.contentHtml.contains("comment_img"))
         assertFalse(comment.contentHtml.contains("comment_sticker"))
         assertTrue(comment.imageSrc == "https://pic1.zhimg.com/comment-image.jpg")
+    }
+
+    @Test
+    fun inlineArticleExportImagesInHtmlCanKeepRemoteUrlsWhenImageExportDisabled() = runBlocking {
+        var resolveCallCount = 0
+
+        val html = inlineArticleExportImagesInHtml(
+            html =
+                """
+                <html>
+                    <body>
+                        <img src="https://pic1.zhimg.com/example.jpg" />
+                    </body>
+                </html>
+                """.trimIndent(),
+            includeImages = false,
+        ) {
+            resolveCallCount++
+            "data:image/jpeg;base64,ignored"
+        }
+
+        assertTrue(html.contains("https://pic1.zhimg.com/example.jpg"))
+        assertFalse(html.contains("data:image/jpeg;base64"))
+        assertTrue("关闭图片导出时不应请求 base64 数据", resolveCallCount == 0)
+    }
+
+    @Test
+    fun inlineArticleExportImagesInHtmlStillEmbedsBase64WhenImageExportEnabled() = runBlocking {
+        val html = inlineArticleExportImagesInHtml(
+            html =
+                """
+                <html>
+                    <body>
+                        <img src="https://pic1.zhimg.com/example.jpg" />
+                    </body>
+                </html>
+                """.trimIndent(),
+            includeImages = true,
+        ) {
+            "data:image/jpeg;base64,embedded"
+        }
+
+        assertTrue(html.contains("data:image/jpeg;base64,embedded"))
+        assertFalse(html.contains("https://pic1.zhimg.com/example.jpg"))
+    }
+
+    @Test
+    fun inlineArticleExportImagesInHtmlFetchesImagesConcurrentlyWithLimitSix() = runBlocking {
+        val inputHtml = buildString {
+            append("<html><body>")
+            repeat(10) { index ->
+                append("""<img src="https://pic1.zhimg.com/example-$index.jpg" />""")
+            }
+            append("</body></html>")
+        }
+        val lock = Any()
+        var activeCount = 0
+        var maxActiveCount = 0
+        var resolveCallCount = 0
+
+        val html = inlineArticleExportImagesInHtml(
+            html = inputHtml,
+            includeImages = true,
+        ) { imageUrl ->
+            synchronized(lock) {
+                resolveCallCount++
+                activeCount++
+                maxActiveCount = maxOf(maxActiveCount, activeCount)
+            }
+            try {
+                delay(50)
+                "data:image/jpeg;base64,${imageUrl.substringAfterLast('/').substringBefore('.')}"
+            } finally {
+                synchronized(lock) {
+                    activeCount--
+                }
+            }
+        }
+
+        assertTrue(resolveCallCount == 10)
+        assertTrue("图片导出应并行抓取，而不是完全串行", maxActiveCount >= 2)
+        assertTrue("图片导出并发数不应超过 6", maxActiveCount <= 6)
+        assertTrue(html.contains("data:image/jpeg;base64,example-0"))
+        assertTrue(html.contains("data:image/jpeg;base64,example-9"))
     }
 
     private fun createExportHtml(

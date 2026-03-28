@@ -7,6 +7,11 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -20,6 +25,7 @@ import java.util.Locale
 
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+private const val ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY = 6
 
 data class ArticleExportFooterData(
     val exportEpochMillis: Long = System.currentTimeMillis(),
@@ -163,6 +169,7 @@ suspend fun buildOfflineArticleExportHtml(
     context: Context,
     exportData: ArticleExportData,
     httpClient: HttpClient,
+    includeImages: Boolean = true,
     extraSectionsHtml: String = "",
 ): String {
     val htmlContent = buildArticleExportHtml(
@@ -170,12 +177,12 @@ suspend fun buildOfflineArticleExportHtml(
         exportData = exportData,
         extraSectionsHtml = extraSectionsHtml,
     )
-    val imageCache = mutableMapOf<String, String>()
+    if (!includeImages) {
+        return htmlContent
+    }
 
     return inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
-        imageCache[imageUrl] ?: fetchArticleExportImageDataUrl(httpClient, imageUrl).also {
-            imageCache[imageUrl] = it
-        }
+        fetchArticleExportImageDataUrl(httpClient, imageUrl)
     }
 }
 
@@ -184,6 +191,7 @@ suspend fun buildOfflineArticleExportHtml(
     content: DataHolder.Content,
     includeAppAttribution: Boolean,
     httpClient: HttpClient,
+    includeImages: Boolean = true,
     extraSectionsHtml: String = "",
 ): String = buildOfflineArticleExportHtml(
     context = context,
@@ -192,13 +200,18 @@ suspend fun buildOfflineArticleExportHtml(
         includeAppAttribution = includeAppAttribution,
     ),
     httpClient = httpClient,
+    includeImages = includeImages,
     extraSectionsHtml = extraSectionsHtml,
 )
 
 suspend fun inlineArticleExportImagesInHtml(
     html: String,
+    includeImages: Boolean = true,
     resolveDataUrl: suspend (String) -> String,
 ): String {
+    if (!includeImages) {
+        return html
+    }
     val document = Jsoup.parse(html)
     document.outputSettings().prettyPrint(false)
     inlineArticleExportImages(document.select("img"), resolveDataUrl)
@@ -209,13 +222,37 @@ suspend fun inlineArticleExportImages(
     imageNodes: Iterable<Element>,
     resolveDataUrl: suspend (String) -> String,
 ) {
+    val imagesByUrl = linkedMapOf<String, MutableList<Element>>()
     imageNodes.forEach { image ->
         val imageUrl = resolveArticleExportImageUrl(image) ?: return@forEach
-        image.attr("src", resolveDataUrl(imageUrl))
-        image.removeClass("lazy")
-        image.removeAttr("srcset")
-        image.removeAttr("sizes")
-        image.attr("loading", "eager")
+        imagesByUrl.getOrPut(imageUrl) { mutableListOf() }.add(image)
+    }
+    if (imagesByUrl.isEmpty()) {
+        return
+    }
+
+    val dataUrlsByUrl = coroutineScope {
+        val semaphore = Semaphore(ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY)
+        imagesByUrl.keys
+            .map { imageUrl ->
+                async {
+                    imageUrl to semaphore.withPermit {
+                        resolveDataUrl(imageUrl)
+                    }
+                }
+            }.awaitAll()
+            .toMap()
+    }
+
+    imagesByUrl.forEach { (imageUrl, images) ->
+        val dataUrl = dataUrlsByUrl.getValue(imageUrl)
+        images.forEach { image ->
+            image.attr("src", dataUrl)
+            image.removeClass("lazy")
+            image.removeAttr("srcset")
+            image.removeAttr("sizes")
+            image.attr("loading", "eager")
+        }
     }
 }
 

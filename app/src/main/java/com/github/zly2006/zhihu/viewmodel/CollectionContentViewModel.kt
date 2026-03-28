@@ -101,7 +101,10 @@ class CollectionContentViewModel(
         super.refresh(context)
     }
 
-    fun exportAllToHtmlZip(context: Context) {
+    fun exportAllToHtmlZip(
+        context: Context,
+        includeImages: Boolean,
+    ) {
         if (exportDialogState?.isCompleted == false) return
 
         viewModelScope.launch {
@@ -149,6 +152,7 @@ class CollectionContentViewModel(
                                 context = context,
                                 item = item,
                                 exportHttpClient = exportHttpClient,
+                                includeImages = includeImages,
                             )
                         },
                         onProgress = { progress ->
@@ -244,6 +248,7 @@ class CollectionContentViewModel(
         context: Context,
         item: CollectionItem,
         exportHttpClient: io.ktor.client.HttpClient,
+        includeImages: Boolean,
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
         val content = ContentDetailCache.getOrFetch(context, navDestination)
@@ -259,6 +264,7 @@ class CollectionContentViewModel(
                 content = content,
                 includeAppAttribution = true,
                 httpClient = exportHttpClient,
+                includeImages = includeImages,
             ),
         )
     }
