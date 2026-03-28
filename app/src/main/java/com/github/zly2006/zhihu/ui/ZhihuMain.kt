@@ -339,7 +339,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<Daily> {
-                    DailyScreen(PaddingValues())
+                    ContentListDetailScreen(innerPadding = PaddingValues()) { navigator ->
+                        DailyScreen(
+                            innerPadding = PaddingValues(),
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<History> {
                     HistoryScreen(PaddingValues())

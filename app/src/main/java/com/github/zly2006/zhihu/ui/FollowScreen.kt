@@ -103,7 +103,8 @@ fun FollowScreen(
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         PrimaryTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding())
+            modifier = Modifier
+                .padding(top = innerPadding.calculateTopPadding())
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
         ) {
             titles.forEachIndexed { index, title ->

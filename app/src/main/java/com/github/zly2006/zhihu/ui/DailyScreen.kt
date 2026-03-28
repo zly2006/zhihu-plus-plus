@@ -81,6 +81,15 @@ data class DailySection(
 @Composable
 fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
+    DailyScreen(innerPadding, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DailyScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<DailyViewModel>()
     var isRefreshing by remember { mutableStateOf(false) }
@@ -263,7 +272,7 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                                                 url?.let { resolveContent(url.toUri()) }
                                             }.getOrNull()
                                             if (destination != null) {
-                                                navigator.onNavigate(destination)
+                                                onContentNavigate(destination)
                                             } else {
                                                 val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
                                                 context.startActivity(intent)
