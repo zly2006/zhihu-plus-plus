@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
@@ -22,7 +21,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.serializer
 import java.security.MessageDigest
-import kotlin.system.measureNanoTime
 
 fun HttpRequestBuilder.signFetchRequest() {
     val url = url.buildString()
@@ -44,16 +42,8 @@ fun HttpRequestBuilder.signFetchRequest() {
         body,
     ).joinToString("+")
     val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-    val kotlinSign: String
-    val kotlinTime = measureNanoTime {
-        kotlinSign = ZseSigner.encryptZseV4(md5)
-    }
-    Log.i("signRequest96", "Kotlin signing time: ${kotlinTime / 1_000_000.0} ms")
-
-    header(
-        "x-zse-96",
-        "2.0_$kotlinSign",
-    )
+    val kotlinSign = ZseSigner.encryptZseV4(md5)
+    header("x-zse-96", "2.0_$kotlinSign")
     header("x-requested-with", "fetch")
 }
 

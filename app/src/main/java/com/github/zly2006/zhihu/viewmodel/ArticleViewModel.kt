@@ -47,17 +47,16 @@ import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.ArticleExportComment
-import com.github.zly2006.zhihu.util.ArticleExportData
-import com.github.zly2006.zhihu.util.ArticleExportFooterData
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
+import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
-import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
@@ -72,9 +71,7 @@ import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.readRawBytes
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.readLine
@@ -92,11 +89,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
-import java.io.ByteArrayInputStream
 import java.io.File
-import java.net.URLConnection
 import java.text.SimpleDateFormat
-import java.util.Base64
 import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -1069,7 +1063,10 @@ class ArticleViewModel(
 
         return buildArticleExportHtml(
             context = context,
-            exportData = buildExportData(includeAppAttribution),
+            exportData = buildArticleExportData(
+                content = requireExportSourceContent(),
+                includeAppAttribution = includeAppAttribution,
+            ),
             extraSectionsHtml = commentsHtml,
         )
     }
@@ -1077,22 +1074,13 @@ class ArticleViewModel(
     private suspend fun createOfflineHtmlContent(
         context: Context,
         includeAppAttribution: Boolean,
-    ): String {
-        val htmlContent = createHtmlContent(
+    ): String = withContext(Dispatchers.IO) {
+        buildOfflineArticleExportHtml(
             context = context,
-            includeComments = false,
-            commentCount = 0,
+            content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
+            httpClient = httpClient ?: AccountData.httpClient(context),
         )
-        val imageCache = mutableMapOf<String, String>()
-
-        return withContext(Dispatchers.IO) {
-            inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
-                imageCache[imageUrl] ?: fetchExportImageDataUrl(context, imageUrl).also {
-                    imageCache[imageUrl] = it
-                }
-            }
-        }
     }
 
     private suspend fun fetchExportComments(
@@ -1128,61 +1116,6 @@ class ArticleViewModel(
         createdTimeText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
             .format(Date(comment.createdTime * 1000)),
     )
-
-    private fun buildExportData(includeAppAttribution: Boolean): ArticleExportData = ArticleExportData(
-        title = title,
-        authorName = authorName,
-        authorBio = authorBio,
-        authorAvatarSrc = authorAvatarSrc,
-        voteUpCount = voteUpCount,
-        commentCount = commentCount,
-        content = content,
-        footerData = ArticleExportFooterData(
-            exportEpochMillis = System.currentTimeMillis(),
-            createdEpochSeconds = createdAt,
-            updatedEpochSeconds = updatedAt,
-            includeAppAttribution = includeAppAttribution,
-        ),
-    )
-
-    private suspend fun fetchExportImageDataUrl(context: Context, imageUrl: String): String = withContext(Dispatchers.IO) {
-        val response = (httpClient ?: AccountData.httpClient(context)).get(imageUrl)
-        if (!response.status.isSuccess()) {
-            throw IllegalStateException("下载图片失败: ${response.status.value}")
-        }
-
-        val bytes = response.readRawBytes()
-        if (bytes.isEmpty()) {
-            throw IllegalStateException("图片内容为空")
-        }
-
-        val mimeType = resolveExportImageMimeType(
-            contentTypeHeader = response.headers[HttpHeaders.ContentType],
-            imageUrl = imageUrl,
-            imageBytes = bytes,
-        )
-
-        "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
-    }
-
-    private fun resolveExportImageMimeType(
-        contentTypeHeader: String?,
-        imageUrl: String,
-        imageBytes: ByteArray,
-    ): String {
-        contentTypeHeader
-            ?.substringBefore(';')
-            ?.trim()
-            ?.takeIf { it.startsWith("image/") }
-            ?.let { return it }
-
-        URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
-        ByteArrayInputStream(imageBytes).use { stream ->
-            URLConnection.guessContentTypeFromStream(stream)?.let { return it }
-        }
-
-        return "image/jpeg"
-    }
 
     private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
         content = requireExportSourceContent(),
