@@ -1,6 +1,6 @@
 plugins {
-    id("com.android.library") version "8.12.3"
-    kotlin("android") version "2.3.10"
+    id("com.android.library")
+    kotlin("android")
 }
 
 // Used in GitHub CI to pass the path of the installed Android NDK
