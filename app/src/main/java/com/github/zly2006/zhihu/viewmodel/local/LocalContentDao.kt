@@ -31,6 +31,9 @@ interface LocalContentDao {
     @Query("SELECT * FROM crawling_results WHERE reason = :reason ORDER BY score DESC, createdAt DESC")
     suspend fun getResultsByReason(reason: CrawlingReason): List<CrawlingResult>
 
+    @Query("SELECT * FROM crawling_results ORDER BY createdAt DESC LIMIT :limit")
+    suspend fun getRecentResults(limit: Int): List<CrawlingResult>
+
     @Query("SELECT COUNT(*) FROM crawling_results WHERE reason = :reason")
     suspend fun getResultCountByReason(reason: CrawlingReason): Int
 
@@ -47,6 +50,9 @@ interface LocalContentDao {
     suspend fun cleanupOldResults(before: Long)
 
     // LocalFeed 相关操作
+    @Query("SELECT * FROM local_feeds WHERE id = :feedId LIMIT 1")
+    suspend fun getFeedById(feedId: String): LocalFeed?
+
     @Query("SELECT * FROM local_feeds WHERE resultId = :resultId LIMIT 1")
     suspend fun getFeedByResultId(resultId: Long): LocalFeed?
 
@@ -77,6 +83,9 @@ interface LocalContentDao {
 
     @Query("SELECT * FROM user_behaviors WHERE action = :action AND timestamp > :since")
     suspend fun getBehaviorsByActionSince(action: String, since: Long): List<UserBehavior>
+
+    @Query("SELECT * FROM user_behaviors WHERE timestamp > :since")
+    suspend fun getBehaviorsSince(since: Long): List<UserBehavior>
 
     @Query("SELECT contentId, COUNT(*) as count FROM user_behaviors WHERE action = 'like' GROUP BY contentId ORDER BY count DESC LIMIT :limit")
     suspend fun getMostLikedContent(limit: Int): List<ContentLikeCount>

@@ -13,6 +13,11 @@ class UserBehaviorAnalyzer(
     private val database by lazy { LocalContentDatabase.getDatabase(context) }
     private val dao by lazy { database.contentDao() }
 
+    data class RecommendationBehaviorProfile(
+        val reasonPreferences: Map<CrawlingReason, LocalReasonPreference>,
+        val contentAffinities: Map<String, LocalContentAffinity>,
+    )
+
     /**
      * 记录用户行为
      */
@@ -32,34 +37,61 @@ class UserBehaviorAnalyzer(
         }
     }
 
-    /**
-     * 获取用户偏好分析（简化版本）
-     */
-    suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.IO) {
-        val recentBehaviors = dao.getBehaviorsByActionSince(
-            "like",
-            System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L,
-        )
+    suspend fun recordContentOpened(contentId: String, reason: CrawlingReason) {
+        recordBehavior(contentId, "click")
+        recordBehavior(contentId, "click:${reason.name}")
+    }
 
-        val preferenceWeights = mutableMapOf<CrawlingReason, Double>()
+    suspend fun recordRecommendationFeedback(contentId: String, reason: CrawlingReason, feedback: Double) {
+        val action = if (feedback >= 0.0) "like" else "dislike"
+        recordBehavior(contentId, action)
+        recordBehavior(contentId, "$action:${reason.name}")
+    }
 
-        // 基于用户行为调整推荐权重
+    suspend fun buildBehaviorProfile(): RecommendationBehaviorProfile = withContext(Dispatchers.IO) {
+        val recentBehaviors = dao.getBehaviorsSince(System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L)
+
+        val reasonStats = mutableMapOf<CrawlingReason, LocalReasonStats>()
+        val contentStats = mutableMapOf<String, LocalContentStats>()
+
         recentBehaviors.forEach { behavior ->
-            // 简化的偏好分析，实际可以更复杂
-            when (behavior.action) {
-                "like" -> {
-                    CrawlingReason.entries.forEach { reason ->
-                        preferenceWeights[reason] = (preferenceWeights[reason] ?: 0.0) + 0.1
-                    }
+            val baseAction = behavior.action.substringBefore(':')
+            val reasonToken = behavior.action.substringAfter(':', "")
+
+            if (reasonToken.isNotEmpty()) {
+                val reason = runCatching { CrawlingReason.valueOf(reasonToken) }.getOrNull() ?: return@forEach
+                val current = reasonStats[reason] ?: LocalReasonStats()
+                reasonStats[reason] = when (baseAction) {
+                    "click" -> current.copy(clicks = current.clicks + 1)
+                    "like" -> current.copy(likes = current.likes + 1)
+                    "dislike" -> current.copy(dislikes = current.dislikes + 1)
+                    else -> current
                 }
-                "share" -> {
-                    CrawlingReason.entries.forEach { reason ->
-                        preferenceWeights[reason] = (preferenceWeights[reason] ?: 0.0) + 0.2
-                    }
+            } else {
+                val current = contentStats[behavior.contentId] ?: LocalContentStats()
+                contentStats[behavior.contentId] = when (baseAction) {
+                    "click" -> current.copy(clicks = current.clicks + 1)
+                    "like" -> current.copy(likes = current.likes + 1)
+                    "dislike" -> current.copy(dislikes = current.dislikes + 1)
+                    else -> current
                 }
             }
         }
 
-        preferenceWeights
+        RecommendationBehaviorProfile(
+            reasonPreferences = CrawlingReason.entries.associateWith { reason ->
+                buildReasonPreference(reasonStats[reason] ?: LocalReasonStats())
+            },
+            contentAffinities = contentStats.mapValues { (_, stats) ->
+                buildContentAffinity(stats)
+            },
+        )
+    }
+
+    /**
+     * 获取用户偏好分析（简化版本）
+     */
+    suspend fun getUserPreferences(): Map<CrawlingReason, Double> = withContext(Dispatchers.IO) {
+        buildBehaviorProfile().reasonPreferences.mapValues { (_, preference) -> preference.multiplier }
     }
 }
