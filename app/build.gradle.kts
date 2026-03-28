@@ -206,6 +206,7 @@ dependencies {
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.compose.ui:ui-graphics:1.10.6")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
     "fullImplementation"(project(":sentence_embeddings"))

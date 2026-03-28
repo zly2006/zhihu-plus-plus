@@ -21,11 +21,16 @@ import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigationsuite.ExperimentalMaterial3AdaptiveNavigationSuiteApi
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
 import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
@@ -39,6 +44,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.ViewModelProvider
@@ -73,6 +80,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.Search
 import com.github.zly2006.zhihu.SentenceSimilarityTest
 import com.github.zly2006.zhihu.TopLevelDestination
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -257,6 +265,43 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
+    val itemColors =
+        if (duo3NavStyle) {
+            if (!ThemeManager.isDarkTheme()) {
+                NavigationSuiteItemColors(
+                    navigationBarItemColors = NavigationBarItemDefaults.colors().copy(
+                        selectedIndicatorColor =
+                            MaterialTheme.colorScheme.secondaryContainer
+                                .copy(alpha = 0.92f)
+                                .compositeOver(MaterialTheme.colorScheme.secondary),
+                    ),
+                    navigationRailItemColors = NavigationRailItemDefaults.colors().copy(
+                        selectedIndicatorColor =
+                            MaterialTheme.colorScheme.secondaryContainer
+                                .copy(alpha = 0.92f)
+                                .compositeOver(MaterialTheme.colorScheme.secondary),
+                    ),
+                    navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(),
+                )
+            } else {
+                null
+            }
+        } else {
+            NavigationSuiteItemColors(
+                navigationBarItemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                    indicatorColor = Color.Transparent,
+                ),
+                navigationRailItemColors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                    indicatorColor = Color.Transparent,
+                ),
+                navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                ),
+            )
+        }
+
     NavigationSuiteScaffold(
         modifier = modifier,
         state = navigationSuiteState,
@@ -277,6 +322,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             scrollToTopTrigger++
                         }
                     },
+                    colors = itemColors,
                     icon = {
                         Icon(item.third, contentDescription = item.second)
                     },
