@@ -587,6 +587,8 @@ fun ArticleScreen(
     val context = LocalContext.current
     val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
+    val isDisplayedInNavigationRoute = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+    val shouldShowArticleChrome = isDisplayedInNavigationRoute || innerPadding.calculateBottomPadding() == 0.dp
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -941,7 +943,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 Column {
-                    if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
+                    if (shouldShowArticleChrome) {
                         AnimatedVisibility(
                             visible = showBottomBar,
                             enter = fadeIn() + expandVertically(
@@ -1397,7 +1399,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
-                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+                val showBottomBarCondition = shouldShowArticleChrome
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable
