@@ -410,7 +410,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HotListScreen(innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen(innerPadding)
+                    FollowScreen(
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        innerPadding = innerPadding,
+                    )
                 }
                 composable<Daily> {
                     DailyScreen(innerPadding)
