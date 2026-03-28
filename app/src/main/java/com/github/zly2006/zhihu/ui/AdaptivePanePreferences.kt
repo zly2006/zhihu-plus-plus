@@ -14,11 +14,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.ui.subscreens.CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY
 
 private val SinglePaneCardHorizontalPadding = 16.dp
 private val MultiPaneCardHorizontalPadding = 4.dp
-const val CLEAR_DETAIL_PANE_HISTORY_ON_NAVIGATE_PREFERENCE_KEY = "clearDetailPaneHistoryOnNavigate"
 
 @Composable
 fun rememberListPaneDefaultWidthDp(): Int {
