@@ -1007,6 +1007,29 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "技术性导航设置",
             ) {
+                val useCustomNavHost = remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("使用自定义导航") },
+                    description = { Text("使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。") },
+                    checked = useCustomNavHost.value,
+                    onCheckedChange = {
+                        useCustomNavHost.value = it
+                        preferences.edit { putBoolean("use_custom_nav_host", it) }
+                        Toast.makeText(context, "需要重启应用生效", Toast.LENGTH_SHORT).show()
+                    },
+                )
+
+                val enablePredictiveBack = remember { mutableStateOf(preferences.getBoolean("enable_predictive_back", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用预测性返回") },
+                    description = { Text("开启 Android 14+ 的预测性返回手势动画。") },
+                    checked = enablePredictiveBack.value,
+                    onCheckedChange = {
+                        enablePredictiveBack.value = it
+                        preferences.edit { putBoolean("enable_predictive_back", it) }
+                    },
+                )
+
                 val listPaneDefaultWidthDp = remember {
                     mutableIntStateOf(preferences.getInt(LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY, 320))
                 }

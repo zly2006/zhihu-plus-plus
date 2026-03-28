@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -44,17 +45,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -96,6 +102,7 @@ import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
+import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
 
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
@@ -111,6 +118,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
     val allBottomBarItemKeys = remember {
         listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
     }
@@ -139,6 +147,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         duo3HomeAccount = updatedDuo3HomeAccount
         duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
         tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+        autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
         selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
         startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
     }
@@ -165,9 +174,38 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         navEntry?.destination?.hasRoute(Account.RecommendSettings.BlockedFeedHistory::class) == true -> true
         else -> false
     }
+    val isTopLevelRoute = isTopLevelDest(navEntry)
+    // 滚动时自动隐藏底部导航栏
+    var isBottomBarVisible by remember { mutableStateOf(true) }
+    val bottomBarScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                when {
+                    available.y < -3f -> isBottomBarVisible = false
+                    available.y > 3f -> isBottomBarVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(navEntry) {
+        isBottomBarVisible = true
+    }
 
-    LaunchedEffect(isSinglePaneWindow, isSinglePaneListDetailShowingDetail, isStandaloneDetailRoute) {
-        val shouldHideNavigationSuite = isSinglePaneWindow && (isSinglePaneListDetailShowingDetail || isStandaloneDetailRoute)
+    LaunchedEffect(
+        isSinglePaneWindow,
+        isSinglePaneListDetailShowingDetail,
+        isStandaloneDetailRoute,
+        autoHideBottomBar,
+        isBottomBarVisible,
+        isTopLevelRoute,
+    ) {
+        val shouldHideNavigationSuite = isSinglePaneWindow &&
+            (
+                isSinglePaneListDetailShowingDetail ||
+                    isStandaloneDetailRoute ||
+                    (autoHideBottomBar && !isBottomBarVisible && isTopLevelRoute)
+            )
         navigationSuiteState.snapTo(
             if (shouldHideNavigationSuite) {
                 NavigationSuiteScaffoldValue.Hidden
@@ -308,6 +346,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         navigationSuiteItems = {
             bottomBarItems.forEach { item ->
                 val destination = item.first
+                val label = item.second
+                val icon = item.third
                 item(
                     selected = currentTopLevelDestinationKey == destination.name,
                     onClick = {
@@ -322,14 +362,24 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             scrollToTopTrigger++
                         }
                     },
+                    alwaysShowLabel = duo3NavStyle,
                     colors = itemColors,
                     icon = {
-                        Icon(item.third, contentDescription = item.second)
+                        Icon(icon, contentDescription = label)
                     },
                     label = {
-                        Text(item.second)
+                        if (duo3NavStyle) {
+                            Text(label)
+                        } else {
+                            Text(
+                                label,
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    color = LocalContentColor.current.copy(alpha = 0.6f),
+                                ),
+                            )
+                        }
                     },
-                    alwaysShowLabel = duo3NavStyle,
                 )
             }
         },
@@ -340,10 +390,14 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 onNavigateBack = navController::popBackStack,
             ),
         ) {
-            NavHost(
+            MyNavHost(
                 navController,
+                modifier = if (isSinglePaneWindow && autoHideBottomBar) {
+                    modifier.nestedScroll(bottomBarScrollConnection)
+                } else {
+                    modifier
+                },
                 startDestination = startDestination,
-                modifier = modifier,
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
