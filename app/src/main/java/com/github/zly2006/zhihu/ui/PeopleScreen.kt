@@ -458,7 +458,6 @@ fun PeopleScreen(
                 ),
                 scrollBehavior = scrollBehavior,
                 expandedHeight = 200.dp,
-                windowInsets = WindowInsets(0.dp),
             )
         },
     ) { contentPadding ->
