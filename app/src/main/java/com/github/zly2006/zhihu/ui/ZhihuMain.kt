@@ -174,7 +174,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val navigationSuiteState = rememberNavigationSuiteScaffoldState()
     val isSinglePaneWindow = paneDirective.maxHorizontalPartitions == 1
     var isSinglePaneListDetailShowingDetail by rememberSaveable { mutableStateOf(false) }
-    val isTopLevelRoute = isTopLevelDest(navEntry)
     // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
@@ -194,12 +193,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         isSinglePaneListDetailShowingDetail,
         autoHideBottomBar,
         isBottomBarVisible,
-        isTopLevelRoute,
+        navEntry,
     ) {
         val shouldHideNavigationSuite = isSinglePaneWindow &&
             (
                 isSinglePaneListDetailShowingDetail ||
-                    (autoHideBottomBar && !isBottomBarVisible && isTopLevelRoute)
+                    (autoHideBottomBar && !isBottomBarVisible && isTopLevelDest(navEntry))
             )
         navigationSuiteState.snapTo(
             if (shouldHideNavigationSuite) {
@@ -466,11 +465,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     },
                 ) {
                     composable<Home> {
-                        HomeListDetailScreen(
-                            scrollToTopTrigger = scrollToTopTrigger,
+                        ContentListDetailScreen(
                             innerPadding = PaddingValues(),
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        )
+                        ) { navigator ->
+                            HomeScreen(
+                                scrollToTopTrigger = scrollToTopTrigger,
+                                innerPadding = PaddingValues(),
+                                onContentNavigate = navigator.onNavigate,
+                            )
+                        }
                     }
                     composable<Question> { navEntry ->
                         val question: Question = navEntry.toRoute()

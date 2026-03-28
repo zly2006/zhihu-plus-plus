@@ -137,6 +137,7 @@ fun ContentListDetailScreen(
                         article = destination,
                         viewModel = viewModel,
                         innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        paneNavigator = paneNavigator,
                     )
                 }
 
@@ -170,23 +171,4 @@ fun ContentListDetailScreen(
             }
         },
     )
-}
-
-@OptIn(ExperimentalMaterial3AdaptiveApi::class)
-@Composable
-fun HomeListDetailScreen(
-    scrollToTopTrigger: Int = 0,
-    innerPadding: PaddingValues,
-    onSinglePaneDetailChanged: (Boolean) -> Unit = {},
-) {
-    ContentListDetailScreen(
-        innerPadding = innerPadding,
-        onSinglePaneDetailChanged = onSinglePaneDetailChanged,
-    ) { navigator ->
-        HomeScreen(
-            scrollToTopTrigger = scrollToTopTrigger,
-            innerPadding = innerPadding,
-            onContentNavigate = navigator.onNavigate,
-        )
-    }
 }
