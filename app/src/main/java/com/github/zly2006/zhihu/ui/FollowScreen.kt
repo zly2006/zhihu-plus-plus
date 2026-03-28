@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -70,7 +71,10 @@ class FollowScreenData : ViewModel() {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun FollowScreen(
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -113,8 +117,15 @@ fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> FollowRecommendScreen()
-                1 -> FollowDynamicScreen()
+                0 -> FollowRecommendScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 0,
+                )
+
+                1 -> FollowDynamicScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    isActive = pagerState.currentPage == 1,
+                )
             }
         }
     }
@@ -197,14 +208,33 @@ fun FollowingUsersRow() {
 }
 
 @Composable
-fun FollowRecommendScreen() {
-    val navigator = LocalNavigator.current
+fun FollowRecommendScreen(
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowRecommendViewModel by context.viewModels()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val listState = rememberLazyListState()
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
+    }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -226,6 +256,7 @@ fun FollowRecommendScreen() {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
+                listState = listState,
                 topContent = {
                     item {
                         FollowingUsersRow()
@@ -283,14 +314,33 @@ fun FollowRecommendScreen() {
 }
 
 @Composable
-fun FollowDynamicScreen() {
-    val navigator = LocalNavigator.current
+fun FollowDynamicScreen(
+    scrollToTopTrigger: Int = 0,
+    isActive: Boolean = true,
+) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowViewModel by context.viewModels()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val listState = rememberLazyListState()
+    var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
+
+    LaunchedEffect(scrollToTopTrigger, isActive) {
+        val action = topLevelReselectAction(
+            triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+            isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+        )
+        if (isActive) {
+            when (action) {
+                TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+                TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+                null -> {}
+            }
+        }
+        cachedScrollToTopTrigger = scrollToTopTrigger
+    }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -312,6 +362,7 @@ fun FollowDynamicScreen() {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
+                listState = listState,
                 onLoadMore = { viewModel.loadMore(context) },
                 topContent = {
                     item {
