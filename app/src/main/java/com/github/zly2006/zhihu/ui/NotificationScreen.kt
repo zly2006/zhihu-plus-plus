@@ -10,13 +10,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,16 +76,6 @@ fun NotificationScreen(
     innerPadding: PaddingValues,
 ) {
     val navigator = LocalNavigator.current
-    NotificationScreen(innerPadding, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NotificationScreen(
-    innerPadding: PaddingValues,
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
-    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel<NotificationViewModel>()
     val coroutineScope = rememberCoroutineScope()
@@ -99,9 +87,7 @@ fun NotificationScreen(
     }
 
     Scaffold(
-        modifier = Modifier
-            .padding(innerPadding)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -164,20 +150,20 @@ fun NotificationScreen(
                                 -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
-                                        onContentNavigate(it)
+                                        navigator.onNavigate(it)
                                     } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                                 }
 
                                 is NotificationTarget.Question -> {
-                                    onContentNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
                                 }
 
                                 is NotificationTarget.People -> {
-                                    onContentNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
+                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
                                 }
 
                                 is NotificationTarget.Answer -> {
-                                    onContentNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Answer,
@@ -187,7 +173,7 @@ fun NotificationScreen(
                                     )
                                 }
                                 is NotificationTarget.Article -> {
-                                    onContentNavigate(
+                                    navigator.onNavigate(
                                         Article(
                                             title = notification.target.title,
                                             type = ArticleType.Article,

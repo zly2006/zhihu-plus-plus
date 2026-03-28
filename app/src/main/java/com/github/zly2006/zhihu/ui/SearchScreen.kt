@@ -10,13 +10,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -84,17 +82,6 @@ fun SearchScreen(
     search: Search,
 ) {
     val navigator = LocalNavigator.current
-    SearchScreen(innerPadding, search, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SearchScreen(
-    innerPadding: PaddingValues,
-    search: Search,
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
-    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val viewModel = viewModel { SearchViewModel(search.query) }
@@ -133,9 +120,7 @@ fun SearchScreen(
     }
 
     Scaffold(
-        modifier = Modifier
-            .padding(innerPadding)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
@@ -331,11 +316,7 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(item) {
-                            if (navDestination != null) {
-                                onContentNavigate(navDestination)
-                            }
-                        }
+                        FeedCard(item)
                     }
 
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

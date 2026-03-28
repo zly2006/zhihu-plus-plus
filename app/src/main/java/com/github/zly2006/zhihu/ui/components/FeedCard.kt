@@ -64,8 +64,8 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Account
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.ui.LocalCardHorizontalPadding
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.rememberAdaptiveCardHorizontalPadding
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -95,7 +95,7 @@ fun FeedCard(
     val density = LocalDensity.current
     val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val resolvedHorizontalPadding = horizontalPadding ?: rememberAdaptiveCardHorizontalPadding()
+    val resolvedHorizontalPadding = horizontalPadding ?: LocalCardHorizontalPadding.current
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置

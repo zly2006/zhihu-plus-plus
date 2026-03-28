@@ -70,7 +70,7 @@ fun CollectionContentScreen(
     } else {
         null
     }
-    val horizontalPadding = rememberAdaptiveCardHorizontalPadding()
+    val horizontalPadding = LocalCardHorizontalPadding.current
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {

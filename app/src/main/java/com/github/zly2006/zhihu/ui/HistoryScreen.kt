@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -14,18 +13,9 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HistoryScreen(innerPadding: PaddingValues) {
-    val navigator = LocalNavigator.current
-    HistoryScreen(innerPadding, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     innerPadding: PaddingValues,
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
 ) {
     val navigator = LocalNavigator.current
     val viewModel: HistoryViewModel = viewModel()
@@ -46,11 +36,6 @@ fun HistoryScreen(
         ) { item ->
             FeedCard(
                 item,
-                onClick = {
-                    if (navDestination != null) {
-                        onContentNavigate(navDestination)
-                    }
-                },
             )
         }
     }

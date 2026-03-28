@@ -41,7 +41,7 @@ fun CollectionScreen(
     val viewModel = viewModel {
         CollectionsViewModel(urlToken)
     }
-    val horizontalPadding = rememberAdaptiveCardHorizontalPadding()
+    val horizontalPadding = LocalCardHorizontalPadding.current
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {

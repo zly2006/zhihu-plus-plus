@@ -11,14 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -74,16 +71,6 @@ class FollowScreenData : ViewModel() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
-    val navigator = LocalNavigator.current
-    FollowScreen(innerPadding, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@Composable
-fun FollowScreen(
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("推荐", "动态")
     val pagerState = rememberPagerState(pageCount = { titles.size })
@@ -103,9 +90,9 @@ fun FollowScreen(
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         PrimaryTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
-            modifier = Modifier
-                .padding(top = innerPadding.calculateTopPadding())
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+            modifier = Modifier.padding(
+                top = innerPadding.calculateTopPadding(),
+            ),
         ) {
             titles.forEachIndexed { index, title ->
                 Tab(
@@ -126,8 +113,8 @@ fun FollowScreen(
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> FollowRecommendScreen(onContentNavigate = onContentNavigate)
-                1 -> FollowDynamicScreen(onContentNavigate = onContentNavigate)
+                0 -> FollowRecommendScreen()
+                1 -> FollowDynamicScreen()
             }
         }
     }
@@ -210,9 +197,8 @@ fun FollowingUsersRow() {
 }
 
 @Composable
-fun FollowRecommendScreen(
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
+fun FollowRecommendScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowRecommendViewModel by context.viewModels()
     val preferences = remember {
@@ -259,11 +245,6 @@ fun FollowRecommendScreen(
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
-                    onClick = {
-                        if (navDestination != null) {
-                            onContentNavigate(navDestination)
-                        }
-                    },
                 )
             }
 
@@ -302,9 +283,8 @@ fun FollowRecommendScreen(
 }
 
 @Composable
-fun FollowDynamicScreen(
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
+fun FollowDynamicScreen() {
+    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowViewModel by context.viewModels()
     val preferences = remember {
@@ -356,11 +336,6 @@ fun FollowDynamicScreen(
                     },
                     onBlockTopic = { topicId, topicName ->
                         viewModel.handleBlockTopic(context, topicId, topicName)
-                    },
-                    onClick = {
-                        if (navDestination != null) {
-                            onContentNavigate(navDestination)
-                        }
                     },
                 )
             }

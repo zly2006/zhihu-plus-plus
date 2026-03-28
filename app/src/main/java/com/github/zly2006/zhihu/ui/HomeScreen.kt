@@ -168,17 +168,6 @@ interface IHomeFeedViewModel {
 @Composable
 fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
-    HomeScreen(scrollToTopTrigger, innerPadding, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HomeScreen(
-    scrollToTopTrigger: Int = 0,
-    innerPadding: PaddingValues,
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
-    val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
@@ -383,7 +372,7 @@ fun HomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = rememberAdaptiveCardHorizontalPadding(), vertical = 8.dp),
+                            .padding(horizontal = LocalCardHorizontalPadding.current, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
@@ -563,7 +552,7 @@ fun HomeScreen(
                         localHomeViewModel.onLocalItemOpened(context, item)
                     }
                     if (navDestination != null) {
-                        onContentNavigate(navDestination)
+                        navigator.onNavigate(navDestination)
                     }
                 }
             }

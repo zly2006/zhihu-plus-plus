@@ -11,12 +11,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -396,17 +394,6 @@ fun PeopleScreen(
     person: Person,
 ) {
     val navigator = LocalNavigator.current
-    PeopleScreen(innerPadding, person, navigator.onNavigate)
-}
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
-@Composable
-fun PeopleScreen(
-    innerPadding: PaddingValues,
-    person: Person,
-    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
-) {
-    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
@@ -456,10 +443,7 @@ fun PeopleScreen(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
     Scaffold(
-        modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .padding(innerPadding)
-            .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {

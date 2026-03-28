@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -117,7 +118,9 @@ fun ContentListDetailScreen(
         },
         onSinglePaneDetailChanged = onSinglePaneDetailChanged,
         listPane = {
-            listPane(it)
+            CompositionLocalProvider(LocalCardHorizontalPadding provides adaptiveListCardHorizontalPadding()) {
+                listPane(it)
+            }
         },
         detailPane = { paneDestination, paneNavigator ->
             val destination = paneDestination.toNavDestination()
@@ -136,7 +139,7 @@ fun ContentListDetailScreen(
                     ArticleScreen(
                         article = destination,
                         viewModel = viewModel,
-                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        innerPadding = innerPadding,
                         paneNavigator = paneNavigator,
                     )
                 }
@@ -144,20 +147,20 @@ fun ContentListDetailScreen(
                 is Question -> {
                     QuestionScreen(
                         question = destination,
-                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        innerPadding = innerPadding,
                     )
                 }
 
                 is Pin -> {
                     PinScreen(
-                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        innerPadding = innerPadding,
                         pin = destination,
                     )
                 }
 
                 is Person -> {
                     PeopleScreen(
-                        innerPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                        innerPadding = innerPadding,
                         person = destination,
                     )
                 }
