@@ -130,7 +130,7 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
+        modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
         topBar = {
             SelectionContainer(
                 modifier = Modifier.fuckHonorService(),
@@ -152,6 +152,7 @@ fun QuestionScreen(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
                 isEnd = { viewModel.isEnd },
+                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 modifier = Modifier.padding(innerPadding),
                 footer = ProgressIndicatorFooter,
                 topContent = {
@@ -159,7 +160,7 @@ fun QuestionScreen(
                         val handle = LocalPinnableContainer.current?.pin()
                         if (questionContent.isNotEmpty()) {
                             if (preferences.getBoolean("articleUseWebview", true)) {
-                                WebviewComp {
+                                WebviewComp(modifier = Modifier.padding(horizontal = LocalCardHorizontalPadding.current)) {
                                     it.loadZhihu(
                                         "https://www.zhihu.com/question/${question.questionId}",
                                         Jsoup.parse(questionContent),
@@ -187,7 +188,7 @@ fun QuestionScreen(
                     item(2) {
                         val handle = LocalPinnableContainer.current?.pin()
                         FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -269,7 +270,7 @@ fun QuestionScreen(
                             }
                         }
                         FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
