@@ -2,11 +2,19 @@ package com.github.zly2006.zhihu.util
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.DataHolder
+import io.ktor.client.HttpClient
+import io.ktor.client.request.get
+import io.ktor.client.statement.readRawBytes
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Entities
+import java.io.ByteArrayInputStream
+import java.net.URLConnection
 import java.text.SimpleDateFormat
+import java.util.Base64
 import java.util.Date
 import java.util.Locale
 
@@ -66,6 +74,46 @@ fun buildArticleExportHtml(
     extraSectionsHtml = extraSectionsHtml,
 )
 
+fun buildArticleExportData(
+    content: DataHolder.Content,
+    includeAppAttribution: Boolean,
+    exportEpochMillis: Long = System.currentTimeMillis(),
+): ArticleExportData = when (content) {
+    is DataHolder.Answer -> ArticleExportData(
+        title = content.question.title,
+        authorName = content.author.name,
+        authorBio = content.author.headline,
+        authorAvatarSrc = content.author.avatarUrl,
+        voteUpCount = content.voteupCount,
+        commentCount = content.commentCount,
+        content = content.content,
+        footerData = ArticleExportFooterData(
+            exportEpochMillis = exportEpochMillis,
+            createdEpochSeconds = content.createdTime,
+            updatedEpochSeconds = content.updatedTime,
+            includeAppAttribution = includeAppAttribution,
+        ),
+    )
+
+    is DataHolder.Article -> ArticleExportData(
+        title = content.title,
+        authorName = content.author.name,
+        authorBio = content.author.headline,
+        authorAvatarSrc = content.author.avatarUrl,
+        voteUpCount = content.voteupCount,
+        commentCount = content.commentCount,
+        content = content.content,
+        footerData = ArticleExportFooterData(
+            exportEpochMillis = exportEpochMillis,
+            createdEpochSeconds = content.created,
+            updatedEpochSeconds = content.updated,
+            includeAppAttribution = includeAppAttribution,
+        ),
+    )
+
+    else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
+}
+
 fun renderArticleExportHtml(
     template: String,
     exportData: ArticleExportData,
@@ -110,6 +158,42 @@ fun renderArticleExportHtml(
         ),
     )
 }
+
+suspend fun buildOfflineArticleExportHtml(
+    context: Context,
+    exportData: ArticleExportData,
+    httpClient: HttpClient,
+    extraSectionsHtml: String = "",
+): String {
+    val htmlContent = buildArticleExportHtml(
+        context = context,
+        exportData = exportData,
+        extraSectionsHtml = extraSectionsHtml,
+    )
+    val imageCache = mutableMapOf<String, String>()
+
+    return inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
+        imageCache[imageUrl] ?: fetchArticleExportImageDataUrl(httpClient, imageUrl).also {
+            imageCache[imageUrl] = it
+        }
+    }
+}
+
+suspend fun buildOfflineArticleExportHtml(
+    context: Context,
+    content: DataHolder.Content,
+    includeAppAttribution: Boolean,
+    httpClient: HttpClient,
+    extraSectionsHtml: String = "",
+): String = buildOfflineArticleExportHtml(
+    context = context,
+    exportData = buildArticleExportData(
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+    ),
+    httpClient = httpClient,
+    extraSectionsHtml = extraSectionsHtml,
+)
 
 suspend fun inlineArticleExportImagesInHtml(
     html: String,
@@ -296,6 +380,29 @@ fun buildArticleExportFileName(
     return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
+suspend fun fetchArticleExportImageDataUrl(
+    httpClient: HttpClient,
+    imageUrl: String,
+): String {
+    val response = httpClient.get(imageUrl)
+    if (!response.status.isSuccess()) {
+        throw IllegalStateException("下载图片失败: ${response.status.value}")
+    }
+
+    val bytes = response.readRawBytes()
+    if (bytes.isEmpty()) {
+        throw IllegalStateException("图片内容为空")
+    }
+
+    val mimeType = resolveArticleExportImageMimeType(
+        contentTypeHeader = response.headers[HttpHeaders.ContentType],
+        imageUrl = imageUrl,
+        imageBytes = bytes,
+    )
+
+    return "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
+}
+
 private fun resolveArticleExportImageUrl(image: Element): String? = extractImageUrl(image)
     ?.let(::normalizeArticleExportUrl)
     ?: image
@@ -303,12 +410,31 @@ private fun resolveArticleExportImageUrl(image: Element): String? = extractImage
         .takeIf { it.isNotBlank() && !it.startsWith("data:") }
         ?.let(::normalizeArticleExportUrl)
 
-private fun sanitizeArticleExportFileNamePart(text: String): String = text
+fun sanitizeArticleExportFileNamePart(text: String): String = text
     .trim()
     .replace(Regex("\\s+"), "_")
     .replace(Regex("[\\\\/:*?\"<>|]"), "_")
     .replace(Regex("_+"), "_")
     .trim('_')
+
+private fun resolveArticleExportImageMimeType(
+    contentTypeHeader: String?,
+    imageUrl: String,
+    imageBytes: ByteArray,
+): String {
+    contentTypeHeader
+        ?.substringBefore(';')
+        ?.trim()
+        ?.takeIf { it.startsWith("image/") }
+        ?.let { return it }
+
+    URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
+    ByteArrayInputStream(imageBytes).use { stream ->
+        URLConnection.guessContentTypeFromStream(stream)?.let { return it }
+    }
+
+    return "image/jpeg"
+}
 
 private data class ExportFileMeta(
     val title: String,
