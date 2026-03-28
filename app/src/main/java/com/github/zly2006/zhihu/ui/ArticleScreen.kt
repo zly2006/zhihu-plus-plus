@@ -588,8 +588,6 @@ fun ArticleScreen(
     val context = LocalContext.current
     val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
-    val isDisplayedInNavigationRoute = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
-    val shouldShowArticleChrome = isDisplayedInNavigationRoute || innerPadding.calculateBottomPadding() == 0.dp
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -839,7 +837,7 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
             sharedData.pendingInitialContent = prev
@@ -984,7 +982,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 Column {
-                    if (shouldShowArticleChrome) {
+                    if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
                         AnimatedVisibility(
                             visible = showBottomBar,
                             enter = fadeIn() + expandVertically(
@@ -1440,7 +1438,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
-                val showBottomBarCondition = shouldShowArticleChrome
+                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable

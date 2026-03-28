@@ -396,6 +396,17 @@ fun PeopleScreen(
     person: Person,
 ) {
     val navigator = LocalNavigator.current
+    PeopleScreen(innerPadding, person, navigator.onNavigate)
+}
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun PeopleScreen(
+    innerPadding: PaddingValues,
+    person: Person,
+    onContentNavigate: (com.github.zly2006.zhihu.NavDestination) -> Unit,
+) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()

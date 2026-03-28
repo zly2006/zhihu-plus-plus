@@ -16,6 +16,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -63,7 +64,7 @@ fun <T : Parcelable> BaseListDetailScreen(
     toPaneDestination: (NavDestination) -> T?,
     emptyPane: @Composable () -> Unit,
     listPane: @Composable (Navigator) -> Unit,
-    detailPane: @Composable (T, Navigator) -> Unit,
+    detailPane: @Composable (T, ThreePaneScaffoldNavigator<T>) -> Unit,
     onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     paneContainer: @Composable (@Composable () -> Unit) -> Unit = { content -> content() },
 ) {
@@ -137,13 +138,12 @@ fun <T : Parcelable> BaseListDetailScreen(
         detailPane = {
             AnimatedPane {
                 paneContainer {
-                    val destination = detailDestination
-                    if (destination == null) {
+                    if (detailDestination == null) {
                         emptyPane()
                         return@paneContainer
                     }
                     CompositionLocalProvider(LocalNavigator provides detailPaneNavigator) {
-                        detailPane(destination, detailPaneNavigator)
+                        detailPane(detailDestination, paneNavigator)
                     }
                 }
             }

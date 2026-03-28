@@ -119,7 +119,7 @@ fun ContentListDetailScreen(
         listPane = {
             listPane(it)
         },
-        detailPane = { paneDestination, _ ->
+        detailPane = { paneDestination, paneNavigator ->
             val destination = paneDestination.toNavDestination()
             if (destination == null) {
                 ListDetailEmptyPane(

@@ -143,7 +143,6 @@ fun AccountSettingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(innerPadding)
-                .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
                 .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {

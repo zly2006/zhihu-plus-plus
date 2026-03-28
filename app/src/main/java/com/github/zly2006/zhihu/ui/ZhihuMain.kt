@@ -174,7 +174,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         navEntry?.destination?.hasRoute(Account.RecommendSettings.BlockedFeedHistory::class) == true -> true
         else -> false
     }
-    val isTopLevelRoute = isTopLevelDest(navEntry)
+    val isTopLevelRoute = navEntry.isTopLevelDest()
     // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
@@ -533,7 +533,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     }
                 }
                 composable<History> {
-                    HistoryScreen(PaddingValues())
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
+                        HistoryScreen(
+                            PaddingValues(),
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<OnlineHistory> {
                     ContentListDetailScreen(
@@ -575,8 +583,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     CollectionContentScreen(content.collectionId, PaddingValues())
                 }
                 composable<Person> {
-                    val person: Person = it.toRoute()
-                    PeopleScreen(PaddingValues(), person)
+                    ContentListDetailScreen(
+                        innerPadding = PaddingValues(),
+                        onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                    ) { navigator ->
+                        val person: Person = it.toRoute()
+                        PeopleScreen(
+                            PaddingValues(), person,
+                            onContentNavigate = navigator.onNavigate,
+                        )
+                    }
                 }
                 composable<Pin> {
                     val pin = it.toRoute<Pin>()
@@ -634,12 +650,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 }
 
-private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(Home::class) ||
-    navEntry.hasRoute(Follow::class) ||
-    navEntry.hasRoute(HotList::class) ||
-    navEntry.hasRoute(Daily::class) ||
-    navEntry.hasRoute(OnlineHistory::class) ||
-    navEntry.hasRoute(Account::class)
+internal fun NavBackStackEntry?.isTopLevelDest(): Boolean = this.hasRoute(Home::class) ||
+        this.hasRoute(Follow::class) ||
+        this.hasRoute(HotList::class) ||
+        this.hasRoute(Daily::class) ||
+        this.hasRoute(OnlineHistory::class) ||
+        this.hasRoute(Account::class)
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
