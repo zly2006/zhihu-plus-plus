@@ -202,6 +202,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         else -> -1
     }
 
+    val useVerticalTopLevelAnimation = paneDirective.maxHorizontalPartitions > 1
+
     // 通用动画创建函数
     @Suppress("KotlinConstantConditions")
     fun createSlideAnimation(
@@ -209,6 +211,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         isPop: Boolean,
         fromIndex: Int,
         toIndex: Int,
+        useVerticalAnimation: Boolean = false,
     ): Any {
         // 如果不是一级页面之间的切换，使用默认动画
         if (fromIndex == -1 || toIndex == -1) {
@@ -239,10 +242,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             // 同一页面
             else -> return if (isEnter) EnterTransition.None else ExitTransition.None
         }
-        return if (isEnter) {
-            slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
+        return if (useVerticalAnimation) {
+            if (isEnter) {
+                slideInVertically(tween(300)) { it * offset } + fadeIn(tween(300))
+            } else {
+                slideOutVertically(tween(300)) { it * offset } + fadeOut(tween(300))
+            }
         } else {
-            slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+            if (isEnter) {
+                slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
+            } else {
+                slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+            }
         }
     }
 
@@ -290,22 +301,46 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 enterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = true, isPop = false, fromIndex, toIndex) as EnterTransition
+                    createSlideAnimation(
+                        isEnter = true,
+                        isPop = false,
+                        fromIndex = fromIndex,
+                        toIndex = toIndex,
+                        useVerticalAnimation = useVerticalTopLevelAnimation,
+                    ) as EnterTransition
                 },
                 exitTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = false, isPop = false, fromIndex, toIndex) as ExitTransition
+                    createSlideAnimation(
+                        isEnter = false,
+                        isPop = false,
+                        fromIndex = fromIndex,
+                        toIndex = toIndex,
+                        useVerticalAnimation = useVerticalTopLevelAnimation,
+                    ) as ExitTransition
                 },
                 popEnterTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = true, isPop = true, fromIndex, toIndex) as EnterTransition
+                    createSlideAnimation(
+                        isEnter = true,
+                        isPop = true,
+                        fromIndex = fromIndex,
+                        toIndex = toIndex,
+                        useVerticalAnimation = useVerticalTopLevelAnimation,
+                    ) as EnterTransition
                 },
                 popExitTransition = {
                     val fromIndex = getPageIndex(initialState.destination)
                     val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
+                    createSlideAnimation(
+                        isEnter = false,
+                        isPop = true,
+                        fromIndex = fromIndex,
+                        toIndex = toIndex,
+                        useVerticalAnimation = useVerticalTopLevelAnimation,
+                    ) as ExitTransition
                 },
             ) {
                 composable<Home> {
