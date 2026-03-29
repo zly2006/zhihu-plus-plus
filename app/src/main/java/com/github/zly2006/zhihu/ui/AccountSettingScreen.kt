@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -135,18 +136,32 @@ fun AccountSettingScreen(
 
     fun isSelected(type: SettingsPaneDestination.Type) =
         selectedSettingType == type.name
-    val defaultColors = CardColors(
-        containerColor = MaterialTheme.colorScheme.surfaceBright,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
-        disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
-    )
-    val selectedColors = CardColors(
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+
+    @Composable
+    fun animatedSettingColors(selected: Boolean): CardColors {
+        val containerColor by animateColorAsState(
+            targetValue = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceBright
+            },
+            label = "settingSelectionContainerColor",
+        )
+        val contentColor by animateColorAsState(
+            targetValue = if (selected) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            label = "settingSelectionContentColor",
+        )
+        return CardColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor,
+            disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
+        )
+    }
 
     Scaffold(
         modifier = Modifier
@@ -376,7 +391,7 @@ fun AccountSettingScreen(
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
-                    colors = if (isSelected(SettingsPaneDestination.Type.Appearance)) selectedColors else defaultColors,
+                    colors = animatedSettingColors(isSelected(SettingsPaneDestination.Type.Appearance)),
                 )
 
                 SettingItem(
@@ -384,7 +399,7 @@ fun AccountSettingScreen(
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
-                    colors = if (isSelected(SettingsPaneDestination.Type.Recommend)) selectedColors else defaultColors,
+                    colors = animatedSettingColors(isSelected(SettingsPaneDestination.Type.Recommend)),
                 )
 
                 SettingItem(
@@ -392,7 +407,7 @@ fun AccountSettingScreen(
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
-                    colors = if (isSelected(SettingsPaneDestination.Type.SystemAndUpdate)) selectedColors else defaultColors,
+                    colors = animatedSettingColors(isSelected(SettingsPaneDestination.Type.SystemAndUpdate)),
                 )
 
                 AnimatedVisibility(isDeveloper) {
@@ -400,7 +415,7 @@ fun AccountSettingScreen(
                         title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
-                        colors = if (isSelected(SettingsPaneDestination.Type.Developer)) selectedColors else defaultColors,
+                        colors = animatedSettingColors(isSelected(SettingsPaneDestination.Type.Developer)),
                     )
                 }
             }

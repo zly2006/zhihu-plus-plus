@@ -4,6 +4,7 @@ import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -82,15 +83,18 @@ private fun Modifier.selectedListItemContainer(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
     unselectedColor: Color? = null,
 ): Modifier = composed {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+        } else {
+            unselectedColor ?: MaterialTheme.colorScheme.surface
+        },
+        animationSpec = tween(150),
+        label = "feedCardSelectionBackground",
+    )
     fillMaxWidth()
         .clip(shape)
-        .background(
-            if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-            } else {
-                unselectedColor ?: MaterialTheme.colorScheme.surface
-            },
-        )
+        .background(backgroundColor)
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -165,6 +169,29 @@ fun FeedCard(
     } else {
         CardDefaults.cardColors()
     }
+    val animatedCardContainerColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            defaultCardColors.containerColor
+        },
+        animationSpec = tween(150),
+        label = "feedCardContainerColor",
+    )
+    val animatedCardContentColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+            defaultCardColors.contentColor
+        },
+        animationSpec = tween(150),
+        label = "feedCardContentColor",
+    )
+    val animatedCardBorderColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.secondary else Color.Transparent,
+        animationSpec = tween(150),
+        label = "feedCardBorderColor",
+    )
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -229,7 +256,12 @@ fun FeedCard(
                 .padding(horizontal = resolvedHorizontalPadding, vertical = 8.dp),
         ) {
             Card(
-                colors = if (selected) selectedCardColors else defaultCardColors,
+                colors = CardColors(
+                    containerColor = animatedCardContainerColor,
+                    contentColor = animatedCardContentColor,
+                    disabledContainerColor = animatedCardContainerColor,
+                    disabledContentColor = defaultCardColors.disabledContentColor,
+                ),
                 shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -280,7 +312,7 @@ fun FeedCard(
                 } else {
                     CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 2.dp)
                 },
-                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null,
+                border = BorderStroke(1.dp, animatedCardBorderColor),
             ) {
                 Column(
                     modifier = if (duo3CardAppearance) {
