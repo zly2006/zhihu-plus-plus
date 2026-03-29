@@ -221,15 +221,17 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger != cachedScrollToTopTrigger) {
-            if ((scrollToTopTrigger - cachedScrollToTopTrigger) >= 2 || (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0)) {
-                // 如果2次以上点击，或已经在顶部，则触发刷新
-                viewModel.refresh(context)
-            } else {
-                listState.animateScrollToItem(0)
-            }
-            cachedScrollToTopTrigger = scrollToTopTrigger
+        when (
+            topLevelReselectAction(
+                triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+                isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+            )
+        ) {
+            TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+            TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+            null -> {}
         }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     // 通知 ViewModel

@@ -552,6 +552,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
                         ) {
                             FollowScreen(
+                                scrollToTopTrigger = scrollToTopTrigger,
                                 innerPadding = innerPadding,
                             )
                         }

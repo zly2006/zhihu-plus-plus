@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.util
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Environment
 import android.provider.MediaStore
 import android.provider.MediaStore.MediaColumns
 import android.widget.Toast
@@ -44,63 +43,6 @@ fun extractImageUrl(imgElement: Element): String? = imgElement.attr("data-origin
     ?: imgElement.attr("data-actualsrc").takeIf { it.isNotBlank() }
     ?: imgElement.attr("data-thumbnail").takeIf { it.isNotBlank() }
     ?: imgElement.attr("src").takeIf { it.isNotBlank() }
-
-/**
- * 内容块类型，用于Column渲染
- */
-sealed class ContentBlock {
-    /** 文本块，包含富文本和emoji */
-    data class TextBlock(
-        val text: AnnotatedString,
-        // 行内公式或emoji等组件使用的key集合
-        val componentUsed: Set<String> = emptySet(),
-    ) : ContentBlock()
-
-    /** 图片块 */
-    data class ImageBlock(
-        val url: String,
-        val isGif: Boolean = false,
-    ) : ContentBlock()
-
-    /** 公式块 */
-    data class FormulaBlock(
-        val imageUrl: String,
-        val formula: String,
-    ) : ContentBlock()
-
-    /** 标题块 */
-    data class HeaderBlock(
-        val text: AnnotatedString,
-        val level: Int,
-        val componentUsed: Set<String> = emptySet(),
-    ) : ContentBlock()
-
-    /** 列表块 */
-    data class ListBlock(
-        val items: List<ListItem>,
-        val isOrdered: Boolean,
-    ) : ContentBlock() {
-        data class ListItem(
-            val text: AnnotatedString,
-            val componentUsed: Set<String> = emptySet(),
-        )
-    }
-
-    /** 引用块 */
-    data class QuoteBlock(
-        val text: AnnotatedString,
-        val componentUsed: Set<String> = emptySet(),
-    ) : ContentBlock()
-
-    /** 代码块 */
-    data class CodeBlock(
-        val code: String,
-        val language: String = "",
-    ) : ContentBlock()
-
-    /** 分割线 */
-    data object DividerBlock : ContentBlock()
-}
 
 /**
  * 处理文本节点中的emoji，提取emoji占位符并添加到AnnotatedString
@@ -296,52 +238,6 @@ suspend fun saveImageToGallery(
                 Toast.LENGTH_SHORT,
             ).show()
     }
-}
-
-/**
- * 下载图片并保存到相册（不显示Toast）
- * @return 保存的图片 URI，如果失败则返回 null
- */
-suspend fun downloadAndSaveImage(
-    context: Context,
-    httpClient: HttpClient,
-    imageUrl: String,
-    fileName: String,
-    isPending: Boolean = false,
-): android.net.Uri? {
-    val response = httpClient.get(imageUrl)
-    val bytes = response.readRawBytes()
-
-    val contentValues = android.content.ContentValues().apply {
-        put(MediaColumns.DISPLAY_NAME, fileName)
-        put(MediaColumns.MIME_TYPE, "image/jpeg")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            put(MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-            if (isPending) put(MediaColumns.IS_PENDING, 1)
-        }
-    }
-
-    val resolver = context.contentResolver
-    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        MediaStore.Images.Media
-            .getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-    } else {
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-    }
-
-    val imageUri = resolver.insert(collection, contentValues)
-    if (imageUri != null) {
-        resolver.openOutputStream(imageUri).use { os ->
-            os?.write(bytes)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isPending) {
-            contentValues.clear()
-            contentValues.put(MediaColumns.IS_PENDING, 0)
-            resolver.update(imageUri, contentValues, null, null)
-        }
-    }
-    return imageUri
 }
 
 /**
