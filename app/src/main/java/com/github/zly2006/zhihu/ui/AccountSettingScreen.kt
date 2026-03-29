@@ -60,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -133,12 +134,11 @@ fun AccountSettingScreen(
     Scaffold(
         modifier = Modifier
             .fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {
@@ -163,7 +163,7 @@ fun AccountSettingScreen(
 
             if (data.login) {
                 Row(
-                    Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp).clickable {
+                    Modifier.padding(16.dp, innerPadding.calculateTopPadding(), 16.dp, 16.dp).clickable {
                         navigator.onNavigate(
                             Person(
                                 id = data.self?.id ?: "",
@@ -237,7 +237,7 @@ fun AccountSettingScreen(
                     }
                 }
             } else {
-                SettingItemGroup {
+                SettingItemGroup(modifier = Modifier.padding(top = innerPadding.calculateTopPadding())) {
                     SettingItem(
                         title = { Text("登录知乎") },
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
