@@ -193,7 +193,7 @@ fun AccountSettingScreen(
 
             if (data.login) {
                 Row(
-                    Modifier.padding(16.dp, innerPadding.calculateTopPadding(), 16.dp, 16.dp).clickable {
+                    Modifier.padding(LocalCardHorizontalPadding.current, innerPadding.calculateTopPadding(), LocalCardHorizontalPadding.current, 16.dp).clickable {
                         navigator.onNavigate(
                             Person(
                                 id = data.self?.id ?: "",

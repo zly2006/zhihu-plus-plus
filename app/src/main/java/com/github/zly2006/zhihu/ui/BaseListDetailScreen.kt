@@ -145,7 +145,10 @@ fun <T : Parcelable> BaseListDetailScreen(
         listPane = {
             AnimatedPane {
                 paneContainer {
-                    CompositionLocalProvider(LocalNavigator provides listPaneNavigator) {
+                    CompositionLocalProvider(
+                        LocalNavigator provides listPaneNavigator,
+                        LocalCardHorizontalPadding provides adaptiveListCardHorizontalPadding(),
+                    ) {
                         listPane(listPaneNavigator, selectionState)
                     }
                 }

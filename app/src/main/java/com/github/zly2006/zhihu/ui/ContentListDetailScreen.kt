@@ -7,7 +7,6 @@ import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -123,9 +122,7 @@ fun ContentListDetailScreen(
         },
         onSinglePaneDetailChanged = onSinglePaneDetailChanged,
         listPane = { navigator, selectionState ->
-            CompositionLocalProvider(LocalCardHorizontalPadding provides adaptiveListCardHorizontalPadding()) {
-                listPane(navigator, selectionState)
-            }
+            listPane(navigator, selectionState)
         },
         detailPane = { paneDestination, paneNavigator ->
             val destination = paneDestination.toNavDestination()
