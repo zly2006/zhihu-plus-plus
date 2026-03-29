@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
@@ -140,20 +141,24 @@ fun <T : Parcelable> BaseListDetailScreen(
         navigator = paneNavigator,
         defaultBackBehavior = backBehavior,
         listPane = {
-            paneContainer {
-                CompositionLocalProvider(LocalNavigator provides listPaneNavigator) {
-                    listPane(listPaneNavigator, selectionState)
+            AnimatedPane {
+                paneContainer {
+                    CompositionLocalProvider(LocalNavigator provides listPaneNavigator) {
+                        listPane(listPaneNavigator, selectionState)
+                    }
                 }
             }
         },
         detailPane = {
-            paneContainer {
-                if (detailDestination == null) {
-                    emptyPane()
-                    return@paneContainer
-                }
-                CompositionLocalProvider(LocalNavigator provides detailPaneNavigator) {
-                    detailPane(detailDestination, paneNavigator)
+            AnimatedPane {
+                paneContainer {
+                    if (detailDestination == null) {
+                        emptyPane()
+                        return@paneContainer
+                    }
+                    CompositionLocalProvider(LocalNavigator provides detailPaneNavigator) {
+                        detailPane(detailDestination, paneNavigator)
+                    }
                 }
             }
         },

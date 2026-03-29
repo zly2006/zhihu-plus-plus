@@ -1296,7 +1296,11 @@ fun ArticleScreen(
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
         LaunchedEffect(article.id) {
-            scrollBehavior.state.heightOffset = 0f
+            if (viewModel.lastArticleId != article.id) {
+                viewModel.lastArticleId = article.id
+                scrollBehavior.state.heightOffset = 0f
+                scrollBehavior.state.contentOffset = 0f
+            }
         }
         // 不受到是否收起影响，在topbar最大时是否可以滚动？
         var scrollStateMaxValue by remember { mutableStateOf(0) }
