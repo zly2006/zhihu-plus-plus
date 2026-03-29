@@ -57,6 +57,7 @@ import java.util.Date
 fun CollectionContentScreen(
     collectionId: String,
     innerPadding: PaddingValues,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -70,6 +71,7 @@ fun CollectionContentScreen(
     } else {
         null
     }
+    val horizontalPadding = LocalCardHorizontalPadding.current
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
@@ -137,7 +139,7 @@ fun CollectionContentScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(innerPadding),
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(0) {
@@ -155,6 +157,7 @@ fun CollectionContentScreen(
             FeedCard(
                 item,
                 Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                selected = item.navDestination.matchesContentSelection(selectionState),
             ) {
                 val dest = navDestination
                 if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {

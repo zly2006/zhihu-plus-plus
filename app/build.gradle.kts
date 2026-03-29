@@ -152,6 +152,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 val ktor = "3.4.1"
 val coil = "3.4.0"
+val composeAdaptive = "1.3.0-alpha09"
+val composeNavigationSuite = "1.4.0"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -184,7 +186,7 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
     implementation("androidx.webkit:webkit:1.14.0")
-    implementation("androidx.activity:activity-compose:1.12.1")
+    implementation("androidx.activity:activity-compose:1.13.0")
     implementation(platform("androidx.compose:compose-bom:2025.12.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
@@ -196,10 +198,15 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite:$composeNavigationSuite")
+    implementation("androidx.compose.material3.adaptive:adaptive:$composeAdaptive")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout:$composeAdaptive")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation:$composeAdaptive")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.compose.ui:ui-graphics:1.10.6")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     ksp("androidx.room:room-compiler:2.8.4")
     "fullImplementation"(project(":sentence_embeddings"))

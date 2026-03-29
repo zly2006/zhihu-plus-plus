@@ -12,9 +12,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -23,15 +26,28 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.DefaultNavigationBarOverride
+import androidx.compose.material3.ExperimentalMaterial3ComponentOverrideApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalNavigationBarOverride
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.NavigationBarOverride
+import androidx.compose.material3.NavigationBarOverrideScope
+import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigationsuite.ExperimentalMaterial3AdaptiveNavigationSuiteApi
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteItemColors
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldValue
+import androidx.compose.material3.adaptive.navigationsuite.rememberNavigationSuiteScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -39,19 +55,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -108,6 +121,11 @@ import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 @SuppressLint("RestrictedApi")
+@OptIn(
+    ExperimentalMaterial3AdaptiveApi::class,
+    ExperimentalMaterial3AdaptiveNavigationSuiteApi::class,
+    ExperimentalMaterial3ComponentOverrideApi::class,
+)
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
@@ -154,8 +172,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     }
 
     val navEntry by navController.currentBackStackEntryAsState()
-
-    var scrollToTopTrigger by remember { mutableIntStateOf(0) }
+    val adaptiveInfo = currentWindowAdaptiveInfo()
+    val paneDirective = calculatePaneScaffoldDirective(adaptiveInfo)
+    val navigationSuiteState = rememberNavigationSuiteScaffoldState()
+    val isSinglePaneWindow = paneDirective.maxHorizontalPartitions == 1
+    var isSinglePaneListDetailShowingDetail by rememberSaveable { mutableStateOf(false) }
     // 滚动时自动隐藏底部导航栏
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val bottomBarScrollConnection = remember {
@@ -170,6 +191,27 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
+    LaunchedEffect(
+        isSinglePaneWindow,
+        isSinglePaneListDetailShowingDetail,
+        autoHideBottomBar,
+        isBottomBarVisible,
+        navEntry,
+    ) {
+        val shouldHideNavigationSuite = isSinglePaneWindow &&
+            (
+                isSinglePaneListDetailShowingDetail ||
+                    (autoHideBottomBar && !isBottomBarVisible && isTopLevelDest(navEntry))
+            )
+        navigationSuiteState.snapTo(
+            if (shouldHideNavigationSuite) {
+                NavigationSuiteScaffoldValue.Hidden
+            } else {
+                NavigationSuiteScaffoldValue.Visible
+            },
+        )
+    }
+    var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     val allBottomBarItems = listOf(
         Triple(Home, "主页", Icons.Filled.Home),
         Triple(Follow, "关注", if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1),
@@ -179,6 +221,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         Triple(Account, "账号", Icons.Filled.ManageAccounts),
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
+
+    fun topLevelKey(destination: NavDestination): String = (destination as? TopLevelDestination)?.name ?: Home.name
+    var currentTopLevelDestinationKey by rememberSaveable { mutableStateOf(topLevelKey(startDestination)) }
+
+    when {
+        navEntry?.hasRoute(Home::class) == true -> currentTopLevelDestinationKey = Home.name
+        navEntry?.hasRoute(Follow::class) == true -> currentTopLevelDestinationKey = Follow.name
+        navEntry?.hasRoute(HotList::class) == true -> currentTopLevelDestinationKey = HotList.name
+        navEntry?.hasRoute(Daily::class) == true -> currentTopLevelDestinationKey = Daily.name
+        navEntry?.hasRoute(OnlineHistory::class) == true -> currentTopLevelDestinationKey = OnlineHistory.name
+        navEntry?.hasRoute(Account::class) == true -> currentTopLevelDestinationKey = Account.name
+    }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -191,6 +245,8 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         else -> -1
     }
 
+    val useVerticalTopLevelAnimation = paneDirective.maxHorizontalPartitions > 1
+
     // 通用动画创建函数
     @Suppress("KotlinConstantConditions")
     fun createSlideAnimation(
@@ -198,6 +254,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         isPop: Boolean,
         fromIndex: Int,
         toIndex: Int,
+        useVerticalAnimation: Boolean = false,
     ): Any {
         // 如果不是一级页面之间的切换，使用默认动画
         if (fromIndex == -1 || toIndex == -1) {
@@ -228,21 +285,65 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             // 同一页面
             else -> return if (isEnter) EnterTransition.None else ExitTransition.None
         }
-        return if (isEnter) {
-            slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
+        return if (useVerticalAnimation) {
+            if (isEnter) {
+                slideInVertically(tween(300)) { it * offset } + fadeIn(tween(300))
+            } else {
+                slideOutVertically(tween(300)) { it * offset } + fadeOut(tween(300))
+            }
         } else {
-            slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+            if (isEnter) {
+                slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
+            } else {
+                slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+            }
         }
     }
 
-    Scaffold(
-        modifier = modifier
-            .nestedScroll(bottomBarScrollConnection)
-            .semantics { testTagsAsResourceId = true },
-        bottomBar = {
-            if (navEntry != null) {
-                // 页面切换时重置底部导航栏可见状态
-                LaunchedEffect(navEntry) { isBottomBarVisible = true }
+    val itemColors =
+        if (duo3NavStyle) {
+            if (!ThemeManager.isDarkTheme()) {
+                NavigationSuiteItemColors(
+                    navigationBarItemColors = NavigationBarItemDefaults.colors().copy(
+                        selectedIndicatorColor =
+                            MaterialTheme.colorScheme.secondaryContainer
+                                .copy(alpha = 0.92f)
+                                .compositeOver(MaterialTheme.colorScheme.secondary),
+                    ),
+                    navigationRailItemColors = NavigationRailItemDefaults.colors().copy(
+                        selectedIndicatorColor =
+                            MaterialTheme.colorScheme.secondaryContainer
+                                .copy(alpha = 0.92f)
+                                .compositeOver(MaterialTheme.colorScheme.secondary),
+                    ),
+                    navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(),
+                )
+            } else {
+                null
+            }
+        } else {
+            NavigationSuiteItemColors(
+                navigationBarItemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                    indicatorColor = Color.Transparent,
+                ),
+                navigationRailItemColors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                    indicatorColor = Color.Transparent,
+                ),
+                navigationDrawerItemColors = NavigationDrawerItemDefaults.colors(
+                    selectedIconColor = Color(0xff66ccff),
+                ),
+            )
+        }
+
+    @OptIn(ExperimentalMaterial3ComponentOverrideApi::class)
+    val myCustomOverride = object : NavigationBarOverride {
+        @Composable
+        override fun NavigationBarOverrideScope.NavigationBar() {
+            CompositionLocalProvider(
+                LocalNavigationBarOverride provides DefaultNavigationBarOverride,
+            ) {
                 AnimatedVisibility(
                     visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
                     enter = slideInVertically(tween(200)) { it },
@@ -250,241 +351,355 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 ) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.height(
+                        modifier = modifier.height(
                             (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
                         ),
-                    ) {
-                        @Composable
-                        fun Item(
-                            destination: NavDestination,
-                            label: String,
-                            icon: ImageVector,
-                        ) {
-                            val tag = "nav_tab_${(destination as? TopLevelDestination)?.name?.lowercase() ?: label.lowercase()}"
-                            NavigationBarItem(
-                                navEntry.hasRoute(destination::class),
-                                onClick = {
-                                    if (!navEntry.hasRoute(destination::class)) {
-                                        navController.navigate(destination) {
-                                            popUpTo(startDestination)
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    } else if (tapToScrollToTopEnabled) {
-                                        scrollToTopTrigger++
-                                    }
-                                },
-                                label = {
-                                    if (duo3NavStyle) {
-                                        Text(label)
-                                    } else {
-                                        Text(
-                                            label,
-                                            style = TextStyle(
-                                                fontSize = 9.sp,
-                                                color = LocalContentColor.current.copy(alpha = 0.6f),
-                                            ),
-                                        )
-                                    }
-                                },
-                                alwaysShowLabel = duo3NavStyle,
-                                colors = if (duo3NavStyle) {
-                                    if (!ThemeManager.isDarkTheme()) {
-                                        NavigationBarItemDefaults.colors().copy(
-                                            selectedIndicatorColor =
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                                    .copy(alpha = 0.92f)
-                                                    .compositeOver(MaterialTheme.colorScheme.secondary),
-                                        )
-                                    } else {
-                                        NavigationBarItemDefaults.colors()
-                                    }
-                                } else {
-                                    NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color(0xff66ccff),
-                                        indicatorColor = Color.Transparent,
-                                    )
-                                },
-                                icon = {
-                                    Icon(icon, contentDescription = label)
-                                },
-                                modifier = (if (duo3NavStyle) Modifier.padding(top = 4.dp) else Modifier).testTag(tag),
-                            )
-                        }
-
-                        bottomBarItems.forEach { item ->
-                            Item(item.first, item.second, item.third)
-                        }
-                    }
+                        content = content,
+                    )
                 }
             }
-        },
-    ) { innerPadding ->
-        CompositionLocalProvider(
-            LocalNavigator provides Navigator(
-                onNavigate = activity::navigate,
-                onNavigateBack = navController::popBackStack,
-            ),
-        ) {
-            MyNavHost(
-                navController,
-                modifier = Modifier,
-                startDestination = startDestination,
-                enterTransition = {
-                    val fromIndex = getPageIndex(initialState.destination)
-                    val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = true, isPop = false, fromIndex, toIndex) as EnterTransition
-                },
-                exitTransition = {
-                    val fromIndex = getPageIndex(initialState.destination)
-                    val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = false, isPop = false, fromIndex, toIndex) as ExitTransition
-                },
-                popEnterTransition = {
-                    val fromIndex = getPageIndex(initialState.destination)
-                    val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = true, isPop = true, fromIndex, toIndex) as EnterTransition
-                },
-                popExitTransition = {
-                    val fromIndex = getPageIndex(initialState.destination)
-                    val toIndex = getPageIndex(targetState.destination)
-                    createSlideAnimation(isEnter = false, isPop = true, fromIndex, toIndex) as ExitTransition
-                },
-            ) {
-                composable<Home> {
-                    HomeScreen(
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalNavigationBarOverride provides myCustomOverride,
+    ) {
+        NavigationSuiteScaffold(
+            modifier = modifier,
+            state = navigationSuiteState,
+            navigationSuiteItems = {
+                bottomBarItems.forEach { item ->
+                    val destination = item.first
+                    val label = item.second
+                    val icon = item.third
+                    item(
+                        selected = currentTopLevelDestinationKey == destination.name,
+                        onClick = {
+                            if (!navEntry.hasRoute(destination::class)) {
+                                currentTopLevelDestinationKey = destination.name
+                                navController.navigate(destination) {
+                                    popUpTo(startDestination)
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            } else if (tapToScrollToTopEnabled) {
+                                scrollToTopTrigger++
+                            }
+                        },
+                        alwaysShowLabel = duo3NavStyle,
+                        colors = itemColors,
+                        icon = {
+                            Icon(icon, contentDescription = label)
+                        },
+                        label = {
+                            if (duo3NavStyle) {
+                                Text(label)
+                            } else {
+                                Text(
+                                    label,
+                                    style = TextStyle(
+                                        fontSize = 9.sp,
+                                        color = LocalContentColor.current.copy(alpha = 0.6f),
+                                    ),
+                                )
+                            }
+                        },
                     )
                 }
-                composable<Question> { navEntry ->
-                    val question: Question = navEntry.toRoute()
-                    QuestionScreen(question, innerPadding)
-                }
-                composable<Article>(
+            },
+        ) {
+            val innerPadding = PaddingValues(
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            )
+            CompositionLocalProvider(
+                LocalNavigator provides Navigator(
+                    onNavigate = activity::navigate,
+                    onNavigateBack = navController::popBackStack,
+                ),
+            ) {
+                MyNavHost(
+                    navController,
+                    modifier = if (isSinglePaneWindow && autoHideBottomBar) {
+                        modifier.nestedScroll(bottomBarScrollConnection)
+                    } else {
+                        modifier
+                    },
+                    startDestination = startDestination,
                     enterTransition = {
-                        val sharedData = try {
-                            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
-                        } catch (_: Exception) {
-                            null
-                        }
-                        when (sharedData?.answerTransitionDirection) {
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
-                                slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                                slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
-                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                            else -> slideInHorizontally(tween(300)) { it }
-                        }
+                        val fromIndex = getPageIndex(initialState.destination)
+                        val toIndex = getPageIndex(targetState.destination)
+                        createSlideAnimation(
+                            isEnter = true,
+                            isPop = false,
+                            fromIndex = fromIndex,
+                            toIndex = toIndex,
+                            useVerticalAnimation = useVerticalTopLevelAnimation,
+                        ) as EnterTransition
                     },
                     exitTransition = {
-                        val sharedData = try {
-                            (activity as? androidx.activity.ComponentActivity)
-                                ?.let { ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
-                        } catch (_: Exception) {
-                            null
-                        }
-                        when (sharedData?.answerTransitionDirection) {
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
-                                slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                                slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
-                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                            else -> ExitTransition.None
-                        }
+                        val fromIndex = getPageIndex(initialState.destination)
+                        val toIndex = getPageIndex(targetState.destination)
+                        createSlideAnimation(
+                            isEnter = false,
+                            isPop = false,
+                            fromIndex = fromIndex,
+                            toIndex = toIndex,
+                            useVerticalAnimation = useVerticalTopLevelAnimation,
+                        ) as ExitTransition
                     },
-                ) { navEntry ->
-                    val article: Article = navEntry.toRoute()
-                    val viewModel: ArticleViewModel = viewModel(navEntry) {
-                        ArticleViewModel(article, activity.httpClient, navEntry)
+                    popEnterTransition = {
+                        val fromIndex = getPageIndex(initialState.destination)
+                        val toIndex = getPageIndex(targetState.destination)
+                        createSlideAnimation(
+                            isEnter = true,
+                            isPop = true,
+                            fromIndex = fromIndex,
+                            toIndex = toIndex,
+                            useVerticalAnimation = useVerticalTopLevelAnimation,
+                        ) as EnterTransition
+                    },
+                    popExitTransition = {
+                        val fromIndex = getPageIndex(initialState.destination)
+                        val toIndex = getPageIndex(targetState.destination)
+                        createSlideAnimation(
+                            isEnter = false,
+                            isPop = true,
+                            fromIndex = fromIndex,
+                            toIndex = toIndex,
+                            useVerticalAnimation = useVerticalTopLevelAnimation,
+                        ) as ExitTransition
+                    },
+                ) {
+                    composable<Home> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            HomeScreen(
+                                scrollToTopTrigger = scrollToTopTrigger,
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
                     }
-                    ArticleScreen(article, viewModel, innerPadding)
-                }
-                composable<HotList> {
-                    HotListScreen(innerPadding)
-                }
-                composable<Follow> {
-                    FollowScreen(
-                        scrollToTopTrigger = scrollToTopTrigger,
-                        innerPadding = innerPadding,
-                    )
-                }
-                composable<Daily> {
-                    DailyScreen(innerPadding)
-                }
-                composable<History> {
-                    HistoryScreen(innerPadding)
-                }
-                composable<OnlineHistory> {
-                    OnlineHistoryScreen(innerPadding)
-                }
-                composable<Account> {
-                    AccountSettingScreen(innerPadding)
-                }
-                composable<Search> { navEntry ->
-                    val search: Search = navEntry.toRoute()
-                    SearchScreen(innerPadding, search)
-                }
-                composable<Collections> {
-                    val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken, innerPadding)
-                }
-                composable<CollectionContent> {
-                    val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId, innerPadding)
-                }
-                composable<Person> {
-                    val person: Person = it.toRoute()
-                    PeopleScreen(innerPadding, person)
-                }
-                composable<Pin> {
-                    val pin = it.toRoute<Pin>()
-                    PinScreen(innerPadding, pin)
-                }
-                composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen(innerPadding)
-                }
-                composable<Account.RecommendSettings.BlockedFeedHistory> {
-                    BlockedFeedHistoryScreen()
-                }
-                composable<Notification> {
-                    NotificationScreen(innerPadding)
-                }
-                composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen(innerPadding)
-                }
-                composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen(innerPadding)
-                }
-                composable<Account.AppearanceSettings> {
-                    val args = it.toRoute<Account.AppearanceSettings>()
-                    AppearanceSettingsScreen(
-                        innerPadding,
-                        setting = args.setting,
-                        onExit = reloadBottomBarPreferences,
-                    )
-                }
-                composable<Account.RecommendSettings> {
-                    val args = it.toRoute<Account.RecommendSettings>()
-                    ContentFilterSettingsScreen(
-                        innerPadding,
-                        setting = args.setting,
-                    )
-                }
-                composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen(innerPadding)
-                }
-                composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen(innerPadding)
-                }
-                composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen(innerPadding)
+                    composable<Question> { navEntry ->
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            val question: Question = navEntry.toRoute()
+                            QuestionScreen(
+                                question = question,
+                                innerPadding = PaddingValues(),
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Article>(
+                        enterTransition = {
+                            val sharedData = try {
+                                ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
+                            } catch (_: Exception) {
+                                null
+                            }
+                            when (sharedData?.answerTransitionDirection) {
+                                ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                    slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                    slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                    slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                                else -> slideInHorizontally(tween(300)) { it }
+                            }
+                        },
+                        exitTransition = {
+                            val sharedData = try {
+                                (activity as? androidx.activity.ComponentActivity)
+                                    ?.let { ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
+                            } catch (_: Exception) {
+                                null
+                            }
+                            when (sharedData?.answerTransitionDirection) {
+                                ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+                                    slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                                    slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+                                    slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                                ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                                else -> ExitTransition.None
+                            }
+                        },
+                    ) { navEntry ->
+                        val article: Article = navEntry.toRoute()
+                        val viewModel: ArticleViewModel = viewModel(navEntry) {
+                            ArticleViewModel(article, activity.httpClient, navEntry)
+                        }
+                        ArticleScreen(article, viewModel, innerPadding)
+                    }
+                    composable<HotList> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            HotListScreen(
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Follow> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            FollowScreen(
+                                scrollToTopTrigger = scrollToTopTrigger,
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Daily> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, _ ->
+                            DailyScreen(
+                                innerPadding = innerPadding,
+                            )
+                        }
+                    }
+                    composable<History> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            HistoryScreen(
+                                innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<OnlineHistory> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            OnlineHistoryScreen(
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Account> {
+                        SettingsListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    }
+                    composable<Search> { navEntry ->
+                        val search: Search = navEntry.toRoute()
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            SearchScreen(
+                                innerPadding = innerPadding,
+                                search = search,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Collections> { navEntry ->
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, _ ->
+                            val data: Collections = navEntry.toRoute()
+                            CollectionScreen(data.userToken, innerPadding)
+                        }
+                    }
+                    composable<CollectionContent> { navEntry ->
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, selectionState ->
+                            val content: CollectionContent = navEntry.toRoute()
+                            CollectionContentScreen(
+                                collectionId = content.collectionId,
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
+                        }
+                    }
+                    composable<Person> { navEntry ->
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, _ ->
+                            val person: Person = navEntry.toRoute()
+                            PeopleScreen(
+                                innerPadding,
+                                person,
+                            )
+                        }
+                    }
+                    composable<Pin> {
+                        val pin = it.toRoute<Pin>()
+                        PinScreen(innerPadding, pin)
+                    }
+                    composable<Account.RecommendSettings.Blocklist> {
+                        BlocklistSettingsScreen(PaddingValues())
+                    }
+                    composable<Account.RecommendSettings.BlockedFeedHistory> {
+                        BlockedFeedHistoryScreen()
+                    }
+                    composable<Notification> {
+                        ContentListDetailScreen(
+                            innerPadding = innerPadding,
+                            onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
+                        ) { _, _ ->
+                            NotificationScreen(
+                                innerPadding = innerPadding,
+                            )
+                        }
+                    }
+                    composable<Notification.NotificationSettings> {
+                        NotificationSettingsScreen(PaddingValues())
+                    }
+                    composable<SentenceSimilarityTest> {
+                        SentenceSimilarityTestScreen(PaddingValues())
+                    }
+                    composable<Account.AppearanceSettings> {
+                        val args = it.toRoute<Account.AppearanceSettings>()
+                        AppearanceSettingsScreen(
+                            innerPadding,
+                            setting = args.setting,
+                            onExit = reloadBottomBarPreferences,
+                        )
+                    }
+                    composable<Account.RecommendSettings> {
+                        val args = it.toRoute<Account.RecommendSettings>()
+                        ContentFilterSettingsScreen(
+                            innerPadding,
+                            setting = args.setting,
+                        )
+                    }
+                    composable<Account.SystemAndUpdateSettings> {
+                        SystemAndUpdateSettingsScreen(PaddingValues())
+                    }
+                    composable<Account.DeveloperSettings> {
+                        DeveloperSettingsScreen(PaddingValues())
+                    }
+                    composable<Account.DeveloperSettings.ColorScheme> {
+                        ColorSchemeScreen(PaddingValues())
+                    }
                 }
             }
         }

@@ -41,6 +41,7 @@ fun CollectionScreen(
     val viewModel = viewModel {
         CollectionsViewModel(urlToken)
     }
+    val horizontalPadding = LocalCardHorizontalPadding.current
     val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
@@ -68,7 +69,7 @@ fun CollectionScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(innerPadding),
             footer = ProgressIndicatorFooter,
         ) { collection ->
             Card(

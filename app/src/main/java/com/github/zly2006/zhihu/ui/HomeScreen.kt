@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -165,7 +166,11 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+fun HomeScreen(
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
+) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -369,11 +374,11 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                     }
                 }
             } else {
-                Surface(shadowElevation = 4.dp) {
+                Surface {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = LocalCardHorizontalPadding.current, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
@@ -408,14 +413,16 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = { navigator.onNavigate(Notification) }) {
-                            BadgedBox(
-                                badge = {
-                                    if (unreadCount > 0) {
-                                        Badge { Text("$unreadCount") }
+                        BadgedBox(
+                            badge = {
+                                if (unreadCount > 0) {
+                                    Badge(modifier = Modifier.offset(x = (-8).dp, y = 8.dp)) {
+                                        Text("$unreadCount")
                                     }
-                                },
-                            ) {
+                                }
+                            },
+                        ) {
+                            IconButton(onClick = { navigator.onNavigate(Notification) }) {
                                 Icon(
                                     Icons.Default.Notifications,
                                     contentDescription = "通知",
@@ -512,6 +519,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         is Feed.AnswerTarget -> target.thumbnail
                         else -> null
                     },
+                    selected = item.navDestination.matchesContentSelection(selectionState),
                     onLike = {
                         if (localHomeViewModel != null && it.localContentId != null) {
                             localHomeViewModel.onLocalItemFeedback(context, it, 1.0)

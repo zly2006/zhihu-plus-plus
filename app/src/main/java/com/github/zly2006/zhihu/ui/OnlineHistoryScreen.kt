@@ -45,7 +45,10 @@ import kotlinx.serialization.json.put
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OnlineHistoryScreen(innerPadding: PaddingValues) {
+fun OnlineHistoryScreen(
+    innerPadding: PaddingValues,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
+) {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
     val context = LocalContext.current
@@ -140,6 +143,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
             ) { item ->
                 FeedCard(
                     item,
+                    selected = item.navDestination.matchesContentSelection(selectionState),
                 )
             }
         }
