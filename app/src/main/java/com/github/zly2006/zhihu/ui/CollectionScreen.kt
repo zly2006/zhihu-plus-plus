@@ -51,7 +51,7 @@ fun CollectionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding),
+        modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
         topBar = {
             TopAppBar(
                 title = { Text("我的收藏夹") },

@@ -264,11 +264,19 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
 
                 isPop && !isEnter -> {
-                    return slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                    return if (useVerticalAnimation) {
+                        slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                    } else {
+                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                    }
                 }
 
                 !isPop && isEnter -> {
-                    return slideInHorizontally(tween(300)) { it }
+                    return if (useVerticalAnimation) {
+                        slideInVertically(tween(300)) { it }
+                    } else {
+                        slideInHorizontally(tween(300)) { it }
+                    }
                 }
 
                 !isPop && !isEnter -> {
