@@ -122,7 +122,7 @@ fun SystemAndUpdateSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .focusable()    // 避免自动选中 Github Token 输入框
+                .focusable() // 避免自动选中 Github Token 输入框
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
