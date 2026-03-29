@@ -26,7 +26,7 @@ import kotlinx.parcelize.Parcelize
 private val SettingsListDetailBackBehavior = BackNavigationBehavior.PopUntilContentChange
 
 @Parcelize
-private data class SettingsPaneDestination(
+internal data class SettingsPaneDestination(
     val type: Type,
     val setting: String = "",
 ) : Parcelable {
@@ -92,10 +92,11 @@ fun SettingsListDetailScreen(
             )
         },
         onSinglePaneDetailChanged = onSinglePaneDetailChanged,
-        listPane = {
+        listPane = { _, selectionState ->
             AccountSettingScreen(
                 innerPadding = innerPadding,
                 unreadCount = unreadCount,
+                selectedSettingType = (selectionState as? ListDetailSelectionState.ShowSelection)?.content?.type?.name,
             )
         },
         detailPane = { paneDestination, _ ->

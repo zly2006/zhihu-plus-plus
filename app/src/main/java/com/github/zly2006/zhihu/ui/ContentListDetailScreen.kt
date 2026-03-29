@@ -41,7 +41,7 @@ data class ContentPaneDestination(
     }
 }
 
-private fun NavDestination.toContentPaneDestination(): ContentPaneDestination? = when (this) {
+internal fun NavDestination.toContentPaneDestination(): ContentPaneDestination? = when (this) {
     is Article -> ContentPaneDestination(
         type = if (type == ArticleType.Answer) ContentPaneDestination.Type.Answer else ContentPaneDestination.Type.Article,
         id = id.toString(),
@@ -70,6 +70,11 @@ private fun NavDestination.toContentPaneDestination(): ContentPaneDestination? =
 
     else -> null
 }
+
+internal fun NavDestination?.matchesContentSelection(
+    selectionState: ListDetailSelectionState<ContentPaneDestination>,
+): Boolean = this?.toContentPaneDestination() ==
+    (selectionState as? ListDetailSelectionState.ShowSelection)?.content
 
 private fun ContentPaneDestination.toNavDestination(): NavDestination? = when (type) {
     ContentPaneDestination.Type.Answer -> Article(
@@ -104,7 +109,7 @@ private fun ContentPaneDestination.toNavDestination(): NavDestination? = when (t
 fun ContentListDetailScreen(
     innerPadding: PaddingValues,
     onSinglePaneDetailChanged: (Boolean) -> Unit = {},
-    listPane: @Composable (Navigator) -> Unit,
+    listPane: @Composable (Navigator, ListDetailSelectionState<ContentPaneDestination>) -> Unit,
 ) {
     val activity = androidx.activity.compose.LocalActivity.current as MainActivity
     BaseListDetailScreen(
@@ -117,9 +122,9 @@ fun ContentListDetailScreen(
             )
         },
         onSinglePaneDetailChanged = onSinglePaneDetailChanged,
-        listPane = {
+        listPane = { navigator, selectionState ->
             CompositionLocalProvider(LocalCardHorizontalPadding provides adaptiveListCardHorizontalPadding()) {
-                listPane(it)
+                listPane(navigator, selectionState)
             }
         },
         detailPane = { paneDestination, paneNavigator ->

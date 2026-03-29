@@ -80,6 +80,7 @@ private data class HotSearchItem(
 fun SearchScreen(
     innerPadding: PaddingValues,
     search: Search,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
@@ -316,7 +317,10 @@ fun SearchScreen(
                         },
                         footer = ProgressIndicatorFooter,
                     ) { item ->
-                        FeedCard(item)
+                        FeedCard(
+                            item,
+                            selected = item.navDestination.matchesContentSelection(selectionState),
+                        )
                     }
 
                     val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }

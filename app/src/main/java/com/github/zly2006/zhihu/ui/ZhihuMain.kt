@@ -475,10 +475,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             HomeScreen(
                                 scrollToTopTrigger = scrollToTopTrigger,
                                 innerPadding = innerPadding,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -486,9 +487,13 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             val question: Question = navEntry.toRoute()
-                            QuestionScreen(question, PaddingValues())
+                            QuestionScreen(
+                                question = question,
+                                innerPadding = PaddingValues(),
+                                selectionState = selectionState,
+                            )
                         }
                     }
                     composable<Article>(
@@ -540,9 +545,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             HotListScreen(
                                 innerPadding = innerPadding,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -550,10 +556,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             FollowScreen(
                                 scrollToTopTrigger = scrollToTopTrigger,
                                 innerPadding = innerPadding,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -561,7 +568,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, _ ->
                             DailyScreen(
                                 innerPadding = innerPadding,
                             )
@@ -571,9 +578,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             HistoryScreen(
                                 innerPadding,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -581,9 +589,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             OnlineHistoryScreen(
                                 innerPadding = innerPadding,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -599,10 +608,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             SearchScreen(
                                 innerPadding = innerPadding,
                                 search = search,
+                                selectionState = selectionState,
                             )
                         }
                     }
@@ -610,7 +620,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, _ ->
                             val data: Collections = navEntry.toRoute()
                             CollectionScreen(data.userToken, innerPadding)
                         }
@@ -619,16 +629,20 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, selectionState ->
                             val content: CollectionContent = navEntry.toRoute()
-                            CollectionContentScreen(content.collectionId, innerPadding)
+                            CollectionContentScreen(
+                                collectionId = content.collectionId,
+                                innerPadding = innerPadding,
+                                selectionState = selectionState,
+                            )
                         }
                     }
                     composable<Person> { navEntry ->
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, _ ->
                             val person: Person = navEntry.toRoute()
                             PeopleScreen(
                                 innerPadding,
@@ -650,7 +664,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                         ContentListDetailScreen(
                             innerPadding = innerPadding,
                             onSinglePaneDetailChanged = { isSinglePaneListDetailShowingDetail = it },
-                        ) {
+                        ) { _, _ ->
                             NotificationScreen(
                                 innerPadding = innerPadding,
                             )

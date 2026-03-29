@@ -166,7 +166,11 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+fun HomeScreen(
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
+) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {
@@ -515,6 +519,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         is Feed.AnswerTarget -> target.thumbnail
                         else -> null
                     },
+                    selected = item.navDestination.matchesContentSelection(selectionState),
                     onLike = {
                         if (localHomeViewModel != null && it.localContentId != null) {
                             localHomeViewModel.onLocalItemFeedback(context, it, 1.0)

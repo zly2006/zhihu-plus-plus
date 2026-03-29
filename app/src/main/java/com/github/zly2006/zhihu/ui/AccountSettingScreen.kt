@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -98,6 +99,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
     unreadCount: Int = 0,
+    selectedSettingType: String? = null,
     onDismissRequest: () -> Unit = {},
 ) {
     val navigator = LocalNavigator.current
@@ -130,6 +132,21 @@ fun AccountSettingScreen(
         }
     }
     val data by AccountData.asState()
+
+    fun isSelected(type: SettingsPaneDestination.Type) =
+        selectedSettingType == type.name
+    val defaultColors = CardColors(
+        containerColor = MaterialTheme.colorScheme.surfaceBright,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        disabledContainerColor = MaterialTheme.colorScheme.surfaceBright,
+        disabledContentColor = MaterialTheme.colorScheme.outlineVariant,
+    )
+    val selectedColors = CardColors(
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 
     Scaffold(
         modifier = Modifier
@@ -359,6 +376,7 @@ fun AccountSettingScreen(
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
+                    colors = if (isSelected(SettingsPaneDestination.Type.Appearance)) selectedColors else defaultColors,
                 )
 
                 SettingItem(
@@ -366,6 +384,7 @@ fun AccountSettingScreen(
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
+                    colors = if (isSelected(SettingsPaneDestination.Type.Recommend)) selectedColors else defaultColors,
                 )
 
                 SettingItem(
@@ -373,6 +392,7 @@ fun AccountSettingScreen(
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
+                    colors = if (isSelected(SettingsPaneDestination.Type.SystemAndUpdate)) selectedColors else defaultColors,
                 )
 
                 AnimatedVisibility(isDeveloper) {
@@ -380,6 +400,7 @@ fun AccountSettingScreen(
                         title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
+                        colors = if (isSelected(SettingsPaneDestination.Type.Developer)) selectedColors else defaultColors,
                     )
                 }
             }

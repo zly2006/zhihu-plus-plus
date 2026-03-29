@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -74,6 +77,22 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+private fun Modifier.selectedListItemContainer(
+    selected: Boolean,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    unselectedColor: Color? = null,
+): Modifier = composed {
+    fillMaxWidth()
+        .clip(shape)
+        .background(
+            if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+            } else {
+                unselectedColor ?: MaterialTheme.colorScheme.surface
+            },
+        )
+}
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedCard(
@@ -82,6 +101,7 @@ fun FeedCard(
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp? = null,
+    selected: Boolean = false,
     onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
     onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
@@ -132,6 +152,19 @@ fun FeedCard(
             }
         }
     }
+    val selectedCardColors = CardColors(
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    val defaultCardColors = if (duo3CardAppearance) {
+        CardDefaults.cardColors().copy(
+            containerColor = MaterialTheme.colorScheme.surfaceBright,
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
 
     // 动画偏移量
     val animatedOffsetX by animateFloatAsState(
@@ -166,8 +199,11 @@ fun FeedCard(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onClick(item) }
+                    .selectedListItemContainer(
+                        selected = selected,
+                        shape = RoundedCornerShape(20.dp),
+                        unselectedColor = Color.Transparent,
+                    ).clickable { onClick(item) }
                     .padding(horizontal = resolvedHorizontalPadding, vertical = 12.dp),
             ) {
                 FeedCardContent(
@@ -193,13 +229,7 @@ fun FeedCard(
                 .padding(horizontal = resolvedHorizontalPadding, vertical = 8.dp),
         ) {
             Card(
-                colors = if (duo3CardAppearance) {
-                    CardDefaults.cardColors().copy(
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    )
-                } else {
-                    CardDefaults.cardColors()
-                },
+                colors = if (selected) selectedCardColors else defaultCardColors,
                 shape = if (duo3CardAppearance) RoundedCornerShape(24.dp) else CardDefaults.shape,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -250,6 +280,7 @@ fun FeedCard(
                 } else {
                     CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 2.dp)
                 },
+                border = if (selected) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary) else null,
             ) {
                 Column(
                     modifier = if (duo3CardAppearance) {

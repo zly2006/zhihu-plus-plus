@@ -74,6 +74,7 @@ import org.jsoup.Jsoup
 fun QuestionScreen(
     question: Question,
     innerPadding: PaddingValues,
+    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -333,7 +334,10 @@ fun QuestionScreen(
                     }
                 },
             ) { item ->
-                FeedCard(item)
+                FeedCard(
+                    item,
+                    selected = item.navDestination.matchesContentSelection(selectionState),
+                )
             }
         }
     }

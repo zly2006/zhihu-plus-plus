@@ -34,6 +34,14 @@ import com.github.zly2006.zhihu.Navigator
 import com.github.zly2006.zhihu.ui.subscreens.LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY
 import kotlinx.coroutines.launch
 
+sealed interface ListDetailSelectionState<out T> {
+    data object NoSelection : ListDetailSelectionState<Nothing>
+
+    data class ShowSelection<T>(
+        val content: T,
+    ) : ListDetailSelectionState<T>
+}
+
 @Composable
 fun ListDetailEmptyPane(
     text: String,
@@ -63,7 +71,7 @@ fun <T : Parcelable> BaseListDetailScreen(
     backBehavior: BackNavigationBehavior = BackNavigationBehavior.PopUntilContentChange,
     toPaneDestination: (NavDestination) -> T?,
     emptyPane: @Composable () -> Unit,
-    listPane: @Composable (Navigator) -> Unit,
+    listPane: @Composable (Navigator, ListDetailSelectionState<T>) -> Unit,
     detailPane: @Composable (T, ThreePaneScaffoldNavigator<T>) -> Unit,
     onSinglePaneDetailChanged: (Boolean) -> Unit = {},
     paneContainer: @Composable (@Composable () -> Unit) -> Unit = { content -> content() },
@@ -86,6 +94,9 @@ fun <T : Parcelable> BaseListDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val rootNavigator = LocalNavigator.current
     val detailDestination = paneNavigator.currentDestination?.contentKey
+    val selectionState = detailDestination?.let {
+        ListDetailSelectionState.ShowSelection(it)
+    } ?: ListDetailSelectionState.NoSelection
     val isSinglePane = scaffoldDirective.maxHorizontalPartitions == 1
 
     LaunchedEffect(isSinglePane, detailDestination) {
@@ -130,7 +141,7 @@ fun <T : Parcelable> BaseListDetailScreen(
             AnimatedPane {
                 paneContainer {
                     CompositionLocalProvider(LocalNavigator provides listPaneNavigator) {
-                        listPane(listPaneNavigator)
+                        listPane(listPaneNavigator, selectionState)
                     }
                 }
             }
