@@ -301,7 +301,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
-                            .padding(16.dp, 8.dp, 16.dp, 0.dp),
+                            .padding(LocalCardHorizontalPadding.current, 8.dp, LocalCardHorizontalPadding.current, 0.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
@@ -438,7 +438,6 @@ fun HomeScreen(
         if (duo3HomeAccount && showAccountBottomSheet) {
             MyModalBottomSheet(
                 onDismissRequest = { showAccountBottomSheet = false },
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
                 AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),

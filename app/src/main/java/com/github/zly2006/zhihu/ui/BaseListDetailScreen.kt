@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.os.Parcelable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,9 +53,10 @@ fun ListDetailEmptyPane(
     modifier: Modifier = Modifier,
     iconTint: Color = MaterialTheme.colorScheme.primary,
     textColor: Color = Color.Gray,
+    containerColor: Color = MaterialTheme.colorScheme.background,
 ) {
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().background(containerColor),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

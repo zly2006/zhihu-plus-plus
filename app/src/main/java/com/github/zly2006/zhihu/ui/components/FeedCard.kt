@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -228,7 +229,7 @@ fun FeedCard(
                 modifier = Modifier
                     .selectedListItemContainer(
                         selected = selected,
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RectangleShape,
                         unselectedColor = Color.Transparent,
                     ).clickable { onClick(item) }
                     .padding(horizontal = resolvedHorizontalPadding, vertical = 12.dp),

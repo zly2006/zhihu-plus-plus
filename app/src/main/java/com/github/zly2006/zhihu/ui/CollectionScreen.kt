@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -51,7 +50,6 @@ fun CollectionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
         topBar = {
             TopAppBar(
                 title = { Text("我的收藏夹") },
@@ -60,16 +58,16 @@ fun CollectionScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                windowInsets = WindowInsets(0),
             )
         },
-    ) { innerPadding ->
+    ) { contentPadding ->
         PaginatedList(
             items = viewModel.allData,
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(innerPadding),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(contentPadding),
+            contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
             footer = ProgressIndicatorFooter,
         ) { collection ->
             Card(
