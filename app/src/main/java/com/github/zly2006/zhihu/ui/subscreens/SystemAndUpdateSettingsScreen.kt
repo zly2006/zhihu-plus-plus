@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.ui.subscreens
 import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -122,7 +121,6 @@ fun SystemAndUpdateSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .focusable() // 避免自动选中 Github Token 输入框
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),

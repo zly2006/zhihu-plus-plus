@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
@@ -23,9 +24,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
@@ -82,10 +85,10 @@ fun <T : Parcelable> BaseListDetailScreen(
     val listPaneDefaultWidthDp = androidx.compose.runtime.remember {
         prefs.getInt(LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY, 320)
     }
-    val defaultDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo())
-    val scaffoldDirective = defaultDirective.copy(
+    val scaffoldDirective = calculatePaneScaffoldDirective(currentWindowAdaptiveInfo()).copy(
         horizontalPartitionSpacerSize = 0.dp,
         defaultPanePreferredWidth = listPaneDefaultWidthDp.dp,
+        shouldAutoFocusCurrentDestination = false,
     )
     val paneNavigator = rememberListDetailPaneScaffoldNavigator<T>(
         scaffoldDirective = scaffoldDirective,
@@ -156,3 +159,25 @@ fun <T : Parcelable> BaseListDetailScreen(
         },
     )
 }
+
+// 如果新版本补充了 shouldAutoFocusCurrentDestination 这个参数，就可以删掉这个函数了
+private fun PaneScaffoldDirective.copy(
+    maxHorizontalPartitions: Int = this.maxHorizontalPartitions,
+    horizontalPartitionSpacerSize: Dp = this.horizontalPartitionSpacerSize,
+    maxVerticalPartitions: Int = this.maxVerticalPartitions,
+    verticalPartitionSpacerSize: Dp = this.verticalPartitionSpacerSize,
+    defaultPanePreferredWidth: Dp = this.defaultPanePreferredWidth,
+    excludedBounds: List<Rect> = this.excludedBounds,
+    defaultPanePreferredHeight: Dp = this.defaultPanePreferredHeight,
+    shouldAutoFocusCurrentDestination: Boolean = this.shouldAutoFocusCurrentDestination,
+): PaneScaffoldDirective =
+    PaneScaffoldDirective(
+        maxHorizontalPartitions = maxHorizontalPartitions,
+        horizontalPartitionSpacerSize = horizontalPartitionSpacerSize,
+        maxVerticalPartitions = maxVerticalPartitions,
+        verticalPartitionSpacerSize = verticalPartitionSpacerSize,
+        defaultPanePreferredWidth = defaultPanePreferredWidth,
+        defaultPanePreferredHeight = defaultPanePreferredHeight,
+        excludedBounds = excludedBounds,
+        shouldAutoFocusCurrentDestination = shouldAutoFocusCurrentDestination,
+    )

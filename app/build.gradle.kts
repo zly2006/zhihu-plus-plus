@@ -152,7 +152,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 val ktor = "3.4.1"
 val coil = "3.4.0"
-val composeAdaptive = "1.2.0"
+val composeAdaptive = "1.3.0-alpha09"
 val composeNavigationSuite = "1.4.0"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
@@ -186,7 +186,7 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.navigation:navigation-ui-ktx:2.9.2")
     implementation("androidx.webkit:webkit:1.14.0")
-    implementation("androidx.activity:activity-compose:1.12.1")
+    implementation("androidx.activity:activity-compose:1.13.0")
     implementation(platform("androidx.compose:compose-bom:2025.12.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
