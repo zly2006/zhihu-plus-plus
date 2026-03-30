@@ -605,7 +605,7 @@ fun CommentScreen(
                                                             maxHeight = contentHeight,
                                                         ),
                                                     )
-                                                    layout(placeable.width, density.run { 24.dp.roundToPx() }) {
+                                                    layout(placeable.width, 24.dp.roundToPx()) {
                                                         placeable.placeRelative(0, 0)
                                                     }
                                                 },
