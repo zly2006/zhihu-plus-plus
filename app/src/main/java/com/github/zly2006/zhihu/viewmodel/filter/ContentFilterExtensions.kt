@@ -247,6 +247,10 @@ object ContentFilterExtensions {
                     else -> DataHolder.DummyContent
                 }
 
+                if (rawContent is DataHolder.DummyContent) {
+                    Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}' with navDestination '${item.navDestination}'. Using dummy content for filtering.")
+                }
+
                 itemToFilterableMap[item] = item.toFilterableContent(identity, rawContent)
             }
 
@@ -494,18 +498,12 @@ object ContentFilterExtensions {
             else -> null
         } ?: content ?: summary,
         authorName = authorName,
-        authorId = feed
-            ?.target
-            ?.author
-            ?.id,
+        authorId = rawContent.author?.id,
         contentId = identity.id,
         contentType = identity.type,
         raw = rawContent,
-        isFollowing = feed
-            ?.target
-            ?.author
-            ?.isFollowing ?: false,
-        questionId = (feed?.target as? Feed.AnswerTarget)?.question?.id,
+        isFollowing = rawContent.author?.isFollowing ?: false,
+        questionId = (rawContent as? DataHolder.Answer)?.question?.id,
         url = feed?.target?.url,
         feedJson = feed?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
         navDestinationJson = navDestination?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
@@ -561,6 +559,16 @@ object ContentType {
     const val VIDEO = "video"
     const val PIN = "pin"
 }
+
+private val DataHolder.Content.author: DataHolder.Author?
+    get() = when (this) {
+        is DataHolder.Answer -> this.author
+        is DataHolder.Article -> this.author
+        is DataHolder.Pin -> this.author
+        is DataHolder.Question -> this.author
+//        is DataHolder.Comment -> this.author
+        else -> null
+    }
 
 /** 用于序列化屏蔽记录的 Json 实例 */
 internal val recordJson = Json {
