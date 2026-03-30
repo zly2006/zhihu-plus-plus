@@ -57,6 +57,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,6 +109,7 @@ import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
@@ -586,6 +588,60 @@ fun CommentScreen(
                                                         "暂无回复",
                                                     )
                                                 }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    item("sorting") {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Absolute.Right,
+                                        ) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                SuggestionChip(
+                                                    label = {
+                                                        Text(
+                                                            "最热",
+                                                            color = if (viewModel.sortOrder == CommentSortOrder.SCORE) {
+                                                                MaterialTheme.colorScheme.primary
+                                                            } else {
+                                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                                            },
+                                                            fontWeight = if (viewModel.sortOrder == CommentSortOrder.SCORE) {
+                                                                FontWeight.SemiBold
+                                                            } else {
+                                                                FontWeight.Normal
+                                                            },
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        viewModel.changeSortOrder(CommentSortOrder.SCORE, context)
+                                                    },
+                                                )
+                                                SuggestionChip(
+                                                    label = {
+                                                        Text(
+                                                            "最新",
+                                                            color = if (viewModel.sortOrder == CommentSortOrder.TIME) {
+                                                                MaterialTheme.colorScheme.primary
+                                                            } else {
+                                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                                            },
+                                                            fontWeight = if (viewModel.sortOrder == CommentSortOrder.TIME) {
+                                                                FontWeight.SemiBold
+                                                            } else {
+                                                                FontWeight.Normal
+                                                            },
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        viewModel.changeSortOrder(CommentSortOrder.TIME, context)
+                                                    },
+                                                )
                                             }
                                         }
                                     }
