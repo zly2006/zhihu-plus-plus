@@ -394,7 +394,7 @@ fun PeopleScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel(key = person.toString()) { PersonViewModel(person) }
+    val viewModel = viewModel(key = "person-${person.id}") { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
 
     val titles = listOf(
