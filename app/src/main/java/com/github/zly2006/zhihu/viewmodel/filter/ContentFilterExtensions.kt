@@ -179,7 +179,7 @@ object ContentFilterExtensions {
                     ?.author
                     ?.isFollowing ?: false
                 // 手机版特供垃圾，根本没人点赞那种
-                val isLowQualityAndroidFeed = item.details.contains("小时前") || item.details.contains("浏览")
+                val isLowQualityAndroidFeed = item.details.contains("小时前") || item.details.contains("分钟前") || item.details.contains("浏览")
 
                 if (isFollowing || (!isViewed && !isLowQualityAndroidFeed)) {
                     keptItems.add(item)
