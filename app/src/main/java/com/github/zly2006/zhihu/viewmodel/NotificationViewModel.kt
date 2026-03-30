@@ -74,6 +74,10 @@ class NotificationViewModel :
                 markAllAsRead(context)
             }
         }
+        if (NotificationPreferences.getAutoMarkAsReadEnabled(context)) {
+            markAllAsRead(context)
+            unreadCount = 0
+        }
     }
 
     /**
