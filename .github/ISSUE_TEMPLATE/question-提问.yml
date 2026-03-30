@@ -13,7 +13,7 @@ body:
     attributes:
       label: 你的问题
       description: 请直接写出你想问的内容。
-      placeholder: ""
+      placeholder: 务必明确、清晰、简要。
     validations:
       required: true
 
@@ -22,7 +22,7 @@ body:
     attributes:
       label: 背景信息
       description: 说明你是在什么页面、什么操作下遇到这个疑问。
-      placeholder: ""
+      placeholder: 务必明确、清晰、简要。
     validations:
       required: true
 
