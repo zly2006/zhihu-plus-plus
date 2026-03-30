@@ -312,6 +312,20 @@ fun SystemAndUpdateSettingsScreen(
                     },
                 )
 
+                var autoCheckUpdates by remember { mutableStateOf(UpdateManager.isAutoCheckEnabled(context)) }
+                SettingItemWithSwitch(
+                    title = { Text("自动检查更新") },
+                    description = { Text("应用启动后后台检查新版本，并在首页显示更新提醒") },
+                    checked = autoCheckUpdates,
+                    onCheckedChange = {
+                        autoCheckUpdates = it
+                        UpdateManager.setAutoCheckEnabled(context, it)
+                        if (!it) {
+                            UpdateManager.updateState.value = UpdateState.NoUpdate
+                        }
+                    },
+                )
+
                 var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
                 SettingItemWithSwitch(
                     title = { Text("检查 Nightly 版本更新") },

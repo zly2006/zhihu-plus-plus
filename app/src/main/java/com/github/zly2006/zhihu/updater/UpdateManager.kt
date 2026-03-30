@@ -21,6 +21,7 @@ import java.io.File
 import java.net.URI
 
 object UpdateManager {
+    private const val AUTO_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
     private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
     private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
@@ -91,18 +92,23 @@ object UpdateManager {
         preferences.edit { putString(PREF_SKIPPED_VERSION, version) }
     }
 
+    fun isAutoCheckEnabled(context: Context): Boolean {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)
+    }
+
+    fun setAutoCheckEnabled(context: Context, enabled: Boolean) {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences.edit { putBoolean(PREF_AUTO_CHECK_UPDATES, enabled) }
+    }
+
     /**
      * 检查是否需要进行自动更新检查（避免频繁检查）
      */
     private fun shouldPerformAutoCheck(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        if (!preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)) return false
-
-        val lastCheck = preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)
-        val now = System.currentTimeMillis()
-        val dayInMillis = 3 * 60 * 60 * 1000L
-
-        return (now - lastCheck) > dayInMillis // 每3h最多检查一次
+        if (!isAutoCheckEnabled(context)) return false
+        return (System.currentTimeMillis() - preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
     }
 
     /**
