@@ -60,7 +60,7 @@ fun CollectionContentScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel { CollectionContentViewModel(collectionId) }
+    val viewModel = viewModel(key = collectionId) { CollectionContentViewModel(collectionId) }
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
