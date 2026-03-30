@@ -34,10 +34,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen(
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
-) {
+fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
@@ -73,7 +70,6 @@ fun HotListScreen(
                 FeedCard(
                     item,
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
-                    selected = item.navDestination.matchesContentSelection(selectionState),
                 )
             }
 

@@ -9,7 +9,6 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,10 +38,6 @@ fun CommentScreenComponent(
     val rootSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val childTarget = activeChildComment?.clickTarget
-
-    LaunchedEffect(content) {
-        activeChildComment = null
-    }
 
     @Composable
     fun DragHandleTitle(text: String) {

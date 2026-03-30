@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +57,6 @@ import java.util.Date
 fun CollectionContentScreen(
     collectionId: String,
     innerPadding: PaddingValues,
-    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -70,7 +70,6 @@ fun CollectionContentScreen(
     } else {
         null
     }
-    val horizontalPadding = LocalCardHorizontalPadding.current
 
     LaunchedEffect(Unit) {
         if (viewModel.allData.isEmpty()) {
@@ -79,6 +78,7 @@ fun CollectionContentScreen(
     }
 
     Scaffold(
+        modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = { Text(viewModel.title) },
@@ -110,6 +110,7 @@ fun CollectionContentScreen(
                         }
                     }
                 },
+                windowInsets = WindowInsets(0),
             )
         },
     ) { innerPadding ->
@@ -136,8 +137,7 @@ fun CollectionContentScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(top = innerPadding.calculateTopPadding()),
-            contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(0) {
@@ -154,7 +154,7 @@ fun CollectionContentScreen(
         ) { item ->
             FeedCard(
                 item,
-                selected = item.navDestination.matchesContentSelection(selectionState),
+                Modifier.fillMaxWidth().padding(vertical = 8.dp),
             ) {
                 val dest = navDestination
                 if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {

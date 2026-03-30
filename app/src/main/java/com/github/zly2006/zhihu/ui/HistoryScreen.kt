@@ -16,7 +16,6 @@ import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
 @Composable
 fun HistoryScreen(
     innerPadding: PaddingValues,
-    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val viewModel: HistoryViewModel = viewModel()
@@ -37,7 +36,6 @@ fun HistoryScreen(
         ) { item ->
             FeedCard(
                 item,
-                selected = item.navDestination.matchesContentSelection(selectionState),
             )
         }
     }

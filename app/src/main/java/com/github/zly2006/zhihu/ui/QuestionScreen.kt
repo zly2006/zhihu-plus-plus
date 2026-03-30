@@ -74,7 +74,6 @@ import org.jsoup.Jsoup
 fun QuestionScreen(
     question: Question,
     innerPadding: PaddingValues,
-    selectionState: ListDetailSelectionState<ContentPaneDestination> = ListDetailSelectionState.NoSelection,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -131,7 +130,7 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
+        modifier = Modifier.fillMaxSize().padding(innerPadding),
         topBar = {
             SelectionContainer(
                 modifier = Modifier.fuckHonorService(),
@@ -153,7 +152,6 @@ fun QuestionScreen(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
                 isEnd = { viewModel.isEnd },
-                contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
                 modifier = Modifier.padding(innerPadding),
                 footer = ProgressIndicatorFooter,
                 topContent = {
@@ -161,7 +159,7 @@ fun QuestionScreen(
                         val handle = LocalPinnableContainer.current?.pin()
                         if (questionContent.isNotEmpty()) {
                             if (preferences.getBoolean("articleUseWebview", true)) {
-                                WebviewComp(modifier = Modifier.padding(horizontal = LocalCardHorizontalPadding.current)) {
+                                WebviewComp {
                                     it.loadZhihu(
                                         "https://www.zhihu.com/question/${question.questionId}",
                                         Jsoup.parse(questionContent),
@@ -189,7 +187,7 @@ fun QuestionScreen(
                     item(2) {
                         val handle = LocalPinnableContainer.current?.pin()
                         FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -271,7 +269,7 @@ fun QuestionScreen(
                             }
                         }
                         FlowRow(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -334,10 +332,7 @@ fun QuestionScreen(
                     }
                 },
             ) { item ->
-                FeedCard(
-                    item,
-                    selected = item.navDestination.matchesContentSelection(selectionState),
-                )
+                FeedCard(item)
             }
         }
     }

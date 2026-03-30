@@ -132,9 +132,6 @@ class ArticleViewModel(
     var rememberedScrollY = MutableLiveData(0)
     var rememberedScrollYSync = true
 
-    // ArticleScreen 来更新，从而保证只刷新一次
-    var lastArticleId by mutableLongStateOf(-1)
-
     fun toCachedContent(sourceLabel: String = "此问题"): CachedAnswerContent = CachedAnswerContent(
         article = article,
         title = title,

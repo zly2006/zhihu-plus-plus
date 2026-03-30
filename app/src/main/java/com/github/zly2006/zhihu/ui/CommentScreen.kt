@@ -91,14 +91,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.CommentHolder
 import com.github.zly2006.zhihu.DummyLocalNavigator
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
-import com.github.zly2006.zhihu.Pin
-import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
@@ -347,21 +344,19 @@ fun CommentScreen(
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
-    val currentContent = content()
-    val commentViewModelKey = remember(currentContent) { currentContent.commentViewModelKey() }
 
     // 根据内容类型选择合适的ViewModel
-    val viewModel: BaseCommentViewModel = when (val content = currentContent) {
+    val viewModel: BaseCommentViewModel = when (val content = content()) {
         is CommentHolder -> remember {
             // 子评论不进行状态保存
             ChildCommentViewModel(content)
         }
 
-        else -> viewModel(key = commentViewModelKey) {
+        else -> viewModel {
             RootCommentViewModel(content)
         }
     }
-    val rootContent = when (val content = currentContent) {
+    val rootContent = when (val content = content()) {
         is CommentHolder -> content.article
         else -> content
     }
@@ -391,8 +386,8 @@ fun CommentScreen(
     }
 
     // 初始加载评论
-    LaunchedEffect(currentContent, viewModel) {
-        if (viewModel.article != currentContent) {
+    LaunchedEffect(content) {
+        if (viewModel.article != content()) {
             error("Internal Error: Detected content mismatch")
         }
         if (viewModel.errorMessage == null) {
@@ -407,7 +402,7 @@ fun CommentScreen(
 
         isSending = true
         viewModel.submitComment(
-            content = currentContent,
+            content = content(),
             commentText = commentInput,
             httpClient = httpClient,
             context = context,
@@ -825,14 +820,6 @@ fun CommentScreen(
             }
         }
     }
-}
-
-private fun NavDestination.commentViewModelKey(): String = when (this) {
-    is Article -> "article:$type:$id"
-    is Question -> "question:$questionId"
-    is Pin -> "pin:$id"
-    is CommentHolder -> "comment:$commentId:${article.commentViewModelKey()}"
-    else -> "${this::class.qualifiedName}:${hashCode()}"
 }
 
 @OptIn(ExperimentalFoundationApi::class)

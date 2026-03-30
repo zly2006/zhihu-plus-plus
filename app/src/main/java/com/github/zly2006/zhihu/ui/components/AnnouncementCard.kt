@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.ui.LocalCardHorizontalPadding
 
 @Composable
 fun AnnouncementCard(
@@ -53,7 +52,7 @@ fun AnnouncementCard(
     colors: AnnouncementCardColors = AnnouncementCardDefaults.colors(),
 ) {
     AnnouncementCard(
-        modifier.padding(horizontal = LocalCardHorizontalPadding.current, vertical = 8.dp),
+        modifier.padding(16.dp, 8.dp),
         visible,
         title,
         leadingIcon,
