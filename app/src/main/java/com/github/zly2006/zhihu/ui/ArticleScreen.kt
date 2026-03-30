@@ -78,6 +78,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
+import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -113,8 +116,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.Article
 import com.github.zly2006.zhihu.ArticleType
@@ -576,18 +577,17 @@ private fun prepareContentDocument(content: String, context: Context): Document 
         }
     }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 fun ArticleScreen(
     article: Article,
     viewModel: ArticleViewModel,
     // 仅用于master 分支
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    paneNavigator: ThreePaneScaffoldNavigator<ContentPaneDestination>? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
-        ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -837,41 +837,35 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
-            sharedData?.pendingInitialContent = prev
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
-            val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
+            sharedData.pendingInitialContent = prev
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            if (paneNavigator != null) {
+                coroutineScope.launch {
+                    while (paneNavigator.currentDestination?.contentKey?.type == ContentPaneDestination.Type.Answer) {
+                        paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
+                    }
                 }
-                navigator.onNavigate(prev.article)
             }
+            navigator.onNavigate(prev.article)
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val prevCached = sharedData?.navigator?.loadPrevious(context)
                 if (prevCached != null) {
-                    sharedData?.pendingInitialContent = prevCached
-                    val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
+                    sharedData.pendingInitialContent = prevCached
+                    if (paneNavigator != null) {
+                        coroutineScope.launch {
+                            while (paneNavigator.currentDestination?.contentKey?.type == ContentPaneDestination.Type.Answer) {
+                                paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
+                            }
                         }
-                        navigator.onNavigate(prevCached.article)
                     }
+                    navigator.onNavigate(prevCached.article)
                 }
             }
         }
@@ -889,37 +883,31 @@ fun ArticleScreen(
         // 优先使用前向历史
         val historyNext = sharedData?.navigator?.goToNext()
         if (historyNext != null) {
-            sharedData?.pendingInitialContent = historyNext
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
-            val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
+            sharedData.pendingInitialContent = historyNext
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            if (paneNavigator != null) {
+                coroutineScope.launch {
+                    while (paneNavigator.currentDestination?.contentKey?.type == ContentPaneDestination.Type.Answer) {
+                        paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
+                    }
                 }
-                navigator.onNavigate(historyNext.article)
             }
+            navigator.onNavigate(historyNext.article)
         } else {
             // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext(context)
                 if (nextArticle != null) {
-                    val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
+                    if (paneNavigator != null) {
+                        coroutineScope.launch {
+                            while (paneNavigator.currentDestination?.contentKey?.type == ContentPaneDestination.Type.Answer) {
+                                paneNavigator.navigateBack(BackNavigationBehavior.PopLatest)
+                            }
                         }
-                        navigator.onNavigate(nextArticle)
                     }
+                    navigator.onNavigate(nextArticle)
                 }
             }
         }
@@ -982,167 +970,165 @@ fun ArticleScreen(
             },
             bottomBar = {
                 Column {
-                    if (backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity) {
-                        AnimatedVisibility(
-                            visible = showBottomBar,
-                            enter = fadeIn() + expandVertically(
-                                expandFrom = Alignment.Bottom,
-                                initialHeight = { 0 },
-                            ) + slideInVertically { it / 2 },
-                            exit = fadeOut() + shrinkVertically(
-                                shrinkTowards = Alignment.Bottom,
-                                targetHeight = { 0 },
-                            ) + slideOutVertically { it / 2 },
-                            modifier = Modifier.fillMaxWidth(),
+                    AnimatedVisibility(
+                        visible = showBottomBar,
+                        enter = fadeIn() + expandVertically(
+                            expandFrom = Alignment.Bottom,
+                            initialHeight = { 0 },
+                        ) + slideInVertically { it / 2 },
+                        exit = fadeOut() + shrinkVertically(
+                            shrinkTowards = Alignment.Bottom,
+                            targetHeight = { 0 },
+                        ) + slideOutVertically { it / 2 },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .padding(horizontal = 0.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(36.dp)
-                                    .padding(horizontal = 0.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                    .clip(RoundedCornerShape(50))
+                                    .background(
+                                        color = if (viewModel.voteUpState == VoteUpState.Neutral) {
+                                            voteUpNeutralContent().copy(alpha = 0.1f)
+                                        } else {
+                                            voteUpNeutralContent()
+                                        },
+                                    ),
+                                horizontalArrangement = Arrangement.Start,
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(50))
-                                        .background(
-                                            color = if (viewModel.voteUpState == VoteUpState.Neutral) {
-                                                voteUpNeutralContent().copy(alpha = 0.1f)
-                                            } else {
-                                                voteUpNeutralContent()
-                                            },
-                                        ),
-                                    horizontalArrangement = Arrangement.Start,
-                                ) {
-                                    when (viewModel.voteUpState) {
-                                        VoteUpState.Neutral -> {
-                                            Button(
-                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
-                                                colors = voteUpNeutralButtonColors(),
-                                                shape = RectangleShape,
-                                                contentPadding = PaddingValues(horizontal = 0.dp),
-                                            ) {
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(text = viewModel.voteUpCount.toString())
-                                            }
-                                            Button(
-                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
-                                                colors = voteUpNeutralButtonColors(),
-                                                shape = RectangleShape,
-                                                modifier = Modifier
-                                                    .height(ButtonDefaults.MinHeight)
-                                                    .width(ButtonDefaults.MinHeight),
-                                                contentPadding = PaddingValues(horizontal = 0.dp),
-                                            ) {
-                                                Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
-                                            }
+                                when (viewModel.voteUpState) {
+                                    VoteUpState.Neutral -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
                                         }
-
-                                        VoteUpState.Up -> {
-                                            Button(
-                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                                colors = voteUpActiveButtonColors(),
-                                                shape = RectangleShape,
-                                                contentPadding = PaddingValues(horizontal = 0.dp),
-                                            ) {
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(text = viewModel.voteUpCount.toString())
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                            }
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Down) },
+                                            colors = voteUpNeutralButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier
+                                                .height(ButtonDefaults.MinHeight)
+                                                .width(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
                                         }
+                                    }
 
-                                        VoteUpState.Down -> {
-                                            Button(
-                                                onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
-                                                colors = voteUpActiveButtonColors(),
-                                                shape = RectangleShape,
-                                                modifier = Modifier.height(ButtonDefaults.MinHeight),
-                                                contentPadding = PaddingValues(horizontal = 0.dp),
-                                            ) {
-                                                Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("反对")
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                            }
+                                    VoteUpState.Up -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(text = viewModel.voteUpCount.toString())
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                        }
+                                    }
+
+                                    VoteUpState.Down -> {
+                                        Button(
+                                            onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                            colors = voteUpActiveButtonColors(),
+                                            shape = RectangleShape,
+                                            modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                            contentPadding = PaddingValues(horizontal = 0.dp),
+                                        ) {
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("反对")
+                                            Spacer(modifier = Modifier.width(8.dp))
                                         }
                                     }
                                 }
+                            }
 
-                                Row(
-                                    horizontalArrangement = Arrangement.End,
+                            Row(
+                                horizontalArrangement = Arrangement.End,
+                            ) {
+                                IconButton(
+                                    onClick = { showCollectionDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
                                 ) {
-                                    IconButton(
-                                        onClick = { showCollectionDialog = true },
-                                        colors = IconButtonDefaults.iconButtonColors(
-                                            containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                                            contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                                        ),
-                                    ) {
-                                        Icon(
-                                            if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                            contentDescription = "收藏",
-                                        )
-                                    }
+                                    Icon(
+                                        if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                        contentDescription = "收藏",
+                                    )
+                                }
 
-                                    if ((context as? MainActivity)?.ttsState?.isSpeaking == true) {
-                                        IconButton(
-                                            onClick = {
-                                                context.stopSpeaking()
-                                                Toast
-                                                    .makeText(
-                                                        context,
-                                                        "已停止朗读",
-                                                        Toast.LENGTH_SHORT,
-                                                    ).show()
-                                            },
-                                            enabled = (
-                                                context.ttsState !in listOf(
-                                                    TtsState.Error,
-                                                    TtsState.Uninitialized,
-                                                    TtsState.Initializing,
-                                                )
-                                            ),
-                                            colors = IconButtonDefaults.iconButtonColors(
-                                                containerColor = Color(0xFF4CAF50),
-                                                contentColor = Color.White,
-                                            ),
-                                        ) {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.VolumeOff,
-                                                contentDescription = "停止朗读",
+                                if ((context as? MainActivity)?.ttsState?.isSpeaking == true) {
+                                    IconButton(
+                                        onClick = {
+                                            context.stopSpeaking()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    "已停止朗读",
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                        },
+                                        enabled = (
+                                            context.ttsState !in listOf(
+                                                TtsState.Error,
+                                                TtsState.Uninitialized,
+                                                TtsState.Initializing,
                                             )
-                                        }
-                                    }
-
-                                    Button(
-                                        onClick = { showComments = true },
-                                        contentPadding = PaddingValues(horizontal = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                         ),
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(text = "${viewModel.commentCount}")
-                                    }
-
-                                    IconButton(
-                                        onClick = { showActionsMenu = true },
                                         colors = IconButtonDefaults.iconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            containerColor = Color(0xFF4CAF50),
+                                            contentColor = Color.White,
                                         ),
                                     ) {
                                         Icon(
-                                            Icons.Filled.MoreVert,
-                                            contentDescription = "更多选项",
+                                            Icons.AutoMirrored.Filled.VolumeOff,
+                                            contentDescription = "停止朗读",
                                         )
                                     }
+                                }
+
+                                Button(
+                                    onClick = { showComments = true },
+                                    contentPadding = PaddingValues(horizontal = 8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = "${viewModel.commentCount}")
+                                }
+
+                                IconButton(
+                                    onClick = { showActionsMenu = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    ),
+                                ) {
+                                    Icon(
+                                        Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项",
+                                    )
                                 }
                             }
                         }
@@ -1309,6 +1295,13 @@ fun ArticleScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        LaunchedEffect(article.id) {
+            if (viewModel.lastArticleId != article.id) {
+                viewModel.lastArticleId = article.id
+                scrollBehavior.state.heightOffset = 0f
+                scrollBehavior.state.contentOffset = 0f
+            }
+        }
         // 不受到是否收起影响，在topbar最大时是否可以滚动？
         var scrollStateMaxValue by remember { mutableStateOf(0) }
         LaunchedEffect(scrollState.maxValue) {
@@ -1335,8 +1328,7 @@ fun ArticleScreen(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
-                                    val activity = context as? MainActivity
-                                    activity?.navController?.popBackStack()
+                                    navigator.onNavigateBack()
                                 },
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -1438,9 +1430,6 @@ fun ArticleScreen(
                 }
             },
             bottomBar = {
-                // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
-                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
-
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable
                 fun ActionBarContent() {
@@ -1729,17 +1718,15 @@ fun ArticleScreen(
                     }
                 }
 
-                if (showBottomBarCondition) {
-                    Box(
-                        modifier = Modifier
-                            .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
-                            .graphicsLayer {
-                                translationY = bottomBarOffset.value
-                                alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
-                            },
-                    ) {
-                        ActionBarContent()
-                    }
+                Box(
+                    modifier = Modifier
+                        .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
+                        .graphicsLayer {
+                            translationY = bottomBarOffset.value
+                            alpha = if (bottomBarHeightPx > 0f) 1f - (bottomBarOffset.value / bottomBarHeightPx) else 1f
+                        },
+                ) {
+                    ActionBarContent()
                 }
             },
         ) { innerPadding ->
@@ -2211,6 +2198,7 @@ private fun CachedAnswerPreview(
     }
 }
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Preview
 @Composable
 fun ArticleScreenPreview() {
@@ -2240,6 +2228,7 @@ fun ArticleScreenPreview() {
     )
 }
 
+@OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Preview
 @Composable
 fun ArticleActionsMenuPreview() {

@@ -89,6 +89,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
+const val LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY = "listPaneDefaultWidthDp"
 
 private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
     Home.name to Home,
@@ -242,7 +243,6 @@ fun AppearanceSettingsScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
                 title = { Text("外观与阅读体验") },
@@ -259,7 +259,6 @@ fun AppearanceSettingsScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors().copy(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
             )
@@ -1025,6 +1024,32 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         enablePredictiveBack.value = it
                         preferences.edit { putBoolean("enable_predictive_back", it) }
+                    },
+                )
+
+                val listPaneDefaultWidthDp = remember {
+                    mutableIntStateOf(preferences.getInt(LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY, 320))
+                }
+                SettingItem(
+                    title = { Text("双栏列表默认宽度") },
+                    description = { Text("统一控制首页、搜索、设置等双栏布局里左侧列表的默认宽度 (${listPaneDefaultWidthDp.intValue}dp)") },
+                    bottomAction = {
+                        Slider(
+                            value = listPaneDefaultWidthDp.intValue.toFloat(),
+                            onValueChange = { value ->
+                                val snappedWidth = (((value.toInt() + 10 - 280) / 20) * 20 + 280).coerceIn(280, 440)
+                                listPaneDefaultWidthDp.intValue = snappedWidth
+                                preferences.edit {
+                                    putInt(
+                                        LIST_PANE_DEFAULT_WIDTH_DP_PREFERENCE_KEY,
+                                        snappedWidth,
+                                    )
+                                }
+                            },
+                            valueRange = 280f..440f,
+                            steps = 7,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
                     },
                 )
             }
