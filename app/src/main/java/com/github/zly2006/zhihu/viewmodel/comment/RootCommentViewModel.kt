@@ -76,9 +76,9 @@ class RootCommentViewModel(
             // 添加排序参数
             val orderParam = when (sortOrder) {
                 CommentSortOrder.SCORE -> "score"
-                CommentSortOrder.TIME -> "time"
+                CommentSortOrder.TIME -> "ts"
             }
-            return "$baseUrl?order=$orderParam"
+            return "$baseUrl?order_by=$orderParam"
         }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
