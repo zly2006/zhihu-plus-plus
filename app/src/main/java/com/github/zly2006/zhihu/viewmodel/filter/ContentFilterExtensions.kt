@@ -9,7 +9,6 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
