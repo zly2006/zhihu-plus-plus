@@ -60,7 +60,7 @@ fun CollectionContentScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel(key = "collection-content-$collectionId") { CollectionContentViewModel(collectionId) }
+    val viewModel = viewModel { CollectionContentViewModel(collectionId) }
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
@@ -136,10 +136,7 @@ fun CollectionContentScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = horizontalPadding)
-                .padding(top = innerPadding.calculateTopPadding()),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(top = innerPadding.calculateTopPadding()),
             contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
             footer = ProgressIndicatorFooter,
             topContent = {

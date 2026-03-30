@@ -79,7 +79,7 @@ fun QuestionScreen(
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val viewModel: QuestionFeedViewModel = viewModel(key = "question-${question.questionId}") {
+    val viewModel: QuestionFeedViewModel = viewModel {
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
@@ -131,9 +131,7 @@ fun QuestionScreen(
     }
 
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = innerPadding.calculateTopPadding()),
+        modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
         topBar = {
             SelectionContainer(
                 modifier = Modifier.fuckHonorService(),
@@ -191,9 +189,7 @@ fun QuestionScreen(
                     item(2) {
                         val handle = LocalPinnableContainer.current?.pin()
                         FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = LocalCardHorizontalPadding.current),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
@@ -275,9 +271,7 @@ fun QuestionScreen(
                             }
                         }
                         FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = LocalCardHorizontalPadding.current),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = LocalCardHorizontalPadding.current),
                             itemVerticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {

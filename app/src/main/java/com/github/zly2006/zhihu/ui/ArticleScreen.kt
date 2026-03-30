@@ -77,7 +77,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
@@ -93,7 +92,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1296,11 +1294,14 @@ fun ArticleScreen(
 
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
-        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-            state = rememberSaveable(inputs = arrayOf(article.id), saver = TopAppBarState.Saver) {
-                TopAppBarState(-Float.MAX_VALUE, 0f, 0f)
-            },
-        )
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+        LaunchedEffect(article.id) {
+            if (viewModel.lastArticleId != article.id) {
+                viewModel.lastArticleId = article.id
+                scrollBehavior.state.heightOffset = 0f
+                scrollBehavior.state.contentOffset = 0f
+            }
+        }
         // 不受到是否收起影响，在topbar最大时是否可以滚动？
         var scrollStateMaxValue by remember { mutableStateOf(0) }
         LaunchedEffect(scrollState.maxValue) {

@@ -37,7 +37,7 @@ fun CollectionScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel(key = "collection-$urlToken") {
+    val viewModel = viewModel {
         CollectionsViewModel(urlToken)
     }
     val horizontalPadding = LocalCardHorizontalPadding.current
@@ -66,17 +66,12 @@ fun CollectionScreen(
             onLoadMore = { viewModel.loadMore(context) },
             isEnd = { viewModel.isEnd },
             listState = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = horizontalPadding)
-                .padding(contentPadding),
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding).padding(contentPadding),
             contentPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding()),
             footer = ProgressIndicatorFooter,
         ) { collection ->
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 elevation = CardDefaults.cardElevation(4.dp),
                 onClick = {
                     navigator.onNavigate(CollectionContent(collection.id))
