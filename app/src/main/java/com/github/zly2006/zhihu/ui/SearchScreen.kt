@@ -85,7 +85,7 @@ fun SearchScreen(
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val viewModel = viewModel { SearchViewModel(search.query) }
+    val viewModel = viewModel(key = "search-${search.query}") { SearchViewModel(search.query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
