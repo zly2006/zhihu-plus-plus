@@ -12,18 +12,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -32,18 +26,19 @@ import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.DefaultNavigationBarOverride
 import androidx.compose.material3.ExperimentalMaterial3ComponentOverrideApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalNavigationBarOverride
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationBarOverride
 import androidx.compose.material3.NavigationBarOverrideScope
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -62,7 +57,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -355,28 +349,19 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val myCustomOverride = object : NavigationBarOverride {
         @Composable
         override fun NavigationBarOverrideScope.NavigationBar() {
-            AnimatedVisibility(
-                visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
-                enter = slideInVertically(tween(200)) { it },
-                exit = slideOutVertically(tween(200)) { it },
+            CompositionLocalProvider(
+                LocalNavigationBarOverride provides DefaultNavigationBarOverride,
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    contentColor = contentColor,
-                    tonalElevation = tonalElevation,
-                    modifier = this@NavigationBar.modifier.height(
-                        (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
-                    ),
+                AnimatedVisibility(
+                    visible = (!autoHideBottomBar || isBottomBarVisible) && isTopLevelDest(navEntry),
+                    enter = slideInVertically(tween(200)) { it },
+                    exit = slideOutVertically(tween(200)) { it },
                 ) {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .windowInsetsPadding(windowInsets)
-                                .padding(top = (if (duo3NavStyle) 4.dp else 0.dp))
-                                .selectableGroup(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = modifier.height(
+                            (if (duo3NavStyle) 64.dp else 56.dp) + bottomPadding,
+                        ),
                         content = content,
                     )
                 }
