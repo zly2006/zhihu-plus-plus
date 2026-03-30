@@ -37,7 +37,7 @@ fun CollectionScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel(key = "collection-${urlToken}") {
+    val viewModel = viewModel(key = "collection-$urlToken") {
         CollectionsViewModel(urlToken)
     }
     val horizontalPadding = LocalCardHorizontalPadding.current
