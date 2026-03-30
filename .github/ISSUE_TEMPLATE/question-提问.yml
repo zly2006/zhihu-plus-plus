@@ -1,0 +1,64 @@
+name: Question
+description: 提问使用方法、行为原因或兼容性问题。
+title: "[Question] "
+labels: ["question"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: "⚠️ 提问前建议先搜索已有 issue；请尽量提供完整背景，方便快速定位问题。"
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 你的问题
+      description: 请直接写出你想问的内容。
+      placeholder: ""
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景信息
+      description: 说明你是在什么页面、什么操作下遇到这个疑问。
+      placeholder: ""
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: 你已经尝试过什么？
+      description: 如果你已经看过设置项、文档或做过排查，请写在这里（可选）。
+
+  - type: input
+    id: device
+    attributes:
+      label: 手机设备及型号
+      placeholder: "例如：Pixel 7 Pro / 小米 13 Pro"
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: 操作系统版本
+      placeholder: "例如：Android 14 / HyperOS 3.0"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: 知乎++ 版本
+      description: 可以在账号设置页面长按版本号复制。
+      placeholder: "例如：22"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 其他补充
+      description: 截图、日志或其他说明（可选）。
