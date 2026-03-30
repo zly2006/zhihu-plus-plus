@@ -79,7 +79,7 @@ fun QuestionScreen(
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val viewModel: QuestionFeedViewModel = viewModel {
+    val viewModel: QuestionFeedViewModel = viewModel(key = question.questionId.toString()) {
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
