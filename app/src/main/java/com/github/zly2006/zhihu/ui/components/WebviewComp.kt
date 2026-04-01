@@ -35,7 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.drawable.toDrawable
@@ -85,11 +87,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import kotlin.math.min
 
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
     fun onElementClick(element: Element)
 }
+
+private const val MAX_WEBVIEW_COMPOSE_HEIGHT_PX = 180_000
 
 /**
  * 获取最高清晰度的视频URL
@@ -200,6 +205,8 @@ class CustomWebView : WebView {
     var document: Document? = null
         private set
     var contentId: String? = null
+    var debugLabel: String = "CustomWebView"
+    var lastLoadedUrl: String? = null
     private var htmlClickListener: HtmlClickListener? = null
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
     var onContentHeightCallback: ((Int) -> Unit)? = null
@@ -373,7 +380,11 @@ class CustomWebView : WebView {
             // same content
             return
         }
-        Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
+        lastLoadedUrl = url
+        Log.i(
+            "CustomWebView",
+            "[$debugLabel] Loading content for URL: $url with document title: ${document.title()} contentId=${contentId ?: "null"}",
+        )
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val fontSize = preferences.getInt("webviewFontSize", 100)
         val lineHeight = preferences.getInt("webviewLineHeight", 160)
@@ -511,10 +522,12 @@ fun WebviewComp(
     modifier: Modifier = Modifier.wrapContentSize(),
     scrollState: ScrollState? = null,
     existingWebView: CustomWebView? = null,
+    debugLabel: String = "WebviewComp",
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val density = LocalDensity.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
     // JS 上报的内容高度（CSS 像素 = dp，WebView viewport 默认 1 CSS px = 1 dp）；
@@ -522,6 +535,13 @@ fun WebviewComp(
     var contentHeightDp by remember { mutableIntStateOf(0) }
 
     AndroidView(
+        modifier = modifier.layout { measurable, constraints ->
+            val placeable = measurable.measure(constraints)
+            val height = if (contentHeightDp > 0) contentHeightDp.dp.roundToPx() else placeable.height
+            layout(placeable.width, min(height, 0x3FF)) {
+                placeable.place(0, 0)
+            }
+        },
         factory = { ctx ->
             val webView = if (existingWebView != null) {
                 (existingWebView.parent as? ViewGroup)?.removeView(existingWebView)
@@ -529,15 +549,18 @@ fun WebviewComp(
             } else {
                 CustomWebView(ctx, onLoad, useHardwareAcceleration)
             }
+            webView.debugLabel = debugLabel
             FrameLayout(ctx).apply { addView(webView) }
         },
         update = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: run {
                 frameLayout.removeAllViews()
                 val newWebView = CustomWebView(frameLayout.context, onLoad, useHardwareAcceleration)
+                newWebView.debugLabel = debugLabel
                 frameLayout.addView(newWebView)
                 newWebView
             }
+            view.debugLabel = debugLabel
             if (scrollState != null) {
                 view.scrollToHeightCallback = { elementY, maxY ->
                     coroutineScope.launch {
@@ -546,15 +569,28 @@ fun WebviewComp(
                 }
             }
             view.onContentHeightCallback = { height ->
-                coroutineScope.launch(Dispatchers.Main) { contentHeightDp = height }
+                val cappedHeight = height.coerceAtMost(0x3FF)
+                if (height != cappedHeight) {
+                    Log.e(
+                        "WebView-Height",
+                        "[$debugLabel] Clamp content height from $height dp to $cappedHeight dp; " +
+                            "contentId=${view.contentId ?: "null"} url=${view.lastLoadedUrl ?: "null"} " +
+                            "density=$density maxDp=${0x3FF} viewWidth=${view.width} measuredWidth=${view.measuredWidth} " +
+                            "viewHeight=${view.height} measuredHeight=${view.measuredHeight} webContentHeight=${view.contentHeight}",
+                    )
+                } else if (height > 20_000) {
+                    Log.i(
+                        "WebView-Height",
+                        "[$debugLabel] Large content height=$height dp; " +
+                            "contentId=${view.contentId ?: "null"} url=${view.lastLoadedUrl ?: "null"} " +
+                            "density=$density viewWidth=${view.width} measuredWidth=${view.measuredWidth} " +
+                            "viewHeight=${view.height} measuredHeight=${view.measuredHeight} webContentHeight=${view.contentHeight}",
+                    )
+                }
+                coroutineScope.launch(Dispatchers.Main) { contentHeightDp = cappedHeight }
             }
             view.onPageStartedCallback = { coroutineScope.launch(Dispatchers.Main) { contentHeightDp = 0 } }
             onLoad(view)
-        },
-        modifier = if (contentHeightDp > 0) {
-            modifier.height(contentHeightDp.dp)
-        } else {
-            modifier
         },
         onRelease = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView
@@ -735,7 +771,9 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
 
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
-            Log.i("WebView-Page", "Page finished loading: $url")
+            val label = (view as? CustomWebView)?.debugLabel ?: "WebView"
+            val contentId = (view as? CustomWebView)?.contentId ?: "null"
+            Log.i("WebView-Page", "[$label] Page finished loading: $url contentId=$contentId")
 
             // 如果是 CustomWebView，在页面加载完成后注入点击监听脚本和主题样式
             if (view is CustomWebView) {

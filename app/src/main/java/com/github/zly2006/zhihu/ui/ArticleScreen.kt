@@ -1246,6 +1246,7 @@ fun ArticleScreen(
                     if (preferences.getBoolean("articleUseWebview", true)) {
                         WebviewComp(
                             scrollState = scrollState,
+                            debugLabel = "ArticleScreen/main/${article.type}/${article.id}",
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                         ) {
                             it.isVerticalScrollBarEnabled = false
@@ -1780,6 +1781,7 @@ fun ArticleScreen(
                         if (preferences.getBoolean("articleUseWebview", true)) {
                             WebviewComp(
                                 scrollState = scrollState,
+                                debugLabel = "ArticleScreen/main/${article.type}/${article.id}",
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                             ) {
                                 it.isVerticalScrollBarEnabled = false
@@ -2157,6 +2159,7 @@ private fun CachedAnswerPreview(
                         AndroidView(
                             factory = { ctx ->
                                 val wv = sharedData.getOrCreatePreviewWebView(ctx, isNext, cached.article.id)
+                                wv.debugLabel = "ArticleScreen/preview/${if (isNext) "next" else "prev"}/${cached.article.id}"
                                 (wv.parent as? ViewGroup)?.removeView(wv)
                                 FrameLayout(ctx).apply { addView(wv) }
                             },
@@ -2164,6 +2167,7 @@ private fun CachedAnswerPreview(
                                 val tag = if (isNext) sharedData.nextTag else sharedData.prevTag
                                 val wv = frameLayout.findViewWithTag<CustomWebView>(tag)
                                     ?: return@AndroidView
+                                wv.debugLabel = "ArticleScreen/preview/${if (isNext) "next" else "prev"}/${cached.article.id}"
                                 val articleId = cached.article.id.toString()
                                 if (wv.contentId != articleId) {
                                     wv.contentId = articleId
