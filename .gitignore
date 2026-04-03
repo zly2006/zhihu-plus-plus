@@ -40,3 +40,6 @@ google-services.json
 
 # Temporary files
 .tmp/
+
+# Oh my codex
+.omx/
