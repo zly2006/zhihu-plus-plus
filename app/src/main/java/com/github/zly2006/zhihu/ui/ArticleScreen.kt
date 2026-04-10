@@ -837,11 +837,11 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
-            sharedData?.pendingInitialContent = prev
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData.pendingInitialContent = prev
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -855,12 +855,12 @@ fun ArticleScreen(
             }
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val prevCached = sharedData?.navigator?.loadPrevious(context)
                 if (prevCached != null) {
-                    sharedData?.pendingInitialContent = prevCached
+                    sharedData.pendingInitialContent = prevCached
                     val activity = context as? MainActivity
                     if (activity != null) {
                         if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -885,12 +885,12 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         // 优先使用前向历史
         val historyNext = sharedData?.navigator?.goToNext()
         if (historyNext != null) {
-            sharedData?.pendingInitialContent = historyNext
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData.pendingInitialContent = historyNext
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -904,8 +904,8 @@ fun ArticleScreen(
             }
         } else {
             // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext(context)
                 if (nextArticle != null) {
@@ -1914,7 +1914,7 @@ fun ArticleScreen(
             // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
             LaunchedEffect(nav?.nextAnswer) {
                 val cached = nav?.nextAnswer ?: return@LaunchedEffect
-                val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
+                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
                 val articleId = cached.article.id.toString()
                 if (wv.contentId != articleId) {
                     wv.contentId = articleId

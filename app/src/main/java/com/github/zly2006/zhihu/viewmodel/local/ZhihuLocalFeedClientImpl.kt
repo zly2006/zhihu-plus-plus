@@ -88,9 +88,9 @@ class ZhihuLocalFeedClientImpl(
                             is Feed.VideoTarget -> target.id.toString()
                             is Feed.PinTarget -> target.id.toString()
                         },
-                        title = target.title ?: "无标题",
+                        title = target.title,
                         summary = target.excerpt ?: "",
-                        url = target.url ?: "",
+                        url = target.url,
                         reason = CrawlingReason.Trending,
                         score = calculateScore(target) * 1.2,
                     )

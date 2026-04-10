@@ -320,7 +320,7 @@ class BlocklistManager private constructor(
         "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
     }
 
-    suspend fun getTopicName(topicId: String): String = topicDao.getTopicNameById(topicId) ?: topicId
+    suspend fun getTopicName(topicId: String): String = topicDao.getTopicNameById(topicId)
 }
 
 /**

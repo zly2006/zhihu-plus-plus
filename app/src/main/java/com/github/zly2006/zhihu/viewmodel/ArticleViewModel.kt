@@ -370,7 +370,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
 
-                            (context as? MainActivity)?.postHistory(
+                            context.postHistory(
                                 Article(
                                     id = answer.id,
                                     type = ArticleType.Answer,
