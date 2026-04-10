@@ -359,7 +359,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question, innerPadding)
+                    QuestionScreen(question)
                 }
                 composable<Article>(
                     enterTransition = {
