@@ -4,6 +4,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,6 +21,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 internal fun calculateReadingProgress(
     scrollValue: Int,
@@ -63,7 +68,7 @@ internal fun calculateScrollbarThumbOffsetPx(
 fun VerticalReadingProgressBar(
     scrollState: ScrollState,
     modifier: Modifier = Modifier,
-    fadeOutDelayMillis: Long = 600L,
+    fadeOutDelayMillis: Long = 1200L,
     minThumbHeight: Dp = 24.dp,
     trackColor: Color = Color.Unspecified,
     thumbColor: Color = Color.Unspecified,
@@ -72,16 +77,17 @@ fun VerticalReadingProgressBar(
         derivedStateOf { scrollState.maxValue > 0 && scrollState.maxValue != Int.MAX_VALUE }
     }
     var shouldKeepVisible by remember { mutableStateOf(false) }
+    var isDragging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(showProgressBar, scrollState.isScrollInProgress, fadeOutDelayMillis) {
+    LaunchedEffect(showProgressBar, scrollState.isScrollInProgress, isDragging, fadeOutDelayMillis) {
         if (!showProgressBar) {
             shouldKeepVisible = false
             return@LaunchedEffect
         }
         shouldKeepVisible = true
-        if (!scrollState.isScrollInProgress) {
+        if (!scrollState.isScrollInProgress && !isDragging) {
             delay(fadeOutDelayMillis)
-            if (!scrollState.isScrollInProgress) {
+            if (!scrollState.isScrollInProgress && !isDragging) {
                 shouldKeepVisible = false
             }
         }
@@ -101,7 +107,7 @@ fun VerticalReadingProgressBar(
         animationSpec = tween(durationMillis = if (shouldKeepVisible) 120 else 260),
         label = "readingProgressBarAlpha",
     )
-    if (alpha <= 0f) return
+    if (alpha <= 0f && !isDragging) return
 
     val resolvedTrackColor = if (trackColor == Color.Unspecified) {
         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
@@ -131,12 +137,29 @@ fun VerticalReadingProgressBar(
         if (thumbHeightPx <= 0f) return@BoxWithConstraints
 
         val thumbHeight = with(density) { thumbHeightPx.toDp() }
+        val maxThumbOffsetPx = (viewportHeightPx - thumbHeightPx).coerceAtLeast(0f)
+        val scope = rememberCoroutineScope()
+
         val thumbOffsetY = with(density) {
             calculateScrollbarThumbOffsetPx(
                 progress = progress,
                 viewportHeightPx = viewportHeightPx,
                 thumbHeightPx = thumbHeightPx,
             ).toDp()
+        }
+
+        val draggableState = rememberDraggableState { delta ->
+            if (!isDragging) return@rememberDraggableState
+            val currentOffset = calculateScrollbarThumbOffsetPx(
+                progress = progress,
+                viewportHeightPx = viewportHeightPx,
+                thumbHeightPx = thumbHeightPx,
+            )
+            val newOffset = (currentOffset + delta).coerceIn(0f, maxThumbOffsetPx)
+            val newProgress = if (maxThumbOffsetPx > 0f) newOffset / maxThumbOffsetPx else 0f
+            scope.launch {
+                scrollState.scrollTo((newProgress * scrollState.maxValue).toInt())
+            }
         }
 
         Box(
@@ -155,7 +178,14 @@ fun VerticalReadingProgressBar(
                 .width(4.dp)
                 .height(thumbHeight)
                 .clip(RoundedCornerShape(50))
-                .background(resolvedThumbColor),
+                .background(resolvedThumbColor)
+                .draggable(
+                    state = draggableState,
+                    startDragImmediately = true,
+                    orientation = Orientation.Vertical,
+                    onDragStarted = { isDragging = true },
+                    onDragStopped = { isDragging = false },
+                ),
         )
     }
 }
