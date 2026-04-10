@@ -68,7 +68,7 @@ internal fun calculateScrollbarThumbOffsetPx(
 fun VerticalReadingProgressBar(
     scrollState: ScrollState,
     modifier: Modifier = Modifier,
-    fadeOutDelayMillis: Long = 600L,
+    fadeOutDelayMillis: Long = 1200L,
     minThumbHeight: Dp = 24.dp,
     trackColor: Color = Color.Unspecified,
     thumbColor: Color = Color.Unspecified,
@@ -181,6 +181,7 @@ fun VerticalReadingProgressBar(
                 .background(resolvedThumbColor)
                 .draggable(
                     state = draggableState,
+                    startDragImmediately = true,
                     orientation = Orientation.Vertical,
                     onDragStarted = { isDragging = true },
                     onDragStopped = { isDragging = false },
