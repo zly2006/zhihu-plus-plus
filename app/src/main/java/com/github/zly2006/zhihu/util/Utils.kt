@@ -72,7 +72,7 @@ fun telemetry(context: Context, usage: String) {
                     .toHexString()
                 AccountData
                     .httpClient(context)
-                    .post("https://redenmc.com/api/zhihu/usage?client_hash=$hash${data.self.id}&usage=$usage") {
+                    .post("https://redenmc.com/api/zhihu/usage?client_hash=$hash&usage=$usage") {
                         contentType(ContentType.Application.Json)
                         header(
                             HttpHeaders.UserAgent,
