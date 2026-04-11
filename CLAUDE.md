@@ -42,6 +42,10 @@
 - 用 `LaunchedEffect` 处理副作用，设置正确的 key
 - 用 `collectAsState()` 观察 Flow/StateFlow
 
+### git worktree
+
+新开worktree的时候，记得把 local.properties 复制过去，避免构建问题.
+
 ### 导航
 - 使用 Jetpack Navigation Compose
 - 定义 sealed interface `NavDestination` 表示不同页面，包含 route 和参数
