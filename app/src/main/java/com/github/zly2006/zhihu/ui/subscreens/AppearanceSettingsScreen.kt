@@ -79,6 +79,8 @@ import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -754,6 +756,60 @@ fun AppearanceSettingsScreen(
                                             preferences.edit { putString("answerSwitchMode", mode) }
                                             answerSwitchExpanded = false
                                             Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                var answerDoubleTapExpanded by remember { mutableStateOf(false) }
+                val answerDoubleTapAction = remember {
+                    mutableStateOf(
+                        AnswerDoubleTapAction.fromPreference(
+                            preferences.getString(
+                                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                                AnswerDoubleTapAction.Ask.preferenceValue,
+                            ),
+                        ),
+                    )
+                }
+                SettingItem(
+                    title = { Text("双击回答动作") },
+                    description = { Text("双击回答正文时执行的动作。默认弹窗询问。") },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = answerDoubleTapExpanded,
+                            onExpandedChange = { answerDoubleTapExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = answerDoubleTapAction.value.label,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerDoubleTapExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = answerDoubleTapExpanded,
+                                onDismissRequest = { answerDoubleTapExpanded = false },
+                            ) {
+                                AnswerDoubleTapAction.entries.forEach { action ->
+                                    DropdownMenuItem(
+                                        text = { Text(action.label) },
+                                        onClick = {
+                                            answerDoubleTapAction.value = action
+                                            preferences.edit {
+                                                putString(
+                                                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                                                    action.preferenceValue,
+                                                )
+                                            }
+                                            answerDoubleTapExpanded = false
+                                            Toast.makeText(context, "已设置为：${action.label}", Toast.LENGTH_SHORT).show()
                                         },
                                     )
                                 }
