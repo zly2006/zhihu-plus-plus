@@ -74,23 +74,28 @@ fun AnswerHorizontalOverscroll(
                     },
                     onDragEnd = {
                         val currentOffset = overscrollOffset.value
+                        var didNavigate = false
                         if (abs(currentOffset) >= triggerThresholdPx) {
                             if (currentOffset > 0 && canGoPrevious) {
                                 onNavigatePrevious()
+                                didNavigate = true
                             } else if (currentOffset < 0 && canGoNext) {
                                 onNavigateNext()
+                                didNavigate = true
                             }
                         }
                         rawDragAccumulator = 0f
                         hasTriggeredHaptic = false
-                        coroutineScope.launch {
-                            overscrollOffset.animateTo(
-                                0f,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium,
-                                ),
-                            )
+                        if (!didNavigate) {
+                            coroutineScope.launch {
+                                overscrollOffset.animateTo(
+                                    0f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                )
+                            }
                         }
                     },
                     onDragCancel = {
