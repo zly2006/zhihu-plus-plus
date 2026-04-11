@@ -95,6 +95,7 @@ import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
@@ -479,6 +480,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Account.SystemAndUpdateSettings> {
                     SystemAndUpdateSettingsScreen(innerPadding)
+                }
+                composable<Account.OpenSourceLicenses> {
+                    OpenSourceLicensesScreen()
                 }
                 composable<Account.DeveloperSettings> {
                     DeveloperSettingsScreen(innerPadding)

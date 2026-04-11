@@ -449,8 +449,8 @@ fun AccountSettingScreen(
                 )
 
                 SettingItem(
-                    title = { Text("开源协议") },
-                    description = { Text("AGPL") },
+                    title = { Text("项目协议") },
+                    description = { Text("AGPL-3.0-only") },
                     icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE".toUri())
@@ -463,6 +463,12 @@ fun AccountSettingScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
+                )
+                SettingItem(
+                    title = { Text("开源许可") },
+                    description = { Text("查看第三方组件许可证") },
+                    icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
+                    onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                 )
             }
         }
