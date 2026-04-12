@@ -113,6 +113,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -652,14 +653,28 @@ fun ArticleScreen(
         }
     }
 
-    fun handleAnswerDoubleTap() {
-        if (article.type != ArticleType.Answer) return
-        when (answerDoubleTapAction) {
+    fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        when (action) {
             AnswerDoubleTapAction.None -> Unit
             AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
             AnswerDoubleTapAction.OpenComments -> showComments = true
         }
+    }
+
+    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        answerDoubleTapAction = action
+        preferences.edit {
+            putString(
+                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                action.preferenceValue,
+            )
+        }
+    }
+
+    fun handleAnswerDoubleTap() {
+        if (article.type != ArticleType.Answer) return
+        performAnswerDoubleTapAction(answerDoubleTapAction)
     }
 
     val answerDoubleTapModifier = if (
@@ -2079,40 +2094,46 @@ fun ArticleScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "双击回答",
+                    text = "设置双击回答动作",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "选择这次双击要执行的动作。",
+                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.None.label}", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("无操作")
+                    Text("设为无操作")
                 }
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("点赞")
+                    Text("设为点赞")
                 }
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("打开评论区")
+                    Text("设为打开评论区")
                 }
             }
         }

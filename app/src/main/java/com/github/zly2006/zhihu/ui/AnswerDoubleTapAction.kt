@@ -12,7 +12,7 @@ enum class AnswerDoubleTapAction(
     ),
     Ask(
         preferenceValue = "ask",
-        label = "弹窗询问",
+        label = "询问并记住",
     ),
     VoteUp(
         preferenceValue = "voteUp",
