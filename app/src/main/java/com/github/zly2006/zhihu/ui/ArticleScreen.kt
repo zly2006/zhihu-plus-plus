@@ -369,11 +369,11 @@ fun ArticleActionsMenu(
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        "【${viewModel.title} - ${viewModel.authorName} 的回答】- https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}"
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        "【${viewModel.title} - ${viewModel.authorName} 的文章】- https://zhuanlan.zhihu.com/p/${article.id}"
                     }
                 }
                 val shareIntent = Intent().apply {
