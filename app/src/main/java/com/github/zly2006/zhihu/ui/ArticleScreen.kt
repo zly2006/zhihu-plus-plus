@@ -25,6 +25,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,6 +100,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -111,6 +113,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -576,7 +579,7 @@ private fun prepareContentDocument(content: String, context: Context): Document 
         }
     }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ArticleScreen(
     article: Article,
@@ -610,12 +613,23 @@ fun ArticleScreen(
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val useDuo3ArticleBar = remember { preferences.getBoolean("duo3_article_bar", false) }
     val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+    var answerDoubleTapAction by remember {
+        mutableStateOf(
+            AnswerDoubleTapAction.fromPreference(
+                preferences.getString(
+                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                    AnswerDoubleTapAction.Ask.preferenceValue,
+                ),
+            ),
+        )
+    }
 
     // Follow-the-finger bar hide: pixel-based offsets driven by scroll delta
     val topBarOffset = remember { Animatable(0f) }
@@ -631,6 +645,49 @@ fun ArticleScreen(
             article.id.toString(),
             article.type.name.lowercase(),
         )
+    }
+
+    fun upVoteFromDoubleTap() {
+        if (viewModel.voteUpState != VoteUpState.Up) {
+            viewModel.toggleVoteUp(context, VoteUpState.Up)
+        }
+    }
+
+    fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        when (action) {
+            AnswerDoubleTapAction.None -> Unit
+            AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
+            AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
+            AnswerDoubleTapAction.OpenComments -> showComments = true
+        }
+    }
+
+    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        answerDoubleTapAction = action
+        preferences.edit {
+            putString(
+                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                action.preferenceValue,
+            )
+        }
+    }
+
+    fun handleAnswerDoubleTap() {
+        if (article.type != ArticleType.Answer) return
+        performAnswerDoubleTapAction(answerDoubleTapAction)
+    }
+
+    val answerDoubleTapModifier = if (
+        article.type == ArticleType.Answer &&
+        answerDoubleTapAction != AnswerDoubleTapAction.None
+    ) {
+        Modifier.pointerInput(answerDoubleTapAction) {
+            detectTapGestures(
+                onDoubleTap = { handleAnswerDoubleTap() },
+            )
+        }
+    } else {
+        Modifier
     }
 
     val preferenceListener = remember(preferences) {
@@ -649,6 +706,14 @@ fun ArticleScreen(
                 }
 
                 "pinAnswerDate" -> pinAnswerDate = preferences.getBoolean(key, false)
+                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY -> {
+                    answerDoubleTapAction = AnswerDoubleTapAction.fromPreference(
+                        preferences.getString(
+                            key,
+                            AnswerDoubleTapAction.Ask.preferenceValue,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -1779,6 +1844,7 @@ fun ArticleScreen(
                     if (viewModel.content.isNotEmpty()) {
                         if (preferences.getBoolean("articleUseWebview", true)) {
                             WebviewComp(
+                                onDoubleTap = ::handleAnswerDoubleTap,
                                 scrollState = scrollState,
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                             ) {
@@ -1810,11 +1876,13 @@ fun ArticleScreen(
                             }
                             val context = MarkdownRenderContext()
                             Spacer(Modifier.height(10.dp))
-                            SelectionContainer(Modifier.fuckHonorService()) {
-                                Column {
-                                    for (ast in astNode) {
-                                        ast.Render(context)
-                                        Spacer(Modifier.height(12.dp))
+                            Box(modifier = answerDoubleTapModifier) {
+                                SelectionContainer(Modifier.fuckHonorService()) {
+                                    Column {
+                                        for (ast in astNode) {
+                                            ast.Render(context)
+                                            Spacer(Modifier.height(12.dp))
+                                        }
                                     }
                                 }
                             }
@@ -2015,6 +2083,61 @@ fun ArticleScreen(
         onDismiss = { showComments = false },
         content = article,
     )
+    if (showDoubleTapActionDialog) {
+        MyModalBottomSheet(
+            onDismissRequest = { showDoubleTapActionDialog = false },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "设置双击回答动作",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.None.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为无操作")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        upVoteFromDoubleTap()
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为点赞")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        showComments = true
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为打开评论区")
+                }
+            }
+        }
+    }
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,
