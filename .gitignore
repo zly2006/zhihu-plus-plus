@@ -43,3 +43,5 @@ google-services.json
 
 # Oh my codex
 .omx/
+
+.worktrees
