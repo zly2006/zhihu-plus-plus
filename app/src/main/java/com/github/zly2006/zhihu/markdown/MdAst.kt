@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -58,7 +59,6 @@ import com.hrm.markdown.parser.ast.TableBody
 import com.hrm.markdown.parser.ast.TableCell
 import com.hrm.markdown.parser.ast.TableHead
 import com.hrm.markdown.parser.ast.TableRow
-import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
@@ -166,6 +166,7 @@ fun RenderMarkdown(
             Markdown(
                 document = document,
                 imageContent = ::RenderImage,
+                enableScroll = false,
             )
         }
     } else {
@@ -173,6 +174,7 @@ fun RenderMarkdown(
             document = document,
             modifier = modifier,
             imageContent = ::RenderImage,
+            enableScroll = false,
         )
     }
 }
@@ -205,7 +207,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
             is TextNode -> {
                 val text = node.text().trim()
                 if (text.isNotEmpty()) {
-                    paragraph().appendChild(Text(text))
+                    paragraph().appendChild(com.hrm.markdown.parser.ast.Text(text))
                 }
             }
 
@@ -329,8 +331,7 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
 
     element.selectFirst("img")?.let { image ->
         val src = extractImageUrl(image) ?: return@let null
-        val caption = element.selectFirst("figcaption")?.text()?.ifBlank { null }
-            ?: image.attr("alt").ifBlank { "image" }
+        val caption = element.selectFirst("figcaption")?.text()?.ifBlank { null } ?: ""
         return Figure(
             imageUrl = src,
             caption = caption,
@@ -413,7 +414,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         if (text.isBlank()) {
             emptyList()
         } else {
-            listOf(Text(text))
+            listOf(com.hrm.markdown.parser.ast.Text(text))
         }
     }
 
@@ -443,7 +444,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
             }
             listOf(
                 Link(destination = destination).apply {
-                    appendChildren(extractInlineChildren(node).ifEmpty { listOf(Text(node.text())) })
+                    appendChildren(extractInlineChildren(node).ifEmpty { listOf(com.hrm.markdown.parser.ast.Text(node.text())) })
                 },
             )
         }
@@ -464,7 +465,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                                 imageWidth = node.attr("width").toIntOrNull(),
                                 imageHeight = node.attr("height").toIntOrNull(),
                             ).apply {
-                                node.attr("alt").takeIf { it.isNotBlank() }?.let { appendChild(Text(it)) }
+                                node.attr("alt").takeIf { it.isNotBlank() }?.let { appendChild(com.hrm.markdown.parser.ast.Text(it)) }
                             },
                         )
                     }.orEmpty()
@@ -479,7 +480,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                 node
                     .text()
                     .takeIf { it.isNotBlank() }
-                    ?.let { listOf(Text(it)) }
+                    ?.let { listOf(com.hrm.markdown.parser.ast.Text(it)) }
                     .orEmpty()
             }
         }
