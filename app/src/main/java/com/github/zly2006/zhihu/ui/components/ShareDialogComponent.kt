@@ -56,14 +56,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.Account
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Pin
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
 

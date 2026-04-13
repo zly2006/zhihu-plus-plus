@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
-import com.github.zly2006.zhihu.Article as ArticleDestination
+import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 
 class CollectionContentViewModel(
     val collectionId: String,

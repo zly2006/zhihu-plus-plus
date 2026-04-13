@@ -39,8 +39,8 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.resolveContent
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes

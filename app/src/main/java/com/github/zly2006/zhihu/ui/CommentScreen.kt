@@ -108,11 +108,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.CommentHolder
-import com.github.zly2006.zhihu.DummyLocalNavigator
-import com.github.zly2006.zhihu.LocalNavigator
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Person
+import com.github.zly2006.zhihu.navigation.CommentHolder
+import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent

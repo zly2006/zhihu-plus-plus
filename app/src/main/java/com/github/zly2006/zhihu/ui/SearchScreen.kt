@@ -70,10 +70,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.Account
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.Search
+import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard

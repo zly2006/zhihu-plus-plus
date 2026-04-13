@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
-import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
@@ -41,7 +41,7 @@ object DataHolder {
      */
     suspend fun getContentDetail(
         context: Context,
-        dest: com.github.zly2006.zhihu.Article,
+        dest: com.github.zly2006.zhihu.navigation.Article,
     ): Content? {
         val apiUrl = when (dest.type) {
             ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote"
@@ -77,7 +77,7 @@ object DataHolder {
 
     suspend fun getContentDetail(
         context: Context,
-        question: com.github.zly2006.zhihu.Question,
+        question: com.github.zly2006.zhihu.navigation.Question,
     ): Question? {
         val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
@@ -106,7 +106,7 @@ object DataHolder {
 
     suspend fun getContentDetail(
         context: Context,
-        pin: com.github.zly2006.zhihu.Pin,
+        pin: com.github.zly2006.zhihu.navigation.Pin,
     ): Pin? {
         val apiUrl = "https://www.zhihu.com/api/v4/pins/${pin.id}"
 

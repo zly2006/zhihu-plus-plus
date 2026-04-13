@@ -19,6 +19,11 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import android.util.Log
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -47,7 +52,7 @@ object ContentDetailCache {
      */
     suspend fun getOrFetch(
         context: Context,
-        navDestination: com.github.zly2006.zhihu.NavDestination,
+        navDestination: NavDestination,
     ): DataHolder.Content? {
         val (contentType, contentId) = extractContentInfo(navDestination) ?: return null
         val key = CacheKey(contentType, contentId)
@@ -84,18 +89,18 @@ object ContentDetailCache {
     /**
      * 从 NavDestination 提取内容类型和 ID
      */
-    private fun extractContentInfo(navDestination: com.github.zly2006.zhihu.NavDestination): Pair<String, String>? = when (navDestination) {
-        is com.github.zly2006.zhihu.Article -> {
+    private fun extractContentInfo(navDestination: NavDestination): Pair<String, String>? = when (navDestination) {
+        is Article -> {
             val type = when (navDestination.type) {
-                com.github.zly2006.zhihu.ArticleType.Answer -> "answer"
-                com.github.zly2006.zhihu.ArticleType.Article -> "article"
+                ArticleType.Answer -> "answer"
+                ArticleType.Article -> "article"
             }
             Pair(type, navDestination.id.toString())
         }
-        is com.github.zly2006.zhihu.Question -> {
+        is Question -> {
             Pair("question", navDestination.questionId.toString())
         }
-        is com.github.zly2006.zhihu.Pin -> {
+        is Pin -> {
             Pair("pin", navDestination.id.toString())
         }
         else -> null
@@ -106,11 +111,11 @@ object ContentDetailCache {
      */
     private suspend fun fetchContent(
         context: Context,
-        navDestination: com.github.zly2006.zhihu.NavDestination,
+        navDestination: NavDestination,
     ): DataHolder.Content? = when (navDestination) {
-        is com.github.zly2006.zhihu.Article -> DataHolder.getContentDetail(context, navDestination)
-        is com.github.zly2006.zhihu.Question -> DataHolder.getContentDetail(context, navDestination)
-        is com.github.zly2006.zhihu.Pin -> DataHolder.getContentDetail(context, navDestination)
+        is Article -> DataHolder.getContentDetail(context, navDestination)
+        is Question -> DataHolder.getContentDetail(context, navDestination)
+        is Pin -> DataHolder.getContentDetail(context, navDestination)
         else -> null
     }
 

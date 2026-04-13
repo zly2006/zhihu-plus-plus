@@ -19,12 +19,12 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import android.net.Uri
-import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.OnlineHistoryItem
-import com.github.zly2006.zhihu.resolveContent
+import com.github.zly2006.zhihu.navigation.resolveContent
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {

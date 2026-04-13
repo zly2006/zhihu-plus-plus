@@ -20,7 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.local
 import android.content.Context
 import android.net.ConnectivityManager
 import android.util.Log
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.navigation.NavDestination
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

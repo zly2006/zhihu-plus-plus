@@ -69,10 +69,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import com.github.zly2006.zhihu.Account
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.SentenceSimilarityTest
+import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall

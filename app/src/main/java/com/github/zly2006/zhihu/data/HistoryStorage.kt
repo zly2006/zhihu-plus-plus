@@ -19,7 +19,7 @@ package com.github.zly2006.zhihu.data
 
 import android.content.Context
 import androidx.core.content.ContextCompat
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.navigation.NavDestination
 import kotlinx.serialization.json.Json
 import java.io.File
 

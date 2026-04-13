@@ -38,7 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog

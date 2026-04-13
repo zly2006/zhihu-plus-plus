@@ -24,7 +24,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.data.MomentsFeed
 import com.github.zly2006.zhihu.data.QuestionFeedCard
 import com.github.zly2006.zhihu.data.actionText
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
@@ -211,7 +212,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         }
 
         feedItem.navDestination?.let { navDest ->
-            if (navDest is com.github.zly2006.zhihu.Article) {
+            if (navDest is Article) {
                 when (val fullContent = ContentDetailCache.getOrFetch(context, navDest)) {
                     is DataHolder.Answer -> {
                         return@withContext fullContent.author.let { Pair(it.id, it.name) }

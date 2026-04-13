@@ -76,13 +76,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Account
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.Notification
-import com.github.zly2006.zhihu.Search
+import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode

@@ -136,12 +136,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
@@ -1251,7 +1251,7 @@ fun ArticleScreen(
                         .fillMaxWidth()
                         .clickable {
                             navigator.onNavigate(
-                                com.github.zly2006.zhihu.Person(
+                                com.github.zly2006.zhihu.navigation.Person(
                                     id = viewModel.authorId,
                                     urlToken = viewModel.authorUrlToken,
                                     name = viewModel.authorName,
@@ -1456,7 +1456,7 @@ fun ArticleScreen(
                                     .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
                                     .clickable {
                                         navigator.onNavigate(
-                                            com.github.zly2006.zhihu.Person(
+                                            com.github.zly2006.zhihu.navigation.Person(
                                                 id = viewModel.authorId,
                                                 urlToken = viewModel.authorUrlToken,
                                                 name = viewModel.authorName,

@@ -72,7 +72,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
@@ -342,7 +343,7 @@ fun BlocklistSettingsScreen(
                     },
                     onNavigateToUser = { user ->
                         navigator.onNavigate(
-                            com.github.zly2006.zhihu.Person(
+                            Person(
                                 id = user.userId,
                                 urlToken = user.urlToken ?: "",
                                 name = user.userName,

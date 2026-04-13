@@ -19,10 +19,12 @@
 
 package com.github.zly2006.zhihu.data
 
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.data.Feed.Badge
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -227,8 +229,7 @@ sealed interface Feed {
         override val title: String
             get() = "想法"
         override val excerpt = excerptTitle.ifEmpty { null }
-        override val navDestination = com.github.zly2006.zhihu
-            .Pin(id)
+        override val navDestination = Pin(id)
 
         override val updatedTime: Long
             get() = updated
@@ -281,7 +282,7 @@ sealed interface Feed {
 
         override val detailsText = "问题 · $followerCount 关注 · $answerCount 回答"
 
-        override val navDestination = com.github.zly2006.zhihu.Question(
+        override val navDestination = Question(
             questionId = id,
             title = title,
         )

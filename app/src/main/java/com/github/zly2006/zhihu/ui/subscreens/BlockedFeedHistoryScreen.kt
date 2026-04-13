@@ -52,8 +52,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.LocalNavigator
-import com.github.zly2006.zhihu.NavDestination
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
 import kotlinx.coroutines.launch

@@ -17,11 +17,11 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
-import com.github.zly2006.zhihu.NavDestination
-import com.github.zly2006.zhihu.Pin
-import com.github.zly2006.zhihu.Question
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.data.Feed
 import kotlin.math.ceil
 

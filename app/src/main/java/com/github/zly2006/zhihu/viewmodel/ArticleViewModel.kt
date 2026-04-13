@@ -49,14 +49,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.navigator.CollectionAnswerNavigator
-import com.github.zly2006.zhihu.navigator.PaginationInfoNavigator
-import com.github.zly2006.zhihu.navigator.QuestionAnswerNavigator
+import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
+import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
+import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -81,7 +81,6 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -223,13 +222,13 @@ class ArticleViewModel(
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {
         /** 活跃的导航器：管理来源、历史记录和预取 */
-        var navigator: com.github.zly2006.zhihu.navigator.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
+        var navigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
 
         /**
          * 导航前由来源界面设置（如 CollectionContentScreen）。
          * [reset] 时会将其应用到 [navigator]。
          */
-        var pendingNavigator: com.github.zly2006.zhihu.navigator.AnswerNavigator? = null
+        var pendingNavigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? = null
 
         // 缓存的三个 WebView 实例，跨导航存活，避免重建闪动
         var mainWebView: CustomWebView? = null

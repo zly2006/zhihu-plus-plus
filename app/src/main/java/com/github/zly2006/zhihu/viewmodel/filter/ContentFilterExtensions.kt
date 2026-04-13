@@ -22,11 +22,14 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
-import com.github.zly2006.zhihu.ArticleType
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
@@ -258,8 +261,8 @@ object ContentFilterExtensions {
 
                 // 获取完整内容详情
                 val rawContent = when (val dest = item.navDestination) {
-                    is com.github.zly2006.zhihu.Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
-                    is com.github.zly2006.zhihu.Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
+                    is Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
+                    is Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     else -> DataHolder.DummyContent
                 }
 
@@ -486,14 +489,14 @@ object ContentFilterExtensions {
     )
 
     private fun FeedDisplayItem.resolveContentIdentity(): ContentIdentity = when (val dest = navDestination) {
-        is com.github.zly2006.zhihu.Article -> {
+        is Article -> {
             val type = when (dest.type) {
                 ArticleType.Answer -> ContentType.ANSWER
                 ArticleType.Article -> ContentType.ARTICLE
             }
             ContentIdentity(type, dest.id.toString())
         }
-        is com.github.zly2006.zhihu.Question -> {
+        is Question -> {
             ContentIdentity(ContentType.QUESTION, dest.questionId.toString())
         }
         else -> {

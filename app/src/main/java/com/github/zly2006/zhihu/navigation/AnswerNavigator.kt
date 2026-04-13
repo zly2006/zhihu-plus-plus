@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.navigator
+package com.github.zly2006.zhihu.navigation
 
 import android.content.Context
 import android.util.Log
@@ -24,8 +24,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.Article
-import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
