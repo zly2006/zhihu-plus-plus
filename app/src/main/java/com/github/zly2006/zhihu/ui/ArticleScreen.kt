@@ -2011,7 +2011,7 @@ fun ArticleScreen(
             }
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
-                canGoNext = true,
+                canGoNext = nav?.nextAnswer != null,
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
