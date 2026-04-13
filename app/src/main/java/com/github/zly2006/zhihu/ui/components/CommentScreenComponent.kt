@@ -36,8 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.CommentScreen
 import com.github.zly2006.zhihu.viewmodel.CommentItem
