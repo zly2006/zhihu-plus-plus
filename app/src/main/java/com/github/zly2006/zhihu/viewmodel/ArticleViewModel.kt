@@ -1092,9 +1092,9 @@ class ArticleViewModel(
 
         val json = AccountData.fetchGet(context, article.rootCommentUrl) {
             url {
-                parameters.append("order", "score")
-                parameters.append("limit", safeRequestedCount.coerceAtMost(20).toString())
-                parameters.append("include", "data[*].content,excerpt,headline")
+                parameters["order"] = "score"
+                parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()
+                parameters["include"] = "data[*].content,excerpt,headline"
             }
             signFetchRequest()
         } ?: return emptyList()
