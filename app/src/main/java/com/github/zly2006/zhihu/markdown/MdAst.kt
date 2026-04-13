@@ -1,206 +1,154 @@
 package com.github.zly2006.zhihu.markdown
 
-import android.util.Log
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.SubcomposeLayout
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.isSpecified
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
-import com.hrm.latex.renderer.Latex
-import com.hrm.latex.renderer.model.LatexConfig
+import com.hrm.markdown.parser.ast.BlockQuote
+import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.Document
+import com.hrm.markdown.parser.ast.Emphasis
+import com.hrm.markdown.parser.ast.FencedCodeBlock
+import com.hrm.markdown.parser.ast.Figure
+import com.hrm.markdown.parser.ast.HardLineBreak
+import com.hrm.markdown.parser.ast.Heading
+import com.hrm.markdown.parser.ast.Highlight
+import com.hrm.markdown.parser.ast.Image
+import com.hrm.markdown.parser.ast.InlineCode
+import com.hrm.markdown.parser.ast.InlineMath
+import com.hrm.markdown.parser.ast.KeyboardInput
+import com.hrm.markdown.parser.ast.Link
+import com.hrm.markdown.parser.ast.ListBlock
+import com.hrm.markdown.parser.ast.ListItem
+import com.hrm.markdown.parser.ast.MathBlock
+import com.hrm.markdown.parser.ast.Paragraph
+import com.hrm.markdown.parser.ast.Strikethrough
+import com.hrm.markdown.parser.ast.StrongEmphasis
+import com.hrm.markdown.parser.ast.Subscript
+import com.hrm.markdown.parser.ast.Superscript
+import com.hrm.markdown.parser.ast.Table
+import com.hrm.markdown.parser.ast.TableBody
+import com.hrm.markdown.parser.ast.TableCell
+import com.hrm.markdown.parser.ast.TableHead
+import com.hrm.markdown.parser.ast.TableRow
+import com.hrm.markdown.parser.ast.Text
+import com.hrm.markdown.parser.ast.ThematicBreak
+import com.hrm.markdown.renderer.Markdown
+import com.hrm.markdown.renderer.MarkdownImageData
 import io.ktor.http.Url
 import kotlinx.coroutines.launch
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
 import org.jsoup.nodes.TextNode
+import com.hrm.markdown.parser.ast.Node as MarkdownNode
+import org.jsoup.nodes.Node as HtmlNode
 
-sealed interface AstData
-
-class MdAstLinks(
-    val parent: MdAst? = null,
-    val prev: MdAst? = null,
-    val next: MdAst? = null,
-    val firstChild: MdAst? = null,
-    val lastChild: MdAst? = null,
-)
-
-class MdAst(
-    val data: AstData,
-    val links: MdAstLinks,
-)
-
-sealed interface InlineAstData
-
-class AstSpan(
-    val text: String,
-    val textStyle: TextStyle,
-) : InlineAstData
-
-class AstHeader(
-    val text: List<InlineAstData>,
-    val level: Int,
-) : AstData
-
-class AstParagraph(
-    val inlines: MutableList<InlineAstData>,
-) : AstData
-
-class AstBlockquote(
-    val children: List<MdAst>,
-) : AstData
-
-class AstCodeBlock(
-    val code: String,
-    val language: String?,
-) : AstData
-
-class AstListItem(
-    val children: List<MdAst>,
-) : AstData
-
-class AstList(
-    val items: List<AstListItem>,
-    val ordered: Boolean,
-) : AstData
-
-object AstHorizontalRule : AstData
-
-class AstImage(
-    val url: String,
-    val altText: String,
-) : AstData
-
-class AstLink(
-    val url: String,
-    val title: InlineAstData,
-) : InlineAstData
-
-class AstCodeSpan(
-    val code: String,
-) : InlineAstData
-
-class AstLineBreak : InlineAstData
-
-class AstInlineMath(
-    val math: String,
-) : InlineAstData {
-    override fun toString(): String = "AstInlineMath(math='$math')"
-}
-
-class AstDisplayMath(
-    val math: String,
-) : AstData
-
-class AstTable(
-    val headers: List<List<InlineAstData>>,
-    val rows: List<List<List<InlineAstData>>>,
-) : AstData
-
-val LocalMarkdownOnInlineMathPositioned = compositionLocalOf<((AstInlineMath, androidx.compose.ui.geometry.Rect) -> Unit)?> { null }
-
-private val LocalMarkdownInlineContentMap = compositionLocalOf<SnapshotStateMap<String, InlineTextContent>> {
-    error("LocalMarkdownInlineContentMap not provided")
-}
-
-private val LocalMarkdownMaxInlineHeightSp = compositionLocalOf<MutableState<TextUnit>> {
-    error("LocalMarkdownMaxInlineHeightSp not provided")
-}
-
-private fun maxSp(a: TextUnit, b: TextUnit): TextUnit =
-    when {
-        !a.isSpecified -> b
-        !b.isSpecified -> a
-        a.value >= b.value -> a
-        else -> b
-    }
+val LocalMarkdownOnInlineMathPositioned = compositionLocalOf<((InlineMath, Rect) -> Unit)?> { null }
 
 @Composable
-private fun ProvideMarkdownInlineLocals(
-    content: @Composable () -> Unit,
+fun RenderImage(
+    data: MarkdownImageData,
+    modifier: Modifier,
 ) {
-    CompositionLocalProvider(
-        LocalMarkdownInlineContentMap provides remember { mutableStateMapOf<String, InlineTextContent>() },
-        LocalMarkdownMaxInlineHeightSp provides remember { mutableStateOf(0.sp) },
-        content = content,
-    )
-}
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
+    val density = LocalDensity.current
+    val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    val httpClient = AccountData.httpClient(context)
 
-@Composable
-private fun RenderMarkdownAstList(
-    asts: List<MdAst>,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        asts.forEachIndexed { index, ast ->
-            ast.Render()
-            if (index != asts.lastIndex) {
-                Spacer(Modifier.height(12.dp))
-            }
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = data.url,
+            contentDescription = data.altText,
+            modifier = modifier
+                .fillMaxWidth(0.8f)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            val dialog = OpenImageDislog(context, httpClient, data.url)
+                            dialog.show()
+                        },
+                        onLongPress = { offset ->
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            pressOffset = with(density) {
+                                DpOffset(offset.x.toDp(), offset.y.toDp() - 20.dp)
+                            }
+                            expanded = true
+                        },
+                    )
+                },
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            offset = pressOffset,
+        ) {
+            DropdownMenuItem(
+                text = { Text("查看图片") },
+                onClick = {
+                    expanded = false
+                    val dialog = OpenImageDislog(context, httpClient, data.url)
+                    dialog.show()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("在浏览器中打开") },
+                onClick = {
+                    expanded = false
+                    luoTianYiUrlLauncher(context, data.url.toUri())
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("保存图片") },
+                onClick = {
+                    expanded = false
+                    coroutineScope.launch {
+                        saveImageToGallery(context, httpClient, data.url)
+                    }
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("分享图片") },
+                onClick = {
+                    expanded = false
+                    coroutineScope.launch {
+                        shareImage(context, httpClient, data.url)
+                    }
+                },
+            )
         }
     }
 }
@@ -211,541 +159,107 @@ fun RenderMarkdown(
     modifier: Modifier = Modifier,
     selectable: Boolean = false,
 ) {
-    val asts = remember(html) { htmlToMdAst(html) }
+    val document = remember(html) { htmlToMdAst(html) }
 
     if (selectable) {
         SelectionContainer(modifier = modifier) {
-            RenderMarkdownAstList(
-                asts = asts,
+            Markdown(
+                document = document,
+                imageContent = ::RenderImage,
             )
         }
     } else {
-        RenderMarkdownAstList(
-            asts = asts,
+        Markdown(
+            document = document,
             modifier = modifier,
+            imageContent = ::RenderImage,
         )
     }
 }
 
-@Composable
-fun AnnotatedString.Builder.RenderInline(
-    ast: InlineAstData,
-) {
-    val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val inlineContentMap = LocalMarkdownInlineContentMap.current
-    val maxInlineHeightSp = LocalMarkdownMaxInlineHeightSp.current
-    val onInlineMathPositioned = LocalMarkdownOnInlineMathPositioned.current
-    when (val d = ast) {
-        is AstSpan -> {
-            pushStyle(d.textStyle.toSpanStyle())
-            append(d.text)
-            pop()
-        }
+fun htmlToMdAst(html: String): Document {
+    val document = Document()
+    Jsoup
+        .parse(html)
+        .body()
+        .childNodes()
+        .appendBlocksTo(document)
+    return document
+}
 
-        is AstLink -> {
-            withLink(
-                LinkAnnotation.Clickable(
-                    d.url,
-                    TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
-                ) {
-                    resolveContent(d.url.toUri())?.let(navigator.onNavigate)
-                        ?: luoTianYiUrlLauncher(context, d.url.toUri())
-                },
-            ) {
-                RenderInline(d.title)
-            }
-        }
+private fun List<HtmlNode>.appendBlocksTo(parent: ContainerNode) {
+    convertNodesToBlocks().forEach(parent::appendChild)
+}
 
-        is AstCodeSpan -> {
-            pushStyle(
-                TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    background = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
-                ).toSpanStyle(),
-            )
-            append(d.code)
-            pop()
-        }
+private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
+    val blocks = mutableListOf<MarkdownNode>()
+    var currentParagraph: Paragraph? = null
 
-        is AstLineBreak -> {
-            append("\n")
-        }
-
-        is AstInlineMath -> {
-            // 获取当前文本样式的字体大小
-            val currentTextStyle = LocalTextStyle.current
-            val fontSize = currentTextStyle.fontSize
-            val density = LocalDensity.current
-
-            // 生成唯一的内联内容 ID
-            val inlineContentId = "math_${d.math.hashCode().toHexString()}"
-
-            // 使用 SubcomposeLayout 精确测量 Latex 组件的大小
-            val measuredWidthSp = remember { mutableStateOf(0.sp) }
-            val measuredHeightSp = remember { mutableStateOf(0.sp) }
-
-            SubcomposeLayout { constraints ->
-                val measurable = subcompose("measure") {
-                    Box {
-                        Latex(
-                            latex = d.math,
-                            config = LatexConfig(
-                                fontSize = fontSize.value.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                darkColor = MaterialTheme.colorScheme.onBackground,
-                            ),
-                        )
-                    }
-                }.first().measure(constraints)
-
-                with(density) {
-                    // 13 is a magic number from our library.
-                    if (measurable.width != 0 && measurable.width != 13) {
-                        Log.d("RenderInline", "Measured inline math $inlineContentId size: ${measurable.width}x${measurable.height}")
-                        measuredWidthSp.value = measurable.width.toSp()
-                        measuredHeightSp.value = measurable.height.toSp()
-                        if (measuredHeightSp.value > maxInlineHeightSp.value) {
-                            maxInlineHeightSp.value = measuredHeightSp.value
-                        }
-                    }
-                }
-
-                layout(0, 0) {}
-            }
-
-            // 添加到 inline content map，使用精确测量的大小
-            if (measuredWidthSp.value != 0.sp && measuredHeightSp.value != 0.sp) {
-                inlineContentMap[inlineContentId] = InlineTextContent(
-                    placeholder = Placeholder(
-                        width = measuredWidthSp.value,
-                        height = measuredHeightSp.value,
-                        placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
-                    ),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .onGloballyPositioned { coordinates ->
-                                onInlineMathPositioned?.invoke(d, coordinates.boundsInRoot())
-                            },
-                    ) {
-                        Latex(
-                            latex = d.math,
-                            config = LatexConfig(
-                                fontSize = fontSize.value.sp,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                darkColor = MaterialTheme.colorScheme.onBackground,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            appendInlineContent(inlineContentId, "$${d.math}$ ")
-        }
+    fun paragraph(): Paragraph = currentParagraph ?: Paragraph().also {
+        blocks.add(it)
+        currentParagraph = it
     }
-}
-
-@Composable
-fun MdAst.Render() {
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences("webview_settings", android.content.Context.MODE_PRIVATE) }
-    val fontSizePercent = remember { preferences.getInt("webviewFontSize", 100) }
-    val lineHeightPercent = remember { preferences.getInt("webviewLineHeight", 160) }
-
-    val baseStyle = MaterialTheme.typography.bodyLarge
-    val fontSizeMultiplier = fontSizePercent / 100f
-    val lineHeightMultiplier = lineHeightPercent / 100f
-
-    when (val d = data) {
-        is AstHeader -> {
-            val headerStyle = when (d.level) {
-                1 -> TextStyle(
-                    fontFamily = FontFamily.Default,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = baseStyle.fontSize * 2.0f,
-                    lineHeight = baseStyle.fontSize * 2.0f * 1.4f,
-                )
-                2 -> TextStyle(
-                    fontFamily = FontFamily.Default,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = baseStyle.fontSize * 1.5f,
-                    lineHeight = baseStyle.fontSize * 1.5f * 1.4f,
-                )
-                3 -> MaterialTheme.typography.headlineSmall
-                4 -> MaterialTheme.typography.titleLarge
-                5 -> MaterialTheme.typography.titleMedium
-                else -> MaterialTheme.typography.titleSmall
-            }
-
-            ProvideMarkdownInlineLocals {
-                Text(
-                    text = buildAnnotatedString {
-                        d.text.forEach {
-                            RenderInline(it)
-                        }
-                    },
-                    style = headerStyle.copy(
-                        fontSize = headerStyle.fontSize * fontSizeMultiplier,
-                        lineHeight = maxSp(headerStyle.lineHeight, LocalMarkdownMaxInlineHeightSp.current.value),
-                    ),
-                    inlineContent = LocalMarkdownInlineContentMap.current,
-                )
-            }
-        }
-
-        is AstParagraph -> {
-            ProvideMarkdownInlineLocals {
-                Text(
-                    text = buildAnnotatedString {
-                        d.inlines.forEach {
-                            RenderInline(it)
-                        }
-                    },
-                    style = baseStyle.copy(
-                        fontSize = baseStyle.fontSize * fontSizeMultiplier,
-                        lineHeight = maxSp(
-                            baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
-                            LocalMarkdownMaxInlineHeightSp.current.value,
-                        ),
-                    ),
-                    inlineContent = LocalMarkdownInlineContentMap.current,
-                )
-            }
-        }
-
-        is AstBlockquote -> {
-            androidx.compose.ui.layout.Layout(
-                content = {
-                    Box(
-                        Modifier
-                            .padding(start = 6.dp, end = 6.dp)
-                            .width(3.dp)
-                            .background(
-                                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.25f),
-                                RoundedCornerShape(50),
-                            ),
-                    )
-                    Column(
-                        modifier = Modifier.padding(start = 4.dp),
-                    ) {
-                        d.children.forEach {
-                            it.Render()
-                        }
-                    }
-                },
-            ) { measurables, constraints ->
-                val gutterMeasurable = measurables[0]
-                val contentMeasurable = measurables[1]
-
-                // Get gutter's intrinsic width
-                val gutterWidth = gutterMeasurable.minIntrinsicWidth(constraints.maxHeight)
-
-                // Measure content with remaining width
-                val contentConstraints = constraints.copy(
-                    maxWidth = if (constraints.hasBoundedWidth) {
-                        (constraints.maxWidth - gutterWidth).coerceAtLeast(0)
-                    } else {
-                        constraints.maxWidth
-                    },
-                )
-                val contentPlaceable = contentMeasurable.measure(contentConstraints)
-
-                val layoutWidth = contentPlaceable.width + gutterWidth
-                val layoutHeight = contentPlaceable.height
-
-                // Measure gutter to match content height
-                val gutterConstraints = constraints.copy(
-                    maxWidth = gutterWidth,
-                    minHeight = layoutHeight,
-                    maxHeight = layoutHeight,
-                )
-                val gutterPlaceable = gutterMeasurable.measure(gutterConstraints)
-
-                layout(layoutWidth, layoutHeight) {
-                    gutterPlaceable.place(0, 0)
-                    contentPlaceable.place(gutterWidth, 0)
-                }
-            }
-        }
-
-        is AstCodeBlock -> {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-                    .horizontalScroll(rememberScrollState()),
-            ) {
-                Text(
-                    text = d.code,
-                    style = baseStyle.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = baseStyle.fontSize * fontSizeMultiplier,
-                        lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
-                    ),
-                )
-            }
-        }
-        is AstDisplayMath -> {
-            // 块级公式
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 40.dp) // 设置最小高度，避免过小的公式显示不完整
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Latex(
-                    latex = d.math,
-                    config = LatexConfig(
-                        fontSize = (baseStyle.fontSize * fontSizeMultiplier * 1.2f).value.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        darkColor = MaterialTheme.colorScheme.onBackground,
-                    ),
-                )
-            }
-        }
-        AstHorizontalRule -> {
-            Box(
-                Modifier
-                    .padding(vertical = 8.dp, horizontal = 60.dp)
-                    .height(1.5.dp)
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)),
-            )
-        }
-        is AstImage -> {
-            var expanded by remember { mutableStateOf(false) }
-            var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
-            val density = LocalDensity.current
-            val view = LocalView.current
-            val coroutineScope = rememberCoroutineScope()
-            val httpClient = AccountData.httpClient(context)
-
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                AsyncImage(
-                    model = d.url,
-                    contentDescription = d.altText,
-                    modifier = Modifier
-                        .fillMaxWidth(0.8f)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = {
-                                    val dialog = OpenImageDislog(context, httpClient, d.url)
-                                    dialog.show()
-                                },
-                                onLongPress = { offset ->
-                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                    pressOffset = with(density) {
-                                        DpOffset(offset.x.toDp(), offset.y.toDp() - 20.dp)
-                                    }
-                                    expanded = true
-                                },
-                            )
-                        },
-                )
-
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    offset = pressOffset,
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("查看图片") },
-                        onClick = {
-                            expanded = false
-                            val dialog = OpenImageDislog(context, httpClient, d.url)
-                            dialog.show()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("在浏览器中打开") },
-                        onClick = {
-                            expanded = false
-                            luoTianYiUrlLauncher(context, d.url.toUri())
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("保存图片") },
-                        onClick = {
-                            expanded = false
-                            coroutineScope.launch {
-                                saveImageToGallery(context, httpClient, d.url)
-                            }
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("分享图片") },
-                        onClick = {
-                            expanded = false
-                            coroutineScope.launch {
-                                shareImage(context, httpClient, d.url)
-                            }
-                        },
-                    )
-                }
-            }
-        }
-        is AstList -> {}
-        is AstListItem -> {}
-        is AstTable -> {}
-    }
-}
-
-// HTML 转 MdAst 的辅助函数
-fun htmlToMdAst(html: String): List<MdAst> {
-    val doc = org.jsoup.Jsoup.parse(html)
-    return doc.body().childNodes().convertNodesToAst()
-}
-
-private fun List<Node>.convertNodesToAst(): List<MdAst> {
-    val ret = mutableListOf<MdAst>()
 
     for (node in this) {
-        if (node is TextNode) {
-            if (ret.lastOrNull()?.data !is AstParagraph) {
-                ret.add(
-                    MdAst(
-                        AstParagraph(
-                            mutableListOf(
-                                AstSpan(
-                                    node.text().trim(),
-                                    TextStyle.Default,
-                                ),
-                            ),
-                        ),
-                        MdAstLinks(),
-                    ),
-                )
-                continue
-            }
-            val lastParagraph = ret.last().data as AstParagraph
-            lastParagraph.inlines.add(
-                AstSpan(
-                    node.text().trim(),
-                    TextStyle.Default,
-                ),
-            )
-        } else if (node is Element) {
-            val paraAst = convertElementToAst(node)
-            if (paraAst != null) {
-                ret.add(paraAst)
-            } else {
-                if (ret.lastOrNull()?.data !is AstParagraph) {
-                    ret.add(
-                        MdAst(
-                            AstParagraph(mutableListOf()),
-                            MdAstLinks(),
-                        ),
-                    )
+        when (node) {
+            is TextNode -> {
+                val text = node.text().trim()
+                if (text.isNotEmpty()) {
+                    paragraph().appendChild(Text(text))
                 }
-                val lastParagraph = ret.last().data as AstParagraph
-                // parse inline ast
-                extractInlineElement(node, lastParagraph.inlines)
+            }
+
+            is Element -> {
+                val blockNode = convertElementToBlock(node)
+                if (blockNode != null) {
+                    blocks.add(blockNode)
+                    currentParagraph = null
+                } else {
+                    val inlineNodes = extractInlineNode(node)
+                    if (inlineNodes.isNotEmpty()) {
+                        paragraph().appendChildren(inlineNodes)
+                    }
+                }
             }
         }
     }
 
-    return ret
+    return blocks
 }
 
-private fun convertElementToAst(element: Element): MdAst? = when (element.tagName().lowercase()) {
-    "h1", "h2", "h3", "h4", "h5", "h6" -> {
-        val level = element.tagName()[1].digitToInt()
-        val inlineData = extractInlineElements(element)
-        MdAst(AstHeader(inlineData, level), MdAstLinks())
+private fun convertElementToBlock(element: Element): MarkdownNode? = when (element.tagName().lowercase()) {
+    "h1", "h2", "h3", "h4", "h5", "h6" -> Heading(level = element.tagName()[1].digitToInt()).apply {
+        appendChildren(extractInlineChildren(element))
     }
 
-    "p" -> {
-        val inlines = extractInlineElements(element).toMutableList()
-        MdAst(AstParagraph(inlines), MdAstLinks())
+    "p" -> Paragraph().apply {
+        appendChildren(extractInlineChildren(element))
     }
 
-    "blockquote" -> {
-        val children = element.childNodes().convertNodesToAst()
-        MdAst(AstBlockquote(children), MdAstLinks())
+    "blockquote" -> BlockQuote().apply {
+        element.childNodes().appendBlocksTo(this)
     }
 
-    "pre" -> {
-        val code = element.selectFirst("code")?.text() ?: element.text()
-        val lang = element
-            .selectFirst("code")
-            ?.attr("class")
-            ?.removePrefix("language-")
-            ?.trim()
-        MdAst(AstCodeBlock(code, lang), MdAstLinks())
-    }
+    "pre" -> createCodeBlock(element)
 
-    "ul" -> {
-        val items = element.select("> li").map { li ->
-            val children = li.childNodes().convertNodesToAst()
-            AstListItem(children.ifEmpty { listOf(MdAst(AstParagraph(extractInlineElements(li).toMutableList()), MdAstLinks())) })
-        }
-        MdAst(AstList(items, ordered = false), MdAstLinks())
-    }
+    "ul" -> createListBlock(element, ordered = false)
 
-    "ol" -> {
-        val items = element.select("> li").map { li ->
-            val children = li.childNodes().convertNodesToAst()
-            AstListItem(children.ifEmpty { mutableListOf(MdAst(AstParagraph(extractInlineElements(li).toMutableList()), MdAstLinks())) })
-        }
-        MdAst(AstList(items, ordered = true), MdAstLinks())
-    }
+    "ol" -> createListBlock(element, ordered = true)
 
-    "hr" -> {
-        MdAst(AstHorizontalRule, MdAstLinks())
-    }
+    "hr" -> ThematicBreak()
 
-    "img" -> {
-        // 检查是否是块级数学公式
-        if (element.hasAttr("data-formula")) {
-            val formula = element.attr("data-formula")
-            MdAst(AstDisplayMath(formula), MdAstLinks())
-        } else {
-            val src = extractImageUrl(element)
-            val alt = element.attr("alt").ifEmpty { "image" }
-            if (src != null) {
-                MdAst(AstImage(src, alt), MdAstLinks())
-            } else {
-                null
-            }
-        }
-    }
+    "img" -> createBlockImage(element)
 
-    "figure" -> {
-        // 优先检查是否包含数学公式
-        element.selectFirst("img[data-formula]")?.let { img ->
-            val formula = img.attr("data-formula")
-            return MdAst(AstDisplayMath(formula), MdAstLinks())
-        }
+    "figure" -> createFigureBlock(element)
 
-        // 其次检查普通图片
-        element.selectFirst("img")?.let { img ->
-            val src = extractImageUrl(img)
-            val alt = img.attr("alt").ifEmpty { "image" }
-            if (src != null) {
-                MdAst(AstImage(src, alt), MdAstLinks())
-            } else {
-                null
-            }
-        }
-    }
+    "table" -> createTableBlock(element)
 
     "div", "span" -> {
-        if (element.attr("class").contains("highlight")) {
-            element.selectFirst("code")?.let { code ->
-                val lang = code.attr("class").removePrefix("language-").trim()
-                MdAst(AstCodeBlock(code.text(), lang), MdAstLinks())
-            }
+        if (element.classNames().any { it.contains("highlight") }) {
+            createCodeBlock(element)
         } else {
-            val inlines = extractInlineElements(element).toMutableList()
-            if (inlines.isNotEmpty()) {
-                MdAst(AstParagraph(inlines), MdAstLinks())
-            } else {
-                null
+            extractInlineChildren(element).takeIf { it.isNotEmpty() }?.let { inlines ->
+                Paragraph().apply { appendChildren(inlines) }
             }
         }
     }
@@ -753,89 +267,227 @@ private fun convertElementToAst(element: Element): MdAst? = when (element.tagNam
     else -> null
 }
 
-private fun extractInlineContent(element: Element): InlineAstData {
-    val inlines = extractInlineElements(element)
-    return if (inlines.size == 1) inlines[0] else AstSpan(element.text(), TextStyle.Default)
+private fun createCodeBlock(element: Element): FencedCodeBlock {
+    val codeElement = element.selectFirst("code")
+    val language = codeElement
+        ?.classNames()
+        ?.firstOrNull { it.startsWith("language-") }
+        ?.removePrefix("language-")
+        .orEmpty()
+
+    return FencedCodeBlock(
+        info = language,
+        language = language,
+        literal = codeElement?.text() ?: element.text(),
+    )
 }
 
-private fun extractInlineElements(element: Element): List<InlineAstData> {
-    val result = mutableListOf<InlineAstData>()
-
-    for (node in element.childNodes()) {
-        when (node) {
-            is TextNode -> {
-                val text = node.text()
-                if (text.isNotBlank()) {
-                    result.add(AstSpan(text, TextStyle.Default))
+private fun createListBlock(
+    element: Element,
+    ordered: Boolean,
+): ListBlock = ListBlock(
+    ordered = ordered,
+    startNumber = element.attr("start").toIntOrNull() ?: 1,
+).apply {
+    element.select("> li").forEach { listItemElement ->
+        appendChild(
+            ListItem().apply {
+                val children = listItemElement.childNodes().convertNodesToBlocks()
+                if (children.isEmpty()) {
+                    appendChild(
+                        Paragraph().apply {
+                            appendChildren(extractInlineChildren(listItemElement))
+                        },
+                    )
+                } else {
+                    appendChildren(children)
                 }
-            }
+            },
+        )
+    }
+}
 
-            is Element -> {
-                extractInlineElement(node, result)
-            }
+private fun createBlockImage(element: Element): MarkdownNode? {
+    element.attr("data-formula").takeIf { it.isNotBlank() }?.let { formula ->
+        return MathBlock(formula)
+    }
+
+    val src = extractImageUrl(element) ?: return null
+    val caption = element.attr("alt").ifBlank { "image" }
+    return Figure(
+        imageUrl = src,
+        caption = caption,
+        imageWidth = element.attr("width").toIntOrNull(),
+        imageHeight = element.attr("height").toIntOrNull(),
+    )
+}
+
+private fun createFigureBlock(element: Element): MarkdownNode? {
+    element.selectFirst("img[data-formula]")?.attr("data-formula")?.takeIf { it.isNotBlank() }?.let { formula ->
+        return MathBlock(formula)
+    }
+
+    element.selectFirst("img")?.let { image ->
+        val src = extractImageUrl(image) ?: return@let null
+        val caption = element.selectFirst("figcaption")?.text()?.ifBlank { null }
+            ?: image.attr("alt").ifBlank { "image" }
+        return Figure(
+            imageUrl = src,
+            caption = caption,
+            imageWidth = image.attr("width").toIntOrNull(),
+            imageHeight = image.attr("height").toIntOrNull(),
+        )
+    }
+
+    if (element.classNames().any { it.contains("highlight") }) {
+        return createCodeBlock(element)
+    }
+
+    val inlines = extractInlineChildren(element)
+    return inlines.takeIf { it.isNotEmpty() }?.let {
+        Paragraph().apply { appendChildren(it) }
+    }
+}
+
+private fun createTableBlock(element: Element): Table = Table().apply {
+    val directRows = element.select("> tr")
+    val headRows = element.select("> thead > tr")
+    val bodyRows = element.select("> tbody > tr")
+
+    if (headRows.isNotEmpty()) {
+        appendChild(
+            TableHead().apply {
+                headRows.forEach { appendChild(createTableRow(it, isHeader = true)) }
+            },
+        )
+    }
+
+    val rowsForBody = when {
+        bodyRows.isNotEmpty() -> bodyRows
+        headRows.isEmpty() -> directRows
+        else -> emptyList()
+    }
+    if (rowsForBody.isNotEmpty()) {
+        appendChild(
+            TableBody().apply {
+                rowsForBody.forEach { appendChild(createTableRow(it, isHeader = false)) }
+            },
+        )
+    }
+
+    val referenceRow = headRows.firstOrNull() ?: rowsForBody.firstOrNull()
+    columnAlignments = referenceRow
+        ?.select("> th, > td")
+        ?.map { it.toAlignment() }
+        .orEmpty()
+}
+
+private fun createTableRow(
+    row: Element,
+    isHeader: Boolean,
+): TableRow = TableRow().apply {
+    row.select("> th, > td").forEach { cell ->
+        appendChild(
+            TableCell(
+                alignment = cell.toAlignment(),
+                isHeader = isHeader || cell.tagName().equals("th", ignoreCase = true),
+            ).apply {
+                appendChildren(extractInlineChildren(cell))
+            },
+        )
+    }
+}
+
+private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowercase()) {
+    "left" -> Table.Alignment.LEFT
+    "center" -> Table.Alignment.CENTER
+    "right" -> Table.Alignment.RIGHT
+    else -> Table.Alignment.NONE
+}
+
+private fun extractInlineChildren(element: Element): List<MarkdownNode> = element.childNodes().flatMap(::extractInlineNode)
+
+private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) {
+    is TextNode -> {
+        val text = node.text()
+        if (text.isBlank()) {
+            emptyList()
+        } else {
+            listOf(Text(text))
         }
     }
 
-    return result
-}
+    is Element -> when (node.tagName().lowercase()) {
+        "strong", "b" -> listOf(StrongEmphasis().apply { appendChildren(extractInlineChildren(node)) })
 
-private fun extractInlineElement(
-    node: Element,
-    result: MutableList<InlineAstData>,
-) {
-    when (node.tagName().lowercase()) {
-        "strong", "b" -> {
-            result.add(
-                AstSpan(
-                    node.text(),
-                    TextStyle(fontWeight = FontWeight.Bold),
-                ),
-            )
-        }
+        "em", "i" -> listOf(Emphasis().apply { appendChildren(extractInlineChildren(node)) })
 
-        "em", "i" -> {
-            result.add(
-                AstSpan(
-                    node.text(),
-                    TextStyle(fontStyle = FontStyle.Italic),
-                ),
-            )
-        }
+        "del", "s", "strike" -> listOf(Strikethrough().apply { appendChildren(extractInlineChildren(node)) })
 
-        "code" -> {
-            result.add(AstCodeSpan(node.text()))
-        }
+        "mark" -> listOf(Highlight().apply { appendChildren(extractInlineChildren(node)) })
+
+        "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node)) })
+
+        "sup" -> listOf(Superscript().apply { appendChildren(extractInlineChildren(node)) })
+
+        "kbd" -> listOf(KeyboardInput(node.text()))
+
+        "code" -> listOf(InlineCode(node.text()))
 
         "a" -> {
             val href = node.attr("href")
-            val url = if (href.contains("link.zhihu.com")) {
+            val destination = if (href.contains("link.zhihu.com")) {
                 href.toUri().getQueryParameter("target") ?: href
             } else {
                 href
             }
-            val title = extractInlineContent(node)
-            result.add(AstLink(url, title))
+            listOf(
+                Link(destination = destination).apply {
+                    appendChildren(extractInlineChildren(node).ifEmpty { listOf(Text(node.text())) })
+                },
+            )
         }
 
-        "br" -> {
-            result.add(AstLineBreak())
-        }
+        "br" -> listOf(HardLineBreak())
 
         "img" -> {
-            // 检查是否是数学公式
             val src = node.attr("src")
             if (src.startsWith("https://www.zhihu.com/equation?tex=")) {
-                val formula = Url(src).parameters["tex"] ?: ""
-                result.add(AstInlineMath(formula))
+                listOf(InlineMath(Url(src).parameters["tex"].orEmpty()))
+            } else {
+                extractImageUrl(node)
+                    ?.let { url ->
+                        listOf(
+                            Image(
+                                destination = url,
+                                title = node.attr("title").ifBlank { null },
+                                imageWidth = node.attr("width").toIntOrNull(),
+                                imageHeight = node.attr("height").toIntOrNull(),
+                            ).apply {
+                                node.attr("alt").takeIf { it.isNotBlank() }?.let { appendChild(Text(it)) }
+                            },
+                        )
+                    }.orEmpty()
             }
-            // 普通图片作为 inline 不处理，只在块级处理
         }
 
         else -> {
-            val text = node.text()
-            if (text.isNotBlank()) {
-                result.add(AstSpan(text, TextStyle.Default))
+            val children = extractInlineChildren(node)
+            if (children.isNotEmpty()) {
+                children
+            } else {
+                node
+                    .text()
+                    .takeIf { it.isNotBlank() }
+                    ?.let { listOf(Text(it)) }
+                    .orEmpty()
             }
         }
     }
+
+    else -> emptyList()
+}
+
+private fun ContainerNode.appendChildren(children: List<MarkdownNode>) {
+    children.forEach(::appendChild)
 }
