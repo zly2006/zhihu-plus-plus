@@ -215,7 +215,10 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
             is TextNode -> {
                 val text = node.text().trim()
                 if (text.isNotEmpty()) {
-                    paragraph().appendChild(com.hrm.markdown.parser.ast.Text(text))
+                    paragraph().appendChild(
+                        com.hrm.markdown.parser.ast
+                            .Text(text),
+                    )
                 }
             }
 
@@ -422,7 +425,10 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         if (text.isBlank()) {
             emptyList()
         } else {
-            listOf(com.hrm.markdown.parser.ast.Text(text))
+            listOf(
+                com.hrm.markdown.parser.ast
+                    .Text(text),
+            )
         }
     }
 
@@ -452,7 +458,14 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
             }
             listOf(
                 Link(destination = destination).apply {
-                    appendChildren(extractInlineChildren(node).ifEmpty { listOf(com.hrm.markdown.parser.ast.Text(node.text())) })
+                    appendChildren(
+                        extractInlineChildren(node).ifEmpty {
+                            listOf(
+                                com.hrm.markdown.parser.ast
+                                    .Text(node.text()),
+                            )
+                        },
+                    )
                 },
             )
         }
@@ -473,7 +486,12 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                                 imageWidth = node.attr("width").toIntOrNull(),
                                 imageHeight = node.attr("height").toIntOrNull(),
                             ).apply {
-                                node.attr("alt").takeIf { it.isNotBlank() }?.let { appendChild(com.hrm.markdown.parser.ast.Text(it)) }
+                                node.attr("alt").takeIf { it.isNotBlank() }?.let {
+                                    appendChild(
+                                        com.hrm.markdown.parser.ast
+                                            .Text(it),
+                                    )
+                                }
                             },
                         )
                     }.orEmpty()
@@ -488,8 +506,12 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                 node
                     .text()
                     .takeIf { it.isNotBlank() }
-                    ?.let { listOf(com.hrm.markdown.parser.ast.Text(it)) }
-                    .orEmpty()
+                    ?.let {
+                        listOf(
+                            com.hrm.markdown.parser.ast
+                                .Text(it),
+                        )
+                    }.orEmpty()
             }
         }
     }
