@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -155,6 +157,7 @@ class AstTable(
 
 class MarkdownRenderContext(
     val requestedImages: MutableSet<AstImage> = mutableSetOf(),
+    val onInlineMathPositioned: ((AstInlineMath, androidx.compose.ui.geometry.Rect) -> Unit)? = null,
 )
 
 @Composable
@@ -250,7 +253,11 @@ fun AnnotatedString.Builder.RenderInline(
                     ),
                 ) {
                     Box(
-                        modifier = Modifier.border(1.dp, Color(0xff66ccff)),
+                        modifier = Modifier
+                            .border(1.dp, Color(0xff66ccff))
+                            .onGloballyPositioned { coordinates ->
+                                renderContext.onInlineMathPositioned?.invoke(d, coordinates.boundsInRoot())
+                            },
                     ) {
                         Latex(
                             latex = d.math,

@@ -214,6 +214,7 @@ dependencies {
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.12.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
