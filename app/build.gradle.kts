@@ -6,6 +6,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 
 plugins {
     id("com.android.application")
+    id("com.mikepenz.aboutlibraries.plugin.android")
     kotlin("android")
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
@@ -152,6 +153,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 val ktor = "3.4.1"
 val coil = "3.4.0"
+val aboutLibraries = "14.0.1"
 dependencies {
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
@@ -203,6 +205,7 @@ dependencies {
     implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
     implementation("androidx.room:room-common-jvm:2.8.4")
     implementation("androidx.room:room-runtime-android:2.8.4")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")

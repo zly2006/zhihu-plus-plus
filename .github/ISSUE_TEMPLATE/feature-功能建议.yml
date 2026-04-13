@@ -1,0 +1,66 @@
+name: Feature Request
+description: 提交功能建议或体验改进想法。
+title: "[Feature] "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ 请尽量描述清楚使用场景、当前问题和期望方案，信息不足的建议可能无法推进。
+        
+        **标题要求：必须开篇明义，不要写「评论区的建议」这种，让人摸不着头脑。必须一句话说明你建议的主要内容。**
+        
+        **不合格的issue会被直接关闭。**
+        
+        **一个issue只能提一个建议，禁止「希望能添加以下两个功能」**
+        
+        > 以上反面案例均来自本仓库的issue，禁止参考。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决什么问题？
+      description: 先描述当前遇到的不便、痛点或缺失。
+      placeholder: "例如：评论区筛选能力不够，查找特定内容时效率很低。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你希望怎么改进？
+      description: 描述你理想中的功能或交互。
+      placeholder: "例如：希望增加按作者、关键词或时间范围筛选评论的能力。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用场景
+      description: 这个功能在什么情况下会被使用？为什么值得做？
+      placeholder: "例如：在长评论串里定位某类回复时会经常用到。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 你尝试过的替代方案
+      description: 如果你已经有 workaround，或者考虑过其他设计，请写在这里（可选）。
+
+  - type: input
+    id: app-version
+    attributes:
+      label: 知乎++ 版本
+      description: 可以在账号设置页面长按版本号复制。
+      placeholder: "例如：22"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 其他补充
+      description: 截图、参考链接或补充说明（可选）。

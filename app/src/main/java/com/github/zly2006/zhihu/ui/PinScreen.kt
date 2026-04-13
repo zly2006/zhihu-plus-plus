@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -42,17 +45,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.Article
+import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.LocalNavigator
+import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.Pin
+import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
 import com.github.zly2006.zhihu.markdown.Render
 import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -60,6 +70,7 @@ import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.fuckHonorService
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.viewmodel.PinViewModel
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
@@ -172,7 +183,6 @@ fun PinScreen(
                         CommentScreenComponent(
                             showComments = showComments,
                             onDismiss = { showComments = false },
-                            httpClient = httpClient,
                             content = pin,
                         )
                     }
@@ -294,6 +304,93 @@ private fun PinContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val linkCard = pin.content.firstOrNull {
+            it is DataHolder.Pin.ContentLinkCard
+        } as? DataHolder.Pin.ContentLinkCard
+        if (linkCard != null) {
+            var relatedTitle by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) { mutableStateOf<String?>(null) }
+            var relatedPreview by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) { mutableStateOf<String?>(null) }
+            var isRelatedLoading by remember(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) { mutableStateOf(true) }
+
+            LaunchedEffect(linkCard.dataContentType, linkCard.dataContentId, linkCard.url) {
+                isRelatedLoading = true
+                val preview = fetchLinkCardPreview(context, linkCard)
+                relatedTitle = preview?.title
+                relatedPreview = preview?.preview
+                isRelatedLoading = false
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
+                        val destination = targetUrl?.toUri()?.let(::resolveContent)
+
+                        if (destination != null) {
+                            navigator.onNavigate(destination)
+                        } else {
+                            targetUrl?.let {
+                                luoTianYiUrlLauncher(context, it.toUri())
+                            }
+                        }
+                    },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                ) {
+                    Text(
+                        "关联内容",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (isRelatedLoading) {
+                        Text(
+                            text = "正在加载关联内容...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else if (!relatedTitle.isNullOrBlank()) {
+                        Text(
+                            text = relatedTitle!!,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!relatedPreview.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = relatedPreview!!,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "${linkCardTypeLabel(linkCard.dataContentType)} · ${linkCard.dataContentId}",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    if (relatedTitle.isNullOrBlank() && linkCard.url.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = linkCard.url,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         // Stats and actions
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -350,3 +447,91 @@ private fun PinContent(
         }
     }
 }
+
+private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase(Locale.ROOT)) {
+    "answer" -> "回答"
+    "article" -> "文章"
+    "question" -> "问题"
+    "pin" -> "想法"
+    "people" -> "用户"
+    "video", "zvideo" -> "视频"
+    else -> dataContentType
+}
+
+private data class LinkCardPreview(
+    val title: String,
+    val preview: String,
+)
+
+private suspend fun fetchLinkCardPreview(
+    context: Context,
+    linkCard: DataHolder.Pin.ContentLinkCard,
+): LinkCardPreview? {
+    val destination = resolveLinkCardDestination(linkCard) ?: return null
+    return when (destination) {
+        is Article -> {
+            when (val detail = DataHolder.getContentDetail(context, destination)) {
+                is DataHolder.Article -> LinkCardPreview(
+                    title = compactTitle(detail.title),
+                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
+                )
+
+                is DataHolder.Answer -> LinkCardPreview(
+                    title = compactTitle(detail.question.title),
+                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
+                )
+
+                else -> null
+            }
+        }
+
+        is Question -> {
+            DataHolder.getContentDetail(context, destination)?.let { detail ->
+                LinkCardPreview(
+                    title = compactTitle(detail.title),
+                    preview = compactPreview(detail.detail),
+                )
+            }
+        }
+
+        is Pin -> {
+            DataHolder.getContentDetail(context, destination)?.let { detail ->
+                LinkCardPreview(
+                    title = "${detail.author.name} 的想法",
+                    preview = compactPreview(detail.contentHtml),
+                )
+            }
+        }
+
+        else -> null
+    }
+}
+
+private fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {
+    val byUrl = linkCard.url
+        .takeIf { it.isNotBlank() }
+        ?.toUri()
+        ?.let(::resolveContent)
+    if (byUrl != null) return byUrl
+
+    val contentId = linkCard.dataContentId
+    return when (linkCard.dataContentType.lowercase(Locale.ROOT)) {
+        "answer" -> contentId.toLongOrNull()?.let { Article(type = ArticleType.Answer, id = it) }
+        "article" -> contentId.toLongOrNull()?.let { Article(type = ArticleType.Article, id = it) }
+        "question" -> contentId.toLongOrNull()?.let { Question(questionId = it) }
+        "pin" -> contentId.toLongOrNull()?.let { Pin(id = it) }
+        else -> null
+    }
+}
+
+private fun compactPreview(raw: String, maxLength: Int = 120): String {
+    val plainText = Jsoup
+        .parse(raw)
+        .text()
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    if (plainText.length <= maxLength) return plainText
+    return plainText.take(maxLength).trimEnd() + "..."
+}
+
+private fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)

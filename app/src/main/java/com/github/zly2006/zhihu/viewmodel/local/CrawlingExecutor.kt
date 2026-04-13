@@ -155,58 +155,17 @@ class CrawlingExecutor(
 
         return CrawlingResult(
             taskId = taskId,
-            contentId = when (target) {
-                is Feed.AnswerTarget -> target.id.toString()
-                is Feed.ArticleTarget -> target.id.toString()
-                is Feed.VideoTarget -> target.id.toString()
-                is Feed.QuestionTarget -> target.id.toString()
-                is Feed.PinTarget -> target.id.toString()
-            },
+            contentId = target.toLocalContentIdentity().value,
             title = target.title,
             summary = target.excerpt ?: "",
             url = when (target) {
                 is Feed.AnswerTarget -> target.url
                 is Feed.ArticleTarget -> target.url
-                else -> ""
+                else -> target.url
             },
             reason = reason,
-            score = calculateContentScore(target) * scoreMultiplier,
+            score = scoreFeedTarget(target) * scoreMultiplier,
         )
-    }
-
-    private fun calculateContentScore(target: Feed.Target): Double {
-        // 基于内容特征计算评分
-        var score = 1.0
-
-        // 基于点赞数和评论数
-        when (target) {
-            is Feed.AnswerTarget -> {
-                score += (target.voteupCount / 100.0).coerceAtMost(5.0)
-                score += (target.commentCount / 50.0).coerceAtMost(2.0)
-            }
-            is Feed.ArticleTarget -> {
-                score += (target.voteupCount / 100.0).coerceAtMost(5.0)
-                score += (target.commentCount / 50.0).coerceAtMost(2.0)
-            }
-            is Feed.VideoTarget -> {
-                score += (target.voteCount / 100.0).coerceAtMost(5.0)
-                score += (target.commentCount / 50.0).coerceAtMost(2.0)
-            }
-            else -> {
-                // 对于其他类型的内容给予基础分数
-                score += 0.5
-            }
-        }
-
-        // 基于内容长度（适中的长度获得更高分数）
-        val contentLength = target.excerpt?.length ?: 0
-        score += when {
-            contentLength in 100..500 -> 1.0
-            contentLength in 50..100 || contentLength in 500..1000 -> 0.5
-            else -> 0.0
-        }
-
-        return score.coerceIn(0.1, 10.0)
     }
 
     private fun isVoteupFeed(feed: Feed): Boolean {

@@ -172,16 +172,15 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
 
-    val duo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
-    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+    val showRefreshFab = preferences.getBoolean("showRefreshFab", true)
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
-    val currentRecommendationMode = remember {
+    val currentRecommendationMode =
         RecommendationMode.entries.find {
             it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
-    }
 
     // 根据设置选择对应的ViewModel
     val viewModel: BaseFeedViewModel by when (currentRecommendationMode) {
@@ -190,6 +189,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
         RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
         RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
+    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
     val keySurveyDone = "survey_feedback_done"
     var installed3Hours by remember { mutableStateOf(false) }
@@ -220,15 +220,17 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
     LaunchedEffect(scrollToTopTrigger) {
-        if (scrollToTopTrigger != cachedScrollToTopTrigger) {
-            if ((scrollToTopTrigger - cachedScrollToTopTrigger) >= 2 || (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0)) {
-                // 如果2次以上点击，或已经在顶部，则触发刷新
-                viewModel.refresh(context)
-            } else {
-                listState.animateScrollToItem(0)
-            }
-            cachedScrollToTopTrigger = scrollToTopTrigger
+        when (
+            topLevelReselectAction(
+                triggerDelta = scrollToTopTrigger - cachedScrollToTopTrigger,
+                isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
+            )
+        ) {
+            TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+            TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
+            null -> {}
         }
+        cachedScrollToTopTrigger = scrollToTopTrigger
     }
 
     // 通知 ViewModel
@@ -281,12 +283,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 .fillMaxSize()
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         },
-        containerColor = if (duo3HomeAccount) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.background,
         topBar = {
             if (duo3HomeAccount) {
                 Box {
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceContainer,
                         modifier = Modifier
                             .height(
                                 WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp + 32.dp,
@@ -451,7 +451,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                 ),
                 onLoadMore = { viewModel.loadMore(context) },
                 footer = ProgressIndicatorFooter,
-                key = { item -> item.navDestination.toString() },
+                key = { item -> item.stableKey },
                 topContent = {
                     item {
                         val availableUpdate = updateState as? UpdateManager.UpdateState.UpdateAvailable
@@ -513,10 +513,20 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         else -> null
                     },
                     onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        if (localHomeViewModel != null && it.localContentId != null) {
+                            localHomeViewModel.onLocalItemFeedback(context, it, 1.0)
+                            Toast.makeText(context, "已记录喜欢，本地推荐会逐步学习", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        if (localHomeViewModel != null && it.localContentId != null) {
+                            localHomeViewModel.onLocalItemFeedback(context, it, -1.0)
+                            Toast.makeText(context, "已降低这类本地推荐的优先级", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     onBlockUser = { feedItem ->
                         viewModel.handleBlockUser(context, feedItem) { authorInfo ->
@@ -534,9 +544,11 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
                 ) {
-                    feed?.let {
+                    if (feed != null) {
 //                            DataHolder.putFeed(feed)
                         (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
+                    } else if (localHomeViewModel != null && item.localContentId != null) {
+                        localHomeViewModel.onLocalItemOpened(context, item)
                     }
                     if (navDestination != null) {
                         navigator.onNavigate(navDestination)

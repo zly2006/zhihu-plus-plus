@@ -45,7 +45,13 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val isFiltered: Boolean = false,
         val content: String? = null,
         var raw: DataHolder.Content? = null,
-    )
+        val localContentId: String? = null,
+        val localFeedId: String? = null,
+        val localReason: String? = null,
+    ) {
+        val stableKey: String
+            get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
+    }
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
@@ -164,7 +170,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     fun addDisplayItems(newItems: List<FeedDisplayItem>) {
         newItems.forEach {
-            if (displayItems.none { existing -> existing.navDestination == it.navDestination }) {
+            if (displayItems.none { existing -> existing.stableKey == it.stableKey }) {
                 displayItems.add(it)
             }
         }

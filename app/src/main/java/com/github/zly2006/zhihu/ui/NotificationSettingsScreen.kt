@@ -47,6 +47,7 @@ object NotificationPreferences {
     private const val PREF_NAME = "notification_settings"
     private const val KEY_SYSTEM_NOTIFICATION = "system_notification_"
     private const val KEY_DISPLAY_IN_APP = "display_in_app_"
+    private const val KEY_AUTO_MARK_AS_READ = "auto_mark_notifications_read"
 
     fun getSystemNotificationEnabled(context: Context, type: NotificationType): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -66,6 +67,16 @@ object NotificationPreferences {
     fun setDisplayInAppEnabled(context: Context, type: NotificationType, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         prefs.edit { putBoolean("${KEY_DISPLAY_IN_APP}${type.name}", enabled) }
+    }
+
+    fun getAutoMarkAsReadEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_AUTO_MARK_AS_READ, true)
+    }
+
+    fun setAutoMarkAsReadEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        prefs.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
     }
 
     fun matchNotificationType(verb: String): NotificationType? = NotificationType.entries.find { it.regex.matches(verb) }
@@ -95,6 +106,7 @@ fun NotificationSettingsScreen(
             },
         )
     }
+    var autoMarkAsRead by remember { mutableStateOf(NotificationPreferences.getAutoMarkAsReadEnabled(context)) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -128,6 +140,20 @@ fun NotificationSettingsScreen(
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
+            SettingItemGroup(
+                title = "阅读行为",
+                footer = { Text("进入通知页后，自动把当前通知批次标记为已读") },
+            ) {
+                SettingItemWithSwitch(
+                    title = { Text("打开通知自动已读") },
+                    checked = autoMarkAsRead,
+                    onCheckedChange = { checked ->
+                        autoMarkAsRead = checked
+                        NotificationPreferences.setAutoMarkAsReadEnabled(context, checked)
+                    },
+                )
+            }
+
             SettingItemGroup(title = "系统通知") {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(

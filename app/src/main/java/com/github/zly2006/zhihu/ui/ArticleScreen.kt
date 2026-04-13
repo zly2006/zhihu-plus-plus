@@ -25,6 +25,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,6 +100,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -111,6 +113,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -137,6 +140,7 @@ import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -422,23 +426,10 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 复制 Markdown 按钮
-        MenuActionButton(
-            icon = Icons.Filled.ContentCopy,
-            text = "复制 Markdown",
-            onClick = {
-                onDismissRequest()
-                viewModel.exportToClipboard(context)
-                Toast.makeText(context, "已复制 Markdown", Toast.LENGTH_SHORT).show()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
         // 导出按钮
         MenuActionButton(
             icon = Icons.Filled.GetApp,
-            text = "导出文章 (此功能目前由 AI 实现, bug 极多)",
+            text = "导出文章 (Markdown、图片、HTML、PDF)",
             onClick = {
                 onDismissRequest()
                 onExportRequest()
@@ -588,7 +579,7 @@ private fun prepareContentDocument(content: String, context: Context): Document 
         }
     }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ArticleScreen(
     article: Article,
@@ -603,15 +594,6 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-
-    val articleUseSurfaceLight by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceLight", false)) }
-    val articleUseSurfaceDark by remember { mutableStateOf(preferences.getBoolean("articleUseSurfaceDark", false)) }
-    val isDarkTheme = ThemeManager.isDarkTheme()
-    val articleSurfaceColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
-        MaterialTheme.colorScheme.surface
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
 
     var isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     var autoHideArticleBottomBar by remember {
@@ -631,12 +613,23 @@ fun ArticleScreen(
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSummaryDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val useDuo3ArticleBar = remember { preferences.getBoolean("duo3_article_bar", false) }
     val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
     var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+    var answerDoubleTapAction by remember {
+        mutableStateOf(
+            AnswerDoubleTapAction.fromPreference(
+                preferences.getString(
+                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                    AnswerDoubleTapAction.Ask.preferenceValue,
+                ),
+            ),
+        )
+    }
 
     // Follow-the-finger bar hide: pixel-based offsets driven by scroll delta
     val topBarOffset = remember { Animatable(0f) }
@@ -652,6 +645,49 @@ fun ArticleScreen(
             article.id.toString(),
             article.type.name.lowercase(),
         )
+    }
+
+    fun upVoteFromDoubleTap() {
+        if (viewModel.voteUpState != VoteUpState.Up) {
+            viewModel.toggleVoteUp(context, VoteUpState.Up)
+        }
+    }
+
+    fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        when (action) {
+            AnswerDoubleTapAction.None -> Unit
+            AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
+            AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
+            AnswerDoubleTapAction.OpenComments -> showComments = true
+        }
+    }
+
+    fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
+        answerDoubleTapAction = action
+        preferences.edit {
+            putString(
+                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                action.preferenceValue,
+            )
+        }
+    }
+
+    fun handleAnswerDoubleTap() {
+        if (article.type != ArticleType.Answer) return
+        performAnswerDoubleTapAction(answerDoubleTapAction)
+    }
+
+    val answerDoubleTapModifier = if (
+        article.type == ArticleType.Answer &&
+        answerDoubleTapAction != AnswerDoubleTapAction.None
+    ) {
+        Modifier.pointerInput(answerDoubleTapAction) {
+            detectTapGestures(
+                onDoubleTap = { handleAnswerDoubleTap() },
+            )
+        }
+    } else {
+        Modifier
     }
 
     val preferenceListener = remember(preferences) {
@@ -670,6 +706,14 @@ fun ArticleScreen(
                 }
 
                 "pinAnswerDate" -> pinAnswerDate = preferences.getBoolean(key, false)
+                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY -> {
+                    answerDoubleTapAction = AnswerDoubleTapAction.fromPreference(
+                        preferences.getString(
+                            key,
+                            AnswerDoubleTapAction.Ask.preferenceValue,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -858,11 +902,11 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
-            sharedData?.pendingInitialContent = prev
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData.pendingInitialContent = prev
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -876,12 +920,12 @@ fun ArticleScreen(
             }
         } else {
             // 无历史时尝试从来源（如收藏夹）向前加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.previousAnswerPreview
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val prevCached = sharedData?.navigator?.loadPrevious(context)
                 if (prevCached != null) {
-                    sharedData?.pendingInitialContent = prevCached
+                    sharedData.pendingInitialContent = prevCached
                     val activity = context as? MainActivity
                     if (activity != null) {
                         if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -906,12 +950,12 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData?.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
         // 优先使用前向历史
         val historyNext = sharedData?.navigator?.goToNext()
         if (historyNext != null) {
-            sharedData?.pendingInitialContent = historyNext
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData.pendingInitialContent = historyNext
+            sharedData.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             val activity = context as? MainActivity
             if (activity != null) {
                 if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
@@ -925,8 +969,8 @@ fun ArticleScreen(
             }
         } else {
             // 没有前向历史，从导航器加载
-            sharedData?.pendingInitialContent = sharedData?.navigator?.nextAnswer
-            sharedData?.promoteForNavigation(sharedData?.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
+            sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
+            sharedData?.promoteForNavigation(sharedData.answerTransitionDirection ?: ArticleViewModel.AnswerTransitionDirection.DEFAULT)
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext(context)
                 if (nextArticle != null) {
@@ -1339,7 +1383,6 @@ fun ArticleScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
-            containerColor = articleSurfaceColor,
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1450,9 +1493,8 @@ fun ArticleScreen(
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
-                            containerColor = articleSurfaceColor,
-                            scrolledContainerColor = if (if (isDarkTheme) articleUseSurfaceDark else articleUseSurfaceLight) {
-                                TopAppBarDefaults.topAppBarColors().scrolledContainerColor
+                            scrolledContainerColor = if (MaterialTheme.colorScheme.surfaceContainer != MaterialTheme.colorScheme.background) {
+                                MaterialTheme.colorScheme.surfaceContainer
                             } else {
                                 MaterialTheme.colorScheme.surfaceContainerHigh
                             },
@@ -1802,6 +1844,7 @@ fun ArticleScreen(
                     if (viewModel.content.isNotEmpty()) {
                         if (preferences.getBoolean("articleUseWebview", true)) {
                             WebviewComp(
+                                onDoubleTap = ::handleAnswerDoubleTap,
                                 scrollState = scrollState,
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
                             ) {
@@ -1833,11 +1876,13 @@ fun ArticleScreen(
                             }
                             val context = MarkdownRenderContext()
                             Spacer(Modifier.height(10.dp))
-                            SelectionContainer(Modifier.fuckHonorService()) {
-                                Column {
-                                    for (ast in astNode) {
-                                        ast.Render(context)
-                                        Spacer(Modifier.height(12.dp))
+                            Box(modifier = answerDoubleTapModifier) {
+                                SelectionContainer(Modifier.fuckHonorService()) {
+                                    Column {
+                                        for (ast in astNode) {
+                                            ast.Render(context)
+                                            Spacer(Modifier.height(12.dp))
+                                        }
                                     }
                                 }
                             }
@@ -1902,6 +1947,19 @@ fun ArticleScreen(
         }
     } // end answerSwitchContent
 
+    val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() +
+        if (useDuo3ArticleBar) {
+            64.dp
+        } else {
+            24.dp
+        }
+    val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() +
+        if (useDuo3ArticleBar) {
+            96.dp
+        } else {
+            64.dp
+        }
+
     Box(
         modifier = if (useDuo3ArticleBar) Modifier else Modifier.padding(innerPadding),
     ) {
@@ -1924,7 +1982,7 @@ fun ArticleScreen(
             // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
             LaunchedEffect(nav?.nextAnswer) {
                 val cached = nav?.nextAnswer ?: return@LaunchedEffect
-                val wv = sharedData?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
+                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true, cached.article.id) ?: return@LaunchedEffect
                 val articleId = cached.article.id.toString()
                 if (wv.contentId != articleId) {
                     wv.contentId = articleId
@@ -1967,6 +2025,17 @@ fun ArticleScreen(
         } else {
             (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
         }
+
+        VerticalReadingProgressBar(
+            scrollState = scrollState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(
+                    top = progressBarTopPadding,
+                    bottom = progressBarBottomPadding,
+                    end = 2.dp,
+                ),
+        )
     }
 
     // 全屏菜单
@@ -2009,15 +2078,66 @@ fun ArticleScreen(
         context = context,
     )
 
-    viewModel.httpClient?.let {
-        CommentScreenComponent(
-            showComments = showComments,
-            onDismiss = { showComments = false },
-            httpClient = it,
-            content = article,
-        )
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
+        content = article,
+    )
+    if (showDoubleTapActionDialog) {
+        MyModalBottomSheet(
+            onDismissRequest = { showDoubleTapActionDialog = false },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "设置双击回答动作",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.None.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为无操作")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
+                        upVoteFromDoubleTap()
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为点赞")
+                }
+                Button(
+                    onClick = {
+                        showDoubleTapActionDialog = false
+                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
+                        showComments = true
+                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}", Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("设为打开评论区")
+                }
+            }
+        }
     }
-
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,

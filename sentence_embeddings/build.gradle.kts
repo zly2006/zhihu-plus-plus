@@ -1,6 +1,6 @@
 plugins {
-    id("com.android.library") version "8.12.3"
-    kotlin("android") version "2.3.10"
+    id("com.android.library")
+    kotlin("android")
 }
 
 // Used in GitHub CI to pass the path of the installed Android NDK
@@ -8,7 +8,7 @@ val envAndroidNDKPath = System.getenv("ANDROID_NDK_HOME")
 
 android {
     namespace = "com.ml.shubham0204.sentence_embeddings"
-    compileSdk = 35
+    compileSdk = 36
 
     // Declare the ndkVersion to avoid 'NDK not installed' errors from rust-android-plugin
     // see: https://github.com/mozilla/rust-android-gradle/issues/29#issuecomment-593501017

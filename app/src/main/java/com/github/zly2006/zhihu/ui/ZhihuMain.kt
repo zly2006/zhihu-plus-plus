@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
-import android.content.SharedPreferences
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -35,7 +34,6 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -97,9 +95,13 @@ import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
 import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
+import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
@@ -119,23 +121,40 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
     var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
     var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
-    val preferenceListener = remember(preferences) {
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            when (key) {
-                "duo3_home_account" -> duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
-                "duo3_nav_style" -> duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
-                "bottomBarTapScrollToTop" -> tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
-                "autoHideBottomBar" -> autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
-            }
-        }
+    val allBottomBarItemKeys = remember {
+        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
     }
 
-    DisposableEffect(preferences, preferenceListener) {
-        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
-        onDispose {
-            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-        }
+    fun computeSelectedKeys(isDuo3HomeAccount: Boolean) = normalizeBottomBarSelection(
+        preferences
+            .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarSelectionKeys(isDuo3HomeAccount))
+            ?.toSet() ?: defaultBottomBarSelectionKeys(isDuo3HomeAccount),
+        isDuo3HomeAccount,
+        enforceMinimumSelection = true,
+    )
+
+    fun computeStartDestination(selectedKeys: Set<String>) = navDestinationFromName(
+        resolveValidStartDestinationKey(
+            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+            allBottomBarItemKeys.filter { it in selectedKeys },
+        ),
+    )
+
+    var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
+    var startDestination by remember { mutableStateOf(computeStartDestination(selectedBottomBarItemKeys)) }
+
+    val reloadBottomBarPreferences = {
+        val updatedDuo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
+        val updatedSelectedBottomBarItemKeys = computeSelectedKeys(updatedDuo3HomeAccount)
+        duo3HomeAccount = updatedDuo3HomeAccount
+        duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
+        tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
+        autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
+        selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
+        startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
     }
+
+    val navEntry by navController.currentBackStackEntryAsState()
 
     var scrollToTopTrigger by remember { mutableIntStateOf(0) }
     // 滚动时自动隐藏底部导航栏
@@ -152,39 +171,15 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
-    val allBottomBarItems = if (duo3HomeAccount) {
-        listOf(
-            Triple(Home, "主页", Icons.Filled.Home),
-            Triple(Follow, "关注", Icons.Filled.Group),
-            Triple(HotList, "热榜", Icons.Filled.Whatshot),
-            Triple(Daily, "日报", Icons.Filled.Newspaper),
-        )
-    } else {
-        listOf(
-            Triple(Home, "主页", Icons.Filled.Home),
-            Triple(Follow, "关注", Icons.Filled.PersonAddAlt1),
-            Triple(HotList, "热榜", Icons.Filled.Whatshot),
-            Triple(Daily, "日报", Icons.Filled.Newspaper),
-            Triple(OnlineHistory, "历史", Icons.Filled.History),
-            Triple(Account, "账号", Icons.Filled.ManageAccounts),
-        )
-    }
-    val defaultBottomBarItemKeys = if (duo3HomeAccount) {
-        setOf(Home.name, Follow.name, Daily.name)
-    } else {
-        setOf(Home.name, Follow.name, Daily.name, OnlineHistory.name, Account.name)
-    }
-    val selectedBottomBarItemKeys = preferences
-        .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarItemKeys)
-        ?.toSet()
-        ?: defaultBottomBarItemKeys
+    val allBottomBarItems = listOf(
+        Triple(Home, "主页", Icons.Filled.Home),
+        Triple(Follow, "关注", if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1),
+        Triple(HotList, "热榜", Icons.Filled.Whatshot),
+        Triple(Daily, "日报", Icons.Filled.Newspaper),
+        Triple(OnlineHistory, "历史", Icons.Filled.History),
+        Triple(Account, "账号", Icons.Filled.ManageAccounts),
+    )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
-
-    val startDestination = remember {
-        navDestinationFromName(
-            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name) ?: Home.name,
-        )
-    }
 
     // 获取页面索引的函数
     fun getPageIndex(route: androidx.navigation.NavDestination): Int = when {
@@ -246,7 +241,6 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             .nestedScroll(bottomBarScrollConnection)
             .semantics { testTagsAsResourceId = true },
         bottomBar = {
-            val navEntry by navController.currentBackStackEntryAsState()
             if (navEntry != null) {
                 // 页面切换时重置底部导航栏可见状态
                 LaunchedEffect(navEntry) { isBottomBarVisible = true }
@@ -366,7 +360,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Question> { navEntry ->
                     val question: Question = navEntry.toRoute()
-                    QuestionScreen(question, innerPadding)
+                    QuestionScreen(question)
                 }
                 composable<Article>(
                     enterTransition = {
@@ -417,7 +411,10 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     HotListScreen(innerPadding)
                 }
                 composable<Follow> {
-                    FollowScreen(innerPadding)
+                    FollowScreen(
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        innerPadding = innerPadding,
+                    )
                 }
                 composable<Daily> {
                     DailyScreen(innerPadding)
@@ -471,6 +468,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     AppearanceSettingsScreen(
                         innerPadding,
                         setting = args.setting,
+                        onExit = reloadBottomBarPreferences,
                     )
                 }
                 composable<Account.RecommendSettings> {
@@ -482,6 +480,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Account.SystemAndUpdateSettings> {
                     SystemAndUpdateSettingsScreen(innerPadding)
+                }
+                composable<Account.OpenSourceLicenses> {
+                    OpenSourceLicensesScreen()
                 }
                 composable<Account.DeveloperSettings> {
                     DeveloperSettingsScreen(innerPadding)

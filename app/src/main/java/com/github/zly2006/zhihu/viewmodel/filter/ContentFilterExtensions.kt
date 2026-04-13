@@ -9,7 +9,6 @@ import com.github.zly2006.zhihu.ArticleType
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -178,8 +177,11 @@ object ContentFilterExtensions {
                     ?.target
                     ?.author
                     ?.isFollowing ?: false
+                // 手机版特供垃圾，根本没人点赞那种。
+                // 没人点赞，你乎就只能拿时间和浏览量来招笑了。
+                val isLowQualityAndroidFeed = item.details.contains("小时前") || item.details.contains("分钟前") || item.details.contains("浏览")
 
-                if (isFollowing || !isViewed) {
+                if (isFollowing || (!isViewed && !isLowQualityAndroidFeed)) {
                     keptItems.add(item)
                     filterManager.recordContentView(identity.type, identity.id)
                 } else {
@@ -242,6 +244,10 @@ object ContentFilterExtensions {
                     is com.github.zly2006.zhihu.Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     is com.github.zly2006.zhihu.Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
                     else -> DataHolder.DummyContent
+                }
+
+                if (rawContent is DataHolder.DummyContent) {
+                    Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}' with navDestination '${item.navDestination}'. Using dummy content for filtering.")
                 }
 
                 itemToFilterableMap[item] = item.toFilterableContent(identity, rawContent)
@@ -491,18 +497,12 @@ object ContentFilterExtensions {
             else -> null
         } ?: content ?: summary,
         authorName = authorName,
-        authorId = feed
-            ?.target
-            ?.author
-            ?.id,
+        authorId = rawContent.author?.id,
         contentId = identity.id,
         contentType = identity.type,
         raw = rawContent,
-        isFollowing = feed
-            ?.target
-            ?.author
-            ?.isFollowing ?: false,
-        questionId = (feed?.target as? Feed.AnswerTarget)?.question?.id,
+        isFollowing = rawContent.author?.isFollowing ?: false,
+        questionId = (rawContent as? DataHolder.Answer)?.question?.id,
         url = feed?.target?.url,
         feedJson = feed?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
         navDestinationJson = navDestination?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
@@ -558,6 +558,16 @@ object ContentType {
     const val VIDEO = "video"
     const val PIN = "pin"
 }
+
+private val DataHolder.Content.author: DataHolder.Author?
+    get() = when (this) {
+        is DataHolder.Answer -> this.author
+        is DataHolder.Article -> this.author
+        is DataHolder.Pin -> this.author
+        is DataHolder.Question -> this.author
+//        is DataHolder.Comment -> this.author
+        else -> null
+    }
 
 /** 用于序列化屏蔽记录的 Json 实例 */
 internal val recordJson = Json {

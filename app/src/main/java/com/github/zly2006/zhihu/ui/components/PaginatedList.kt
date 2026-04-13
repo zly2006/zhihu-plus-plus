@@ -25,14 +25,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-val ProgressIndicatorFooter: @Composable () -> Unit = {
+val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator()
+        if (!LocalPullToRefreshViewModel.current.isPullToRefresh) {
+            CircularProgressIndicator()
+        }
     }
 }
 
@@ -44,7 +46,7 @@ fun <T> PaginatedList(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     listState: LazyListState = rememberLazyListState(),
     isEnd: () -> Boolean = { false },
-    footer: @Composable (() -> Unit)? = null,
+    footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
     topContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
@@ -102,7 +104,7 @@ fun <T> PaginatedList(
                     )
                 }
             } else {
-                footer?.invoke()
+                footer?.invoke(listState)
             }
         }
     }

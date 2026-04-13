@@ -10,11 +10,15 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
@@ -45,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.WebviewActivity
@@ -73,9 +76,7 @@ import org.jsoup.Jsoup
 @Composable
 fun QuestionScreen(
     question: Question,
-    innerPadding: PaddingValues,
 ) {
-    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val viewModel: QuestionFeedViewModel = viewModel {
@@ -129,25 +130,25 @@ fun QuestionScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
-        topBar = {
-            SelectionContainer(
-                modifier = Modifier.fuckHonorService(),
-            ) {
-                Row {
-                    Text(
-                        text = title,
-                        fontSize = 24.sp,
-                        lineHeight = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(16.dp),
-                    )
+    FeedPullToRefresh(viewModel, padding = PaddingValues(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
+            topBar = {
+                SelectionContainer(
+                    modifier = Modifier.fuckHonorService(),
+                ) {
+                    Row {
+                        Text(
+                            text = title,
+                            fontSize = 24.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
                 }
-            }
-        },
-    ) { innerPadding ->
-        FeedPullToRefresh(viewModel) {
+            },
+        ) { innerPadding ->
             PaginatedList(
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
@@ -336,14 +337,11 @@ fun QuestionScreen(
             }
         }
     }
-    if (context is MainActivity) {
-        CommentScreenComponent(
-            showComments = showComments,
-            onDismiss = { showComments = false },
-            httpClient = context.httpClient,
-            content = question,
-        )
-    }
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = { showComments = false },
+        content = question,
+    )
 
     // 分享对话框
     val shareText = getShareText(question, title)
@@ -364,6 +362,5 @@ fun QuestionScreenPreview() {
     val question = Question(123456789, "这是一个问题的标题")
     QuestionScreen(
         question = question,
-        innerPadding = PaddingValues(0.dp),
     )
 }

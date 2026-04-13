@@ -7,9 +7,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
 import android.view.View
@@ -17,6 +18,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -44,16 +46,25 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
+import com.github.zly2006.zhihu.util.buildArticleExportData
+import com.github.zly2006.zhihu.util.buildArticleExportFileName
+import com.github.zly2006.zhihu.util.buildArticleExportHtml
+import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.buildZhidaSummaryRequest
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -68,19 +79,24 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
 import java.io.File
-import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class ArticleViewModel(
     private val article: Article,
@@ -110,6 +126,7 @@ class ArticleViewModel(
     var aiSummaryLoading by mutableStateOf(false)
         private set
     private var aiSummaryJob: Job? = null
+    private var exportSourceContent: DataHolder.Content? = null
 
     // scroll fix
     var rememberedScrollY = MutableLiveData(0)
@@ -332,6 +349,7 @@ class ArticleViewModel(
                         val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
                         val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
                         if (answer != null) {
+                            exportSourceContent = answer
                             title = answer.question.title
                             authorName = answer.author.name
                             authorId = answer.author.id
@@ -352,7 +370,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
 
-                            (context as? MainActivity)?.postHistory(
+                            context.postHistory(
                                 Article(
                                     id = answer.id,
                                     type = ArticleType.Answer,
@@ -402,6 +420,7 @@ class ArticleViewModel(
                     } else if (article.type == ArticleType.Article) {
                         val article = DataHolder.getContentDetail(context, article) as? DataHolder.Article
                         if (article != null) {
+                            exportSourceContent = article
                             title = article.title
                             content = article.content
                             voteUpCount = article.voteupCount
@@ -679,197 +698,98 @@ class ArticleViewModel(
         }
     }
 
-    // 导出为PDF
-    suspend fun exportToPdf(context: Context, onComplete: (Boolean) -> Unit) {
-        if (!hasStoragePermission(context)) {
-            withContext(Dispatchers.Main) {
-                requestStoragePermission(context as Activity)
-                permissionRequested.value = Unit
-                Toast.makeText(context, "需要存储权限才能导出PDF，正在请求权限", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-            return
-        }
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    val pdfDocument = PdfDocument()
-                    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
-                    val page = pdfDocument.startPage(pageInfo)
-                    var canvas = page.canvas
-
-                    // 创建简单的文本内容
-                    val paint = android.graphics.Paint().apply {
-                        textSize = 14f
-                        color = android.graphics.Color.BLACK
-                        isAntiAlias = true
-                    }
-
-                    var yPosition = 50f
-                    val lineHeight = 20f
-                    val maxWidth = 545f // 留出边距
-
-                    // 标题
-                    paint.textSize = 18f
-                    paint.isFakeBoldText = true
-                    val titleLines = breakTextIntoLines(title, paint, maxWidth)
-                    for (line in titleLines) {
-                        canvas.drawText(line, 25f, yPosition, paint)
-                        yPosition += lineHeight * 1.5f
-                    }
-
-                    // 作者信息
-                    paint.textSize = 12f
-                    paint.isFakeBoldText = false
-                    yPosition += 20f
-                    canvas.drawText("作者: $authorName", 25f, yPosition, paint)
-                    yPosition += lineHeight
-
-                    if (authorBio.isNotEmpty()) {
-                        canvas.drawText("简介: $authorBio", 25f, yPosition, paint)
-                        yPosition += lineHeight
-                    }
-
-                    yPosition += 20f
-
-                    // 内容 - 使用HTML解析
-                    paint.textSize = 14f
-                    val plainText = Jsoup.parse(content).text()
-                    val contentLines = breakTextIntoLines(plainText, paint, maxWidth)
-
-                    for (line in contentLines) {
-                        if (yPosition > 800f) { // 如果页面快满了，创建新页面
-                            pdfDocument.finishPage(page)
-                            val newPage = pdfDocument.startPage(pageInfo)
-                            val newCanvas = newPage.canvas
-                            yPosition = 50f
-                            // 继续绘制剩余内容到新页面
-                            canvas = newCanvas
-                        }
-                        canvas.drawText(line, 25f, yPosition, paint)
-                        yPosition += lineHeight
-                    }
-
-                    pdfDocument.finishPage(page)
-
-                    // 保存PDF文件到应用专属目录
-                    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                    val fileName = "Zhihu_${article.type}_${article.id}_$timeStamp.pdf"
-                    val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), fileName)
-
-                    FileOutputStream(file).use { outputStream ->
-                        pdfDocument.writeTo(outputStream)
-                    }
-
-                    pdfDocument.close()
-
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "PDF已保存到: ${file.absolutePath}", Toast.LENGTH_LONG).show()
-                        onComplete(true)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "PDF export failed", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "PDF导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    onComplete(false)
-                }
-            }
-        }
-    }
+    private data class PreparedExportWebView(
+        val webView: WebView,
+        val viewportWidthPx: Int,
+        val contentHeightPx: Int,
+    )
 
     // 导出为图片 - 使用WebView渲染
-    suspend fun exportToImage(context: Context, onComplete: (Boolean) -> Unit) {
-        if (!hasStoragePermission(context)) {
-            withContext(Dispatchers.Main) {
-                requestStoragePermission(context as Activity)
-                permissionRequested.value = Unit
-                Toast.makeText(context, "需要存储权限才能导出图片，正在请求权限", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-            return
-        }
-        try {
-            withContext(Dispatchers.Main) {
-                // 在主线程中创建和配置WebView
-                val webView = WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.useWideViewPort = true
-                    settings.loadWithOverviewMode = true
-                    settings.builtInZoomControls = false
-                    settings.displayZoomControls = false
-                }
-
-                // 创建HTML内容
-                val htmlContent = createHtmlContent(includeComments = false, commentCount = 0)
-
-                // 设置WebViewClient来监听加载完成
-                var isLoaded = false
-                val timeoutRunnable = Runnable {
-                    if (!isLoaded) {
-                        webView.destroy()
-                        Toast.makeText(context, "图片导出超时", Toast.LENGTH_SHORT).show()
-                        onComplete(false)
-                    }
-                }
-                webView.postDelayed(timeoutRunnable, 10000) // 10秒超时
-                webView.webViewClient = object : android.webkit.WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        if (!isLoaded) {
-                            //   = true
-                            webView.removeCallbacks(timeoutRunnable)
-                            // 确保 WebView 测量出足以容纳所有内容的尺寸
-                            val contentWidth = webView.measuredWidth // 使用当前的宽度（通常是屏幕宽度）
-                            // 获取整个网页内容的实际高度（很重要）
-                            val contentHeight = (webView.contentHeight * webView.scale).toInt()
-
-                            if (contentWidth > 0 && contentHeight > 0) {
-                                // 1. 手动测量
-                                webView.measure(
-                                    View.MeasureSpec.makeMeasureSpec(contentWidth, View.MeasureSpec.EXACTLY),
-                                    View.MeasureSpec.makeMeasureSpec(contentHeight, View.MeasureSpec.EXACTLY),
-                                )
-
-                                // 2. 手动布局
-                                webView.layout(0, 0, contentWidth, contentHeight)
-                            }
-                            // 页面加载完成后，延迟一下确保渲染完成，然后截图
-                            view?.postDelayed({
-                                viewModelScope.launch {
-                                    captureWebViewToImage(webView, context, onComplete)
-                                }
-                            }, 1000)
-                        }
-                    }
-
-                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                        super.onReceivedError(view, request, error)
-                        if (!isLoaded) {
-                            isLoaded = true
-                            webView.removeCallbacks(timeoutRunnable)
-                            webView.destroy()
-                            Toast.makeText(context, "图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
-                            onComplete(false)
-                        }
-                    }
-                }
-
-                // 加载HTML内容
-                webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
-            }
-        } catch (e: Exception) {
-            Log.e("ArticleViewModel", "Image export failed", e)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-        }
+    suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
+        exportToImageInternal(
+            context = context,
+            includeComments = false,
+            commentCount = 0,
+            includeAppAttribution = includeAppAttribution,
+            successMessage = "图片已保存到相册",
+            onComplete = onComplete,
+        )
     }
 
     // 导出为带评论的图片 - 使用WebView渲染
-    suspend fun exportToImageWithComments(context: Context, commentCount: Int, onComplete: (Boolean) -> Unit) {
+    suspend fun exportToImageWithComments(
+        context: Context,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        exportToImageInternal(
+            context = context,
+            includeComments = true,
+            commentCount = commentCount,
+            includeAppAttribution = includeAppAttribution,
+            successMessage = "带评论图片已保存到相册",
+            onComplete = onComplete,
+        )
+    }
+
+    suspend fun exportToHtml(
+        context: Context,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        runCatching { requireExportSourceContent() }.onFailure { error ->
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
+            withContext(Dispatchers.Main) {
+                requestStoragePermission(context as Activity)
+                permissionRequested.value = Unit
+                Toast.makeText(context, "需要存储权限才能导出 HTML，正在请求权限", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
+        try {
+            val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
+            val savedLocation = withContext(Dispatchers.IO) {
+                saveHtmlToDownloads(context, htmlContent)
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "HTML 已保存到 $savedLocation", Toast.LENGTH_LONG).show()
+                onComplete(true)
+            }
+        } catch (e: Exception) {
+            Log.e("ArticleViewModel", "HTML export failed", e)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "HTML 导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+        }
+    }
+
+    private suspend fun exportToImageInternal(
+        context: Context,
+        includeComments: Boolean,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+        successMessage: String,
+        onComplete: (Boolean) -> Unit,
+    ) {
+        runCatching { requireExportSourceContent() }.onFailure { error ->
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+            return
+        }
+
         if (!hasStoragePermission(context)) {
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
@@ -879,253 +799,341 @@ class ArticleViewModel(
             }
             return
         }
-        viewModelScope.launch {
-            try {
-                withContext(Dispatchers.Main) {
-                    // 在主线程中创建和配置WebView
-                    val webView = WebView(context).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.useWideViewPort = true
-                        settings.loadWithOverviewMode = true
-                        settings.builtInZoomControls = false
-                        settings.displayZoomControls = false
+
+        var preparedWebView: PreparedExportWebView? = null
+        var bitmap: Bitmap? = null
+        try {
+            preparedWebView = prepareExportWebView(
+                context = context,
+                htmlContent = createHtmlContent(
+                    context = context,
+                    includeComments = includeComments,
+                    commentCount = commentCount,
+                    includeAppAttribution = includeAppAttribution,
+                ),
+                timeoutMs = if (includeComments) 18_000L else 15_000L,
+            )
+            bitmap = captureExportBitmap(preparedWebView)
+            withContext(Dispatchers.IO) {
+                saveImageToMediaStore(context, bitmap)
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, successMessage, Toast.LENGTH_LONG).show()
+                onComplete(true)
+            }
+        } catch (e: Exception) {
+            Log.e("ArticleViewModel", "Image export failed", e)
+            val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "$errorPrefix: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+        } finally {
+            bitmap?.recycle()
+            preparedWebView?.let { destroyExportWebView(it.webView) }
+        }
+    }
+
+    private suspend fun prepareExportWebView(
+        context: Context,
+        htmlContent: String,
+        timeoutMs: Long,
+    ): PreparedExportWebView = withContext(Dispatchers.Main) {
+        suspendCancellableCoroutine { continuation ->
+            val webView = createExportWebView(context)
+            val mainHandler = Handler(Looper.getMainLooper())
+            val viewportWidthPx = resolveExportViewportWidthPx(context)
+            var isFinished = false
+            var timeoutRunnable = Runnable {}
+
+            fun fail(error: Throwable) {
+                if (isFinished) return
+                isFinished = true
+                mainHandler.removeCallbacks(timeoutRunnable)
+                runCatching { webView.stopLoading() }
+                runCatching { webView.destroy() }
+                if (continuation.isActive) {
+                    continuation.resumeWithException(error)
+                }
+            }
+
+            fun finish(contentHeightPx: Int) {
+                if (isFinished) return
+                isFinished = true
+                mainHandler.removeCallbacks(timeoutRunnable)
+                if (continuation.isActive) {
+                    continuation.resume(
+                        PreparedExportWebView(
+                            webView = webView,
+                            viewportWidthPx = viewportWidthPx,
+                            contentHeightPx = contentHeightPx,
+                        ),
+                    )
+                }
+            }
+
+            fun scheduleReadinessCheck(
+                attempt: Int = 0,
+                lastHeightPx: Int = -1,
+                stablePasses: Int = 0,
+            ) {
+                mainHandler.postDelayed({
+                    if (isFinished) return@postDelayed
+
+                    val contentHeightPx = computeExportContentHeightPx(webView)
+                    if (contentHeightPx <= 1 && attempt >= 24) {
+                        fail(IllegalStateException("内容为空"))
+                        return@postDelayed
                     }
 
-                    // 创建包含评论的HTML内容
-                    val htmlContent = createHtmlContent(includeComments = true, commentCount = commentCount)
+                    measureAndLayoutExportWebView(
+                        webView = webView,
+                        widthPx = viewportWidthPx,
+                        heightPx = contentHeightPx.coerceAtLeast(1),
+                    )
 
-                    // 设置WebViewClient来监听加载完成
-                    var isLoaded = false
-                    val timeoutRunnable = Runnable {
-                        if (!isLoaded) {
-                            webView.destroy()
-                            Toast.makeText(context, "带评论图片导出超时", Toast.LENGTH_SHORT).show()
-                            onComplete(false)
-                        }
+                    val nextStablePasses = if (contentHeightPx == lastHeightPx) stablePasses + 1 else 0
+                    if (contentHeightPx > 1 && (nextStablePasses >= 2 || attempt >= 24)) {
+                        finish(contentHeightPx)
+                    } else {
+                        scheduleReadinessCheck(
+                            attempt = attempt + 1,
+                            lastHeightPx = contentHeightPx,
+                            stablePasses = nextStablePasses,
+                        )
                     }
-                    webView.postDelayed(timeoutRunnable, 15000) // 15秒超时，给更多时间加载评论
-                    webView.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            super.onPageFinished(view, url)
-                            if (!isLoaded) {
-                                isLoaded = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                // 页面加载完成后，延迟一下确保渲染完成，然后截图
-                                view?.postDelayed({
-                                    viewModelScope.launch {
-                                        captureWebViewToImage(webView, context, onComplete, "with_comments")
-                                    }
-                                }, 1500) // 给更多时间加载评论
+                }, if (attempt == 0) 450L else 180L)
+            }
+
+            timeoutRunnable = Runnable {
+                fail(IllegalStateException("超时"))
+            }
+
+            webView.webViewClient = object : android.webkit.WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    if (!isFinished) {
+                        injectExportFootnoteScript(context, webView) {
+                            if (!isFinished) {
+                                scheduleReadinessCheck()
                             }
                         }
-
-                        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                            super.onReceivedError(view, request, error)
-                            if (!isLoaded) {
-                                isLoaded = true
-                                webView.removeCallbacks(timeoutRunnable)
-                                webView.destroy()
-                                Toast.makeText(context, "带评论图片导出失败: 加载错误", Toast.LENGTH_SHORT).show()
-                                onComplete(false)
-                            }
-                        }
                     }
+                }
 
-                    // 加载HTML内容
-                    webView.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null)
+                override fun onReceivedError(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                    error: android.webkit.WebResourceError?,
+                ) {
+                    super.onReceivedError(view, request, error)
+                    if (request?.isForMainFrame != false) {
+                        fail(IllegalStateException("加载错误"))
+                    }
                 }
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Image with comments export failed", e)
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "带评论图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    onComplete(false)
+            }
+
+            measureAndLayoutExportWebView(
+                webView = webView,
+                widthPx = viewportWidthPx,
+                heightPx = 1,
+            )
+            mainHandler.postDelayed(timeoutRunnable, timeoutMs)
+            webView.loadDataWithBaseURL(
+                "https://www.zhihu.com",
+                htmlContent,
+                "text/html",
+                "UTF-8",
+                null,
+            )
+
+            continuation.invokeOnCancellation {
+                if (!isFinished) {
+                    isFinished = true
+                    mainHandler.removeCallbacks(timeoutRunnable)
+                    runCatching { webView.stopLoading() }
+                    runCatching { webView.destroy() }
                 }
+            }
+        }
+    }
+
+    private fun createExportWebView(context: Context): WebView = WebView(context).apply {
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = false
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = false
+        settings.builtInZoomControls = false
+        settings.displayZoomControls = false
+        setBackgroundColor(android.graphics.Color.WHITE)
+        isVerticalScrollBarEnabled = false
+        isHorizontalScrollBarEnabled = false
+    }
+
+    private fun injectExportFootnoteScript(context: Context, webView: WebView, onInjected: () -> Unit) {
+        val jsCode = loadExportAssetText(context, "footnotes.js")
+        if (jsCode.isBlank()) {
+            onInjected()
+            return
+        }
+
+        runCatching {
+            webView.evaluateJavascript(jsCode) {
+                onInjected()
+            }
+        }.onFailure { error ->
+            Log.e("ArticleViewModel", "Failed to inject export footnotes", error)
+            onInjected()
+        }
+    }
+
+    private fun loadExportAssetText(context: Context, fileName: String): String = try {
+        context.assets.open(fileName).use { inputStream ->
+            inputStream.bufferedReader().use { reader ->
+                reader.readText()
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
+        ""
+    }
+
+    private fun measureAndLayoutExportWebView(webView: WebView, widthPx: Int, heightPx: Int) {
+        val safeHeight = heightPx.coerceAtLeast(1)
+        webView.measure(
+            View.MeasureSpec.makeMeasureSpec(widthPx.coerceAtLeast(1), View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(safeHeight, View.MeasureSpec.EXACTLY),
+        )
+        webView.layout(0, 0, widthPx.coerceAtLeast(1), safeHeight)
+    }
+
+    private fun resolveExportViewportWidthPx(context: Context): Int = context.resources.displayMetrics.widthPixels
+        .coerceAtLeast(1)
+
+    private fun computeExportContentHeightPx(webView: WebView): Int {
+        val density = webView.resources.displayMetrics.density
+        val contentHeightPx = (webView.contentHeight * density).roundToInt()
+        return maxOf(contentHeightPx, webView.measuredHeight, webView.height, 1)
+    }
+
+    private suspend fun captureExportBitmap(preparedWebView: PreparedExportWebView): Bitmap = withContext(Dispatchers.Main) {
+        val rawWidth = preparedWebView.viewportWidthPx.coerceAtLeast(1)
+        val rawHeight = preparedWebView.contentHeightPx.coerceAtLeast(1)
+        val maxPixels = 24_000_000.0
+        val rawPixels = rawWidth.toDouble() * rawHeight.toDouble()
+        val scale = if (rawPixels > maxPixels) sqrt(maxPixels / rawPixels) else 1.0
+        val bitmapWidth = (rawWidth * scale).roundToInt().coerceAtLeast(1)
+        val bitmapHeight = (rawHeight * scale).roundToInt().coerceAtLeast(1)
+
+        Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(android.graphics.Color.WHITE)
+            canvas.scale(
+                bitmapWidth.toFloat() / rawWidth.toFloat(),
+                bitmapHeight.toFloat() / rawHeight.toFloat(),
+            )
+            preparedWebView.webView.draw(canvas)
+        }
+    }
+
+    private suspend fun destroyExportWebView(webView: WebView) {
+        withContext(Dispatchers.Main) {
+            runCatching {
+                webView.stopLoading()
+                webView.destroy()
             }
         }
     }
 
     // 创建HTML内容
-    private fun createHtmlContent(includeComments: Boolean, commentCount: Int): String {
-        val css = """
-            <style>
-                body {
-                    font-family: 'PingFang SC', 'Helvetica Neue', STHeiti, 'Microsoft Yahei', sans-serif;
-                    margin: 20px;
-                    padding: 0;
-                    background: white;
-                    color: #333;
-                    line-height: 1.6;
-                }
-                .title {
-                    font-size: 24px;
-                    font-weight: bold;
-                    margin-bottom: 20px;
-                    color: #333;
-                    line-height: 1.4;
-                }
-                .author {
-                    font-size: 16px;
-                    color: #666;
-                    margin-bottom: 10px;
-                }
-                .bio {
-                    font-size: 14px;
-                    color: #999;
-                    margin-bottom: 20px;
-                }
-                .content {
-                    font-size: 16px;
-                    line-height: 1.8;
-                    margin-bottom: 30px;
-                }
-                .content img {
-                    max-width: 100%;
-                    height: auto;
-                    margin: 10px 0;
-                }
-                .content p {
-                    margin: 15px 0;
-                }
-                .comments-title {
-                    font-size: 20px;
-                    font-weight: bold;
-                    margin: 30px 0 20px 0;
-                    color: #333;
-                    border-bottom: 2px solid #eee;
-                    padding-bottom: 10px;
-                }
-                .comment {
-                    margin-bottom: 20px;
-                    padding: 15px;
-                    background: #f8f9fa;
-                    border-radius: 8px;
-                    border-left: 4px solid #007bff;
-                }
-                .comment-author {
-                    font-weight: bold;
-                    color: #007bff;
-                    margin-bottom: 5px;
-                }
-                .comment-content {
-                    color: #555;
-                    line-height: 1.5;
-                }
-                .comment-time {
-                    font-size: 12px;
-                    color: #999;
-                    margin-top: 5px;
-                }
-            </style>
-        """
-
-        val titleHtml = "<div class='title'>$title</div>"
-        val authorHtml = "<div class='author'>作者: $authorName</div>"
-        val bioHtml = if (authorBio.isNotEmpty()) "<div class='bio'>$authorBio</div>" else ""
-
-        // 处理内容中的图片路径
-        val processedContent = content.replace(Regex("data-actualsrc=\"([^\"]+)\"")) { match ->
-            val actualSrc = match.groupValues[1]
-            "src=\"$actualSrc\""
-        }
-
-        val contentHtml = "<div class='content'>$processedContent</div>"
-
-        var commentsHtml = ""
-        if (includeComments && commentCount > 0) {
-            commentsHtml = "<div class='comments-title'>热门评论 (前 $commentCount 条)</div>"
-
-            // 这里应该从实际评论数据中获取评论
-            // 暂时使用示例评论，实际使用时需要从CommentScreenComponent获取数据
-            val sampleComments = listOf(
-                mapOf("author" to "用户1", "content" to "这篇文章写得很好！", "time" to "2024-01-01"),
-                mapOf("author" to "用户2", "content" to "很有启发性，谢谢分享。", "time" to "2024-01-02"),
-                mapOf("author" to "用户3", "content" to "观点很独特，支持！", "time" to "2024-01-03"),
-                mapOf("author" to "用户4", "content" to "学习了，感谢作者。", "time" to "2024-01-04"),
-                mapOf("author" to "用户5", "content" to "内容详实，值得一看。", "time" to "2024-01-05"),
+    private suspend fun createHtmlContent(
+        context: Context,
+        includeComments: Boolean,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+    ): String {
+        val commentsHtml = if (includeComments && commentCount > 0) {
+            buildArticleExportCommentsHtml(
+                comments = fetchExportComments(context, commentCount),
+                requestedCount = commentCount,
             )
-
-            for (i in 0 until minOf(commentCount, sampleComments.size)) {
-                val comment = sampleComments[i]
-                commentsHtml += """
-                    <div class='comment'>
-                        <div class='comment-author'>${comment["author"]}</div>
-                        <div class='comment-content'>${comment["content"]}</div>
-                        <div class='comment-time'>${comment["time"]}</div>
-                    </div>
-                """
-            }
+        } else {
+            ""
         }
 
-        return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                $css
-            </head>
-            <body>
-                $titleHtml
-                $authorHtml
-                $bioHtml
-                $contentHtml
-                $commentsHtml
-            </body>
-            </html>
-        """
+        return buildArticleExportHtml(
+            context = context,
+            exportData = buildArticleExportData(
+                content = requireExportSourceContent(),
+                includeAppAttribution = includeAppAttribution,
+            ),
+            extraSectionsHtml = commentsHtml,
+        )
     }
 
-    // 捕获WebView内容为图片
-    private suspend fun captureWebViewToImage(webView: WebView, context: Context, onComplete: (Boolean) -> Unit, suffix: String = "") {
-        try {
-            // 获取WebView的实际内容高度
-            val contentHeight = (webView.contentHeight * webView.scale).toInt()
-            val width = webView.width
-            val height = if (contentHeight > 0) contentHeight else 1920 // 默认高度
-
-            // 创建足够大的位图
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-
-            // 设置白色背景
-            canvas.drawColor(android.graphics.Color.WHITE)
-
-            // 让WebView绘制到Canvas上
-            webView.draw(canvas)
-
-            // 使用MediaStore保存图片到公共目录
-            saveImageToMediaStore(context, bitmap, suffix)
-
-            bitmap.recycle()
-            webView.destroy()
-
-            withContext(Dispatchers.Main) {
-                val message = if (suffix.isNotEmpty()) "带评论图片已保存到相册" else "图片已保存到相册"
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-                onComplete(true)
-            }
-        } catch (e: Exception) {
-            Log.e("ArticleViewModel", "Capture WebView failed", e)
-            webView.destroy()
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "图片导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                onComplete(false)
-            }
-        }
+    private suspend fun createOfflineHtmlContent(
+        context: Context,
+        includeAppAttribution: Boolean,
+    ): String = withContext(Dispatchers.IO) {
+        buildOfflineArticleExportHtml(
+            context = context,
+            content = requireExportSourceContent(),
+            includeAppAttribution = includeAppAttribution,
+            httpClient = httpClient ?: AccountData.httpClient(context),
+        )
     }
+
+    private suspend fun fetchExportComments(
+        context: Context,
+        requestedCount: Int,
+    ): List<ArticleExportComment> {
+        val safeRequestedCount = requestedCount.coerceAtLeast(0)
+        if (safeRequestedCount == 0) return emptyList()
+
+        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
+            url {
+                parameters.append("order", "score")
+                parameters.append("limit", safeRequestedCount.coerceAtMost(20).toString())
+                parameters.append("include", "data[*].content,excerpt,headline")
+            }
+            signFetchRequest()
+        } ?: return emptyList()
+
+        return json["data"]
+            ?.jsonArray
+            ?.mapNotNull { element ->
+                runCatching {
+                    AccountData.decodeJson<DataHolder.Comment>(element)
+                }.getOrNull()
+            }?.take(safeRequestedCount)
+            ?.map(::mapExportComment)
+            .orEmpty()
+    }
+
+    private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(
+        authorName = comment.author.name,
+        content = comment.content,
+        createdTimeText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            .format(Date(comment.createdTime * 1000)),
+    )
+
+    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
+        content = requireExportSourceContent(),
+        extension = extension,
+    )
+
+    private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
+        ?: throw IllegalStateException("内容未加载完成")
 
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(context: Context, bitmap: Bitmap, suffix: String = "") {
+    private fun saveImageToMediaStore(context: Context, bitmap: Bitmap) {
         val contentResolver = context.contentResolver
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val suffixStr = if (suffix.isNotEmpty()) "_$suffix" else ""
-        val displayName = "Zhihu_${article.type}_${article.id}_$timeStamp$suffixStr.png"
+        val displayName = buildExportFileName("png")
 
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
             put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu++")
         }
 
         val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
@@ -1142,29 +1150,60 @@ class ArticleViewModel(
         } ?: throw Exception("Failed to create MediaStore entry")
     }
 
-    // 辅助方法：将文本按宽度分割成行
-    private fun breakTextIntoLines(text: String, paint: android.graphics.Paint, maxWidth: Float): List<String> {
-        val lines = mutableListOf<String>()
-        val words = text.split(" ", limit = 4)
-        var currentLine = ""
+    private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
+        val displayName = buildExportFileName("html")
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveHtmlToDownloadsWithMediaStore(context, displayName, htmlContent)
+        } else {
+            saveHtmlToLegacyDownloads(displayName, htmlContent)
+        }
+    }
 
-        for (word in words) {
-            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
-            if (paint.measureText(testLine) <= maxWidth) {
-                currentLine = testLine
-            } else {
-                if (currentLine.isNotEmpty()) {
-                    lines.add(currentLine)
-                }
-                currentLine = word
-            }
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun saveHtmlToDownloadsWithMediaStore(
+        context: Context,
+        displayName: String,
+        htmlContent: String,
+    ): String {
+        val resolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
 
-        if (currentLine.isNotEmpty()) {
-            lines.add(currentLine)
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw IllegalStateException("无法创建下载文件")
+
+        return try {
+            resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                writer.write(htmlContent)
+            } ?: throw IllegalStateException("无法打开下载文件")
+
+            contentValues.clear()
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, contentValues, null, null)
+            "Zhihu++/$displayName"
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun saveHtmlToLegacyDownloads(displayName: String, htmlContent: String): String {
+        val downloadsDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Zhihu++",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
         }
 
-        return lines
+        val file = File(downloadsDir, displayName)
+        file.writeText(htmlContent)
+        return file.absolutePath
     }
 
     // 转换为Markdown格式

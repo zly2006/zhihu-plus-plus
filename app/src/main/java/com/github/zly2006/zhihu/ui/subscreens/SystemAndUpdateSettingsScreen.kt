@@ -229,6 +229,10 @@ fun SystemAndUpdateSettingsScreen(
                             ) {
                                 Text("使用国内网盘加速下载", Modifier.padding(0.dp, 4.dp))
                             }
+                            Text(
+                                "使用国内网盘下载，不需要梯，还可以帮助作者获得流量。您也可以选择使用GitHub下载。",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
 
@@ -307,6 +311,20 @@ fun SystemAndUpdateSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             singleLine = true,
                         )
+                    },
+                )
+
+                var autoCheckUpdates by remember { mutableStateOf(UpdateManager.isAutoCheckEnabled(context)) }
+                SettingItemWithSwitch(
+                    title = { Text("自动检查更新") },
+                    description = { Text("应用启动后后台检查新版本，并在首页显示更新提醒") },
+                    checked = autoCheckUpdates,
+                    onCheckedChange = {
+                        autoCheckUpdates = it
+                        UpdateManager.setAutoCheckEnabled(context, it)
+                        if (!it) {
+                            UpdateManager.updateState.value = UpdateState.NoUpdate
+                        }
                     },
                 )
 

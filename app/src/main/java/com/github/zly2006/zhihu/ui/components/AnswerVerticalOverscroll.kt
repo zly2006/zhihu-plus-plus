@@ -162,22 +162,27 @@ fun AnswerVerticalOverscroll(
             override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
                 if (overscrollOffset.value != 0f) {
                     val currentOffset = overscrollOffset.value
+                    var didNavigate = false
                     if (abs(currentOffset) >= triggerThresholdPx) {
                         if (currentOffset > 0 && currentCanGoPrevious) {
                             currentOnNavigatePrevious()
+                            didNavigate = true
                         } else if (currentOffset < 0 && currentCanGoNext) {
                             currentOnNavigateNext()
+                            didNavigate = true
                         }
                     }
                     rawDragAccumulator = 0f
                     hasTriggeredHaptic = false
-                    overscrollOffset.animateTo(
-                        0f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        ),
-                    )
+                    if (!didNavigate) {
+                        overscrollOffset.animateTo(
+                            0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        )
+                    }
                     return available
                 }
                 return androidx.compose.ui.unit.Velocity.Zero
@@ -250,23 +255,28 @@ fun AnswerVerticalOverscroll(
                                 }
 
                                 val currentOffset = overscrollOffset.value
+                                var didNavigate = false
                                 if (abs(currentOffset) >= triggerThresholdPx) {
                                     if (currentOffset > 0 && currentCanGoPrevious) {
                                         currentOnNavigatePrevious()
+                                        didNavigate = true
                                     } else if (currentOffset < 0 && currentCanGoNext) {
                                         currentOnNavigateNext()
+                                        didNavigate = true
                                     }
                                 }
                                 rawDragAccumulator = 0f
                                 hasTriggeredHaptic = false
-                                coroutineScope.launch {
-                                    overscrollOffset.animateTo(
-                                        0f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessMedium,
-                                        ),
-                                    )
+                                if (!didNavigate) {
+                                    coroutineScope.launch {
+                                        overscrollOffset.animateTo(
+                                            0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMedium,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                         }

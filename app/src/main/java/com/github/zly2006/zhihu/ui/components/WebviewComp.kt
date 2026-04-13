@@ -12,8 +12,10 @@ import android.os.Bundle
 import android.util.AttributeSet
 import android.util.Log
 import android.view.ActionMode
+import android.view.GestureDetector
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -26,7 +28,6 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
@@ -205,6 +206,18 @@ class CustomWebView : WebView {
     var scrollToHeightCallback: ((Int, Int) -> Unit)? = null
     var onContentHeightCallback: ((Int) -> Unit)? = null
     var onPageStartedCallback: (() -> Unit)? = null
+    var onDoubleTapCallback: (() -> Unit)? = null
+    private val doubleTapDetector by lazy {
+        GestureDetector(
+            context,
+            object : GestureDetector.SimpleOnGestureListener() {
+                override fun onDoubleTap(e: MotionEvent): Boolean {
+                    onDoubleTapCallback?.invoke()
+                    return false
+                }
+            },
+        )
+    }
 
     override fun scrollTo(x: Int, y: Int) {
         // 禁止 WebView 自己滚动，所有滚动都通过 scrollToHeightCallback 回调到 Compose 层处理
@@ -217,6 +230,7 @@ class CustomWebView : WebView {
      */
     override fun onTouchEvent(event: android.view.MotionEvent): Boolean {
         parent?.requestDisallowInterceptTouchEvent(false)
+        doubleTapDetector.onTouchEvent(event)
         if (event.actionMasked == android.view.MotionEvent.ACTION_MOVE) {
             super.scrollTo(0, 0)
             return super.onTouchEvent(event)
@@ -509,9 +523,10 @@ class OpenImageDislog(
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun WebviewComp(
-    modifier: Modifier = Modifier.fillMaxSize(),
+    modifier: Modifier = Modifier.wrapContentSize(),
     scrollState: ScrollState? = null,
     existingWebView: CustomWebView? = null,
+    onDoubleTap: (() -> Unit)? = null,
     onLoad: (CustomWebView) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -550,12 +565,13 @@ fun WebviewComp(
                 coroutineScope.launch(Dispatchers.Main) { contentHeightDp = height }
             }
             view.onPageStartedCallback = { coroutineScope.launch(Dispatchers.Main) { contentHeightDp = 0 } }
+            view.onDoubleTapCallback = onDoubleTap
             onLoad(view)
         },
         modifier = if (contentHeightDp > 0) {
             modifier.height(contentHeightDp.dp)
         } else {
-            modifier.wrapContentSize()
+            modifier
         },
         onRelease = { frameLayout ->
             val view = frameLayout.getChildAt(0) as? CustomWebView ?: return@AndroidView

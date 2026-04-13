@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 
 /**
@@ -16,4 +18,13 @@ data class Navigator(
  */
 val LocalNavigator = compositionLocalOf<Navigator> {
     error("LocalNavigator not provided")
+}
+
+@Composable
+fun DummyLocalNavigator(content: @Composable () -> Unit) {
+    val navigator = Navigator(
+        onNavigate = {},
+        onNavigateBack = {},
+    )
+    CompositionLocalProvider(LocalNavigator provides navigator, content)
 }

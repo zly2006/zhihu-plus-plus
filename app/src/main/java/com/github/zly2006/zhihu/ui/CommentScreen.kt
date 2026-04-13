@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context.MODE_PRIVATE
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,6 +57,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,15 +77,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,11 +92,11 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.CommentHolder
+import com.github.zly2006.zhihu.DummyLocalNavigator
 import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.NavDestination
 import com.github.zly2006.zhihu.Person
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.theme.Typography
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
@@ -109,6 +107,7 @@ import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
@@ -339,7 +338,6 @@ fun CommentScreen(
     httpClient: HttpClient,
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
-    topPadding: Dp = 100.dp,
     onChildCommentClick: (CommentModel) -> Unit,
 ) {
     val context = LocalContext.current
@@ -362,6 +360,10 @@ fun CommentScreen(
         is CommentHolder -> content.article
         else -> content
     }
+    val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
+    val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
+    val actionChipColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    val actionChipIconColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     val listState = rememberLazyListState()
 
@@ -424,19 +426,16 @@ fun CommentScreen(
         // 评论内容区域
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = topPadding)
-                .fillMaxHeight()
+                .fillMaxSize()
                 .align(Alignment.BottomCenter),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = commentBackgroundColor,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding(),
             ) {
-                CommentTopText(content())
                 Box(modifier = Modifier.weight(1f)) {
                     when {
                         viewModel.isLoading && viewModel.allData.isEmpty() -> {
@@ -535,7 +534,7 @@ fun CommentScreen(
                                                     .height(28.dp),
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                                    containerColor = actionChipColor,
                                                     contentColor = MaterialTheme.colorScheme.onSurface,
                                                 ),
                                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
@@ -544,7 +543,7 @@ fun CommentScreen(
                                                     Icons.AutoMirrored.Outlined.Comment,
                                                     contentDescription = "查看子评论",
                                                     modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.surfaceTint,
+                                                    tint = actionChipIconColor,
                                                 )
                                                 Text(
                                                     "查看 ${commentItem.item.childCommentCount} 条子评论",
@@ -559,7 +558,7 @@ fun CommentScreen(
                             LazyColumn(
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
+                                contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
                                 if (activeCommentItem != null) {
@@ -586,6 +585,69 @@ fun CommentScreen(
                                                     )
                                                 }
                                             }
+                                        }
+                                    }
+                                } else {
+                                    item("sorting") {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .layout { measurable, constraints ->
+                                                    val contentHeight = 32.dp.roundToPx()
+                                                    val placeable = measurable.measure(
+                                                        constraints.copy(
+                                                            minHeight = contentHeight,
+                                                            maxHeight = contentHeight,
+                                                        ),
+                                                    )
+                                                    layout(placeable.width, 24.dp.roundToPx()) {
+                                                        placeable.placeRelative(0, 0)
+                                                    }
+                                                },
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.End,
+                                        ) {
+                                            SuggestionChip(
+                                                label = {
+                                                    Text(
+                                                        "最热",
+                                                        color = if (viewModel.sortOrder == CommentSortOrder.SCORE) {
+                                                            MaterialTheme.colorScheme.primary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                                        },
+                                                        fontWeight = if (viewModel.sortOrder == CommentSortOrder.SCORE) {
+                                                            FontWeight.SemiBold
+                                                        } else {
+                                                            FontWeight.Normal
+                                                        },
+                                                    )
+                                                },
+                                                onClick = {
+                                                    viewModel.changeSortOrder(CommentSortOrder.SCORE, context)
+                                                },
+                                            )
+                                            Spacer(Modifier.width(12.dp))
+                                            SuggestionChip(
+                                                label = {
+                                                    Text(
+                                                        "最新",
+                                                        color = if (viewModel.sortOrder == CommentSortOrder.TIME) {
+                                                            MaterialTheme.colorScheme.primary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                                        },
+                                                        fontWeight = if (viewModel.sortOrder == CommentSortOrder.TIME) {
+                                                            FontWeight.SemiBold
+                                                        } else {
+                                                            FontWeight.Normal
+                                                        },
+                                                    )
+                                                },
+                                                onClick = {
+                                                    viewModel.changeSortOrder(CommentSortOrder.TIME, context)
+                                                },
+                                            )
                                         }
                                     }
                                 }
@@ -615,9 +677,14 @@ fun CommentScreen(
                                                     dampingRatio = Spring.DampingRatioMediumBouncy,
                                                 ),
                                             ),
-                                        ) { comment ->
-                                            if (comment.clickTarget != null) {
-                                                onChildCommentClick(comment)
+                                        ) { _ ->
+                                            if (activeCommentItem == null) {
+                                                if (commentItem.clickTarget != null) {
+                                                    onChildCommentClick(commentItem)
+                                                }
+                                            } else {
+                                                // Set reply target when swiping to reply
+                                                replyToComment = commentItem
                                             }
                                         }
                                     }
@@ -644,6 +711,7 @@ fun CommentScreen(
                 Surface(
                     tonalElevation = 2.dp,
                     modifier = Modifier.fillMaxWidth(),
+                    color = commentInputBarColor,
                 ) {
                     Column {
                         // Reply indicator bar
@@ -750,42 +818,6 @@ fun CommentScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun CommentTopText(content: NavDestination? = null) {
-    val context = LocalContext.current
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
-    val commentTopTextExtraSpacing = remember {
-        preferences.getBoolean("commentTopTextExtraSpacing", false)
-    }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (commentTopTextExtraSpacing) {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        Text(
-            if (content is CommentHolder) {
-                "回复"
-            } else {
-                "评论"
-            },
-            style = Typography.bodyMedium.copy(
-                fontWeight = FontWeight.Bold,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(26.dp),
-            textAlign = TextAlign.Center,
-            fontSize = 18.sp,
-        )
-        if (commentTopTextExtraSpacing) {
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -972,36 +1004,34 @@ private fun CommentItem(
             Spacer(modifier = Modifier.weight(1f))
 
             // 回复按钮
-            if (comment.clickTarget != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onChildCommentClick(comment) },
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { onChildCommentClick(comment) },
+            ) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Column(
+                    modifier = Modifier.height(24.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Column(
-                        modifier = Modifier.height(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Outlined.Comment,
-                            contentDescription = "回复",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    if (comment.item.childCommentCount > 0) {
-                        Text(
-                            text = comment.item.childCommentCount.toString(),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+                    Icon(
+                        Icons.AutoMirrored.Outlined.Comment,
+                        contentDescription = "回复",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                if (comment.item.childCommentCount > 0) {
+                    Text(
+                        text = comment.item.childCommentCount.toString(),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
             }
+
+            Spacer(modifier = Modifier.width(8.dp))
 
             // 点赞
             Row(
@@ -1052,14 +1082,14 @@ private fun isSameYear(date1: Date, date2: Date): Boolean {
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
 }
 
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
+@Preview(backgroundColor = 0xFFFFFF, showBackground = true)
 @Composable
 @Suppress("SpellCheckingInspection")
 private fun CommentItemPreview() {
     val comment = CommentModel(
         item = DataHolder.Comment(
             id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
+            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
             createdTime = System.currentTimeMillis() / 1000,
             author = DataHolder.Comment.Author(
                 name = "作者",
@@ -1090,11 +1120,13 @@ private fun CommentItemPreview() {
         ),
         clickTarget = null,
     )
-    CommentItem(
-        comment,
-        httpClient = HttpClient(),
-        onChildCommentClick = { },
-    )
+    DummyLocalNavigator {
+        CommentItem(
+            comment,
+            httpClient = HttpClient(),
+            onChildCommentClick = { },
+        )
+    }
 }
 
 @Composable
@@ -1146,75 +1178,4 @@ fun CommentAuthorTagPreview() {
             modifier = Modifier.clickable { },
         )
     }
-}
-
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true, heightDp = 100)
-@Composable
-@Suppress("SpellCheckingInspection")
-private fun NestedCommentPreview() {
-    val comment = CommentModel(
-        item = DataHolder.Comment(
-            id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus. Donec non elit non urna dignissim dapibus. Curabitur tempus magna quis dui pellentesque, in venenatis leo mollis. Duis ornare turpis in fermentum mollis. In at fringilla odio. Morbi elementum cursus purus, ut mollis libero facilisis ac. Sed eu mattis ante, ac aliquet purus. Quisque non eros ut ligula tincidunt elementum in ac sem. Praesent diam metus, bibendum vitae mollis ut, vehicula eget ante. Quisque efficitur, odio at ornare commodo, nibh dui eleifend enim, eget consequat quam tortor sit amet arcu. Aliquam mollis auctor ligula, placerat sodales leo malesuada eu. Donec porta nisl at congue laoreet. Duis vel tellus tincidunt, malesuada urna in, maximus nisl. Maecenas rhoncus augue eros, non aliquet eros eleifend ut. Mauris dignissim quis nisi id suscipit. In imperdiet, odio id ornare pretium, eros ipsum faucibus felis, at accumsan mi ex vitae mi.</p>",
-            createdTime = System.currentTimeMillis() / 1000,
-            author = DataHolder.Comment.Author(
-                name = "作者",
-                avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",
-                isOrg = false,
-                type = "people",
-                url = "",
-                urlToken = "",
-                id = "",
-                headline = "个人介绍",
-                avatarUrlTemplate = "",
-                isAdvertiser = false,
-                gender = 0,
-                userType = "",
-            ),
-            likeCount = 10,
-            childCommentCount = 5,
-            type = "",
-            url = "",
-            resourceType = "",
-            collapsed = false,
-            top = false,
-            isDelete = false,
-            reviewing = false,
-            isAuthor = false,
-            canCollapse = false,
-            childComments = listOf(
-                DataHolder.Comment(
-                    id = "千早爱音",
-                    content = "<p>我喜欢你</p>",
-                    createdTime = System.currentTimeMillis() / 1000,
-                    author = DataHolder.Comment.Author(
-                        name = "长期素食",
-                        avatarUrl = "",
-                        isOrg = false,
-                        type = "people",
-                        url = "",
-                        urlToken = "",
-                        id = "",
-                        headline = "个人介绍",
-                        avatarUrlTemplate = "",
-                        isAdvertiser = false,
-                        gender = 0,
-                        userType = "people",
-                    ),
-                    type = "",
-                    isDelete = false,
-                    url = "",
-                    resourceType = "",
-                    collapsed = false,
-                    reviewing = false,
-                ),
-            ),
-        ),
-        clickTarget = null,
-    )
-    CommentItem(
-        comment,
-        httpClient = HttpClient(),
-        onChildCommentClick = { },
-    )
 }
