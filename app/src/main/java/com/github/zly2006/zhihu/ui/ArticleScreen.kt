@@ -1454,6 +1454,8 @@ fun ArticleScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
+                                    .padding(end = 16.dp)
+                                    .fillMaxWidth()
                                     .clickable {
                                         navigator.onNavigate(
                                             com.github.zly2006.zhihu.navigation.Person(
@@ -1462,7 +1464,7 @@ fun ArticleScreen(
                                                 name = viewModel.authorName,
                                             ),
                                         )
-                                    }.padding(end = 16.dp),
+                                    },
                             ) {
                                 if (viewModel.authorAvatarSrc.isNotEmpty()) {
                                     AsyncImage(
@@ -1483,7 +1485,9 @@ fun ArticleScreen(
 
                                 Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
 
-                                Column {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                ) {
                                     Text(
                                         text = viewModel.authorName,
                                         style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
@@ -1822,7 +1826,7 @@ fun ArticleScreen(
                         .padding(horizontal = 16.dp)
                         .verticalScroll(scrollState)
                         .padding(innerPadding)
-                        .padding(top = 32.dp),
+                        .padding(top = 8.dp),
                 ) {
                     @Suppress("UnusedReceiverParameter") // 确保竖式布局
                     @Composable
@@ -1879,7 +1883,6 @@ fun ArticleScreen(
                                 )
                             }
                         } else {
-                            Spacer(Modifier.height(10.dp))
                             Box(modifier = answerDoubleTapModifier) {
                                 RenderMarkdown(
                                     html = viewModel.content,
