@@ -38,7 +38,7 @@ class MdAstInlineMathTest {
                     val html = InstrumentationRegistry
                         .getInstrumentation()
                         .context.assets
-                        .open()
+                        .open("answer_237992320.html")
                         .bufferedReader()
                         .use { it.readText() }
                     val asts = htmlToMdAst(html)
@@ -82,5 +82,4 @@ class MdAstInlineMathTest {
             overlappingPairs.isNotEmpty(),
         )
     }
-
 }
