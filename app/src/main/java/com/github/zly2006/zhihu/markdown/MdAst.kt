@@ -9,7 +9,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,7 +16,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -26,7 +24,9 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.LocalNavigator
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -69,8 +69,6 @@ import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 import org.jsoup.nodes.Node as HtmlNode
-
-val LocalMarkdownOnInlineMathPositioned = compositionLocalOf<((InlineMath, Rect) -> Unit)?> { null }
 
 @Composable
 fun RenderImage(
@@ -160,6 +158,8 @@ fun RenderMarkdown(
     selectable: Boolean = false,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
+    val navigator = LocalNavigator.current
+    val context = LocalContext.current
 
     if (selectable) {
         SelectionContainer(modifier = modifier) {
@@ -167,6 +167,10 @@ fun RenderMarkdown(
                 document = document,
                 imageContent = ::RenderImage,
                 enableScroll = false,
+                onLinkClick = {
+                    resolveContent(it.toUri())?.let(navigator.onNavigate)
+                        ?: luoTianYiUrlLauncher(context, it.toUri())
+                },
             )
         }
     } else {
@@ -175,6 +179,10 @@ fun RenderMarkdown(
             modifier = modifier,
             imageContent = ::RenderImage,
             enableScroll = false,
+            onLinkClick = {
+                resolveContent(it.toUri())?.let(navigator.onNavigate)
+                    ?: luoTianYiUrlLauncher(context, it.toUri())
+            },
         )
     }
 }
