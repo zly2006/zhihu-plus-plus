@@ -117,7 +117,7 @@ fun AnswerVerticalOverscroll(
 
     fun dampedOffset(rawDelta: Float): Float {
         val sign = if (rawDelta >= 0) 1f else -1f
-        return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * DAMPING_FACTOR)).toFloat()
+        return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * DAMPING_FACTOR))
     }
 
     val nestedScrollConnection = remember {
