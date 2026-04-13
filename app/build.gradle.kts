@@ -165,6 +165,9 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
+    implementation("io.github.huarangmeng:markdown-parser-android:1.1.4")
+    implementation("io.github.huarangmeng:markdown-renderer-android:1.1.4")
+
     implementation("io.coil-kt.coil3:coil-compose:$coil")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
     implementation("io.coil-kt.coil3:coil-gif:$coil")
@@ -208,6 +211,7 @@ dependencies {
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-tooling-preview")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.12.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 

@@ -128,9 +128,7 @@ import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
-import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
-import com.github.zly2006.zhihu.markdown.Render
-import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
@@ -1336,19 +1334,12 @@ fun ArticleScreen(
                             )
                         }
                     } else {
-                        val astNode = remember(viewModel.content) {
-                            htmlToMdAst(viewModel.content)
-                        }
-                        val context = MarkdownRenderContext()
                         Spacer(Modifier.height(10.dp))
-                        SelectionContainer(Modifier.fuckHonorService()) {
-                            Column {
-                                for (ast in astNode) {
-                                    ast.Render(context)
-                                    Spacer(Modifier.height(12.dp))
-                                }
-                            }
-                        }
+                        RenderMarkdown(
+                            html = viewModel.content,
+                            modifier = Modifier.fuckHonorService(),
+                            selectable = true,
+                        )
                     }
                 }
                 Column(
@@ -1871,20 +1862,13 @@ fun ArticleScreen(
                                 )
                             }
                         } else {
-                            val astNode = remember(viewModel.content) {
-                                htmlToMdAst(viewModel.content)
-                            }
-                            val context = MarkdownRenderContext()
                             Spacer(Modifier.height(10.dp))
                             Box(modifier = answerDoubleTapModifier) {
-                                SelectionContainer(Modifier.fuckHonorService()) {
-                                    Column {
-                                        for (ast in astNode) {
-                                            ast.Render(context)
-                                            Spacer(Modifier.height(12.dp))
-                                        }
-                                    }
-                                }
+                                RenderMarkdown(
+                                    html = viewModel.content,
+                                    modifier = Modifier.fuckHonorService(),
+                                    selectable = true,
+                                )
                             }
                         }
                     }
@@ -2316,17 +2300,8 @@ private fun CachedAnswerPreview(
                         // no-op
                     }
                 } else {
-                    val astNode = remember(cached.content) {
-                        htmlToMdAst(cached.content)
-                    }
-                    val mdContext = MarkdownRenderContext()
                     Spacer(Modifier.height(10.dp))
-                    Column {
-                        for (ast in astNode) {
-                            ast.Render(mdContext)
-                            Spacer(Modifier.height(12.dp))
-                        }
-                    }
+                    RenderMarkdown(html = cached.content)
                 }
             }
             Spacer(modifier = Modifier.height((16 + 36).dp))
