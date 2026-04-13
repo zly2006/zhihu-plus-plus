@@ -262,6 +262,11 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
                     currentParagraph = null
                 } else {
                     val inlineNodes = extractInlineNode(node)
+                    if (inlineNodes.size == 1 && inlineNodes.first() is HardLineBreak) {
+                        // treat single <br> as block separator
+                        currentParagraph = null
+                        continue
+                    }
                     if (inlineNodes.isNotEmpty()) {
                         paragraph().appendChildren(inlineNodes)
                     }
@@ -278,8 +283,18 @@ private fun convertElementToBlock(element: Element): MarkdownNode? = when (eleme
         appendChildren(extractInlineChildren(element))
     }
 
-    "p" -> Paragraph().apply {
-        appendChildren(extractInlineChildren(element))
+    "p" -> {
+        if (element.childNodeSize() == 0) {
+            // empty paragraph
+            null
+        } else if (element.childNodeSize() == 1 && element.childrenSize() == 1 && element.child(0).tagName() == "br") {
+            // single <br> as paragraph, treat it as empty to avoid extra spacing
+            null
+        } else {
+            Paragraph().apply {
+                appendChildren(extractInlineChildren(element))
+            }
+        }
     }
 
     "blockquote" -> BlockQuote().apply {
