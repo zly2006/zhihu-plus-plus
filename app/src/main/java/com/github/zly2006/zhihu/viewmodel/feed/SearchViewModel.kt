@@ -25,7 +25,7 @@ class SearchViewModel(
             val url = lastPaging?.next ?: initialUrl
             val jojo = AccountData.fetchGet(context, url) {
                 url {
-                    parameters.append("include", include)
+                    parameters["include"] = include
                 }
                 signFetchRequest()
             }!!
