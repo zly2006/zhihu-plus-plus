@@ -19,10 +19,10 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.data.Feed.Badge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.data.Feed.Badge
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import kotlinx.serialization.KSerializer

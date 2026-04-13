@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.navigation.CommentHolder
 
 data class CommentItem(
     val item: DataHolder.Comment,

@@ -41,8 +41,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher

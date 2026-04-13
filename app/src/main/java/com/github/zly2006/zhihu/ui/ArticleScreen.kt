@@ -136,16 +136,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.MainActivity.TtsState
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
@@ -2011,7 +2011,7 @@ fun ArticleScreen(
             }
             AnswerHorizontalOverscroll(
                 canGoPrevious = nav?.previousAnswer != null,
-                canGoNext = true,
+                canGoNext = nav?.nextAnswer != null,
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
                 previousContent = nav?.previousAnswer?.let { cached ->
