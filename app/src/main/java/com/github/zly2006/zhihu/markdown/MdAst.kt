@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.markdown
 
+import android.content.Context
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -39,11 +40,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -79,6 +82,7 @@ import com.hrm.markdown.parser.ast.TableRow
 import com.hrm.markdown.parser.ast.ThematicBreak
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
+import com.hrm.markdown.renderer.MarkdownTheme
 import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
@@ -177,6 +181,16 @@ fun RenderMarkdown(
     val document = remember(html) { htmlToMdAst(html) }
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
+    val fontSize = preferences.getInt("webviewFontSize", 100)
+    val lineHeight = preferences.getInt("webviewLineHeight", 160)
+    val theme = MarkdownTheme.auto().copy(
+        bodyStyle = MarkdownTheme.auto().bodyStyle.copy(
+            fontSize = 16.sp * fontSize / 100,
+            lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
+        ),
+        mathFontSize = 18f * fontSize / 100,
+    )
 
     if (selectable) {
         SelectionContainer(modifier = modifier) {
@@ -188,6 +202,7 @@ fun RenderMarkdown(
                     resolveContent(it.toUri())?.let(navigator.onNavigate)
                         ?: luoTianYiUrlLauncher(context, it.toUri())
                 },
+                theme = theme,
             )
         }
     } else {
@@ -200,6 +215,7 @@ fun RenderMarkdown(
                 resolveContent(it.toUri())?.let(navigator.onNavigate)
                     ?: luoTianYiUrlLauncher(context, it.toUri())
             },
+            theme = theme,
         )
     }
 }
