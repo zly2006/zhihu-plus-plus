@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - experimental/*
     tags:
       - '*'
   workflow_dispatch:
