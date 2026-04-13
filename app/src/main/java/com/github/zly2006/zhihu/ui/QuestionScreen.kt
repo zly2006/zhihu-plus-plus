@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -53,9 +52,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
-import com.github.zly2006.zhihu.markdown.Render
-import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -167,21 +164,12 @@ fun QuestionScreen(
                                     )
                                 }
                             } else {
-                                val astNode = remember(questionContent) {
-                                    htmlToMdAst(questionContent)
-                                }
-                                val mdContext = MarkdownRenderContext()
                                 Spacer(Modifier.height(10.dp))
-                                SelectionContainer(
+                                RenderMarkdown(
+                                    html = questionContent,
                                     modifier = Modifier.fuckHonorService(),
-                                ) {
-                                    Column {
-                                        for (ast in astNode) {
-                                            ast.Render(mdContext)
-                                            Spacer(Modifier.height(12.dp))
-                                        }
-                                    }
-                                }
+                                    selectable = true,
+                                )
                             }
                         }
                     }

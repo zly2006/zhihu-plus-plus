@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -59,9 +58,7 @@ import com.github.zly2006.zhihu.Pin
 import com.github.zly2006.zhihu.Question
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
-import com.github.zly2006.zhihu.markdown.MarkdownRenderContext
-import com.github.zly2006.zhihu.markdown.Render
-import com.github.zly2006.zhihu.markdown.htmlToMdAst
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.resolveContent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -285,21 +282,12 @@ private fun PinContent(
                 )
             }
         } else {
-            val astNode = remember(pin.contentHtml) {
-                htmlToMdAst(pin.contentHtml)
-            }
-            val mdContext = MarkdownRenderContext()
             Spacer(Modifier.height(10.dp))
-            SelectionContainer(
+            RenderMarkdown(
+                html = pin.contentHtml,
                 modifier = Modifier.fuckHonorService(),
-            ) {
-                Column {
-                    for (ast in astNode) {
-                        ast.Render(mdContext)
-                        Spacer(Modifier.height(12.dp))
-                    }
-                }
-            }
+                selectable = true,
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))

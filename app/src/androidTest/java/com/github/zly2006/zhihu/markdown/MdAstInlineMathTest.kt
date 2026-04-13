@@ -3,11 +3,12 @@ package com.github.zly2006.zhihu.markdown
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -23,7 +24,7 @@ class MdAstInlineMathTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-    class MathInfo(
+    data class MathInfo(
         val math: String,
         val rect: Rect,
     )
@@ -41,25 +42,22 @@ class MdAstInlineMathTest {
                         .open("answer_237992320.html")
                         .bufferedReader()
                         .use { it.readText() }
-                    val asts = htmlToMdAst(html)
                     Box(
                         modifier = Modifier
-                            .background(androidx.compose.ui.graphics.Color.White)
+                            .background(Color.White)
                             .padding(24.dp),
                     ) {
-                        Column {
-                            asts.forEach { ast ->
-                                ast.Render(
-                                    MarkdownRenderContext(
-                                        onInlineMathPositioned = { math, rect ->
-                                            recordedBounds[math.math] = MathInfo(
-                                                math = math.math,
-                                                rect = rect,
-                                            )
-                                        },
-                                    ),
+                        CompositionLocalProvider(
+                            LocalMarkdownOnInlineMathPositioned provides { math, rect ->
+                                recordedBounds[math.math] = MathInfo(
+                                    math = math.math,
+                                    rect = rect,
                                 )
-                            }
+                            },
+                        ) {
+                            RenderMarkdown(
+                                html = html,
+                            )
                         }
                     }
                 }

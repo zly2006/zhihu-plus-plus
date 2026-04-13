@@ -3,11 +3,11 @@ package com.github.zly2006.zhihu.markdown
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -17,12 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +57,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
@@ -155,19 +161,81 @@ class AstTable(
     val rows: List<List<List<InlineAstData>>>,
 ) : AstData
 
-class MarkdownRenderContext(
-    val requestedImages: MutableSet<AstImage> = mutableSetOf(),
-    val onInlineMathPositioned: ((AstInlineMath, androidx.compose.ui.geometry.Rect) -> Unit)? = null,
-)
+val LocalMarkdownOnInlineMathPositioned = compositionLocalOf<((AstInlineMath, androidx.compose.ui.geometry.Rect) -> Unit)?> { null }
+
+private val LocalMarkdownInlineContentMap = compositionLocalOf<SnapshotStateMap<String, InlineTextContent>> {
+    error("LocalMarkdownInlineContentMap not provided")
+}
+
+private val LocalMarkdownMaxInlineHeightSp = compositionLocalOf<MutableState<TextUnit>> {
+    error("LocalMarkdownMaxInlineHeightSp not provided")
+}
+
+private fun maxSp(a: TextUnit, b: TextUnit): TextUnit =
+    when {
+        !a.isSpecified -> b
+        !b.isSpecified -> a
+        a.value >= b.value -> a
+        else -> b
+    }
+
+@Composable
+private fun ProvideMarkdownInlineLocals(
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalMarkdownInlineContentMap provides remember { mutableStateMapOf<String, InlineTextContent>() },
+        LocalMarkdownMaxInlineHeightSp provides remember { mutableStateOf(0.sp) },
+        content = content,
+    )
+}
+
+@Composable
+private fun RenderMarkdownAstList(
+    asts: List<MdAst>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        asts.forEachIndexed { index, ast ->
+            ast.Render()
+            if (index != asts.lastIndex) {
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun RenderMarkdown(
+    html: String,
+    modifier: Modifier = Modifier,
+    selectable: Boolean = false,
+) {
+    val asts = remember(html) { htmlToMdAst(html) }
+
+    if (selectable) {
+        SelectionContainer(modifier = modifier) {
+            RenderMarkdownAstList(
+                asts = asts,
+            )
+        }
+    } else {
+        RenderMarkdownAstList(
+            asts = asts,
+            modifier = modifier,
+        )
+    }
+}
 
 @Composable
 fun AnnotatedString.Builder.RenderInline(
     ast: InlineAstData,
-    renderContext: MarkdownRenderContext,
-    inlineContentMap: SnapshotStateMap<String, InlineTextContent>,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val inlineContentMap = LocalMarkdownInlineContentMap.current
+    val maxInlineHeightSp = LocalMarkdownMaxInlineHeightSp.current
+    val onInlineMathPositioned = LocalMarkdownOnInlineMathPositioned.current
     when (val d = ast) {
         is AstSpan -> {
             pushStyle(d.textStyle.toSpanStyle())
@@ -185,7 +253,7 @@ fun AnnotatedString.Builder.RenderInline(
                         ?: luoTianYiUrlLauncher(context, d.url.toUri())
                 },
             ) {
-                RenderInline(d.title, renderContext, inlineContentMap)
+                RenderInline(d.title)
             }
         }
 
@@ -237,6 +305,9 @@ fun AnnotatedString.Builder.RenderInline(
                         Log.d("RenderInline", "Measured inline math $inlineContentId size: ${measurable.width}x${measurable.height}")
                         measuredWidthSp.value = measurable.width.toSp()
                         measuredHeightSp.value = measurable.height.toSp()
+                        if (measuredHeightSp.value > maxInlineHeightSp.value) {
+                            maxInlineHeightSp.value = measuredHeightSp.value
+                        }
                     }
                 }
 
@@ -249,14 +320,13 @@ fun AnnotatedString.Builder.RenderInline(
                     placeholder = Placeholder(
                         width = measuredWidthSp.value,
                         height = measuredHeightSp.value,
-                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
                     ),
                 ) {
                     Box(
                         modifier = Modifier
-                            .border(1.dp, Color(0xff66ccff))
                             .onGloballyPositioned { coordinates ->
-                                renderContext.onInlineMathPositioned?.invoke(d, coordinates.boundsInRoot())
+                                onInlineMathPositioned?.invoke(d, coordinates.boundsInRoot())
                             },
                     ) {
                         Latex(
@@ -277,9 +347,7 @@ fun AnnotatedString.Builder.RenderInline(
 }
 
 @Composable
-fun MdAst.Render(
-    renderContext: MarkdownRenderContext,
-) {
+fun MdAst.Render() {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("webview_settings", android.content.Context.MODE_PRIVATE) }
     val fontSizePercent = remember { preferences.getInt("webviewFontSize", 100) }
@@ -310,36 +378,40 @@ fun MdAst.Render(
                 else -> MaterialTheme.typography.titleSmall
             }
 
-            val inlineContentMap = remember { mutableStateMapOf<String, InlineTextContent>() }
-
-            Text(
-                text = buildAnnotatedString {
-                    d.text.forEach {
-                        RenderInline(it, renderContext, inlineContentMap)
-                    }
-                },
-                style = headerStyle.copy(
-                    fontSize = headerStyle.fontSize * fontSizeMultiplier,
-                ),
-                inlineContent = inlineContentMap,
-            )
+            ProvideMarkdownInlineLocals {
+                Text(
+                    text = buildAnnotatedString {
+                        d.text.forEach {
+                            RenderInline(it)
+                        }
+                    },
+                    style = headerStyle.copy(
+                        fontSize = headerStyle.fontSize * fontSizeMultiplier,
+                        lineHeight = maxSp(headerStyle.lineHeight, LocalMarkdownMaxInlineHeightSp.current.value),
+                    ),
+                    inlineContent = LocalMarkdownInlineContentMap.current,
+                )
+            }
         }
 
         is AstParagraph -> {
-            val inlineContentMap = remember { mutableStateMapOf<String, InlineTextContent>() }
-
-            Text(
-                text = buildAnnotatedString {
-                    d.inlines.forEach {
-                        RenderInline(it, renderContext, inlineContentMap)
-                    }
-                },
-                style = baseStyle.copy(
-                    fontSize = baseStyle.fontSize * fontSizeMultiplier,
-                    lineHeight = baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
-                ),
-                inlineContent = inlineContentMap,
-            )
+            ProvideMarkdownInlineLocals {
+                Text(
+                    text = buildAnnotatedString {
+                        d.inlines.forEach {
+                            RenderInline(it)
+                        }
+                    },
+                    style = baseStyle.copy(
+                        fontSize = baseStyle.fontSize * fontSizeMultiplier,
+                        lineHeight = maxSp(
+                            baseStyle.fontSize * fontSizeMultiplier * lineHeightMultiplier,
+                            LocalMarkdownMaxInlineHeightSp.current.value,
+                        ),
+                    ),
+                    inlineContent = LocalMarkdownInlineContentMap.current,
+                )
+            }
         }
 
         is AstBlockquote -> {
@@ -358,7 +430,7 @@ fun MdAst.Render(
                         modifier = Modifier.padding(start = 4.dp),
                     ) {
                         d.children.forEach {
-                            it.Render(renderContext)
+                            it.Render()
                         }
                     }
                 },
@@ -436,10 +508,10 @@ fun MdAst.Render(
         AstHorizontalRule -> {
             Box(
                 Modifier
-                    .padding(vertical = 8.dp)
+                    .padding(vertical = 8.dp, horizontal = 60.dp)
                     .height(1.5.dp)
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)),
             )
         }
         is AstImage -> {
