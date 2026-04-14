@@ -74,6 +74,8 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
+import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.blacklist
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -407,8 +409,8 @@ class CustomWebView : WebView {
         }
         Log.i("CustomWebView", "Loading content for URL: $url with document title: ${document.title()}")
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val fontSize = preferences.getInt("webviewFontSize", 100)
-        val lineHeight = preferences.getInt("webviewLineHeight", 160)
+        val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
+        val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
         val customFontFile = java.io.File(context.filesDir, "custom_font")
         val customFontCss = if (preferences.contains("webviewCustomFontName") && customFontFile.exists()) {
             val fontName = preferences.getString("webviewCustomFontName", "") ?: ""

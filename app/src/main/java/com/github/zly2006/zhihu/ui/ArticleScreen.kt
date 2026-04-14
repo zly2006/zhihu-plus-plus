@@ -1323,7 +1323,7 @@ fun ArticleScreen(
                 }
 
                 if (viewModel.content.isNotEmpty()) {
-                    if (preferences.getBoolean("articleUseWebview", true)) {
+                    if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                         WebviewComp(
                             scrollState = scrollState,
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
@@ -1854,7 +1854,7 @@ fun ArticleScreen(
                     }
 
                     if (viewModel.content.isNotEmpty()) {
-                        if (preferences.getBoolean("articleUseWebview", true)) {
+                        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                             WebviewComp(
                                 onDoubleTap = ::handleAnswerDoubleTap,
                                 scrollState = scrollState,
@@ -2279,7 +2279,7 @@ private fun CachedAnswerPreview(
                 }
             }
             if (cached.content.isNotEmpty()) {
-                if (preferences.getBoolean("articleUseWebview", true)) {
+                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                     if (sharedData != null) {
                         AndroidView(
                             factory = { ctx ->

@@ -288,7 +288,7 @@ private fun PinContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Content
-        if (preferences.getBoolean("articleUseWebview", true)) {
+        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
             WebviewComp {
                 it.isVerticalScrollBarEnabled = false
                 it.setupUpWebviewClient()

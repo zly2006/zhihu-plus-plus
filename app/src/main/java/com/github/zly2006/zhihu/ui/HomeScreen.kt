@@ -47,6 +47,7 @@ import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -115,6 +116,9 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
+const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
+const val ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY =
+    "articleWebviewChangeAnnouncementDismissed"
 
 interface IHomeFeedViewModel {
     suspend fun recordContentInteraction(context: Context, feed: Feed)
@@ -232,6 +236,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     }
     var uiChanges by remember {
         mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
+    }
+    var showArticleRenderChangeAnnouncement by remember {
+        mutableStateOf(
+            !preferences.getBoolean(
+                ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
+                false,
+            ),
+        )
     }
 
     val listState = rememberLazyListState()
@@ -488,6 +500,35 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 }
                             },
                             colors = AnnouncementCardDefaults.colorsImportant(),
+                        )
+                        AnnouncementCard(
+                            visible = showArticleRenderChangeAnnouncement,
+                            title = "文章渲染默认已改为 Compose",
+                            leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
+                            content = "我们已默认关闭 WebView 渲染文章，以提供代码高亮等高级渲染能力，并修复了许多由 WebView 带来的 bug。" +
+                                "新的渲染方式可能存在 bug，如遇到请在 GitHub 反馈，也可在设置中重新开启 WebView。",
+                            accept = { Text("去设置") },
+                            onAccept = {
+                                preferences.edit {
+                                    putBoolean(
+                                        ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
+                                        true,
+                                    )
+                                }
+                                showArticleRenderChangeAnnouncement = false
+                                context.navigate(Account.AppearanceSettings(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
+                            },
+                            dismiss = { Text("知道了") },
+                            onDismiss = {
+                                preferences.edit {
+                                    putBoolean(
+                                        ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
+                                        true,
+                                    )
+                                }
+                                showArticleRenderChangeAnnouncement = false
+                            },
+                            colors = AnnouncementCardDefaults.colorsVariant(),
                         )
                         AnnouncementCard(
                             visible = showFilterExplainDialog,
