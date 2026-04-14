@@ -182,7 +182,7 @@ fun QuestionScreen(
                     item(1) {
                         val handle = LocalPinnableContainer.current?.pin()
                         Box(
-                            Modifier.padding(horizontal = 16.dp)
+                            Modifier.padding(horizontal = 16.dp),
                         ) {
                             if (questionContent.isNotEmpty()) {
                                 if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
