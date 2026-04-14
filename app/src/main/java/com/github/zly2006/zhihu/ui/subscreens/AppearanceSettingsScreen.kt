@@ -97,6 +97,7 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
@@ -104,10 +105,14 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
+const val PREF_FONT_SIZE = "contentFontSize"
+const val PREF_LINE_HEIGHT = "contentLineHeight"
 
 private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
     Home.name to Home,
@@ -244,10 +249,11 @@ fun AppearanceSettingsScreen(
         if (setting.isNotEmpty() && scrolledSetting != setting) {
             itemPositions[setting]?.let { itemRootY ->
                 scrolledSetting = setting
-                kotlinx.coroutines.delay(200)
+                delay(200.milliseconds)
                 // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
                 scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
-                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY)
+                val highlightedItemTopPaddingPx = with(density) { 200.dp.toPx() }.toInt()
+                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY - highlightedItemTopPaddingPx)
                 val maxScroll = scrollState.maxValue +
                     scrollBehavior.state.heightOffsetLimit.toInt() -
                     with(density) { 16.dp.toPx() }.toInt()
@@ -477,7 +483,7 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "阅读",
             ) {
-                var fontSize by remember { mutableIntStateOf(preferences.getInt("webviewFontSize", 100)) }
+                var fontSize by remember { mutableIntStateOf(preferences.getInt(PREF_FONT_SIZE, 100)) }
                 SettingItem(
                     title = { Text("字号") },
                     description = { Text("调整内容文字大小 ($fontSize%)") },
@@ -489,7 +495,7 @@ fun AppearanceSettingsScreen(
                             value = fontSize.toFloat(),
                             onValueChange = {
                                 fontSize = it.toInt()
-                                preferences.edit { putInt("webviewFontSize", it.toInt()) }
+                                preferences.edit { putInt(PREF_FONT_SIZE, it.toInt()) }
                             },
                             valueRange = 50f..200f,
                             steps = 14,
@@ -498,7 +504,7 @@ fun AppearanceSettingsScreen(
                     },
                 )
 
-                var lineHeight by remember { mutableIntStateOf(preferences.getInt("webviewLineHeight", 160)) }
+                var lineHeight by remember { mutableIntStateOf(preferences.getInt(PREF_LINE_HEIGHT, 160)) }
                 SettingItem(
                     title = { Text("行高") },
                     description = { Text("调整内容行间距 (${lineHeight / 100f})") },
@@ -507,7 +513,7 @@ fun AppearanceSettingsScreen(
                             value = lineHeight.toFloat(),
                             onValueChange = {
                                 lineHeight = it.toInt()
-                                preferences.edit { putInt("webviewLineHeight", it.toInt()) }
+                                preferences.edit { putInt(PREF_LINE_HEIGHT, it.toInt()) }
                             },
                             valueRange = 100f..300f,
                             steps = 19,
@@ -595,15 +601,20 @@ fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "回答页",
             ) {
-                val articleUseWebview = remember { mutableStateOf(preferences.getBoolean("articleUseWebview", true)) }
+                val articleUseWebview = remember {
+                    mutableStateOf(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
+                }
                 SettingItemWithSwitch(
                     title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，文本选择更好但格式支持较少。") },
+                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
                     checked = articleUseWebview.value,
                     onCheckedChange = {
                         articleUseWebview.value = it
-                        preferences.edit { putBoolean("articleUseWebview", it) }
+                        preferences.edit { putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it) }
                     },
+                    settingKey = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
+                    highlightedKey = setting,
+                    onPositioned = { itemPositions[ARTICLE_USE_WEBVIEW_PREFERENCE_KEY] = it },
                 )
 
                 AnimatedVisibility(visible = articleUseWebview.value) {

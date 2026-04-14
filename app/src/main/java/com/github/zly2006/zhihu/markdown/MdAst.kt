@@ -17,41 +17,8 @@
 
 package com.github.zly2006.zhihu.markdown
 
-import android.content.Context
-import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.util.extractImageUrl
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Document
@@ -79,146 +46,14 @@ import com.hrm.markdown.parser.ast.TableBody
 import com.hrm.markdown.parser.ast.TableCell
 import com.hrm.markdown.parser.ast.TableHead
 import com.hrm.markdown.parser.ast.TableRow
+import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
-import com.hrm.markdown.renderer.Markdown
-import com.hrm.markdown.renderer.MarkdownImageData
-import com.hrm.markdown.renderer.MarkdownTheme
 import io.ktor.http.Url
-import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 import org.jsoup.nodes.Node as HtmlNode
-
-@Composable
-fun RenderImage(
-    data: MarkdownImageData,
-    modifier: Modifier,
-) {
-    val context = LocalContext.current
-    var expanded by remember { mutableStateOf(false) }
-    var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
-    val density = LocalDensity.current
-    val view = LocalView.current
-    val coroutineScope = rememberCoroutineScope()
-    val httpClient = AccountData.httpClient(context)
-
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        AsyncImage(
-            model = data.url,
-            contentDescription = data.altText,
-            modifier = modifier
-                .fillMaxWidth(0.8f)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            val dialog = OpenImageDislog(context, httpClient, data.url)
-                            dialog.show()
-                        },
-                        onLongPress = { offset ->
-                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                            pressOffset = with(density) {
-                                DpOffset(offset.x.toDp(), offset.y.toDp() - 20.dp)
-                            }
-                            expanded = true
-                        },
-                    )
-                },
-        )
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            offset = pressOffset,
-        ) {
-            DropdownMenuItem(
-                text = { Text("查看图片") },
-                onClick = {
-                    expanded = false
-                    val dialog = OpenImageDislog(context, httpClient, data.url)
-                    dialog.show()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("在浏览器中打开") },
-                onClick = {
-                    expanded = false
-                    luoTianYiUrlLauncher(context, data.url.toUri())
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("保存图片") },
-                onClick = {
-                    expanded = false
-                    coroutineScope.launch {
-                        saveImageToGallery(context, httpClient, data.url)
-                    }
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("分享图片") },
-                onClick = {
-                    expanded = false
-                    coroutineScope.launch {
-                        shareImage(context, httpClient, data.url)
-                    }
-                },
-            )
-        }
-    }
-}
-
-@Composable
-fun RenderMarkdown(
-    html: String,
-    modifier: Modifier = Modifier,
-    selectable: Boolean = false,
-) {
-    val document = remember(html) { htmlToMdAst(html) }
-    val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val fontSize = preferences.getInt("webviewFontSize", 100)
-    val lineHeight = preferences.getInt("webviewLineHeight", 160)
-    val theme = MarkdownTheme.auto().copy(
-        bodyStyle = MarkdownTheme.auto().bodyStyle.copy(
-            fontSize = 16.sp * fontSize / 100,
-            lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
-        ),
-        mathFontSize = 18f * fontSize / 100,
-    )
-
-    if (selectable) {
-        SelectionContainer(modifier = modifier) {
-            Markdown(
-                document = document,
-                imageContent = ::RenderImage,
-                enableScroll = false,
-                onLinkClick = {
-                    resolveContent(it.toUri())?.let(navigator.onNavigate)
-                        ?: luoTianYiUrlLauncher(context, it.toUri())
-                },
-                theme = theme,
-            )
-        }
-    } else {
-        Markdown(
-            document = document,
-            modifier = modifier,
-            imageContent = ::RenderImage,
-            enableScroll = false,
-            onLinkClick = {
-                resolveContent(it.toUri())?.let(navigator.onNavigate)
-                    ?: luoTianYiUrlLauncher(context, it.toUri())
-            },
-            theme = theme,
-        )
-    }
-}
 
 fun htmlToMdAst(html: String): Document {
     val document = Document()
@@ -249,8 +84,7 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
                 val text = node.text().trim()
                 if (text.isNotEmpty()) {
                     paragraph().appendChild(
-                        com.hrm.markdown.parser.ast
-                            .Text(text),
+                        Text(text),
                     )
                 }
             }
@@ -474,8 +308,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
             emptyList()
         } else {
             listOf(
-                com.hrm.markdown.parser.ast
-                    .Text(text),
+                Text(text),
             )
         }
     }
@@ -509,8 +342,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                     appendChildren(
                         extractInlineChildren(node).ifEmpty {
                             listOf(
-                                com.hrm.markdown.parser.ast
-                                    .Text(node.text()),
+                                Text(node.text()),
                             )
                         },
                     )
@@ -536,8 +368,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                             ).apply {
                                 node.attr("alt").takeIf { it.isNotBlank() }?.let {
                                     appendChild(
-                                        com.hrm.markdown.parser.ast
-                                            .Text(it),
+                                        Text(it),
                                     )
                                 }
                             },
@@ -556,8 +387,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                     .takeIf { it.isNotBlank() }
                     ?.let {
                         listOf(
-                            com.hrm.markdown.parser.ast
-                                .Text(it),
+                            Text(it),
                         )
                     }.orEmpty()
             }

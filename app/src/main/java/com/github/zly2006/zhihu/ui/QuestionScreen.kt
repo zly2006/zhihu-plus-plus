@@ -173,7 +173,7 @@ fun QuestionScreen(
                     item(1) {
                         val handle = LocalPinnableContainer.current?.pin()
                         if (questionContent.isNotEmpty()) {
-                            if (preferences.getBoolean("articleUseWebview", true)) {
+                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                                 WebviewComp {
                                     it.loadZhihu(
                                         "https://www.zhihu.com/question/${question.questionId}",

@@ -53,22 +53,26 @@
 
 ## Android 调试标准流程
 
+注意：
+1. 必须使用avd验证，不要使用真机。
+2. 时刻注意你是一个LLM，延迟很高。所以大多数情况下不需要你执行sleep指令，你本身的反应就很慢，足够程序响应了。这也是说，如果需要执行双击等复杂手势，必须用&&来串联多个adb指令，不然你的反应太慢就不是双击了。
+
 ### 应用启动与验证
 ```bash
 # 1. 检查包名（必须先做）
 grep "applicationId" app/build.gradle.kts
 # lite variant: com.github.zly2006.zhplus.lite
 
-# 2. 构建并安装
+# 2. 启动模拟器（如果还没启动）
+emulator -avd Medium_Phone_2
+
+# 3. 构建并安装
 ./gradlew assembleLiteDebug
 adb install -r app/build/outputs/apk/lite/debug/app-lite-debug.apk
 
-# 3. 启动
+# 4. 启动
 adb shell am force-stop com.github.zly2006.zhplus.lite
 adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LAUNCHER 1
-
-# 4. 等待加载（关键！）
-sleep 3
 ```
 
 ### UI 调试强制清单
