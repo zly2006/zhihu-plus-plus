@@ -1,5 +1,8 @@
 changelog:
   categories:
+    - title: 重大变化
+      labels:
+        - breaking-change
     - title: 🚀 新功能
       labels:
         - enhancement
