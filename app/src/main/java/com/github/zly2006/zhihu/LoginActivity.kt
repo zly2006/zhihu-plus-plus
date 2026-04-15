@@ -78,6 +78,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -95,6 +96,7 @@ private const val UDID_URL = "https://www.zhihu.com/udid"
 private const val CAPTCHA_V2_URL = "https://www.zhihu.com/api/v3/oauth/captcha/v2?type=captcha_sign_in"
 private const val QRCODE_URL = "https://www.zhihu.com/api/v3/account/api/login/qrcode"
 private const val ME_URL = "https://www.zhihu.com/api/v4/me"
+private const val RISK_CONTROL_URL = "https://www.zhihu.com/account/risk_control/"
 
 private const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
 private const val DESKTOP_SEC_CH_UA = "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\""
@@ -208,6 +210,40 @@ class LoginActivity : ComponentActivity() {
         if (webView.url.isNullOrEmpty()) {
             CookieManager.getInstance().removeAllCookies { }
             webView.loadUrl(SIGNIN_URL)
+        }
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    fun configureRiskControlWebView(
+        webView: WebView,
+        url: String,
+        cookies: Map<String, String>,
+        onCookiesChanged: (Map<String, String>) -> Unit,
+    ) {
+        webView.setupUpWebviewClient()
+        webView.settings.javaScriptEnabled = true
+        webView.settings.userAgentString = DESKTOP_USER_AGENT
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+        cookies.forEach { (name, value) ->
+            cookieManager.setCookie(HOME_URL, "$name=$value; Domain=.zhihu.com; Path=/")
+        }
+        cookieManager.flush()
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest,
+            ): Boolean = request.url?.scheme == "zhihu"
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                onCookiesChanged(
+                    readWebViewCookies(url),
+                )
+            }
+        }
+        if (webView.url != url) {
+            webView.loadUrl(url)
         }
     }
 
@@ -331,22 +367,22 @@ private fun QrLoginPane(activity: LoginActivity) {
     var refreshKey by rememberSaveable { mutableIntStateOf(0) }
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var statusText by remember { mutableStateOf("正在获取二维码") }
+    var sessionCookies by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var riskControlUrl by remember { mutableStateOf<String?>(null) }
     var riskControlMessage by remember { mutableStateOf<String?>(null) }
     var isWorking by remember { mutableStateOf(true) }
 
     LaunchedEffect(refreshKey) {
-        val cookies = mutableMapOf<String, String>()
+        val cookies = sessionCookies.toMutableMap()
         val client = AccountData.httpClient(context, cookies)
         qrBitmap = null
         statusText = "正在获取二维码"
-        riskControlUrl = null
-        riskControlMessage = null
         isWorking = true
 
         try {
             prefetchQrLoginContext(client, cookies)
             val qrCode = requestQrCode(client, cookies)
+            sessionCookies = cookies.toMap()
             val qrLink = qrCode.link ?: throw IllegalStateException("知乎没有返回二维码链接")
             val qrToken = qrCode.token ?: qrCode.qrcodeToken ?: throw IllegalStateException("知乎没有返回二维码 token")
             qrBitmap = generateQrBitmap(qrLink)
@@ -362,8 +398,9 @@ private fun QrLoginPane(activity: LoginActivity) {
                     statusText = "请在知乎 App 上确认登录"
                 },
                 onRiskControl = { message, redirectUrl ->
+                    sessionCookies = cookies.toMap()
                     riskControlMessage = message ?: "知乎需要验证当前网络环境"
-                    riskControlUrl = redirectUrl
+                    riskControlUrl = redirectUrl ?: RISK_CONTROL_URL
                     statusText = riskControlMessage ?: "知乎需要验证当前网络环境"
                 },
             )
@@ -372,6 +409,8 @@ private fun QrLoginPane(activity: LoginActivity) {
                 statusText = "正在验证登录"
                 isWorking = false
                 activity.finalizeLoginFromCookies(cookies)
+            } else if (!riskControlUrl.isNullOrBlank()) {
+                isWorking = false
             } else {
                 statusText = "二维码已过期，请重试"
                 isWorking = false
@@ -384,6 +423,57 @@ private fun QrLoginPane(activity: LoginActivity) {
         } finally {
             client.close()
         }
+    }
+
+    if (!riskControlUrl.isNullOrBlank()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("qr_risk_control_content"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = riskControlMessage ?: "请先完成知乎的网络环境验证",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedButton(
+                onClick = {
+                    sessionCookies = sessionCookies + readWebViewCookies(riskControlUrl)
+                    riskControlUrl = null
+                    riskControlMessage = null
+                    refreshKey += 1
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("qr_risk_control_continue"),
+            ) {
+                Text("完成验证后继续扫码")
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                WebviewComp(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("qr_risk_control_webview"),
+                    onLoad = { webView ->
+                        activity.configureRiskControlWebView(
+                            webView = webView,
+                            url = riskControlUrl.orEmpty(),
+                            cookies = sessionCookies,
+                            onCookiesChanged = { updatedCookies ->
+                                sessionCookies = sessionCookies + updatedCookies
+                            },
+                        )
+                    },
+                )
+            }
+        }
+        return
     }
 
     Column(
@@ -435,20 +525,14 @@ private fun QrLoginPane(activity: LoginActivity) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedButton(
-                onClick = { refreshKey += 1 },
+                onClick = {
+                    riskControlUrl = null
+                    riskControlMessage = null
+                    refreshKey += 1
+                },
                 modifier = Modifier.testTag("qr_login_retry"),
             ) {
                 Text("刷新二维码")
-            }
-            if (!riskControlUrl.isNullOrBlank()) {
-                Button(
-                    onClick = {
-                        luoTianYiUrlLauncher(context, riskControlUrl.orEmpty().toUri())
-                    },
-                    modifier = Modifier.testTag("qr_login_risk_control"),
-                ) {
-                    Text("打开验证")
-                }
             }
         }
     }
@@ -613,6 +697,13 @@ private suspend fun pollQrCodeLogin(
                     header(key, value)
                 }
             }
+            if (response.status == HttpStatusCode.Forbidden) {
+                onRiskControl(
+                    "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
+                    RISK_CONTROL_URL,
+                )
+                return false
+            }
             val body = response.bodyAsText()
             val scanInfo = runCatching {
                 AccountData.decodeJson<ZhihuQrScanInfo>(
@@ -627,8 +718,7 @@ private suspend fun pollQrCodeLogin(
                     hasPromptedRiskControl = true
                     onRiskControl(scanInfo.error?.message, scanInfo.error?.redirect)
                 }
-                delay(1500)
-                continue
+                return false
             }
 
             if (scanInfo.status == 1 && !hasPromptedConfirm) {
@@ -732,8 +822,7 @@ private fun parseCookieAssignments(rawCookie: String): Map<String, String> {
                 return@mapNotNull null
             }
             name to value
-        }
-        .toMap()
+        }.toMap()
 }
 
 private fun isQrLoginSuccessful(scanInfo: ZhihuQrScanInfo): Boolean {
@@ -775,4 +864,14 @@ private fun generateQrBitmap(content: String): Bitmap {
         }
     }
     return bitmap
+}
+
+private fun readWebViewCookies(url: String?): Map<String, String> {
+    val cookieManager = CookieManager.getInstance()
+    val cookies = mutableMapOf<String, String>()
+    cookies.putAll(parseCookieAssignments(cookieManager.getCookie(HOME_URL).orEmpty()))
+    if (!url.isNullOrBlank()) {
+        cookies.putAll(parseCookieAssignments(cookieManager.getCookie(url).orEmpty()))
+    }
+    return cookies
 }
