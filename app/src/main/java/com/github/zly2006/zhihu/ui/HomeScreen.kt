@@ -46,7 +46,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Notifications
@@ -233,9 +232,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     // 首次启动提示
     var showFilterExplainDialog by remember {
         mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
-    }
-    var uiChanges by remember {
-        mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
     }
     var showArticleRenderChangeAnnouncement by remember {
         mutableStateOf(
@@ -542,24 +538,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 preferences.edit { putBoolean("filterExplainDialogShown", true) }
                                 showFilterExplainDialog = false
                             },
-                        )
-                        AnnouncementCard(
-                            visible = uiChanges,
-                            title = "UI 新变化！",
-                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
-                            content = "知乎++正在测试一套新的UI，欢迎尝试。如有任何意见，请在GitHub issues提出。",
-                            accept = { Text("去看看") },
-                            onAccept = {
-                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
-                                uiChanges = false
-                                context.navigate(Account.AppearanceSettings("123Duo3"))
-                            },
-                            dismiss = { Text("算了") },
-                            onDismiss = {
-                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
-                                uiChanges = false
-                            },
-                            colors = AnnouncementCardDefaults.colorsVariant(),
                         )
                     }
                 },
