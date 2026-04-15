@@ -20,8 +20,14 @@ package com.github.zly2006.zhihu.ui
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,6 +46,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +56,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,12 +64,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,6 +118,8 @@ fun QuestionScreen(
     var showComments by remember { mutableStateOf(false) }
     var isFollowing by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(true) }
+    val questionContentPreview = remember(questionContent) { Jsoup.parse(questionContent).text().trim() }
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
@@ -180,31 +193,76 @@ fun QuestionScreen(
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item(1) {
-                        val handle = LocalPinnableContainer.current?.pin()
                         Box(
                             Modifier.padding(horizontal = 16.dp),
                         ) {
                             if (questionContent.isNotEmpty()) {
-                                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                                    WebviewComp {
-                                        it.loadZhihu(
-                                            "https://www.zhihu.com/question/${question.questionId}",
-                                            Jsoup.parse(questionContent),
+                                Column {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = "问题详情",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                        TextButton(
+                                            onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
+                                            modifier = Modifier.testTag("question_detail_toggle"),
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isQuestionDetailExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                                contentDescription = null,
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Text(if (isQuestionDetailExpanded) "收起详情" else "展开详情")
+                                        }
+                                    }
+                                    AnimatedVisibility(
+                                        visible = isQuestionDetailExpanded,
+                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+                                    ) {
+                                        Column {
+                                            Spacer(Modifier.height(10.dp))
+                                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                                                WebviewComp {
+                                                    it.loadZhihu(
+                                                        "https://www.zhihu.com/question/${question.questionId}",
+                                                        Jsoup.parse(questionContent),
+                                                    )
+                                                }
+                                            } else {
+                                                RenderMarkdown(
+                                                    html = questionContent,
+                                                    modifier = Modifier.fuckHonorService(),
+                                                    selectable = true,
+                                                )
+                                            }
+                                        }
+                                    }
+                                    AnimatedVisibility(
+                                        visible = !isQuestionDetailExpanded && questionContentPreview.isNotEmpty(),
+                                        enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                                        exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+                                    ) {
+                                        Text(
+                                            text = questionContentPreview,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 10.dp),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                } else {
-                                    Spacer(Modifier.height(10.dp))
-                                    RenderMarkdown(
-                                        html = questionContent,
-                                        modifier = Modifier.fuckHonorService(),
-                                        selectable = true,
-                                    )
                                 }
                             }
                         }
                     }
                     item(2) {
-                        val handle = LocalPinnableContainer.current?.pin()
                         FlowRow(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             itemVerticalAlignment = Alignment.CenterVertically,
