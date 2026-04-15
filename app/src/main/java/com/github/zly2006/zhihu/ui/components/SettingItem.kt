@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
@@ -67,10 +69,18 @@ fun Modifier.highlightSetting(
     settingKey: String?,
     highlightedKey: String,
     onPositioned: ((Int) -> Unit)? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null,
     shape: Shape = RectangleShape,
     color: Color? = null,
 ): Modifier = composed {
     var modifier = this
+    val actualBringIntoViewRequester = remember(settingKey, bringIntoViewRequester) {
+        bringIntoViewRequester ?: if (settingKey != null) BringIntoViewRequester() else null
+    }
+
+    if (actualBringIntoViewRequester != null) {
+        modifier = modifier.bringIntoViewRequester(actualBringIntoViewRequester)
+    }
 
     if (onPositioned != null) {
         modifier = modifier.onGloballyPositioned { coords ->
@@ -85,6 +95,10 @@ fun Modifier.highlightSetting(
 
         LaunchedEffect(isTarget) {
             if (isTarget) {
+                actualBringIntoViewRequester?.let {
+                    delay(200)
+                    it.bringIntoView()
+                }
                 // Flash 2 times (In, Out, In, Out, In)
                 repeat(2) {
                     highlightAlpha.animateTo(0.4f, tween(200, easing = LinearEasing))
@@ -116,12 +130,17 @@ fun SettingItemGroup(
     settingKey: String? = null,
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null,
     content: @Composable () -> Unit,
 ) {
     Column(
         Modifier
-            .highlightSetting(settingKey, highlightedKey, onPositioned)
-            .padding(horizontal = 16.dp)
+            .highlightSetting(
+                settingKey = settingKey,
+                highlightedKey = highlightedKey,
+                onPositioned = onPositioned,
+                bringIntoViewRequester = bringIntoViewRequester,
+            ).padding(horizontal = 16.dp)
             .padding(bottom = 16.dp)
             .then(modifier),
     ) {
@@ -201,6 +220,7 @@ fun SettingItemOverall(
     settingKey: String? = null,
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
     SettingItem(
         modifier = modifier.padding(bottom = 16.dp),
@@ -227,6 +247,7 @@ fun SettingItemOverall(
         settingKey = settingKey,
         highlightedKey = highlightedKey,
         onPositioned = onPositioned,
+        bringIntoViewRequester = bringIntoViewRequester,
     )
 }
 
@@ -242,6 +263,7 @@ fun SettingItemWithSwitch(
     settingKey: String? = null,
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
     SettingItem(
         modifier = modifier,
@@ -260,6 +282,7 @@ fun SettingItemWithSwitch(
         settingKey = settingKey,
         highlightedKey = highlightedKey,
         onPositioned = onPositioned,
+        bringIntoViewRequester = bringIntoViewRequester,
     )
 }
 
@@ -323,20 +346,32 @@ fun SettingItem(
     settingKey: String? = null,
     highlightedKey: String = "",
     onPositioned: ((rootY: Int) -> Unit)? = null,
+    bringIntoViewRequester: BringIntoViewRequester? = null,
 ) {
     Surface(
         modifier = if (onClick != null) {
             modifier
                 .clip(shape)
-                .highlightSetting(settingKey, highlightedKey, onPositioned, shape)
-                .clickable(
+                .highlightSetting(
+                    settingKey = settingKey,
+                    highlightedKey = highlightedKey,
+                    onPositioned = onPositioned,
+                    bringIntoViewRequester = bringIntoViewRequester,
+                    shape = shape,
+                ).clickable(
                     enabled = enabled,
                     onClick = onClick,
                 )
         } else {
             modifier
                 .clip(shape)
-                .highlightSetting(settingKey, highlightedKey, onPositioned, shape)
+                .highlightSetting(
+                    settingKey = settingKey,
+                    highlightedKey = highlightedKey,
+                    onPositioned = onPositioned,
+                    bringIntoViewRequester = bringIntoViewRequester,
+                    shape = shape,
+                )
         },
         shape = shape,
         color = colors.containerColor,

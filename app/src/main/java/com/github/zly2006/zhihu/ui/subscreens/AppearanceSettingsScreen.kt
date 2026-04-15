@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -66,6 +67,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -74,10 +76,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -216,14 +215,13 @@ fun AppearanceSettingsScreen(
     val scrollState = rememberScrollState()
     val navigator = LocalNavigator.current
 
-    val itemPositions = remember { mutableMapOf<String, Int>() }
-    var scrollColumnRootY by remember { mutableIntStateOf(0) }
-
+    val bringIntoViewRequesters = remember { mutableStateMapOf<String, BringIntoViewRequester>() }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val scrollAnimationSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-    val density = LocalDensity.current
 
     var scrolledSetting by remember { mutableStateOf<String?>(null) }
+
+    fun requesterFor(settingKey: String): BringIntoViewRequester =
+        bringIntoViewRequesters.getOrPut(settingKey) { BringIntoViewRequester() }
     val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
     val selectedBottomBarItemKeys = remember {
         mutableStateOf(
@@ -245,22 +243,14 @@ fun AppearanceSettingsScreen(
         }
     }
 
-    LaunchedEffect(setting, itemPositions[setting]) {
+    LaunchedEffect(setting, bringIntoViewRequesters[setting]) {
         if (setting.isNotEmpty() && scrolledSetting != setting) {
-            itemPositions[setting]?.let { itemRootY ->
+            bringIntoViewRequesters[setting]?.let { requester ->
                 scrolledSetting = setting
                 delay(200.milliseconds)
                 // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
                 scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
-                val highlightedItemTopPaddingPx = with(density) { 200.dp.toPx() }.toInt()
-                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY - highlightedItemTopPaddingPx)
-                val maxScroll = scrollState.maxValue +
-                    scrollBehavior.state.heightOffsetLimit.toInt() -
-                    with(density) { 16.dp.toPx() }.toInt()
-                scrollState.animateScrollTo(
-                    minOf(targetScroll, maxScroll),
-                    scrollAnimationSpec,
-                )
+                requester.bringIntoView()
             }
         }
     }
@@ -293,7 +283,6 @@ fun AppearanceSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
@@ -311,7 +300,7 @@ fun AppearanceSettingsScreen(
                     description = { Text("设置应用的显示主题。") },
                     settingKey = "nightMode",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["nightMode"] = it },
+                    bringIntoViewRequester = requesterFor("nightMode"),
                     bottomAction = {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -360,7 +349,7 @@ fun AppearanceSettingsScreen(
                     },
                     settingKey = "dynamicColor",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["dynamicColor"] = it },
+                    bringIntoViewRequester = requesterFor("dynamicColor"),
                 )
 
                 var showColorPicker by remember { mutableStateOf(false) }
@@ -489,7 +478,7 @@ fun AppearanceSettingsScreen(
                     description = { Text("调整内容文字大小 ($fontSize%)") },
                     settingKey = "fontScale",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["fontScale"] = it },
+                    bringIntoViewRequester = requesterFor("fontScale"),
                     bottomAction = {
                         Slider(
                             value = fontSize.toFloat(),
@@ -614,7 +603,7 @@ fun AppearanceSettingsScreen(
                     },
                     settingKey = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
                     highlightedKey = setting,
-                    onPositioned = { itemPositions[ARTICLE_USE_WEBVIEW_PREFERENCE_KEY] = it },
+                    bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
                 AnimatedVisibility(visible = articleUseWebview.value) {
@@ -1029,7 +1018,7 @@ fun AppearanceSettingsScreen(
                     description = { Text("点击分享按钮时的默认行为。") },
                     settingKey = "shareAction",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["shareAction"] = it },
+                    bringIntoViewRequester = requesterFor("shareAction"),
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = shareActionExpanded,
@@ -1081,7 +1070,7 @@ fun AppearanceSettingsScreen(
                     },
                     settingKey = "showSearchHotSearch",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["showSearchHotSearch"] = it },
+                    bringIntoViewRequester = requesterFor("showSearchHotSearch"),
                 )
             }
 
@@ -1175,7 +1164,7 @@ fun AppearanceSettingsScreen(
                 title = "123Duo3 的 UI/UX 改进（beta）",
                 settingKey = "123Duo3",
                 highlightedKey = setting,
-                onPositioned = { itemPositions["123Duo3"] = it },
+                bringIntoViewRequester = requesterFor("123Duo3"),
                 header = {
                     SettingItemOverall(
                         title = { Text("启用所有修改并关闭浮动按钮") },
