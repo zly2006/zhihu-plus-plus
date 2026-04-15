@@ -21,10 +21,13 @@ import androidx.core.net.toUri
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
+import com.hrm.markdown.parser.ast.CustomContainer
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.parser.ast.Emphasis
 import com.hrm.markdown.parser.ast.FencedCodeBlock
 import com.hrm.markdown.parser.ast.Figure
+import com.hrm.markdown.parser.ast.FootnoteDefinition
+import com.hrm.markdown.parser.ast.FootnoteReference
 import com.hrm.markdown.parser.ast.HardLineBreak
 import com.hrm.markdown.parser.ast.Heading
 import com.hrm.markdown.parser.ast.Highlight
@@ -55,13 +58,20 @@ import org.jsoup.nodes.TextNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
 import org.jsoup.nodes.Node as HtmlNode
 
+private var parsingDocument: Document? = null
+
 fun htmlToMdAst(html: String): Document {
     val document = Document()
+    parsingDocument = document
     Jsoup
         .parse(html)
         .body()
         .childNodes()
         .appendBlocksTo(document)
+    document.footnoteDefinitions.forEach { (_, definition) ->
+        document.appendChild(definition)
+    }
+    parsingDocument = null
     return document
 }
 
@@ -159,6 +169,17 @@ private fun convertElementToBlock(element: Element): MarkdownNode? = when (eleme
         }
     }
 
+    "a" -> {
+        // 仅对视频进行特殊处理
+        if (element.attr("class").contains("video-box")) {
+            CustomContainer().apply {
+                appendChildren(element.childNodes().convertNodesToBlocks())
+            }
+        } else {
+            null
+        }
+    }
+
     else -> null
 }
 
@@ -208,12 +229,10 @@ private fun createBlockImage(element: Element): MarkdownNode? {
     }
 
     val src = extractImageUrl(element) ?: return null
-    val caption = element.attr("alt").ifBlank { "image" }
+    val caption = element.attr("alt")
     return Figure(
         imageUrl = src,
         caption = caption,
-        imageWidth = element.attr("width").toIntOrNull(),
-        imageHeight = element.attr("height").toIntOrNull(),
     )
 }
 
@@ -324,7 +343,29 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
 
         "sub" -> listOf(Subscript().apply { appendChildren(extractInlineChildren(node)) })
 
-        "sup" -> listOf(Superscript().apply { appendChildren(extractInlineChildren(node)) })
+        "sup" -> {
+            if (node.attr("data-draft-type") == "reference") {
+                val index = node.attr("data-numero").toInt()
+                parsingDocument!!.footnoteDefinitions[node.attr("data-numero")] = FootnoteDefinition(index.toString(), index).apply {
+                    appendChild(
+                        Paragraph().apply {
+                            appendChild(Text(node.attr("data-text")))
+                            val url = node.attr("data-url")
+                            if (url.isNotBlank()) {
+                                appendChild(
+                                    Link(destination = url).apply {
+                                        appendChild(Text(url))
+                                    },
+                                )
+                            }
+                        },
+                    )
+                }
+                listOf(FootnoteReference(index.toString(), index))
+            } else {
+                listOf(Superscript().apply { appendChildren(extractInlineChildren(node)) })
+            }
+        }
 
         "kbd" -> listOf(KeyboardInput(node.text()))
 
