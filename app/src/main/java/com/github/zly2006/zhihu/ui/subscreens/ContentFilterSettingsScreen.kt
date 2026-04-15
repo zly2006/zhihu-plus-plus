@@ -57,17 +57,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -79,7 +75,9 @@ import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -98,31 +96,13 @@ fun ContentFilterSettingsScreen(
     }
 
     val scrollState = rememberScrollState()
-    val itemPositions = remember { mutableMapOf<String, Int>() }
-    var scrollColumnRootY by remember { mutableIntStateOf(0) }
-
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val scrollAnimationSpec = MaterialTheme.motionScheme.slowSpatialSpec<Float>()
-    val density = LocalDensity.current
 
-    var scrolledSetting by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(setting, itemPositions[setting]) {
-        if (setting.isNotEmpty() && scrolledSetting != setting) {
-            itemPositions[setting]?.let { itemRootY ->
-                scrolledSetting = setting
-                kotlinx.coroutines.delay(200)
-                // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
-                scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
-                val targetScroll = maxOf(0, itemRootY - scrollColumnRootY)
-                val maxScroll = scrollState.maxValue +
-                    scrollBehavior.state.heightOffsetLimit.toInt() -
-                    with(density) { 16.dp.toPx() }.toInt()
-                scrollState.animateScrollTo(
-                    minOf(targetScroll, maxScroll),
-                    scrollAnimationSpec,
-                )
-            }
+    LaunchedEffect(setting) {
+        if (setting.isNotEmpty()) {
+            delay(200.milliseconds)
+            // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
+            scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
         }
     }
 
@@ -154,7 +134,6 @@ fun ContentFilterSettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .onGloballyPositioned { scrollColumnRootY = it.positionInRoot().y.toInt() }
                 .verticalScroll(scrollState)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
@@ -164,7 +143,6 @@ fun ContentFilterSettingsScreen(
                     title = { Text("推荐算法") },
                     settingKey = "recommendationMode",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["recommendationMode"] = it },
                     endAction = {
                         // Rec Mode
                         val currentRecommendationMode = remember {
@@ -225,7 +203,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "loginForRecommendation",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["loginForRecommendation"] = it },
                 )
             }
 
@@ -242,7 +219,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "enableQualityFilter",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["enableQualityFilter"] = it },
                 )
 
                 SettingItemWithSwitch(
@@ -255,7 +231,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "enableContentFilter",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["enableContentFilter"] = it },
                 )
 
                 val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
@@ -270,7 +245,6 @@ fun ContentFilterSettingsScreen(
                     enabled = enableContentFilter.value,
                     settingKey = "filterFollowedUserContent",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["filterFollowedUserContent"] = it },
                 )
             }
 
@@ -286,7 +260,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "enableKeywordBlocking",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["enableKeywordBlocking"] = it },
                 )
 
                 val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
@@ -300,7 +273,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "enableUserBlocking",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["enableUserBlocking"] = it },
                 )
 
                 val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
@@ -314,7 +286,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "enableTopicBlocking",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["enableTopicBlocking"] = it },
                 )
 
                 AnimatedVisibility(visible = enableTopicBlocking.value) {
@@ -394,7 +365,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "blockZhihuAdPlatform",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["blockZhihuAdPlatform"] = it },
                 )
 
                 val blockZhihuSchool = remember { mutableStateOf(preferences.getBoolean("blockZhihuSchool", true)) }
@@ -408,7 +378,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "blockZhihuSchool",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["blockZhihuSchool"] = it },
                 )
 
                 val blockWeChatOfficialAccount = remember { mutableStateOf(preferences.getBoolean("blockWeChatOfficialAccount", true)) }
@@ -422,7 +391,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "blockWeChatOfficialAccount",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["blockWeChatOfficialAccount"] = it },
                 )
 
                 val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
@@ -436,7 +404,6 @@ fun ContentFilterSettingsScreen(
                     },
                     settingKey = "reverseBlock",
                     highlightedKey = setting,
-                    onPositioned = { itemPositions["reverseBlock"] = it },
                 )
             }
 
