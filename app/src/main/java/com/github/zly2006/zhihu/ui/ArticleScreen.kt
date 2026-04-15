@@ -919,9 +919,10 @@ fun ArticleScreen(
         bottomBarOffset.value,
     ) {
         derivedStateOf {
-            density.run {
+            val navBar = density.run {
                 navigationBarsPadding.calculateBottomPadding().toPx().coerceAtLeast(0f)
-            } + if (!showBottomBarSlot) {
+            }
+            val bottonBar = if (!showBottomBarSlot) {
                 0f
             } else if (useDuo3ArticleBar) {
                 (bottomBarHeightPx - bottomBarOffset.value).coerceIn(0f, bottomBarHeightPx)
@@ -930,6 +931,7 @@ fun ArticleScreen(
             } else {
                 0f
             }
+            navBar + bottonBar
         }
     }
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
