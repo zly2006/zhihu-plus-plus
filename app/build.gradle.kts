@@ -201,6 +201,7 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.compose.animation:animation-core:1.8.2")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
     implementation("androidx.room:room-common-jvm:2.8.4")
