@@ -234,9 +234,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     var showFilterExplainDialog by remember {
         mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
     }
-    var uiChanges by remember {
-        mutableStateOf(!preferences.getBoolean("duo3uiChangesDialogShown", false))
-    }
     var showArticleRenderChangeAnnouncement by remember {
         mutableStateOf(
             !preferences.getBoolean(
@@ -502,7 +499,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             colors = AnnouncementCardDefaults.colorsImportant(),
                         )
                         AnnouncementCard(
-                            visible = true,
+                            visible = showArticleRenderChangeAnnouncement,
                             title = "文章渲染默认已改为 Compose",
                             leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
                             content = "我们已默认关闭 WebView 渲染文章，以提供代码高亮等高级渲染能力，并修复了许多由 WebView 带来的 bug。" +
@@ -542,24 +539,6 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 preferences.edit { putBoolean("filterExplainDialogShown", true) }
                                 showFilterExplainDialog = false
                             },
-                        )
-                        AnnouncementCard(
-                            visible = true,
-                            title = "UI 新变化！",
-                            leadingIcon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
-                            content = "知乎++正在测试一套新的UI，欢迎尝试。如有任何意见，请在GitHub issues提出。",
-                            accept = { Text("去看看") },
-                            onAccept = {
-                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
-                                uiChanges = false
-                                context.navigate(Account.AppearanceSettings("123Duo3"))
-                            },
-                            dismiss = { Text("算了") },
-                            onDismiss = {
-                                preferences.edit { putBoolean("duo3uiChangesDialogShown", true) }
-                                uiChanges = false
-                            },
-                            colors = AnnouncementCardDefaults.colorsVariant(),
                         )
                     }
                 },
