@@ -21,6 +21,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -67,6 +68,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
+import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
@@ -93,7 +95,7 @@ fun QuestionScreen(
 ) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val viewModel: QuestionFeedViewModel = viewModel {
+    val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
     var questionContent by remember { mutableStateOf("") }
@@ -108,6 +110,13 @@ fun QuestionScreen(
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId) {
+        launch {
+            AccountData.addReadHistory(
+                context,
+                question.questionId.toString(),
+                "question",
+            )
+        }
         context as MainActivity
         withContext(Dispatchers.IO) {
             try {
@@ -172,21 +181,25 @@ fun QuestionScreen(
                 topContent = {
                     item(1) {
                         val handle = LocalPinnableContainer.current?.pin()
-                        if (questionContent.isNotEmpty()) {
-                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                                WebviewComp {
-                                    it.loadZhihu(
-                                        "https://www.zhihu.com/question/${question.questionId}",
-                                        Jsoup.parse(questionContent),
+                        Box(
+                            Modifier.padding(horizontal = 16.dp),
+                        ) {
+                            if (questionContent.isNotEmpty()) {
+                                if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                                    WebviewComp {
+                                        it.loadZhihu(
+                                            "https://www.zhihu.com/question/${question.questionId}",
+                                            Jsoup.parse(questionContent),
+                                        )
+                                    }
+                                } else {
+                                    Spacer(Modifier.height(10.dp))
+                                    RenderMarkdown(
+                                        html = questionContent,
+                                        modifier = Modifier.fuckHonorService(),
+                                        selectable = true,
                                     )
                                 }
-                            } else {
-                                Spacer(Modifier.height(10.dp))
-                                RenderMarkdown(
-                                    html = questionContent,
-                                    modifier = Modifier.fuckHonorService(),
-                                    selectable = true,
-                                )
                             }
                         }
                     }

@@ -440,7 +440,7 @@ class MainActivity : ComponentActivity() {
             val current = runCatching {
                 navController.currentBackStackEntry?.toRoute<Article>()
             }.getOrNull() ?: runCatching {
-                navController.previousBackStackEntry?.toRoute<Question>()
+                navController.currentBackStackEntry?.toRoute<Question>()
             }.getOrNull()
             if (current == null) {
                 Toast
