@@ -39,8 +39,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +60,7 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -98,6 +102,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TwoRowsTopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -175,6 +180,32 @@ import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+
+@Composable
+private fun rememberBottomBarAvoidingBringIntoViewSpec(
+    obscuredBottomPx: Float,
+): BringIntoViewSpec {
+    val density = LocalDensity.current
+    return remember(obscuredBottomPx) {
+        object : BringIntoViewSpec {
+            override fun calculateScrollDistance(
+                offset: Float,
+                size: Float,
+                containerSize: Float,
+            ): Float {
+                val effectiveContainerSize = (containerSize - obscuredBottomPx).coerceAtLeast(0f)
+                val effectiveContainerTop = density.run { 110.dp.toPx() }
+                val trailingEdge = offset + size
+                return when {
+                    offset >= effectiveContainerTop && trailingEdge <= effectiveContainerSize -> 0f
+                    offset < effectiveContainerTop && trailingEdge > effectiveContainerSize -> 0f
+                    abs(offset) < abs(trailingEdge + effectiveContainerTop - effectiveContainerSize) -> offset - effectiveContainerTop
+                    else -> trailingEdge + effectiveContainerTop - effectiveContainerSize
+                }
+            }
+        }
+    }
+}
 
 @Serializable
 data class Collection(
@@ -594,7 +625,11 @@ private fun prepareContentDocument(content: String, context: Context): Document 
         }
     }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalFoundationApi::class,
+)
 @Composable
 fun ArticleScreen(
     article: Article,
@@ -874,6 +909,30 @@ fun ArticleScreen(
             }
         }
     }
+    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+    val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
+    val bottomBarObscuredHeightPx by remember(
+        showBottomBarSlot,
+        useDuo3ArticleBar,
+        showBottomBar,
+        bottomBarHeightPx,
+        bottomBarOffset.value,
+    ) {
+        derivedStateOf {
+            density.run {
+                navigationBarsPadding.calculateBottomPadding().toPx().coerceAtLeast(0f)
+            } + if (!showBottomBarSlot) {
+                0f
+            } else if (useDuo3ArticleBar) {
+                (bottomBarHeightPx - bottomBarOffset.value).coerceIn(0f, bottomBarHeightPx)
+            } else if (showBottomBar) {
+                bottomBarHeightPx
+            } else {
+                0f
+            }
+        }
+    }
+    val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
 
     // 回答切换手势系统
     val sharedData = if (context is MainActivity && article.type == ArticleType.Answer) {
@@ -1078,6 +1137,7 @@ fun ArticleScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .onSizeChanged { bottomBarHeightPx = it.height.toFloat() }
                                     .height(36.dp)
                                     .padding(horizontal = 0.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1231,150 +1291,152 @@ fun ArticleScreen(
                 }
             },
         ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(
-                        start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                        end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                    ).verticalScroll(scrollState),
-            ) {
-                Spacer(
-                    modifier = Modifier.height(
-                        height = LocalDensity.current.run {
-                            topBarHeight.toDp()
-                        },
-                    ),
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+            CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            navigator.onNavigate(
-                                com.github.zly2006.zhihu.navigation.Person(
-                                    id = viewModel.authorId,
-                                    urlToken = viewModel.authorUrlToken,
-                                    name = viewModel.authorName,
-                                ),
-                            )
-                        },
+                        .padding(
+                            start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                            end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                        ).verticalScroll(scrollState),
                 ) {
-                    if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                        AsyncImage(
-                            model = viewModel.authorAvatarSrc,
-                            contentDescription = "作者头像",
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape),
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color.LightGray),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.Start,
+                    Spacer(
+                        modifier = Modifier.height(
+                            height = LocalDensity.current.run {
+                                topBarHeight.toDp()
+                            },
+                        ),
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navigator.onNavigate(
+                                    com.github.zly2006.zhihu.navigation.Person(
+                                        id = viewModel.authorId,
+                                        urlToken = viewModel.authorUrlToken,
+                                        name = viewModel.authorName,
+                                    ),
+                                )
+                            },
                     ) {
-                        Text(
-                            text = viewModel.authorName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                        )
-                        if (viewModel.authorBio.isNotEmpty()) {
-                            Text(
-                                text = viewModel.authorBio,
-                                fontSize = 12.sp,
-                                color = Color.Gray,
+                        if (viewModel.authorAvatarSrc.isNotEmpty()) {
+                            AsyncImage(
+                                model = viewModel.authorAvatarSrc,
+                                contentDescription = "作者头像",
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape),
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.LightGray),
                             )
                         }
-                    }
-                }
 
-                @Suppress("UnusedReceiverParameter") // 确保竖式布局
-                @Composable
-                fun ColumnScope.DateTexts() {
-                    Text(
-                        "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
-                        color = Color.Gray,
-                        fontSize = 11.sp,
-                    )
-                    if (viewModel.createdAt != viewModel.updatedAt) {
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.Start,
+                        ) {
+                            Text(
+                                text = viewModel.authorName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                            )
+                            if (viewModel.authorBio.isNotEmpty()) {
+                                Text(
+                                    text = viewModel.authorBio,
+                                    fontSize = 12.sp,
+                                    color = Color.Gray,
+                                )
+                            }
+                        }
+                    }
+
+                    @Suppress("UnusedReceiverParameter") // 确保竖式布局
+                    @Composable
+                    fun ColumnScope.DateTexts() {
                         Text(
-                            "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                            "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
                             color = Color.Gray,
                             fontSize = 11.sp,
                         )
+                        if (viewModel.createdAt != viewModel.updatedAt) {
+                            Text(
+                                "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
                     }
-                }
-                if (pinAnswerDate) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalAlignment = Alignment.Start,
-                    ) {
-                        DateTexts()
-                    }
-                }
-
-                if (viewModel.content.isNotEmpty()) {
-                    if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                        WebviewComp(
-                            scrollState = scrollState,
-//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                    if (pinAnswerDate) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalAlignment = Alignment.Start,
                         ) {
-                            it.isVerticalScrollBarEnabled = false
-                            it.setupUpWebviewClient {
-                                if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                                    coroutineScope.launch {
-                                        val rememberedY = viewModel.rememberedScrollY.value ?: 0
-                                        while (scrollState.maxValue < rememberedY) {
-                                            delay(100)
+                            DateTexts()
+                        }
+                    }
+
+                    if (viewModel.content.isNotEmpty()) {
+                        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                            WebviewComp(
+                                scrollState = scrollState,
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                            ) {
+                                it.isVerticalScrollBarEnabled = false
+                                it.setupUpWebviewClient {
+                                    if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                        coroutineScope.launch {
+                                            val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                            while (scrollState.maxValue < rememberedY) {
+                                                delay(100)
+                                            }
+                                            Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                            scrollState.animateScrollTo(rememberedY)
+                                            viewModel.rememberedScrollYSync = true
                                         }
-                                        Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
-                                        scrollState.animateScrollTo(rememberedY)
-                                        viewModel.rememberedScrollYSync = true
                                     }
                                 }
+                                it.contentId = article.id.toString()
+                                it.loadZhihu(
+                                    "https://www.zhihu.com/${article.type}/${article.id}",
+                                    prepareContentDocument(viewModel.content, context).apply {
+                                        title(viewModel.title)
+                                    },
+                                )
                             }
-                            it.contentId = article.id.toString()
-                            it.loadZhihu(
-                                "https://www.zhihu.com/${article.type}/${article.id}",
-                                prepareContentDocument(viewModel.content, context).apply {
-                                    title(viewModel.title)
-                                },
+                        } else {
+                            Spacer(Modifier.height(10.dp))
+                            RenderMarkdown(
+                                html = viewModel.content,
+                                modifier = Modifier.fuckHonorService(),
+                                selectable = true,
                             )
                         }
-                    } else {
-                        Spacer(Modifier.height(10.dp))
-                        RenderMarkdown(
-                            html = viewModel.content,
-                            modifier = Modifier.fuckHonorService(),
-                            selectable = true,
-                        )
                     }
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        if (!pinAnswerDate) {
+                            DateTexts()
+                        }
+                        if (viewModel.ipInfo != null) {
+                            Text(
+                                "IP属地：${viewModel.ipInfo}",
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height((16 + 36).dp))
                 }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.End,
-                ) {
-                    if (!pinAnswerDate) {
-                        DateTexts()
-                    }
-                    if (viewModel.ipInfo != null) {
-                        Text(
-                            "IP属地：${viewModel.ipInfo}",
-                            color = Color.Gray,
-                            fontSize = 11.sp,
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height((16 + 36).dp))
             }
         }
     } // end answerSwitchContentOld
@@ -1820,133 +1882,135 @@ fun ArticleScreen(
                 }
             },
         ) { innerPadding ->
-            Box {
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(scrollState)
-                        .padding(innerPadding)
-                        .padding(top = 8.dp),
-                ) {
-                    @Suppress("UnusedReceiverParameter") // 确保竖式布局
-                    @Composable
-                    fun ColumnScope.DateTexts() {
-                        Text(
-                            "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
-                            color = Color.Gray,
-                            fontSize = 11.sp,
-                        )
-                        if (viewModel.createdAt != viewModel.updatedAt) {
+            CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
+                Box {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .verticalScroll(scrollState)
+                            .padding(innerPadding)
+                            .padding(top = 8.dp),
+                    ) {
+                        @Suppress("UnusedReceiverParameter") // 确保竖式布局
+                        @Composable
+                        fun ColumnScope.DateTexts() {
                             Text(
-                                "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
+                            if (viewModel.createdAt != viewModel.updatedAt) {
+                                Text(
+                                    "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                    color = Color.Gray,
+                                    fontSize = 11.sp,
+                                )
+                            }
                         }
-                    }
-                    if (pinAnswerDate) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            horizontalAlignment = Alignment.Start,
-                        ) {
-                            DateTexts()
-                        }
-                    }
-
-                    if (viewModel.content.isNotEmpty()) {
-                        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                            WebviewComp(
-                                onDoubleTap = ::handleAnswerDoubleTap,
-                                scrollState = scrollState,
-//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                        if (pinAnswerDate) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalAlignment = Alignment.Start,
                             ) {
-                                it.isVerticalScrollBarEnabled = false
-                                it.setupUpWebviewClient {
-                                    if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
-                                        coroutineScope.launch {
-                                            val rememberedY = viewModel.rememberedScrollY.value ?: 0
-                                            while (scrollState.maxValue < rememberedY) {
-                                                delay(100)
+                                DateTexts()
+                            }
+                        }
+
+                        if (viewModel.content.isNotEmpty()) {
+                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                                WebviewComp(
+                                    onDoubleTap = ::handleAnswerDoubleTap,
+                                    scrollState = scrollState,
+//                            existingWebView = sharedData?.getOrCreateMainWebView(context),
+                                ) {
+                                    it.isVerticalScrollBarEnabled = false
+                                    it.setupUpWebviewClient {
+                                        if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                            coroutineScope.launch {
+                                                val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                                while (scrollState.maxValue < rememberedY) {
+                                                    delay(100)
+                                                }
+                                                Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
+                                                scrollState.animateScrollTo(rememberedY)
+                                                viewModel.rememberedScrollYSync = true
                                             }
-                                            Log.i("zhihu-scroll", "scroll to $rememberedY, max= ${scrollState.maxValue}, sync on")
-                                            scrollState.animateScrollTo(rememberedY)
-                                            viewModel.rememberedScrollYSync = true
                                         }
                                     }
+                                    it.contentId = article.id.toString()
+                                    it.loadZhihu(
+                                        "https://www.zhihu.com/${article.type}/${article.id}",
+                                        prepareContentDocument(viewModel.content, context).apply {
+                                            title(viewModel.title)
+                                        },
+                                    )
                                 }
-                                it.contentId = article.id.toString()
-                                it.loadZhihu(
-                                    "https://www.zhihu.com/${article.type}/${article.id}",
-                                    prepareContentDocument(viewModel.content, context).apply {
-                                        title(viewModel.title)
-                                    },
+                            } else {
+                                Box(modifier = answerDoubleTapModifier) {
+                                    RenderMarkdown(
+                                        html = viewModel.content,
+                                        modifier = Modifier.fuckHonorService(),
+                                        selectable = true,
+                                    )
+                                }
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            if (!pinAnswerDate) {
+                                DateTexts()
+                            }
+                            if (viewModel.ipInfo != null) {
+                                Text(
+                                    "IP属地：${viewModel.ipInfo}",
+                                    color = Color.Gray,
+                                    fontSize = 11.sp,
                                 )
                             }
-                        } else {
-                            Box(modifier = answerDoubleTapModifier) {
-                                RenderMarkdown(
-                                    html = viewModel.content,
-                                    modifier = Modifier.fuckHonorService(),
-                                    selectable = true,
-                                )
+                        }
+                        Spacer(modifier = Modifier.height((16 + 36).dp))
+                    }
+                    // Skip answer button
+                    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
+                        var navigatingToNextAnswer by remember { mutableStateOf(false) }
+                        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+                        val skipButtonAlpha by animateFloatAsState(
+                            targetValue = if (showSkipButton) 1f else 0f,
+                            animationSpec = tween(200),
+                            label = "skipButtonAlpha",
+                        )
+                        DraggableRefreshButton(
+                            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
+                            onClick = {
+                                if (showSkipButton) {
+                                    navigatingToNextAnswer = true
+                                    navigateToNext()
+                                    navigatingToNextAnswer = false
+                                }
+                            },
+                            preferenceName = "buttonSkipAnswer",
+                        ) {
+                            if (navigatingToNextAnswer) {
+                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+                            } else {
+                                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
                             }
                         }
                     }
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        if (!pinAnswerDate) {
-                            DateTexts()
-                        }
-                        if (viewModel.ipInfo != null) {
-                            Text(
-                                "IP属地：${viewModel.ipInfo}",
-                                color = Color.Gray,
-                                fontSize = 11.sp,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height((16 + 36).dp))
+                    // Status bar gradient overlay (duo3 only — not needed in master path)
+                    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(statusBarHeight + 16.dp)
+                            .background(
+                                Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
+                            ),
+                    ) {}
                 }
-                // Skip answer button
-                if (article.type == ArticleType.Answer && buttonSkipAnswer) {
-                    var navigatingToNextAnswer by remember { mutableStateOf(false) }
-                    val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
-                    val skipButtonAlpha by animateFloatAsState(
-                        targetValue = if (showSkipButton) 1f else 0f,
-                        animationSpec = tween(200),
-                        label = "skipButtonAlpha",
-                    )
-                    DraggableRefreshButton(
-                        modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                        onClick = {
-                            if (showSkipButton) {
-                                navigatingToNextAnswer = true
-                                navigateToNext()
-                                navigatingToNextAnswer = false
-                            }
-                        },
-                        preferenceName = "buttonSkipAnswer",
-                    ) {
-                        if (navigatingToNextAnswer) {
-                            CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                        } else {
-                            Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
-                        }
-                    }
-                }
-                // Status bar gradient overlay (duo3 only — not needed in master path)
-                val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-                val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(statusBarHeight + 16.dp)
-                        .background(
-                            Brush.verticalGradient(smoothGradient(surfaceColor, 0.8f)),
-                        ),
-                ) {}
             }
         }
     } // end answerSwitchContent
