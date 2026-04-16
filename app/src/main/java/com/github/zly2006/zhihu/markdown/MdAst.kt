@@ -389,6 +389,16 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
 
         "code" -> listOf(InlineCode(node.text()))
 
+        "div", "span" -> {
+            if (element.classNames().any { it.contains("highlight") }) {
+                createCodeBlock(element)
+            } else {
+                extractInlineChildren(element).takeIf { it.isNotEmpty() }?.let { inlines ->
+                    Paragraph().apply { appendChildren(inlines) }
+                }
+            }
+        }
+
         "a" -> {
             val href = node.attr("href")
             val destination = if (href.contains("link.zhihu.com")) {
