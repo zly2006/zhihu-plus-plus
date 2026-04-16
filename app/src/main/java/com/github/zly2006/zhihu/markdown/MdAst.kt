@@ -59,6 +59,7 @@ import com.hrm.markdown.parser.ast.Node as MarkdownNode
 import org.jsoup.nodes.Node as HtmlNode
 
 private var parsingDocument: Document? = null
+private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?tex="
 
 fun htmlToMdAst(html: String): Document {
     val document = Document()
@@ -101,8 +102,8 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
 
             is Element -> {
                 val blockNode = convertElementToBlock(node)
-                if (blockNode != null) {
-                    blocks.add(blockNode)
+                if (blockNode.isNotEmpty()) {
+                    blocks.addAll(blockNode)
                     currentParagraph = null
                 } else {
                     val inlineNodes = extractInlineNode(node)
@@ -111,8 +112,12 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
                         currentParagraph = null
                         continue
                     }
-                    if (inlineNodes.isNotEmpty()) {
-                        paragraph().appendChildren(inlineNodes)
+                    inlineNodes.forEach {
+                        if (it is MathBlock) {
+                            blocks.add(it)
+                        } else {
+                            paragraph().appendChild(it)
+                        }
                     }
                 }
             }
@@ -122,65 +127,70 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
     return blocks
 }
 
-private fun convertElementToBlock(element: Element): MarkdownNode? = when (element.tagName().lowercase()) {
-    "h1", "h2", "h3", "h4", "h5", "h6" -> Heading(level = element.tagName()[1].digitToInt()).apply {
-        appendChildren(extractInlineChildren(element))
-    }
+private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (element.tagName().lowercase()) {
+    "h1", "h2", "h3", "h4", "h5", "h6" -> listOf(
+        Heading(level = element.tagName()[1].digitToInt()).apply {
+            appendChildren(extractInlineChildren(element))
+        },
+    )
 
     "p" -> {
         if (element.childNodeSize() == 0) {
             // empty paragraph
-            null
+            emptyList()
         } else if (element.childNodeSize() == 1 && element.childrenSize() == 1 && element.child(0).tagName() == "br") {
             // single <br> as paragraph, treat it as empty to avoid extra spacing
-            null
+            emptyList()
         } else {
-            Paragraph().apply {
-                appendChildren(extractInlineChildren(element))
+            // 特殊处理<p>里面包含的MathBlock
+            val list = mutableListOf<MarkdownNode>()
+
+            fun paragraph(): Paragraph = list.lastOrNull() as? Paragraph ?: Paragraph().also { list.add(it) }
+            extractInlineChildren(element).forEach {
+                if (it is MathBlock) {
+                    list.add(it)
+                } else {
+                    paragraph().appendChild(it)
+                }
             }
+            list
         }
     }
 
-    "blockquote" -> BlockQuote().apply {
-        element.childNodes().appendBlocksTo(this)
-    }
+    "blockquote" -> listOf(
+        BlockQuote().apply {
+            element.childNodes().appendBlocksTo(this)
+        },
+    )
 
-    "pre" -> createCodeBlock(element)
+    "pre" -> listOf(createCodeBlock(element))
 
-    "ul" -> createListBlock(element, ordered = false)
+    "ul" -> listOf(createListBlock(element, ordered = false))
 
-    "ol" -> createListBlock(element, ordered = true)
+    "ol" -> listOf(createListBlock(element, ordered = true))
 
-    "hr" -> ThematicBreak()
+    "hr" -> listOf(ThematicBreak())
 
-    "img" -> createBlockImage(element)
+    "img" -> listOfNotNull(createBlockImage(element))
 
-    "figure" -> createFigureBlock(element)
+    "figure" -> listOfNotNull(createFigureBlock(element))
 
-    "table" -> createTableBlock(element)
-
-    "div", "span" -> {
-        if (element.classNames().any { it.contains("highlight") }) {
-            createCodeBlock(element)
-        } else {
-            extractInlineChildren(element).takeIf { it.isNotEmpty() }?.let { inlines ->
-                Paragraph().apply { appendChildren(inlines) }
-            }
-        }
-    }
+    "table" -> listOf(createTableBlock(element))
 
     "a" -> {
         // 仅对视频进行特殊处理
         if (element.attr("class").contains("video-box")) {
-            CustomContainer().apply {
-                appendChildren(element.childNodes().convertNodesToBlocks())
-            }
+            listOf(
+                CustomContainer().apply {
+                    appendChildren(element.childNodes().convertNodesToBlocks())
+                },
+            )
         } else {
-            null
+            emptyList()
         }
     }
 
-    else -> null
+    else -> emptyList()
 }
 
 private fun createCodeBlock(element: Element): FencedCodeBlock {
@@ -224,8 +234,10 @@ private fun createListBlock(
 }
 
 private fun createBlockImage(element: Element): MarkdownNode? {
-    element.attr("data-formula").takeIf { it.isNotBlank() }?.let { formula ->
-        return MathBlock(formula)
+    if (element.attr("eeimg") == "2") {
+        extractEquationTex(element)?.let { formula ->
+            return MathBlock(formula)
+        }
     }
 
     val src = extractImageUrl(element) ?: return null
@@ -237,10 +249,6 @@ private fun createBlockImage(element: Element): MarkdownNode? {
 }
 
 private fun createFigureBlock(element: Element): MarkdownNode? {
-    element.selectFirst("img[data-formula]")?.attr("data-formula")?.takeIf { it.isNotBlank() }?.let { formula ->
-        return MathBlock(formula)
-    }
-
     element.selectFirst("img")?.let { image ->
         val src = extractImageUrl(image) ?: return@let null
         val caption = element.selectFirst("figcaption")?.text()?.ifBlank { null } ?: ""
@@ -320,6 +328,16 @@ private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowerca
 
 private fun extractInlineChildren(element: Element): List<MarkdownNode> = element.childNodes().flatMap(::extractInlineNode)
 
+private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement)
+    ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
+    ?.let { Url(it).parameters["tex"].orEmpty() }
+    ?.takeIf { it.isNotBlank() }
+
+/**
+ * 将一个 HTML 节点转换为 Markdown 内联节点列表
+ *
+ * > 注意：由于知乎的bug，MathBlock在<p>里面。
+ */
 private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) {
     is TextNode -> {
         val text = node.text()
@@ -394,9 +412,13 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         "br" -> listOf(HardLineBreak())
 
         "img" -> {
-            val src = node.attr("src")
-            if (src.startsWith("https://www.zhihu.com/equation?tex=")) {
-                listOf(InlineMath(Url(src).parameters["tex"].orEmpty()))
+            val formula = extractEquationTex(node)
+            if (formula != null) {
+                if (node.attr("eeimg") == "2") {
+                    listOf(MathBlock(formula))
+                } else {
+                    listOf(InlineMath(formula))
+                }
             } else {
                 extractImageUrl(node)
                     ?.let { url ->
