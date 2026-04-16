@@ -40,6 +40,9 @@ google-services.json
 
 # Temporary files
 .tmp/
+.memory/*
+!.memory/.gitkeep
+__pycache__/
 
 # Oh my codex
 .omx/

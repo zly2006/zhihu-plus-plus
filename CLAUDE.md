@@ -88,6 +88,38 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 9. ✅ 仅在无 tag/文字可用且必须手势操作时，才使用 `adb shell input swipe` 等手势
 10. ❌ 异常时检查 logcat：`adb logcat | grep -i error`
 
+### UI 双代理复检
+
+只要修改内容涉及 Compose、布局、样式、导航、交互、可见文案或任何用户可见 UI，主 agent 在完成上面的基础验证后，**必须**再执行以下流程：
+
+1. 必须启动两个 subagent skill，不能由主 agent 自己扮演：
+   - `$ui-voyager`（UI漫游者）：系统性探索目标页面，把能点的尽量都点一遍，把上下左右的滑动都试一遍，重点找空白页、越界、裁切、重叠、错位、状态切换异常。
+   - `$picky-user`（挑剔的用户）：分别扮演新用户和老用户，对 self explain、明确性、直觉性、效率、布局和操作习惯提出高标准意见。
+2. 两个 skill 都必须先读取自己的持久化记忆：
+   - `.memory/YYYY-MM-DD/picky-user/`
+   - `.memory/YYYY-MM-DD/ui-volayor/`
+3. 两个 skill 都允许在 `ui-test` 之外结合截图做视觉判断，但交互仍优先走 `ui-test` 的 `dump` / `tap` / `screenshot` 工作流。
+4. `ui-voyager` 遇到拿不准的地方，必须把复现步骤和犹豫原因交给 `$picky-user` 或主 agent，请其再判断，不要含糊带过。
+5. 主 agent 只有在以下条件满足后，才能停止工作、宣布 UI 修改完成，或请求我做下一步决策：
+   - `$ui-voyager` 没有新的有效问题；
+   - `$picky-user` 没有新的有效意见；
+   - 或者它们提出的意见都已经被修复，或被明确标记为无效/驳回并留下充分理由。
+6. 主 agent 对每条意见都必须写回 memory，至少标记为 `fixed`、`rejected` 或 `invalid`，不能口头略过。
+
+记忆回写命令示例：
+
+```bash
+TODAY=$(date +%F)
+python3 .github/skills/ui-review-memory/memory_store.py update-status \
+  --agent picky-user \
+  --date "$TODAY" \
+  --id PU-20260417-001 \
+  --status fixed \
+  --note "已修复并复测通过。"
+```
+
+`update-status` 会按 `id` 自动定位历史记录，所以 issue 即使不是今天创建的，也必须继续回写，而不是新建另一个编号。
+
 ## 代码风格
 - Kotlin Serialization with `@Serializable`
 - 只在必要时注释，不过度注释

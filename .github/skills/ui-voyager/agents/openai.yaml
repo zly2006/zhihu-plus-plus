@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI漫游者"
+  short_description: "系统漫游页面并抓出渲染与状态异常"
+  default_prompt: "Use $ui-voyager to explore this UI state space, reproduce rendering bugs, and persist every confirmed finding to memory."

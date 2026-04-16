@@ -1,0 +1,4 @@
+interface:
+  display_name: "挑剔的用户"
+  short_description: "用新用户和老用户视角高标准审查 UI"
+  default_prompt: "Use $picky-user to review this UI as both a new and experienced user, then persist every valid finding to memory."
