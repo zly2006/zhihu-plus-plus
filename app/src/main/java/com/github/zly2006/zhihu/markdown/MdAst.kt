@@ -177,6 +177,10 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
 
     "table" -> listOf(createTableBlock(element))
 
+    "div" -> {
+        node.childNodes().convertNodesToBlocks()
+    }
+
     "a" -> {
         // 仅对视频进行特殊处理
         if (element.attr("class").contains("video-box")) {
@@ -388,16 +392,6 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         "kbd" -> listOf(KeyboardInput(node.text()))
 
         "code" -> listOf(InlineCode(node.text()))
-
-        "div", "span" -> {
-            if (element.classNames().any { it.contains("highlight") }) {
-                createCodeBlock(element)
-            } else {
-                extractInlineChildren(element).takeIf { it.isNotEmpty() }?.let { inlines ->
-                    Paragraph().apply { appendChildren(inlines) }
-                }
-            }
-        }
 
         "a" -> {
             val href = node.attr("href")
