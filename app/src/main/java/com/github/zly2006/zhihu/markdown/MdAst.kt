@@ -178,7 +178,7 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
     "table" -> listOf(createTableBlock(element))
 
     "div" -> {
-        node.childNodes().convertNodesToBlocks()
+        element.childNodes().convertNodesToBlocks()
     }
 
     "a" -> {
