@@ -70,6 +70,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -99,30 +101,97 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
+/**
+ * Instrumented tests inject fixed state and side-effect callbacks here so QuestionScreen can be
+ * exercised offline without triggering real detail fetches, follow requests, or comment loading.
+ */
+data class QuestionScreenTestOverrides(
+    val viewModel: QuestionFeedViewModel,
+    val initialUiState: QuestionScreenUiState,
+    val isEnd: Boolean = true,
+    val onRefreshAnswers: (() -> Unit)? = null,
+    val onLoadMore: (() -> Unit)? = null,
+    val onFollowQuestion: ((Boolean) -> Unit)? = null,
+    val onOpenLog: (() -> Unit)? = null,
+    val onShareAction: (() -> Unit)? = null,
+    val commentSheetContent: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
+    val shareDialogContent: (@Composable (onDismissRequest: () -> Unit) -> Unit)? = null,
+)
+
+data class QuestionScreenUiState(
+    val questionContent: String = "",
+    val answerCount: Int = 0,
+    val visitCount: Int = 0,
+    val commentCount: Int = 0,
+    val followerCount: Int = 0,
+    val title: String = "",
+    val isFollowing: Boolean = false,
+    val isQuestionDetailExpanded: Boolean = true,
+)
+
+const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
+const val QUESTION_TITLE_TAG = "question_title"
+const val QUESTION_DETAIL_TOGGLE_TAG = "question_detail_toggle"
+const val QUESTION_DETAIL_CONTENT_TAG = "question_detail_content"
+const val QUESTION_DETAIL_PREVIEW_TAG = "question_detail_preview"
+const val QUESTION_SORT_DEFAULT_TAG = "question_sort_default"
+const val QUESTION_SORT_UPDATED_TAG = "question_sort_updated"
+const val QUESTION_FOLLOW_BUTTON_TAG = "question_follow_button"
+const val QUESTION_VIEW_LOG_BUTTON_TAG = "question_view_log_button"
+const val QUESTION_SHARE_BUTTON_TAG = "question_share_button"
+const val QUESTION_COMMENTS_BUTTON_TAG = "question_comments_button"
+const val QUESTION_STATS_TAG = "question_stats"
+
+fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun QuestionScreen(
     question: Question,
+    testOverrides: QuestionScreenTestOverrides? = null,
 ) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val viewModel: QuestionFeedViewModel = viewModel(key = "question_${question.questionId}") {
+    val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
-    var questionContent by remember { mutableStateOf("") }
-    var answerCount by remember { mutableIntStateOf(0) }
-    var visitCount by remember { mutableIntStateOf(0) }
-    var commentCount by remember { mutableIntStateOf(0) }
-    var followerCount by remember { mutableIntStateOf(0) }
-    var title by remember { mutableStateOf(question.title) }
+    val initialUiState = testOverrides?.initialUiState ?: QuestionScreenUiState(title = question.title)
+    val initialTitle = initialUiState.title.ifEmpty { question.title }
+    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(context) }
+    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(context) }
+    val isEnd = testOverrides?.let { { it.isEnd } } ?: { viewModel.isEnd }
+    var questionContent by remember(question.questionId, initialUiState.questionContent) {
+        mutableStateOf(initialUiState.questionContent)
+    }
+    var answerCount by remember(question.questionId, initialUiState.answerCount) {
+        mutableIntStateOf(initialUiState.answerCount)
+    }
+    var visitCount by remember(question.questionId, initialUiState.visitCount) {
+        mutableIntStateOf(initialUiState.visitCount)
+    }
+    var commentCount by remember(question.questionId, initialUiState.commentCount) {
+        mutableIntStateOf(initialUiState.commentCount)
+    }
+    var followerCount by remember(question.questionId, initialUiState.followerCount) {
+        mutableIntStateOf(initialUiState.followerCount)
+    }
+    var title by remember(question.questionId, initialTitle) { mutableStateOf(initialTitle) }
     var showComments by remember { mutableStateOf(false) }
-    var isFollowing by remember { mutableStateOf(false) }
+    var isFollowing by remember(question.questionId, initialUiState.isFollowing) {
+        mutableStateOf(initialUiState.isFollowing)
+    }
     var showShareDialog by remember { mutableStateOf(false) }
-    var isQuestionDetailExpanded by rememberSaveable(question.questionId) { mutableStateOf(true) }
+    var isQuestionDetailExpanded by rememberSaveable(question.questionId, initialUiState.isQuestionDetailExpanded) {
+        mutableStateOf(initialUiState.isQuestionDetailExpanded)
+    }
     val questionContentPreview = remember(questionContent) { Jsoup.parse(questionContent).text().trim() }
+    val shareText = getShareText(question, title)
 
     // 加载问题详情和答案
-    LaunchedEffect(question.questionId) {
+    LaunchedEffect(question.questionId, testOverrides) {
+        if (testOverrides != null) {
+            return@LaunchedEffect
+        }
         launch {
             AccountData.addReadHistory(
                 context,
@@ -130,7 +199,7 @@ fun QuestionScreen(
                 "question",
             )
         }
-        context as MainActivity
+        val activity = context as? MainActivity
         withContext(Dispatchers.IO) {
             try {
                 if (viewModel.displayItems.isEmpty()) {
@@ -147,7 +216,7 @@ fun QuestionScreen(
                     commentCount = questionData.commentCount
                     followerCount = questionData.followerCount
                     isFollowing = questionData.relationship.isFollowing
-                    context.postHistory(
+                    activity?.postHistory(
                         Question(
                             question.questionId,
                             title,
@@ -179,7 +248,9 @@ fun QuestionScreen(
                             fontSize = 24.sp,
                             lineHeight = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .testTag(QUESTION_TITLE_TAG),
                         )
                     }
                 }
@@ -187,9 +258,12 @@ fun QuestionScreen(
         ) { innerPadding ->
             PaginatedList(
                 items = viewModel.displayItems,
-                onLoadMore = { viewModel.loadMore(context) },
-                isEnd = { viewModel.isEnd },
-                modifier = Modifier.padding(innerPadding),
+                onLoadMore = onLoadMore,
+                isEnd = isEnd,
+                key = { it.stableKey },
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .testTag(QUESTION_SCREEN_LIST_TAG),
                 footer = ProgressIndicatorFooter,
                 topContent = {
                     item(1) {
@@ -210,7 +284,7 @@ fun QuestionScreen(
                                         )
                                         TextButton(
                                             onClick = { isQuestionDetailExpanded = !isQuestionDetailExpanded },
-                                            modifier = Modifier.testTag("question_detail_toggle"),
+                                            modifier = Modifier.testTag(QUESTION_DETAIL_TOGGLE_TAG),
                                         ) {
                                             Icon(
                                                 imageVector = if (isQuestionDetailExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -225,7 +299,9 @@ fun QuestionScreen(
                                         enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
                                         exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
                                     ) {
-                                        Column {
+                                        Column(
+                                            modifier = Modifier.testTag(QUESTION_DETAIL_CONTENT_TAG),
+                                        ) {
                                             Spacer(Modifier.height(10.dp))
                                             if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                                                 WebviewComp {
@@ -239,6 +315,7 @@ fun QuestionScreen(
                                                     html = questionContent,
                                                     modifier = Modifier.fuckHonorService(),
                                                     selectable = true,
+                                                    enableScroll = false,
                                                 )
                                             }
                                         }
@@ -252,7 +329,8 @@ fun QuestionScreen(
                                             text = questionContentPreview,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(top = 10.dp),
+                                                .padding(top = 10.dp)
+                                                .testTag(QUESTION_DETAIL_PREVIEW_TAG),
                                             style = MaterialTheme.typography.bodyMedium,
                                             maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
@@ -274,8 +352,11 @@ fun QuestionScreen(
                                 FilledTonalButton(
                                     onClick = {
                                         viewModel.updateSortOrder("default")
-                                        viewModel.refresh(context)
+                                        onRefreshAnswers()
                                     },
+                                    modifier = Modifier
+                                        .testTag(QUESTION_SORT_DEFAULT_TAG)
+                                        .semantics { selected = viewModel.sortOrder == "default" },
                                     colors = if (viewModel.sortOrder == "default") {
                                         ButtonDefaults.filledTonalButtonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
@@ -292,8 +373,11 @@ fun QuestionScreen(
                                 FilledTonalButton(
                                     onClick = {
                                         viewModel.updateSortOrder("updated")
-                                        viewModel.refresh(context)
+                                        onRefreshAnswers()
                                     },
+                                    modifier = Modifier
+                                        .testTag(QUESTION_SORT_UPDATED_TAG)
+                                        .semantics { selected = viewModel.sortOrder == "updated" },
                                     colors = if (viewModel.sortOrder == "updated") {
                                         ButtonDefaults.filledTonalButtonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
@@ -312,21 +396,27 @@ fun QuestionScreen(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        viewModel.followQuestion(
+                                        val nextFollowing = !isFollowing
+                                        testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
                                             context,
                                             question.questionId,
-                                            !isFollowing,
+                                            nextFollowing,
                                         )
-                                        isFollowing = !isFollowing
+                                        isFollowing = nextFollowing
                                         followerCount += if (isFollowing) 1 else -1
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                if (isFollowing) "已关注问题" else "已取消关注问题",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        if (testOverrides == null) {
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    if (isFollowing) "已关注问题" else "已取消关注问题",
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                        }
                                     }
                                 },
+                                modifier = Modifier
+                                    .testTag(QUESTION_FOLLOW_BUTTON_TAG)
+                                    .semantics { selected = isFollowing },
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = if (isFollowing) {
                                     ButtonDefaults.buttonColors(
@@ -352,16 +442,19 @@ fun QuestionScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
-                                            setClass(context, WebviewActivity::class.java)
+                                    testOverrides?.onOpenLog?.invoke() ?: run {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
+                                                setClass(context, WebviewActivity::class.java)
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                         }
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
                                     }
                                 },
+                                modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
                                 Text("查看日志")
@@ -370,13 +463,18 @@ fun QuestionScreen(
 
                             Button(
                                 onClick = {
-                                    val shareText = getShareText(question, title)
                                     if (shareText != null) {
-                                        handleShareAction(context, question) {
+                                        if (testOverrides != null) {
+                                            testOverrides.onShareAction?.invoke()
                                             showShareDialog = true
+                                        } else {
+                                            handleShareAction(context, question) {
+                                                showShareDialog = true
+                                            }
                                         }
                                     }
                                 },
+                                modifier = Modifier.testTag(QUESTION_SHARE_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -391,6 +489,7 @@ fun QuestionScreen(
                             Spacer(Modifier.width(8.dp))
                             Button(
                                 onClick = { showComments = true },
+                                modifier = Modifier.testTag(QUESTION_COMMENTS_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -404,25 +503,37 @@ fun QuestionScreen(
                         }
                         Text(
                             "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .testTag(QUESTION_STATS_TAG),
                         )
                     }
                 },
             ) { item ->
-                FeedCard(item)
+                FeedCard(
+                    item = item,
+                    modifier = Modifier.testTag(questionFeedItemTag(item.stableKey)),
+                )
             }
         }
     }
-    CommentScreenComponent(
+    testOverrides?.commentSheetContent?.let { content ->
+        if (showComments) {
+            content { showComments = false }
+        }
+    } ?: CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,
     )
 
     // 分享对话框
-    val shareText = getShareText(question, title)
     if (shareText != null) {
-        ShareDialog(
+        testOverrides?.shareDialogContent?.let { content ->
+            if (showShareDialog) {
+                content { showShareDialog = false }
+            }
+        } ?: ShareDialog(
             content = question,
             shareText = shareText,
             showDialog = showShareDialog,

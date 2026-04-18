@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.HotListFeed
@@ -49,9 +50,16 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 
+const val HOT_LIST_LIST_TAG = "hot_list_list"
+const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun HotListScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onTestRefreshClick: (() -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
+) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
@@ -79,8 +87,10 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
         FeedPullToRefresh(viewModel) {
             PaginatedList(
                 items = viewModel.displayItems,
-                onLoadMore = { viewModel.loadMore(context) },
-                modifier = Modifier.padding(innerPadding),
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .testTag(HOT_LIST_LIST_TAG),
                 isEnd = { viewModel.isEnd },
                 footer = ProgressIndicatorFooter,
             ) { item ->
@@ -93,8 +103,9 @@ fun HotListScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
             if (showRefreshFab) {
                 DraggableRefreshButton(
+                    modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
                     onClick = {
-                        viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
                     },
                 ) {
                     if (viewModel.isLoading) {

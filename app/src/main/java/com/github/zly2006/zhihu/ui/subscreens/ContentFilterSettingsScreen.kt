@@ -64,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -135,6 +136,7 @@ fun ContentFilterSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .testTag("contentFilterSettings:scroll")
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
@@ -164,7 +166,9 @@ fun ContentFilterSettingsScreen(
                                 onValueChange = { },
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                                    .testTag("contentFilterSettings:recommendationModeField"),
                             )
                             ExposedDropdownMenu(
                                 expanded = expanded,
@@ -194,6 +198,7 @@ fun ContentFilterSettingsScreen(
                     mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
                 }
                 SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
                     title = { Text("推荐内容时登录") },
                     description = { Text("获取推荐内容时携带登录凭证") },
                     checked = isLoginForRecommendation.value,
@@ -222,6 +227,7 @@ fun ContentFilterSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
                     title = { Text("启用智能内容过滤") },
                     description = { Text("自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐") },
                     checked = enableContentFilter.value,
@@ -235,6 +241,7 @@ fun ContentFilterSettingsScreen(
 
                 val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
                 SettingItemWithSwitch(
+                    modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
                     title = { Text("过滤已关注用户内容") },
                     description = { Text("是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示") },
                     checked = filterFollowedUserContent.value,
@@ -409,6 +416,7 @@ fun ContentFilterSettingsScreen(
 
             SettingItemGroup {
                 SettingItem(
+                    modifier = Modifier.testTag("contentFilterSettings:blocklist"),
                     title = { Text("管理屏蔽列表") },
                     onClick = { navigator.onNavigate(Account.RecommendSettings.Blocklist) },
                     endAction = {
@@ -423,6 +431,7 @@ fun ContentFilterSettingsScreen(
 
             SettingItemGroup {
                 SettingItem(
+                    modifier = Modifier.testTag("contentFilterSettings:blockedFeedHistory"),
                     title = { Text("屏蔽记录") },
                     onClick = { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) },
                     endAction = {

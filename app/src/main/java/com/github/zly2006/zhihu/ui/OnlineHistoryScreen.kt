@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -150,7 +151,10 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
         }
         FeedPullToRefresh(viewModel, padding = innerPadding) {
             PaginatedList(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .testTag("online_history_list"),
                 items = viewModel.displayItems,
                 onLoadMore = { viewModel.loadMore(context) },
                 isEnd = { viewModel.isEnd },

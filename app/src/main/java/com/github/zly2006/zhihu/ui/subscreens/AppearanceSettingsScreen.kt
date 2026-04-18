@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -112,6 +113,12 @@ const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
+internal const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
+internal const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
+internal const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
+
+internal fun appearanceSettingsStartDestinationOptionTag(key: String): String =
+    "appearanceSettings.startDestinationOption.$key"
 
 private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
     Home.name to Home,
@@ -284,6 +291,7 @@ fun AppearanceSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
@@ -807,7 +815,8 @@ fun AppearanceSettingsScreen(
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerDoubleTapExpanded) },
                                 modifier = Modifier
                                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .width(160.dp),
+                                    .width(160.dp)
+                                    .testTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
                             ExposedDropdownMenu(
@@ -899,7 +908,8 @@ fun AppearanceSettingsScreen(
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDestinationExpanded) },
                                 modifier = Modifier
                                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .width(160.dp),
+                                    .width(160.dp)
+                                    .testTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )
                             ExposedDropdownMenu(
@@ -908,6 +918,7 @@ fun AppearanceSettingsScreen(
                             ) {
                                 startDestinationItems.forEach { (key, label) ->
                                     DropdownMenuItem(
+                                        modifier = Modifier.testTag(appearanceSettingsStartDestinationOptionTag(key)),
                                         text = { Text(label) },
                                         onClick = {
                                             startDestinationKey = key

@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -107,7 +108,8 @@ fun BlockedFeedHistoryScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .testTag("blocked_feed_history_list"),
             ) {
                 items(records, key = { it.id }) { record ->
                     BlockedFeedRecordItem(
@@ -155,6 +157,7 @@ private fun BlockedFeedRecordItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("blocked_feed_history_item_${record.id}")
             .clickable {
                 record.navDestinationJson?.let {
                     navigator.onNavigate(Json.decodeFromString<NavDestination>(it))
@@ -188,7 +191,10 @@ private fun BlockedFeedRecordItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onDelete) {
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.testTag("blocked_feed_history_delete_${record.id}"),
+        ) {
             Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -52,6 +53,7 @@ import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
 fun CollectionScreen(
     urlToken: String,
     innerPadding: PaddingValues,
+    testCollections: List<Collection>? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -59,9 +61,11 @@ fun CollectionScreen(
         CollectionsViewModel(urlToken)
     }
     val listState = rememberLazyListState()
+    val useTestCollections = testCollections != null
+    val collections = testCollections ?: viewModel.allData
 
-    LaunchedEffect(Unit) {
-        if (viewModel.allData.isEmpty()) {
+    LaunchedEffect(useTestCollections) {
+        if (!useTestCollections && viewModel.allData.isEmpty()) {
             viewModel.refresh(context)
         }
     }
@@ -70,9 +74,17 @@ fun CollectionScreen(
         modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
-                title = { Text("我的收藏夹") },
+                title = {
+                    Text(
+                        text = "我的收藏夹",
+                        modifier = Modifier.testTag(COLLECTION_SCREEN_TITLE_TAG),
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        modifier = Modifier.testTag(COLLECTION_SCREEN_BACK_BUTTON_TAG),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -81,15 +93,26 @@ fun CollectionScreen(
         },
     ) { innerPadding ->
         PaginatedList(
-            items = viewModel.allData,
-            onLoadMore = { viewModel.loadMore(context) },
-            isEnd = { viewModel.isEnd },
+            items = collections,
+            onLoadMore = {
+                if (!useTestCollections) {
+                    viewModel.loadMore(context)
+                }
+            },
+            isEnd = { useTestCollections || viewModel.isEnd },
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .padding(innerPadding)
+                .testTag(COLLECTION_SCREEN_LIST_TAG),
             footer = ProgressIndicatorFooter,
         ) { collection ->
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .testTag(collectionScreenItemTag(collection.id)),
                 elevation = CardDefaults.cardElevation(4.dp),
                 onClick = {
                     navigator.onNavigate(CollectionContent(collection.id))
@@ -102,3 +125,9 @@ fun CollectionScreen(
         }
     }
 }
+
+private const val COLLECTION_SCREEN_TITLE_TAG = "collection_screen_title"
+private const val COLLECTION_SCREEN_BACK_BUTTON_TAG = "collection_screen_back_button"
+private const val COLLECTION_SCREEN_LIST_TAG = "collection_screen_list"
+
+private fun collectionScreenItemTag(collectionId: String) = "collection_screen_item_$collectionId"

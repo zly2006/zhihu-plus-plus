@@ -78,6 +78,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -109,12 +110,15 @@ import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 
+internal const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
+
 @OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
     unreadCount: Int = 0,
     onDismissRequest: () -> Unit = {},
+    refreshAccountProfileOnEnter: Boolean = true,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -156,12 +160,12 @@ fun AccountSettingScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(innerPadding)
+                .testTag(ACCOUNT_SETTINGS_SCROLL_TAG)
                 .verticalScroll(rememberScrollState())
                 .padding(padding),
         ) {
-            LaunchedEffect(Unit) {
-                val data = AccountData.data
-                if (data.login) {
+            LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
+                if (refreshAccountProfileOnEnter && data.login) {
                     try {
                         val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
                             signFetchRequest()

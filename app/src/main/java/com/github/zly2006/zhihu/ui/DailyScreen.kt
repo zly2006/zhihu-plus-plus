@@ -68,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -94,52 +95,83 @@ data class DailySection(
     val stories: List<DailyStory>,
 )
 
+// Stable UI snapshot used by instrumented tests so DailyScreen can be rendered without
+// depending on the Zhihu Daily API or ViewModel side effects.
+data class DailyScreenUiState(
+    val sections: List<DailySection> = emptyList(),
+    val isLoading: Boolean = true,
+    val isLoadingMore: Boolean = false,
+    val error: String? = null,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun DailyScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    testState: DailyScreenUiState? = null,
+    onTestDateSelected: ((String) -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
+) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<DailyViewModel>()
+    val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
     var currentViewingDate by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val uiState = testState ?: DailyScreenUiState(
+        sections = viewModel.sections,
+        isLoading = viewModel.isLoading,
+        isLoadingMore = viewModel.isLoadingMore,
+        error = viewModel.error,
+    )
 
-    LaunchedEffect(listState) {
-        // 日期追踪：同时观察滚动位置和 sections，数据到了也能立即更新
-        launch {
-            snapshotFlow { listState.firstVisibleItemIndex to viewModel.sections }
-                .collect { (index, sections) ->
-                    var count = 0
-                    for (section in sections) {
-                        if (index < count + 1 + section.stories.size) {
-                            currentViewingDate = formatDate(section.date)
-                            break
-                        }
-                        count += 1 + section.stories.size
-                    }
-                }
-        }
+    LaunchedEffect(listState, uiState.sections) {
+        currentViewingDate = resolveViewingDate(
+            firstVisibleItemIndex = listState.firstVisibleItemIndex,
+            sections = uiState.sections,
+        )
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                currentViewingDate = resolveViewingDate(
+                    firstVisibleItemIndex = index,
+                    sections = uiState.sections,
+                )
+            }
+    }
+
+    LaunchedEffect(listState, isTestMode, onTestLoadMore) {
         // 滚动到底部时加载更多
         snapshotFlow {
             val info = listState.layoutInfo
             (info.visibleItemsInfo.lastOrNull()?.index ?: 0) to info.totalItemsCount
         }.collect { (last, total) ->
-            if (total > 0 && last >= total - 3) viewModel.loadMore(context.httpClient)
+            if (total > 0 && last >= total - 3) {
+                if (isTestMode) {
+                    onTestLoadMore?.invoke()
+                } else {
+                    viewModel.loadMore(context.httpClient)
+                }
+            }
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (viewModel.sections.isEmpty()) viewModel.loadLatest(context.httpClient)
+    LaunchedEffect(isTestMode) {
+        if (!isTestMode && viewModel.sections.isEmpty()) {
+            viewModel.loadLatest(context.httpClient)
+        }
     }
 
     val doRefresh: () -> Unit = {
         scope.launch {
             isRefreshing = true
-            viewModel.loadLatest(context.httpClient)
+            if (!isTestMode) {
+                viewModel.loadLatest(context.httpClient)
+                listState.scrollToItem(0)
+            }
             isRefreshing = false
-            listState.scrollToItem(0)
         }
     }
 
@@ -156,8 +188,12 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                         val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
                         val dateStr = sdf.format(Date(millis))
                         scope.launch {
-                            viewModel.loadDate(context.httpClient, dateStr)
-                            listState.scrollToItem(0)
+                            if (isTestMode) {
+                                onTestDateSelected?.invoke(dateStr)
+                            } else {
+                                viewModel.loadDate(context.httpClient, dateStr)
+                                listState.scrollToItem(0)
+                            }
                         }
                     }
                 }) { Text("确认") }
@@ -180,6 +216,7 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                             ),
+                            modifier = Modifier.testTag(DAILY_SCREEN_TITLE_TAG),
                         )
                         if (currentViewingDate.isNotEmpty()) {
                             Text(
@@ -187,12 +224,16 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 ),
+                                modifier = Modifier.testTag(DAILY_SCREEN_CURRENT_DATE_TAG),
                             )
                         }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDatePicker = true }) {
+                    IconButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
+                    ) {
                         Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
                     }
                 },
@@ -211,9 +252,11 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 .padding(top = scaffoldPadding.calculateTopPadding()),
         ) {
             when {
-                viewModel.isLoading -> {
+                uiState.isLoading -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag(DAILY_SCREEN_LOADING_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
@@ -231,21 +274,25 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                     }
                 }
 
-                viewModel.error != null -> {
+                uiState.error != null -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag(DAILY_SCREEN_ERROR_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            viewModel.error ?: "未知错误",
+                            uiState.error ?: "未知错误",
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
 
-                viewModel.sections.isEmpty() -> {
+                uiState.sections.isEmpty() -> {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag(DAILY_SCREEN_EMPTY_TAG),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -259,31 +306,39 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                 else -> {
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag(DAILY_SCREEN_LIST_TAG),
                         contentPadding = PaddingValues(vertical = 8.dp),
                     ) {
-                        viewModel.sections.forEach { section ->
+                        uiState.sections.forEach { section ->
                             // Date header
                             item(key = "header_${section.date}") {
-                                DateHeader(date = formatDate(section.date))
+                                DateHeader(
+                                    date = formatDate(section.date),
+                                    modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
+                                )
                             }
                             // Stories for this date
                             items(section.stories, key = { "story_${it.id}" }) { story ->
                                 DailyStoryCard(
                                     story = story,
+                                    modifier = Modifier.testTag(dailyStoryCardTag(story.id)),
                                     onClick = {
-                                        scope.launch {
-                                            val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
-                                            val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
-                                            val url = body.selectFirst("a")?.attr("href")
-                                            val destination = runCatching {
-                                                url?.let { resolveContent(url.toUri()) }
-                                            }.getOrNull()
-                                            if (destination != null) {
-                                                navigator.onNavigate(destination)
-                                            } else {
-                                                val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
-                                                context.startActivity(intent)
+                                        if (!isTestMode) {
+                                            scope.launch {
+                                                val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
+                                                val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
+                                                val url = body.selectFirst("a")?.attr("href")
+                                                val destination = runCatching {
+                                                    url?.let { resolveContent(url.toUri()) }
+                                                }.getOrNull()
+                                                if (destination != null) {
+                                                    navigator.onNavigate(destination)
+                                                } else {
+                                                    val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
+                                                    context.startActivity(intent)
+                                                }
                                             }
                                         }
                                     },
@@ -292,7 +347,7 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                         }
 
                         // Loading indicator at the bottom
-                        if (viewModel.isLoadingMore) {
+                        if (uiState.isLoadingMore) {
                             item(key = "loading_more") {
                                 Box(
                                     modifier = Modifier
@@ -314,9 +369,12 @@ fun DailyScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
 }
 
 @Composable
-fun DateHeader(date: String) {
+fun DateHeader(
+    date: String,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -351,10 +409,11 @@ fun DateHeader(date: String) {
 @Composable
 fun DailyStoryCard(
     story: DailyStory,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(onClick = onClick),
@@ -431,3 +490,29 @@ private fun formatDate(dateString: String): String = try {
 } catch (e: Exception) {
     dateString
 }
+
+private fun resolveViewingDate(
+    firstVisibleItemIndex: Int,
+    sections: List<DailySection>,
+): String {
+    var count = 0
+    for (section in sections) {
+        if (firstVisibleItemIndex < count + 1 + section.stories.size) {
+            return formatDate(section.date)
+        }
+        count += 1 + section.stories.size
+    }
+    return ""
+}
+
+private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"
+
+private fun dailyStoryCardTag(storyId: Long) = "daily_screen_story_$storyId"
+
+private const val DAILY_SCREEN_TITLE_TAG = "daily_screen_title"
+private const val DAILY_SCREEN_CURRENT_DATE_TAG = "daily_screen_current_date"
+private const val DAILY_SCREEN_DATE_PICKER_BUTTON_TAG = "daily_screen_date_picker_button"
+private const val DAILY_SCREEN_LOADING_TAG = "daily_screen_loading"
+private const val DAILY_SCREEN_ERROR_TAG = "daily_screen_error"
+private const val DAILY_SCREEN_EMPTY_TAG = "daily_screen_empty"
+private const val DAILY_SCREEN_LIST_TAG = "daily_screen_list"

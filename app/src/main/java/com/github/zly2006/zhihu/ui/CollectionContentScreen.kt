@@ -54,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -69,18 +70,38 @@ import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import java.util.Date
 
+/**
+ * Instrumented tests inject a prefilled ViewModel plus side-effect stubs here so the screen can
+ * be exercised deterministically without triggering refresh/export network work.
+ */
+data class CollectionContentScreenTestOverrides(
+    val viewModel: CollectionContentViewModel,
+    val isEnd: Boolean = true,
+    val onLoadMore: (() -> Unit)? = null,
+    val onExportAllToHtmlZip: ((Boolean) -> Unit)? = null,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionContentScreen(
     collectionId: String,
     innerPadding: PaddingValues,
+    testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val viewModel = viewModel { CollectionContentViewModel(collectionId) }
+    val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
+    val isEnd = testOverrides?.let { { it.isEnd } } ?: { screenViewModel.isEnd }
+    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(context) }
+    val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
+        screenViewModel.exportAllToHtmlZip(
+            context = context,
+            includeImages = includeImages,
+        )
+    }
     val sharedData = if (context is MainActivity) {
         val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>()
         sd
@@ -88,9 +109,9 @@ fun CollectionContentScreen(
         null
     }
 
-    LaunchedEffect(Unit) {
-        if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(context)
+    LaunchedEffect(testOverrides) {
+        if (testOverrides == null && screenViewModel.allData.isEmpty()) {
+            screenViewModel.refresh(context)
         }
     }
 
@@ -98,9 +119,17 @@ fun CollectionContentScreen(
         modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
-                title = { Text(viewModel.title) },
+                title = {
+                    Text(
+                        text = screenViewModel.title,
+                        modifier = Modifier.testTag("collection_content_title"),
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = navigator.onNavigateBack) {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        modifier = Modifier.testTag("collection_content_back_button"),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
@@ -108,17 +137,20 @@ fun CollectionContentScreen(
                     Box {
                         IconButton(
                             onClick = { showActionsMenu = true },
-                            enabled = viewModel.exportDialogState?.isCompleted != false,
+                            enabled = screenViewModel.exportDialogState?.isCompleted != false,
+                            modifier = Modifier.testTag("collection_content_more_button"),
                         ) {
                             Icon(Icons.Filled.MoreVert, contentDescription = "更多")
                         }
                         DropdownMenu(
                             expanded = showActionsMenu,
                             onDismissRequest = { showActionsMenu = false },
+                            modifier = Modifier.testTag("collection_content_more_menu"),
                         ) {
                             DropdownMenuItem(
+                                modifier = Modifier.testTag("collection_content_export_action"),
                                 text = { Text("全部导出HTML") },
-                                enabled = viewModel.exportDialogState?.isCompleted != false,
+                                enabled = screenViewModel.exportDialogState?.isCompleted != false,
                                 onClick = {
                                     showActionsMenu = false
                                     showExportOptionsDialog = true
@@ -136,51 +168,56 @@ fun CollectionContentScreen(
                 onDismiss = { showExportOptionsDialog = false },
                 onConfirm = { includeImages ->
                     showExportOptionsDialog = false
-                    viewModel.exportAllToHtmlZip(
-                        context = context,
-                        includeImages = includeImages,
-                    )
+                    onExportAllToHtmlZip(includeImages)
                 },
             )
         }
-        viewModel.exportDialogState?.let { state ->
+        screenViewModel.exportDialogState?.let { state ->
             CollectionHtmlExportDialog(
                 state = state,
-                onDismiss = viewModel::dismissExportDialog,
+                onDismiss = screenViewModel::dismissExportDialog,
             )
         }
         PaginatedList(
-            items = viewModel.displayItems,
-            onLoadMore = { viewModel.loadMore(context) },
-            isEnd = { viewModel.isEnd },
+            items = screenViewModel.displayItems,
+            onLoadMore = onLoadMore,
+            isEnd = isEnd,
             listState = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp).padding(innerPadding),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp)
+                .padding(innerPadding)
+                .testTag("collection_content_list"),
             footer = ProgressIndicatorFooter,
             topContent = {
                 item(0) {
                     Text(
                         listOfNotNull(
-                            "${viewModel.collection?.itemCount} 条收藏",
-                            "${viewModel.collection?.likeCount} 个赞同",
-                            "${viewModel.collection?.commentCount} 条评论",
-                            viewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
+                            "${screenViewModel.collection?.itemCount} 条收藏",
+                            "${screenViewModel.collection?.likeCount} 个赞同",
+                            "${screenViewModel.collection?.commentCount} 条评论",
+                            screenViewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
                         ).fastJoinToString(" · "),
+                        modifier = Modifier.testTag("collection_content_stats"),
                     )
                 }
             },
         ) { item ->
             FeedCard(
-                item,
-                Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                item = item,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .testTag("collection_content_item_${item.stableKey}"),
             ) {
                 val dest = navDestination
                 if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
-                    val idx = viewModel.displayItems.indexOf(item)
-                    val nextItems = if (idx >= 0) viewModel.allData.drop(idx + 1) else emptyList()
-                    val prevItems = if (idx > 0) viewModel.allData.take(idx).reversed() else emptyList()
+                    val idx = screenViewModel.displayItems.indexOf(item)
+                    val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
+                    val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
                     sharedData.pendingNavigator = CollectionAnswerNavigator(
                         collectionId = collectionId,
-                        collectionTitle = viewModel.title,
+                        collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
                     )
@@ -210,6 +247,7 @@ private fun CollectionHtmlExportOptionsDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(
+                        modifier = Modifier.testTag("collection_content_export_include_images"),
                         checked = includeImages,
                         onCheckedChange = { includeImages = it },
                     )
@@ -230,12 +268,16 @@ private fun CollectionHtmlExportOptionsDialog(
         confirmButton = {
             TextButton(
                 onClick = { onConfirm(includeImages) },
+                modifier = Modifier.testTag("collection_content_export_confirm"),
             ) {
                 Text("开始导出")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag("collection_content_export_cancel"),
+            ) {
                 Text("取消")
             }
         },
