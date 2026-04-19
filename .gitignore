@@ -48,3 +48,6 @@ __pycache__/
 .omx/
 
 .worktrees
+
+# Local secrets
+.secret/

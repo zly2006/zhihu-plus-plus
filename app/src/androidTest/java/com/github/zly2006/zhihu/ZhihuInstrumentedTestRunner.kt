@@ -17,50 +17,18 @@
 
 package com.github.zly2006.zhihu
 
+import android.os.Bundle
 import androidx.test.runner.AndroidJUnitRunner
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Person
-import com.github.zly2006.zhihu.test.ZhihuMockApi
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.test.InstrumentedTestEnvironment
 
 class ZhihuInstrumentedTestRunner : AndroidJUnitRunner() {
-    override fun onStart() {
-        ZhihuMockApi.install()
-        seedStableInstrumentedTestState()
-        super.onStart()
+    override fun onCreate(arguments: Bundle) {
+        InstrumentedTestEnvironment.configureFromArguments(arguments)
+        super.onCreate(arguments)
     }
 
-    private fun seedStableInstrumentedTestState() {
-        val context = targetContext
-        context
-            .getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean("allowTelemetry", false)
-            .putLong("last_main_launch_timestamp", System.currentTimeMillis())
-            .commit()
-
-        AccountData.saveData(
-            context,
-            AccountData.Data(
-                login = true,
-                username = "AndroidTestUser",
-                cookies = mutableMapOf(
-                    "z_c0" to "android-test-zc0",
-                    "d_c0" to "android-test-dc0",
-                    "_xsrf" to "android-test-xsrf",
-                ),
-                userAgent = AccountData.ANDROID_USER_AGENT,
-                self = Person(
-                    id = "android-test-user-id",
-                    url = "https://www.zhihu.com/people/android-test-user",
-                    userType = "people",
-                    urlToken = "android-test-user",
-                    name = "AndroidTestUser",
-                    headline = "androidTest seeded login state",
-                    avatarUrl = "",
-                ),
-            ),
-        )
-        ZhihuMockApi.reset()
+    override fun onStart() {
+        InstrumentedTestEnvironment.reseed(targetContext)
+        super.onStart()
     }
 }

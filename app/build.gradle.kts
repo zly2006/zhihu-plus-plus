@@ -66,6 +66,8 @@ android {
         localeFilters += listOf("en", "zh")
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("generated/androidTestSecrets"))
+
     testOptions {
         unitTests {
             isReturnDefaultValues = true
@@ -146,6 +148,31 @@ android {
         }
     }
 }
+
+val generatedAndroidTestSecretsDir = layout.buildDirectory.dir("generated/androidTestSecrets")
+
+val prepareAndroidTestSecretAccount by tasks.registering {
+    val secretAccountFile = rootProject.file(".secret/account.json")
+    outputs.dir(generatedAndroidTestSecretsDir)
+    doLast {
+        val outputDir = generatedAndroidTestSecretsDir.get().asFile
+        delete(outputDir)
+        if (secretAccountFile.exists()) {
+            copy {
+                from(secretAccountFile)
+                into(outputDir.resolve("secret"))
+                rename { "account.json" }
+            }
+        }
+    }
+}
+
+tasks
+    .matching {
+        it.name.startsWith("merge") && it.name.contains("AndroidTestAssets")
+    }.configureEach {
+        dependsOn(prepareAndroidTestSecretAccount)
+    }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")

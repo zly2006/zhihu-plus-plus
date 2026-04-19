@@ -45,8 +45,16 @@ object ZhihuMockApi {
 
     private val routes = CopyOnWriteArrayList<Route>()
     private val requests = CopyOnWriteArrayList<RecordedRequest>()
+    private var enabled = true
 
-    fun install() {
+    fun install(enabled: Boolean = true) {
+        this.enabled = enabled
+        if (!enabled) {
+            AccountData.overrideHttpClientFactoryForTesting(null)
+            routes.clear()
+            requests.clear()
+            return
+        }
         AccountData.overrideHttpClientFactoryForTesting { context: Context, cookies ->
             AccountData.createConfiguredHttpClient(
                 context = context,
@@ -67,7 +75,10 @@ object ZhihuMockApi {
         }
     }
 
+    fun isEnabled(): Boolean = enabled
+
     fun reset() {
+        if (!enabled) return
         routes.clear()
         requests.clear()
         installDefaultRoutes()
