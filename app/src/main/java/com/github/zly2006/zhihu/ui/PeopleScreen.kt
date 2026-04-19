@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -401,32 +402,211 @@ suspend fun HttpResponse.raiseForStatus() = apply {
     }
 }
 
+private val PEOPLE_SCREEN_TITLES = listOf(
+    "回答",
+    "文章",
+    "动态",
+    "收藏",
+    "提问",
+    "想法",
+    "专栏",
+    "粉丝",
+    "关注",
+)
+
+const val PEOPLE_SCREEN_ROOT_TAG = "people_screen_root"
+const val PEOPLE_SCREEN_HEADER_TAG = "people_screen_header"
+const val PEOPLE_SCREEN_AVATAR_TAG = "people_screen_avatar"
+const val PEOPLE_SCREEN_TAB_ROW_TAG = "people_screen_tab_row"
+const val PEOPLE_SCREEN_PAGER_TAG = "people_screen_pager"
+const val PEOPLE_SCREEN_ANSWERS_LIST_TAG = "people_screen_answers_list"
+const val PEOPLE_SCREEN_ARTICLES_LIST_TAG = "people_screen_articles_list"
+const val PEOPLE_SCREEN_ACTIVITIES_LIST_TAG = "people_screen_activities_list"
+const val PEOPLE_SCREEN_COLLECTIONS_LIST_TAG = "people_screen_collections_list"
+const val PEOPLE_SCREEN_QUESTIONS_LIST_TAG = "people_screen_questions_list"
+const val PEOPLE_SCREEN_PINS_LIST_TAG = "people_screen_pins_list"
+const val PEOPLE_SCREEN_COLUMNS_LIST_TAG = "people_screen_columns_list"
+const val PEOPLE_SCREEN_FOLLOWERS_LIST_TAG = "people_screen_followers_list"
+const val PEOPLE_SCREEN_FOLLOWING_LIST_TAG = "people_screen_following_list"
+const val PEOPLE_SCREEN_ANSWER_COUNT_TAG = "people_screen_stat_answers"
+const val PEOPLE_SCREEN_ARTICLE_COUNT_TAG = "people_screen_stat_articles"
+const val PEOPLE_SCREEN_FOLLOWER_COUNT_TAG = "people_screen_stat_followers"
+const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
+const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
+const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
+const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
+const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
+const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
+const val PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG = "people_screen_article_sort_created"
+
+fun peopleScreenTabTag(index: Int): String = "people_screen_tab_$index"
+
+fun peopleScreenPageTag(index: Int): String = "people_screen_page_$index"
+
+fun peopleScreenAnswerItemTag(id: Long): String = "people_screen_answer_item_$id"
+
+fun peopleScreenArticleItemTag(id: Long): String = "people_screen_article_item_$id"
+
+fun peopleScreenCollectionItemTag(id: String): String = "people_screen_collection_item_$id"
+
+fun peopleScreenQuestionItemTag(id: Long): String = "people_screen_question_item_$id"
+
+fun peopleScreenPinItemTag(id: String): String = "people_screen_pin_item_$id"
+
+fun peopleScreenColumnItemTag(id: String): String = "people_screen_column_item_$id"
+
+fun peopleScreenFollowerItemTag(id: String): String = "people_screen_follower_item_$id"
+
+fun peopleScreenFollowerActionTag(id: String): String = "people_screen_follower_action_$id"
+
+fun peopleScreenFollowingItemTag(id: String): String = "people_screen_following_item_$id"
+
+fun peopleScreenFollowingActionTag(id: String): String = "people_screen_following_action_$id"
+
+private fun peopleScreenInitialPage(person: Person): Int {
+    val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
+    return if (jumpToIndex >= 0) jumpToIndex else 0
+}
+
+data class PeopleProfileUiState(
+    val avatar: String = "",
+    val name: String = "",
+    val headline: String = "",
+    val followerCount: Int = 0,
+    val followingCount: Int = 0,
+    val answerCount: Int = 0,
+    val articleCount: Int = 0,
+    val isFollowing: Boolean = false,
+    val isBlocking: Boolean = false,
+    val isBlockedInRecommendations: Boolean = false,
+)
+
+data class PeopleListUiState<T>(
+    val items: List<T> = emptyList(),
+    val isEnd: Boolean = true,
+)
+
+data class PeopleSortedListUiState<T>(
+    val sortBy: String,
+    val items: List<T> = emptyList(),
+    val isEnd: Boolean = true,
+)
+
+data class PeopleScreenUiState(
+    val profile: PeopleProfileUiState = PeopleProfileUiState(),
+    val answers: PeopleSortedListUiState<DataHolder.Answer> = PeopleSortedListUiState(sortBy = "voteups"),
+    val articles: PeopleSortedListUiState<DataHolder.Article> = PeopleSortedListUiState(sortBy = "created"),
+    val activities: PeopleListUiState<BaseFeedViewModel.FeedDisplayItem> = PeopleListUiState(),
+    val collections: PeopleListUiState<DataHolder.Collection> = PeopleListUiState(),
+    val questions: PeopleListUiState<DataHolder.Question> = PeopleListUiState(),
+    val pins: PeopleListUiState<DataHolder.Pin> = PeopleListUiState(),
+    val columns: PeopleListUiState<DataHolder.Column> = PeopleListUiState(),
+    val followers: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
+    val following: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
+)
+
+/**
+ * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
+ * here so PeopleScreen can be exercised without touching remote profile fetches or mutations.
+ */
+data class PeopleScreenTestOverrides(
+    val initialUiState: PeopleScreenUiState,
+    val initialPage: Int? = null,
+    val onAnswerSortChange: ((String) -> Unit)? = null,
+    val onArticleSortChange: ((String) -> Unit)? = null,
+    val onToggleFollow: ((Boolean) -> Unit)? = null,
+    val onToggleBlock: ((Boolean) -> Unit)? = null,
+    val onToggleRecommendationBlock: ((Boolean) -> Unit)? = null,
+    val onAnswersLoadMore: (() -> Unit)? = null,
+    val onArticlesLoadMore: (() -> Unit)? = null,
+    val onActivitiesLoadMore: (() -> Unit)? = null,
+    val onCollectionsLoadMore: (() -> Unit)? = null,
+    val onQuestionsLoadMore: (() -> Unit)? = null,
+    val onPinsLoadMore: (() -> Unit)? = null,
+    val onColumnsLoadMore: (() -> Unit)? = null,
+    val onFollowersLoadMore: (() -> Unit)? = null,
+    val onFollowingLoadMore: (() -> Unit)? = null,
+)
+
+private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiState(
+    profile = PeopleProfileUiState(
+        avatar = avatar,
+        name = name,
+        headline = headline,
+        followerCount = followerCount,
+        followingCount = followingCount,
+        answerCount = answerCount,
+        articleCount = articleCount,
+        isFollowing = isFollowing,
+        isBlocking = isBlocking,
+        isBlockedInRecommendations = isBlockedInRecommendations,
+    ),
+    answers = PeopleSortedListUiState(
+        sortBy = answersFeedModel.sortBy,
+        items = answersFeedModel.allData,
+        isEnd = answersFeedModel.isEnd,
+    ),
+    articles = PeopleSortedListUiState(
+        sortBy = articlesFeedModel.sortBy,
+        items = articlesFeedModel.allData,
+        isEnd = articlesFeedModel.isEnd,
+    ),
+    activities = PeopleListUiState(
+        items = activitiesFeedModel.displayItems,
+        isEnd = activitiesFeedModel.isEnd,
+    ),
+    collections = PeopleListUiState(
+        items = collectionsFeedModel.allData,
+        isEnd = collectionsFeedModel.isEnd,
+    ),
+    questions = PeopleListUiState(
+        items = questionsFeedModel.allData,
+        isEnd = questionsFeedModel.isEnd,
+    ),
+    pins = PeopleListUiState(
+        items = pinsFeedModel.allData,
+        isEnd = pinsFeedModel.isEnd,
+    ),
+    columns = PeopleListUiState(
+        items = columnsFeedModel.allData,
+        isEnd = columnsFeedModel.isEnd,
+    ),
+    followers = PeopleListUiState(
+        items = followersFeedModel.allData,
+        isEnd = followersFeedModel.isEnd,
+    ),
+    following = PeopleListUiState(
+        items = followingFeedModel.allData,
+        isEnd = followingFeedModel.isEnd,
+    ),
+)
+
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PeopleScreen(
     innerPadding: PaddingValues,
     person: Person,
+    testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
+    var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
+        mutableStateOf(testOverrides?.initialUiState ?: PeopleScreenUiState())
+    }
+    val uiState = testOverrides?.let { testUiState } ?: viewModel.toUiState()
 
-    val titles = listOf(
-        "回答",
-        "文章",
-        "动态",
-        "收藏",
-        "提问",
-        "想法",
-        "专栏",
-        "粉丝",
-        "关注",
+    val pagerState = rememberPagerState(
+        initialPage = testOverrides?.initialPage ?: peopleScreenInitialPage(person),
+        pageCount = { PEOPLE_SCREEN_TITLES.size },
     )
 
-    val pagerState = rememberPagerState(initialPage = if (person.jumpTo.isNotEmpty()) titles.indexOf(person.jumpTo) else 0, pageCount = { titles.size })
-
-    LaunchedEffect(viewModel) {
+    LaunchedEffect(viewModel, testOverrides) {
+        if (testOverrides != null) {
+            return@LaunchedEffect
+        }
         try {
             viewModel.load(context)
             AccountData.addReadHistory(context, person.id, "profile")
@@ -440,7 +620,10 @@ fun PeopleScreen(
                 ).show()
         }
     }
-    LaunchedEffect(pagerState.currentPage) {
+    LaunchedEffect(pagerState.currentPage, testOverrides) {
+        if (testOverrides != null) {
+            return@LaunchedEffect
+        }
         try {
             viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(context)
         } catch (e: Exception) {
@@ -456,15 +639,100 @@ fun PeopleScreen(
 
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 
+    fun updateAnswersSort(newSort: String) {
+        if (testOverrides != null) {
+            if (uiState.answers.sortBy != newSort) {
+                testUiState = uiState.copy(answers = uiState.answers.copy(sortBy = newSort))
+                testOverrides.onAnswerSortChange?.invoke(newSort)
+            }
+            return
+        }
+        viewModel.answersFeedModel.changeSortBy(newSort, context)
+    }
+
+    fun updateArticlesSort(newSort: String) {
+        if (testOverrides != null) {
+            if (uiState.articles.sortBy != newSort) {
+                testUiState = uiState.copy(articles = uiState.articles.copy(sortBy = newSort))
+                testOverrides.onArticleSortChange?.invoke(newSort)
+            }
+            return
+        }
+        viewModel.articlesFeedModel.changeSortBy(newSort, context)
+    }
+
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).padding(innerPadding),
+        modifier = Modifier
+            .testTag(PEOPLE_SCREEN_ROOT_TAG)
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .padding(innerPadding),
         topBar = {
             TopAppBar(
                 title = {
                     UserInfoHeader(
-                        viewModel = viewModel,
+                        profile = uiState.profile,
                         pagerState = pagerState,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .testTag(PEOPLE_SCREEN_HEADER_TAG),
+                        onFollowToggle = {
+                            if (testOverrides != null) {
+                                val newFollowing = !uiState.profile.isFollowing
+                                testUiState = uiState.copy(
+                                    profile = uiState.profile.copy(
+                                        isFollowing = newFollowing,
+                                        followerCount = (uiState.profile.followerCount + if (newFollowing) 1 else -1).coerceAtLeast(0),
+                                    ),
+                                )
+                                testOverrides.onToggleFollow?.invoke(newFollowing)
+                            } else {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleFollow(context)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        onBlockToggle = {
+                            if (testOverrides != null) {
+                                val newBlocking = !uiState.profile.isBlocking
+                                testUiState = uiState.copy(profile = uiState.profile.copy(isBlocking = newBlocking))
+                                testOverrides.onToggleBlock?.invoke(newBlocking)
+                            } else {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleBlock(context)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        onRecommendationBlockToggle = {
+                            if (testOverrides != null) {
+                                val newRecommendationBlock = !uiState.profile.isBlockedInRecommendations
+                                testUiState = uiState.copy(
+                                    profile = uiState.profile.copy(isBlockedInRecommendations = newRecommendationBlock),
+                                )
+                                testOverrides.onToggleRecommendationBlock?.invoke(newRecommendationBlock)
+                            } else {
+                                coroutineScope.launch {
+                                    try {
+                                        viewModel.toggleRecommendationBlock(context)
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors().copy(
@@ -483,8 +751,9 @@ fun PeopleScreen(
         ) {
             PrimaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
             ) {
-                titles.forEachIndexed { index, title ->
+                PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = {
@@ -492,6 +761,7 @@ fun PeopleScreen(
                                 pagerState.animateScrollToPage(index)
                             }
                         },
+                        modifier = Modifier.testTag(peopleScreenTabTag(index)),
                     ) {
                         Text(
                             text = title,
@@ -504,26 +774,36 @@ fun PeopleScreen(
             }
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag(PEOPLE_SCREEN_PAGER_TAG),
             ) { page ->
                 when (page) {
                     0 -> {
                         // 回答
                         Column(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(peopleScreenPageTag(page)),
                         ) {
                             SortBar(
-                                currentSort = viewModel.answersFeedModel.sortBy,
-                                onSortChange = { newSort ->
-                                    viewModel.answersFeedModel.changeSortBy(newSort, context)
-                                },
+                                currentSort = uiState.answers.sortBy,
+                                onSortChange = ::updateAnswersSort,
+                                hotTag = PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG,
+                                timeTag = PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG,
                             )
                             PaginatedList(
-                                items = viewModel.answersFeedModel.allData,
-                                onLoadMore = { viewModel.answersFeedModel.loadMore(context) },
-                                isEnd = { viewModel.answersFeedModel.isEnd },
+                                items = uiState.answers.items,
+                                onLoadMore = {
+                                    testOverrides?.onAnswersLoadMore?.invoke()
+                                        ?: viewModel.answersFeedModel.loadMore(context)
+                                },
+                                isEnd = { uiState.answers.isEnd },
                                 footer = ProgressIndicatorFooter,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .testTag(PEOPLE_SCREEN_ANSWERS_LIST_TAG),
+                                key = { it.id },
                             ) {
                                 FeedCard(
                                     BaseFeedViewModel.FeedDisplayItem(
@@ -532,6 +812,7 @@ fun PeopleScreen(
                                         details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),
+                                    modifier = Modifier.testTag(peopleScreenAnswerItemTag(it.id)),
                                     horizontalPadding = 4.dp,
                                 ) {
                                     navigator.onNavigate(
@@ -550,20 +831,28 @@ fun PeopleScreen(
                     1 -> {
                         // 文章
                         Column(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(peopleScreenPageTag(page)),
                         ) {
                             SortBar(
-                                currentSort = viewModel.articlesFeedModel.sortBy,
-                                onSortChange = { newSort ->
-                                    viewModel.articlesFeedModel.changeSortBy(newSort, context)
-                                },
+                                currentSort = uiState.articles.sortBy,
+                                onSortChange = ::updateArticlesSort,
+                                hotTag = PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG,
+                                timeTag = PEOPLE_SCREEN_ARTICLE_SORT_TIME_TAG,
                             )
                             PaginatedList(
-                                items = viewModel.articlesFeedModel.allData,
-                                onLoadMore = { viewModel.articlesFeedModel.loadMore(context) },
-                                isEnd = { viewModel.articlesFeedModel.isEnd },
+                                items = uiState.articles.items,
+                                onLoadMore = {
+                                    testOverrides?.onArticlesLoadMore?.invoke()
+                                        ?: viewModel.articlesFeedModel.loadMore(context)
+                                },
+                                isEnd = { uiState.articles.isEnd },
                                 footer = ProgressIndicatorFooter,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .testTag(PEOPLE_SCREEN_ARTICLES_LIST_TAG),
+                                key = { it.id },
                             ) {
                                 FeedCard(
                                     BaseFeedViewModel.FeedDisplayItem(
@@ -572,6 +861,7 @@ fun PeopleScreen(
                                         details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
                                         feed = null,
                                     ),
+                                    modifier = Modifier.testTag(peopleScreenArticleItemTag(it.id)),
                                     horizontalPadding = 4.dp,
                                 ) {
                                     navigator.onNavigate(
@@ -590,84 +880,156 @@ fun PeopleScreen(
                     2 -> {
                         // 动态
                         PaginatedList(
-                            items = viewModel.activitiesFeedModel.displayItems,
-                            onLoadMore = { viewModel.activitiesFeedModel.loadMore(context) },
-                            isEnd = { viewModel.activitiesFeedModel.isEnd },
+                            items = uiState.activities.items,
+                            onLoadMore = {
+                                testOverrides?.onActivitiesLoadMore?.invoke()
+                                    ?: viewModel.activitiesFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.activities.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_ACTIVITIES_LIST_TAG),
                         ) {
-                            FeedCard(it, horizontalPadding = 4.dp)
+                            FeedCard(
+                                it,
+                                modifier = Modifier.testTag("people_screen_activity_item_${it.localFeedId ?: it.title}"),
+                                horizontalPadding = 4.dp,
+                            )
                         }
                     }
 
                     3 -> {
                         // 收藏
                         PaginatedList(
-                            items = viewModel.collectionsFeedModel.allData,
-                            onLoadMore = { viewModel.collectionsFeedModel.loadMore(context) },
-                            isEnd = { viewModel.collectionsFeedModel.isEnd },
+                            items = uiState.collections.items,
+                            onLoadMore = {
+                                testOverrides?.onCollectionsLoadMore?.invoke()
+                                    ?: viewModel.collectionsFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.collections.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_COLLECTIONS_LIST_TAG),
+                            key = { it.id },
                         ) { collection ->
-                            CollectionListItem(collection)
+                            CollectionListItem(
+                                collection = collection,
+                                itemTag = peopleScreenCollectionItemTag(collection.id),
+                            )
                         }
                     }
 
                     4 -> {
                         // 提问
                         PaginatedList(
-                            items = viewModel.questionsFeedModel.allData,
-                            onLoadMore = { viewModel.questionsFeedModel.loadMore(context) },
-                            isEnd = { viewModel.questionsFeedModel.isEnd },
+                            items = uiState.questions.items,
+                            onLoadMore = {
+                                testOverrides?.onQuestionsLoadMore?.invoke()
+                                    ?: viewModel.questionsFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.questions.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_QUESTIONS_LIST_TAG),
+                            key = { it.id },
                         ) { question ->
-                            QuestionListItem(question)
+                            QuestionListItem(
+                                question = question,
+                                itemTag = peopleScreenQuestionItemTag(question.id),
+                            )
                         }
                     }
 
                     5 -> {
                         // 想法
                         PaginatedList(
-                            items = viewModel.pinsFeedModel.allData,
-                            onLoadMore = { viewModel.pinsFeedModel.loadMore(context) },
-                            isEnd = { viewModel.pinsFeedModel.isEnd },
+                            items = uiState.pins.items,
+                            onLoadMore = {
+                                testOverrides?.onPinsLoadMore?.invoke()
+                                    ?: viewModel.pinsFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.pins.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_PINS_LIST_TAG),
+                            key = { it.id },
                         ) { pin ->
-                            PinListItem(pin)
+                            PinListItem(
+                                pin = pin,
+                                itemTag = peopleScreenPinItemTag(pin.id),
+                            )
                         }
                     }
 
                     6 -> {
                         // 专栏
                         PaginatedList(
-                            items = viewModel.columnsFeedModel.allData,
-                            onLoadMore = { viewModel.columnsFeedModel.loadMore(context) },
-                            isEnd = { viewModel.columnsFeedModel.isEnd },
+                            items = uiState.columns.items,
+                            onLoadMore = {
+                                testOverrides?.onColumnsLoadMore?.invoke()
+                                    ?: viewModel.columnsFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.columns.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_COLUMNS_LIST_TAG),
+                            key = { it.id },
                         ) { column ->
-                            ColumnListItem(column)
+                            ColumnListItem(
+                                column = column,
+                                itemTag = peopleScreenColumnItemTag(column.id),
+                            )
                         }
                     }
 
                     7 -> {
                         // 粉丝
                         PaginatedList(
-                            items = viewModel.followersFeedModel.allData,
-                            onLoadMore = { viewModel.followersFeedModel.loadMore(context) },
-                            isEnd = { viewModel.followersFeedModel.isEnd },
+                            items = uiState.followers.items,
+                            onLoadMore = {
+                                testOverrides?.onFollowersLoadMore?.invoke()
+                                    ?: viewModel.followersFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.followers.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_FOLLOWERS_LIST_TAG),
+                            key = { it.id },
                         ) { people ->
-                            PeopleListItem(people)
+                            PeopleListItem(
+                                people = people,
+                                itemTag = peopleScreenFollowerItemTag(people.id),
+                                actionTag = peopleScreenFollowerActionTag(people.id),
+                            )
                         }
                     }
 
                     8 -> {
                         // 关注
                         PaginatedList(
-                            items = viewModel.followingFeedModel.allData,
-                            onLoadMore = { viewModel.followingFeedModel.loadMore(context) },
-                            isEnd = { viewModel.followingFeedModel.isEnd },
+                            items = uiState.following.items,
+                            onLoadMore = {
+                                testOverrides?.onFollowingLoadMore?.invoke()
+                                    ?: viewModel.followingFeedModel.loadMore(context)
+                            },
+                            isEnd = { uiState.following.isEnd },
                             footer = ProgressIndicatorFooter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag(PEOPLE_SCREEN_FOLLOWING_LIST_TAG),
+                            key = { it.id },
                         ) { people ->
-                            PeopleListItem(people)
+                            PeopleListItem(
+                                people = people,
+                                itemTag = peopleScreenFollowingItemTag(people.id),
+                                actionTag = peopleScreenFollowingActionTag(people.id),
+                            )
                         }
                     }
                 }
@@ -679,11 +1041,13 @@ fun PeopleScreen(
 @Composable
 private fun CollectionListItem(
     collection: DataHolder.Collection,
+    itemTag: String? = null,
 ) {
     val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
                 // TODO: Navigate to collection detail
                 Toast
@@ -710,11 +1074,13 @@ private fun CollectionListItem(
 @Composable
 private fun QuestionListItem(
     question: DataHolder.Question,
+    itemTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
                 navigator.onNavigate(Question(question.id, question.title))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -735,11 +1101,13 @@ private fun QuestionListItem(
 @Composable
 private fun PinListItem(
     pin: DataHolder.Pin,
+    itemTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
                 navigator.onNavigate(Pin(pin.id.toLong()))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -763,11 +1131,13 @@ private fun PinListItem(
 @Composable
 private fun ColumnListItem(
     column: DataHolder.Column,
+    itemTag: String? = null,
 ) {
     val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
                 // TODO: Navigate to column detail
                 Toast
@@ -807,11 +1177,14 @@ private fun ColumnListItem(
 @Composable
 private fun PeopleListItem(
     people: DataHolder.People,
+    itemTag: String? = null,
+    actionTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -868,6 +1241,7 @@ private fun PeopleListItem(
                     ),
                 )
             },
+            modifier = if (actionTag != null) Modifier.testTag(actionTag) else Modifier,
         ) {
             Text("查看")
         }
@@ -875,10 +1249,11 @@ private fun PeopleListItem(
 }
 
 @Composable
-private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}) {
+private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}, tag: String? = null) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .then(if (tag != null) Modifier.testTag(tag) else Modifier)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 8.dp),
@@ -892,6 +1267,8 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}) {
 private fun SortBar(
     currentSort: String,
     onSortChange: (String) -> Unit,
+    hotTag: String? = null,
+    timeTag: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -901,7 +1278,9 @@ private fun SortBar(
     ) {
         OutlinedButton(
             onClick = { onSortChange("voteups") },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(if (hotTag != null) Modifier.testTag(hotTag) else Modifier),
             shape = RoundedCornerShape(8.dp),
             colors = if (currentSort == "voteups") {
                 ButtonDefaults.outlinedButtonColors(
@@ -916,7 +1295,9 @@ private fun SortBar(
         }
         OutlinedButton(
             onClick = { onSortChange("created") },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(if (timeTag != null) Modifier.testTag(timeTag) else Modifier),
             shape = RoundedCornerShape(8.dp),
             colors = if (currentSort == "created") {
                 ButtonDefaults.outlinedButtonColors(
@@ -935,9 +1316,12 @@ private fun SortBar(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UserInfoHeader(
-    viewModel: PersonViewModel,
+    profile: PeopleProfileUiState,
     pagerState: PagerState,
     modifier: Modifier = Modifier,
+    onFollowToggle: () -> Unit,
+    onBlockToggle: () -> Unit,
+    onRecommendationBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -950,9 +1334,10 @@ private fun UserInfoHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AsyncImage(
-                model = viewModel.avatar,
+                model = profile.avatar,
                 contentDescription = "用户头像",
                 modifier = Modifier
+                    .testTag(PEOPLE_SCREEN_AVATAR_TAG)
                     .padding(end = 16.dp)
                     .size(80.dp)
                     .clip(CircleShape)
@@ -960,14 +1345,14 @@ private fun UserInfoHeader(
                         OpenImageDislog(
                             context,
                             AccountData.httpClient(context),
-                            viewModel.avatar.substringBefore("_") + ".jpg",
+                            profile.avatar.substringBefore("_") + ".jpg",
                         ).show()
                     },
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(viewModel.name, style = MaterialTheme.typography.titleLarge)
+                Text(profile.name, style = MaterialTheme.typography.titleLarge)
                 Text(
-                    viewModel.headline,
+                    profile.headline,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -980,26 +1365,26 @@ private fun UserInfoHeader(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            StatItem("回答", viewModel.answerCount, onClick = {
+            StatItem("回答", profile.answerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(0)
                 }
-            })
-            StatItem("文章", viewModel.articleCount, onClick = {
+            }, tag = PEOPLE_SCREEN_ANSWER_COUNT_TAG)
+            StatItem("文章", profile.articleCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(1)
                 }
-            })
-            StatItem("粉丝", viewModel.followerCount, onClick = {
+            }, tag = PEOPLE_SCREEN_ARTICLE_COUNT_TAG)
+            StatItem("粉丝", profile.followerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(7)
                 }
-            })
-            StatItem("关注", viewModel.followingCount, onClick = {
+            }, tag = PEOPLE_SCREEN_FOLLOWER_COUNT_TAG)
+            StatItem("关注", profile.followingCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(8)
                 }
-            })
+            }, tag = PEOPLE_SCREEN_FOLLOWING_COUNT_TAG)
         }
         Row(
             modifier = Modifier
@@ -1007,44 +1392,23 @@ private fun UserInfoHeader(
                 .padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
-            OutlinedButton(onClick = {
-                coroutineScope.launch {
-                    try {
-                        viewModel.toggleFollow(context)
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }) {
-                Text(if (viewModel.isFollowing) "取消关注" else "关注")
+            OutlinedButton(
+                onClick = onFollowToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG),
+            ) {
+                Text(if (profile.isFollowing) "取消关注" else "关注")
             }
-            OutlinedButton(onClick = {
-                coroutineScope.launch {
-                    try {
-                        viewModel.toggleBlock(context)
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }) {
-                Text(if (viewModel.isBlocking) "取消拉黑" else "拉黑")
+            OutlinedButton(
+                onClick = onBlockToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG),
+            ) {
+                Text(if (profile.isBlocking) "取消拉黑" else "拉黑")
             }
-            OutlinedButton(onClick = {
-                coroutineScope.launch {
-                    try {
-                        viewModel.toggleRecommendationBlock(context)
-                        Toast
-                            .makeText(
-                                context,
-                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }) {
-                Text(if (viewModel.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+            OutlinedButton(
+                onClick = onRecommendationBlockToggle,
+                modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
+            ) {
+                Text(if (profile.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
             }
         }
     }

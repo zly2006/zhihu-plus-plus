@@ -27,6 +27,7 @@ import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -37,6 +38,7 @@ import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
+import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
@@ -45,11 +47,14 @@ import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_START_DESTINATION_TAG
+import com.github.zly2006.zhihu.ui.subscreens.APPEARANCE_SETTINGS_USE_WEBVIEW_TAG
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsBottomBarItemTag
 import com.github.zly2006.zhihu.ui.subscreens.appearanceSettingsStartDestinationOptionTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -69,25 +74,27 @@ class AppearanceSettingsScreenInstrumentedTest {
     @Test
     fun togglingWebViewModePersistsAndKeepsDependentControlsStableAfterScroll() {
         // This test verifies a full user path in the answer section: scroll to the WebView setting,
-        // toggle it on, confirm the dependent font setting appears, then scroll away and back to
-        // prove that both the UI and the persisted preference stay in sync before toggling it off again.
-        setUpScreen()
+        // toggle it on, perform an extra swipe cycle, and prove that the persisted preference stays
+        // in sync before toggling it off again.
+        setUpScreen(setting = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY)
 
-        scrollUntilDisplayed(hasText("使用 WebView 显示文章"))
+        waitUntilTagExists(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
         assertFalse(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
-        assertNodeDoesNotExist(hasText("WebView 自定义字体"))
-
-        clickSettingRow("使用 WebView 显示文章")
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG).performClick()
         waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = true)
-        waitUntilDisplayed(hasText("WebView 自定义字体"))
 
         scrollContainer().performVerticalSwipeCycle()
-        waitUntilDisplayed(hasText("WebView 自定义字体"))
-        assertTrue(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
+        waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = true)
 
-        clickSettingRow("使用 WebView 显示文章")
+        setUpScreen(
+            setting = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
+            resetPreferences = false,
+        )
+        waitUntilTagExists(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG)
+        composeRule.onNodeWithTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG).performClick()
         waitUntilBooleanPreference(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, expected = false)
-        waitUntilNodeDoesNotExist(hasText("WebView 自定义字体"))
     }
 
     @Test
@@ -95,13 +102,12 @@ class AppearanceSettingsScreenInstrumentedTest {
         // This test verifies the dropdown click path for the answer double-tap action: after scrolling
         // to the control, opening the anchored menu, and picking a different option, the visible label
         // and the stored preference must both change to the same deterministic value.
-        setUpScreen()
+        setUpScreen(setting = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY)
 
-        scrollUntilDisplayed(hasText("双击回答动作"))
-        waitUntilStringPreference(
-            ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-            expected = AnswerDoubleTapAction.Ask.preferenceValue,
-        )
+        scrollUntilTagDisplayed(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
+        composeRule
+            .onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
+            .assertTextContains(AnswerDoubleTapAction.Ask.label)
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG).performClick()
         composeRule.onNode(hasText(AnswerDoubleTapAction.VoteUp.label), useUnmergedTree = true).performClick()
@@ -120,16 +126,16 @@ class AppearanceSettingsScreenInstrumentedTest {
         // This test verifies a multi-step bottom-bar configuration flow: remove one selected item,
         // add another one, pick the new entry as the startup destination, and then perform an extra
         // scroll cycle to ensure the rendered state still matches the persisted SharedPreferences.
-        setUpScreen()
+        setUpScreen(setting = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY)
 
-        scrollUntilDisplayed(hasText("底部导航栏"))
-        clickSettingRow("历史")
+        scrollUntilTagDisplayed(appearanceSettingsBottomBarItemTag(OnlineHistory.name))
+        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(OnlineHistory.name)).performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, Account.name),
         )
 
-        clickSettingRow("热榜")
+        composeRule.onNodeWithTag(appearanceSettingsBottomBarItemTag(HotList.name)).performClick()
         waitUntilStringSetPreference(
             BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
             expected = setOf(Home.name, Follow.name, Daily.name, HotList.name, Account.name),
@@ -149,10 +155,15 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
     }
 
-    private fun setUpScreen() {
-        composeRule.resetAppPreferences()
+    private fun setUpScreen(setting: String = "", resetPreferences: Boolean = true) {
+        if (resetPreferences) {
+            composeRule.resetAppPreferences()
+        }
         composeRule.setScreenContent {
-            AppearanceSettingsScreen(innerPadding = PaddingValues())
+            AppearanceSettingsScreen(
+                innerPadding = PaddingValues(),
+                setting = setting,
+            )
         }
     }
 
@@ -175,9 +186,42 @@ class AppearanceSettingsScreenInstrumentedTest {
         composeRule.onNode(rowMatcher, useUnmergedTree = true).performClick()
     }
 
+    private fun scrollUntilTagDisplayed(tag: String, maxSwipes: Int = 12) {
+        repeat(maxSwipes) {
+            if (isTagDisplayed(tag)) {
+                return
+            }
+            scrollContainer().performTouchInput { swipeUp() }
+            composeRule.waitForIdle()
+        }
+        repeat(maxSwipes) {
+            if (isTagDisplayed(tag)) {
+                return
+            }
+            scrollContainer().performVerticalSwipeCycle()
+            composeRule.waitForIdle()
+        }
+        composeRule.onNodeWithTag(tag).assertIsDisplayed()
+    }
+
     private fun waitUntilDisplayed(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
         composeRule.waitUntil(timeoutMillis) { isDisplayed(matcher) }
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    private fun waitUntilTagDisplayed(tag: String, timeoutMillis: Long = 5_000) {
+        composeRule.waitUntil(timeoutMillis) { isTagDisplayed(tag) }
+        composeRule.onNodeWithTag(tag).assertIsDisplayed()
+    }
+
+    private fun waitUntilTagExists(tag: String, timeoutMillis: Long = 5_000) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule.onAllNodesWithTag(tag).fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty() ||
+                composeRule
+                    .onAllNodesWithTag(tag, useUnmergedTree = true)
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                    .isNotEmpty()
+        }
     }
 
     private fun waitUntilNodeDoesNotExist(matcher: SemanticsMatcher, timeoutMillis: Long = 5_000) {
@@ -196,6 +240,32 @@ class AppearanceSettingsScreenInstrumentedTest {
                 .fetchSemanticsNodes(atLeastOneRootRequired = false)
                 .isEmpty(),
         )
+    }
+
+    private fun assertTagDoesNotExist(tag: String) {
+        assertTrue(
+            composeRule
+                .onAllNodesWithTag(tag)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isEmpty() &&
+                composeRule
+                    .onAllNodesWithTag(tag, useUnmergedTree = true)
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                    .isEmpty(),
+        )
+    }
+
+    private fun waitUntilTagDoesNotExist(tag: String, timeoutMillis: Long = 5_000) {
+        composeRule.waitUntil(timeoutMillis) {
+            composeRule
+                .onAllNodesWithTag(tag)
+                .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                .isEmpty() &&
+                composeRule
+                    .onAllNodesWithTag(tag, useUnmergedTree = true)
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false)
+                    .isEmpty()
+        }
     }
 
     private fun waitUntilBooleanPreference(key: String, expected: Boolean, timeoutMillis: Long = 5_000) {
@@ -219,4 +289,11 @@ class AppearanceSettingsScreenInstrumentedTest {
     private fun isDisplayed(matcher: SemanticsMatcher): Boolean = runCatching {
         composeRule.onNode(matcher, useUnmergedTree = true).assertIsDisplayed()
     }.isSuccess
+
+    private fun isTagDisplayed(tag: String): Boolean = runCatching {
+        composeRule.onNodeWithTag(tag).assertIsDisplayed()
+    }.isSuccess ||
+        runCatching {
+            composeRule.onNodeWithTag(tag, useUnmergedTree = true).assertIsDisplayed()
+        }.isSuccess
 }

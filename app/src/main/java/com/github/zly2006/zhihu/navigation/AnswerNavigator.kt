@@ -207,6 +207,9 @@ class QuestionAnswerNavigator(
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
+                createdAt = detail.createdTime,
+                updatedAt = detail.updatedTime,
+                ipInfo = detail.ipInfo,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -300,6 +303,9 @@ class CollectionAnswerNavigator(
                     content = detail.content,
                     voteUpCount = detail.voteupCount,
                     commentCount = detail.commentCount,
+                    createdAt = detail.createdTime,
+                    updatedAt = detail.updatedTime,
+                    ipInfo = detail.ipInfo,
                     sourceLabel = sourceName,
                 )
             } else {
@@ -331,6 +337,9 @@ class CollectionAnswerNavigator(
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
+                createdAt = detail.createdTime,
+                updatedAt = detail.updatedTime,
+                ipInfo = detail.ipInfo,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -356,6 +365,9 @@ class CollectionAnswerNavigator(
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
+                createdAt = detail.createdTime,
+                updatedAt = detail.updatedTime,
+                ipInfo = detail.ipInfo,
                 sourceLabel = sourceName,
             )
         } catch (e: Exception) {
@@ -476,6 +488,9 @@ class PaginationInfoNavigator(
             content = detail.content,
             voteUpCount = detail.voteupCount,
             commentCount = detail.commentCount,
+            createdAt = detail.createdTime,
+            updatedAt = detail.updatedTime,
+            ipInfo = detail.ipInfo,
             sourceLabel = sourceName,
         )
     }

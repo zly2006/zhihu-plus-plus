@@ -105,6 +105,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -113,14 +114,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -128,6 +133,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -180,6 +186,47 @@ import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+
+const val ARTICLE_SCREEN_TOP_BACK_TAG = "articleScreen:topBack"
+const val ARTICLE_SCREEN_TOP_ACTIONS_TAG = "articleScreen:topActions"
+const val ARTICLE_SCREEN_CONTENT_TAG = "articleScreen:content"
+const val ARTICLE_SCREEN_BOOKMARK_TAG = "articleScreen:bookmark"
+const val ARTICLE_SCREEN_COMMENT_TAG = "articleScreen:comment"
+const val ARTICLE_SCREEN_ACTIONS_MENU_TAG = "articleScreen:actionsMenu"
+const val ARTICLE_SCREEN_ACTION_SHARE_TAG = "articleScreen:actionShare"
+const val ARTICLE_SCREEN_ACTION_SUMMARY_TAG = "articleScreen:actionSummary"
+const val ARTICLE_SCREEN_ACTION_EXPORT_TAG = "articleScreen:actionExport"
+const val ARTICLE_SCREEN_ACTION_COPY_LINK_TAG = "articleScreen:actionCopyLink"
+const val ARTICLE_SCREEN_ACTION_OPEN_IN_BROWSER_TAG = "articleScreen:actionOpenInBrowser"
+const val ARTICLE_SCREEN_SUMMARY_SHEET_TAG = "articleScreen:summarySheet"
+const val ARTICLE_SCREEN_EXPORT_DIALOG_TAG = "articleScreen:exportDialog"
+const val ARTICLE_SCREEN_COLLECTION_DIALOG_TAG = "articleScreen:collectionDialog"
+const val ARTICLE_SCREEN_COMMENT_SHEET_TAG = "articleScreen:commentSheet"
+const val ARTICLE_SCREEN_DOUBLE_TAP_DIALOG_TAG = "articleScreen:doubleTapDialog"
+const val ARTICLE_SCREEN_VOTE_UP_TAG = "articleScreen:voteUp"
+const val ARTICLE_SCREEN_VOTE_DOWN_TAG = "articleScreen:voteDown"
+const val ARTICLE_SCREEN_DOUBLE_TAP_SURFACE_TAG = "articleScreen:doubleTapSurface"
+
+data class ArticleScreenTestHooks(
+    val onTopAppBarBackClick: (() -> Unit)? = null,
+    val onBookmarkClick: (() -> Unit)? = null,
+    val onCommentClick: (() -> Unit)? = null,
+    val onAskDoubleTapAction: (() -> Unit)? = null,
+    val onShare: ((String) -> Unit)? = null,
+    val onSummaryRequest: (() -> Unit)? = null,
+    val onExportRequest: (() -> Unit)? = null,
+    val onOpenInBrowser: ((Article) -> Unit)? = null,
+)
+
+@Stable
+private class ArticleOverscrollState {
+    var scrollValue by mutableIntStateOf(0)
+    var maxScrollValue by mutableIntStateOf(0)
+    var maxObservedScrollValue by mutableIntStateOf(0)
+    var isScrollingUp by mutableStateOf(false)
+    var isScrollInProgress by mutableStateOf(false)
+    var directionAnchorScrollValue by mutableIntStateOf(0)
+}
 
 @Composable
 private fun rememberBottomBarAvoidingBringIntoViewSpec(
@@ -279,11 +326,13 @@ fun ArticleActionsMenu(
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
     onExportRequest: () -> Unit,
+    testHooks: ArticleScreenTestHooks? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
     @Composable
     fun MenuActionButton(
+        modifier: Modifier = Modifier,
         icon: @Composable () -> Unit,
         text: String,
         enabled: Boolean = true,
@@ -294,6 +343,7 @@ fun ArticleActionsMenu(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(modifier)
                 .clickable(enabled = enabled) { onClick() },
             shape = RoundedCornerShape(12.dp),
             color = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
@@ -319,6 +369,7 @@ fun ArticleActionsMenu(
 
     @Composable
     fun MenuActionButton(
+        modifier: Modifier = Modifier,
         icon: ImageVector,
         text: String,
         enabled: Boolean = true,
@@ -327,6 +378,7 @@ fun ArticleActionsMenu(
         onClick: () -> Unit,
     ) {
         MenuActionButton(
+            modifier = modifier,
             icon = {
                 Icon(
                     imageVector = icon,
@@ -412,6 +464,7 @@ fun ArticleActionsMenu(
 
         // 分享按钮
         MenuActionButton(
+            modifier = Modifier.testTag(ARTICLE_SCREEN_ACTION_SHARE_TAG),
             icon = Icons.Filled.Share,
             text = "分享",
             onClick = {
@@ -425,24 +478,28 @@ fun ArticleActionsMenu(
                         "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                     }
                 }
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, text)
+                testHooks?.onShare?.invoke(text) ?: run {
+                    val shareIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                    chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(chooserIntent)
                 }
-                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(chooserIntent)
             },
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
         MenuActionButton(
+            modifier = Modifier.testTag(ARTICLE_SCREEN_ACTION_SUMMARY_TAG),
             icon = Icons.AutoMirrored.Filled.Comment,
             text = "总结本文",
             onClick = {
                 onDismissRequest()
+                testHooks?.onSummaryRequest?.invoke()
                 onSummaryRequest()
             },
         )
@@ -451,6 +508,7 @@ fun ArticleActionsMenu(
 
         // 复制链接按钮
         MenuActionButton(
+            modifier = Modifier.testTag(ARTICLE_SCREEN_ACTION_COPY_LINK_TAG),
             icon = Icons.Filled.ContentCopy,
             text = "复制链接",
             onClick = {
@@ -474,10 +532,12 @@ fun ArticleActionsMenu(
 
         // 导出按钮
         MenuActionButton(
+            modifier = Modifier.testTag(ARTICLE_SCREEN_ACTION_EXPORT_TAG),
             icon = Icons.Filled.GetApp,
             text = "导出文章 (Markdown、图片、HTML、PDF)",
             onClick = {
                 onDismissRequest()
+                testHooks?.onExportRequest?.invoke()
                 onExportRequest()
             },
         )
@@ -485,12 +545,13 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         MenuActionButton(
+            modifier = Modifier.testTag(ARTICLE_SCREEN_ACTION_OPEN_IN_BROWSER_TAG),
             icon = Icons.Outlined.DesktopWindows,
             text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
             onClick = {
-                coroutineScope.launch {
+                onDismissRequest()
+                testHooks?.onOpenInBrowser?.invoke(article) ?: coroutineScope.launch {
                     OpenInBrowser.openUrlInBrowser(context, article)
-                    onDismissRequest()
                     Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
                 }
             },
@@ -506,8 +567,14 @@ fun ArticleActionsMenu(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
+                // Stable hook for instrumented tests that only need to observe the offline menu state.
+                // The production sheet content and behavior stay unchanged.
             ) {
-                Content()
+                Column(
+                    modifier = Modifier.testTag(ARTICLE_SCREEN_ACTIONS_MENU_TAG),
+                ) {
+                    Content()
+                }
             }
         }
     }
@@ -534,7 +601,8 @@ private fun ArticleSummarySheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .verticalScroll(scrollState),
+                .verticalScroll(scrollState)
+                .testTag(ARTICLE_SCREEN_SUMMARY_SHEET_TAG),
         ) {
             Text("总结本文", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(12.dp))
@@ -636,6 +704,7 @@ fun ArticleScreen(
     viewModel: ArticleViewModel,
     // 仅用于master 分支
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    testHooks: ArticleScreenTestHooks? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -644,6 +713,7 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val useWebView = preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
 
     var isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
     var autoHideArticleBottomBar by remember {
@@ -653,8 +723,9 @@ fun ArticleScreen(
         mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
     }
     var pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
-    var previousScrollValue by remember { mutableIntStateOf(0) }
-    var isScrollingUp by remember { mutableStateOf(false) }
+    val articleOverscrollState = remember { ArticleOverscrollState() }
+    var showTopBar by remember { mutableStateOf(true) }
+    var showBottomBar by remember { mutableStateOf(true) }
     val density = LocalDensity.current
     val scrollDeltaThreshold = with(density) { ScrollThresholdDp.toPx() }
     var topBarHeight by remember { mutableIntStateOf(0) }
@@ -686,7 +757,6 @@ fun ArticleScreen(
     val bottomBarOffset = remember { Animatable(0f) }
     var topBarHeightPx by remember { mutableFloatStateOf(0f) }
     var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
-    var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -706,7 +776,10 @@ fun ArticleScreen(
     fun performAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
         when (action) {
             AnswerDoubleTapAction.None -> Unit
-            AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
+            AnswerDoubleTapAction.Ask -> {
+                testHooks?.onAskDoubleTapAction?.invoke()
+                showDoubleTapActionDialog = true
+            }
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
             AnswerDoubleTapAction.OpenComments -> showComments = true
         }
@@ -725,6 +798,142 @@ fun ArticleScreen(
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
         performAnswerDoubleTapAction(answerDoubleTapAction)
+    }
+
+    fun updateScrollDirection(contentDelta: Float) {
+        val projectedScroll = (
+            articleOverscrollState.scrollValue.toFloat() + contentDelta
+        ).coerceIn(0f, articleOverscrollState.maxScrollValue.toFloat().coerceAtLeast(0f))
+        val deltaFromAnchor = projectedScroll - articleOverscrollState.directionAnchorScrollValue.toFloat()
+        if (abs(deltaFromAnchor) > scrollDeltaThreshold) {
+            articleOverscrollState.isScrollingUp = deltaFromAnchor < 0f
+            articleOverscrollState.directionAnchorScrollValue = projectedScroll.toInt()
+        }
+    }
+
+    fun updateBarOffsets(contentDelta: Float) {
+        if (!useDuo3ArticleBar || isBarSnapping || contentDelta == 0f) return
+
+        val projectedMaxScroll = articleOverscrollState.maxScrollValue.toFloat().coerceAtLeast(0f)
+        val projectedScroll = (
+            articleOverscrollState.scrollValue.toFloat() + contentDelta
+        ).coerceIn(0f, projectedMaxScroll)
+        if (projectedScroll <= 0f) {
+            if (topBarOffset.value != 0f || bottomBarOffset.value != 0f) {
+                coroutineScope.launch {
+                    topBarOffset.snapTo(0f)
+                    bottomBarOffset.snapTo(0f)
+                }
+            }
+            return
+        }
+
+        val distanceFromBottom = (projectedMaxScroll - projectedScroll).coerceAtLeast(0f)
+        if (isTitleAutoHide && topBarHeightPx > 0f) {
+            val deltaBasedOffset = (topBarOffset.value - contentDelta).coerceIn(-topBarHeightPx, 0f)
+            val adjustedOffset = if (distanceFromBottom < topBarHeightPx) {
+                maxOf((-distanceFromBottom).coerceIn(-topBarHeightPx, 0f), deltaBasedOffset)
+            } else {
+                deltaBasedOffset
+            }
+            if (adjustedOffset != topBarOffset.value) {
+                coroutineScope.launch { topBarOffset.snapTo(adjustedOffset) }
+            }
+        }
+
+        if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+            val deltaBasedOffset = (bottomBarOffset.value + contentDelta).coerceIn(0f, bottomBarHeightPx)
+            val adjustedOffset = if (distanceFromBottom < bottomBarHeightPx) {
+                // The action bar is intentionally floating. When the reader approaches the
+                // terminal scroll range, move the bar away instead of shifting the content.
+                maxOf((bottomBarHeightPx - distanceFromBottom).coerceIn(0f, bottomBarHeightPx), deltaBasedOffset)
+            } else {
+                deltaBasedOffset
+            }
+            if (adjustedOffset != bottomBarOffset.value) {
+                coroutineScope.launch { bottomBarOffset.snapTo(adjustedOffset) }
+            }
+        }
+    }
+
+    fun updateLegacyBarVisibility(contentDelta: Float) {
+        if (useDuo3ArticleBar || contentDelta == 0f) return
+
+        val projectedMaxScroll = articleOverscrollState.maxScrollValue.toFloat().coerceAtLeast(0f)
+        val projectedScroll = (
+            articleOverscrollState.scrollValue.toFloat() + contentDelta
+        ).coerceIn(0f, projectedMaxScroll)
+
+        showTopBar = when {
+            !isTitleAutoHide -> true
+            articleOverscrollState.maxScrollValue <= topBarHeight -> true
+            projectedScroll < topBarHeight -> true
+            else -> contentDelta < 0f
+        }
+        showBottomBar = when {
+            !autoHideArticleBottomBar -> true
+            articleOverscrollState.maxScrollValue <= 0 -> true
+            projectedScroll <= 0f -> true
+            else -> contentDelta < 0f
+        }
+    }
+
+    suspend fun snapBarsAfterScrollStops() {
+        if (!useDuo3ArticleBar) return
+
+        val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
+            if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
+        } else {
+            topBarOffset.value
+        }
+
+        val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+            if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
+        } else {
+            bottomBarOffset.value
+        }
+
+        val topInNaturalArea = articleOverscrollState.scrollValue.toFloat() <= topBarHeightPx
+        val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
+        val scrollCompensation = topDelta
+
+        if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
+            try {
+                isBarSnapping = true
+                kotlinx.coroutines.coroutineScope {
+                    launch { topBarOffset.animateTo(topTarget, tween(150)) }
+                    launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
+                    if (scrollCompensation != 0f) {
+                        launch { scrollState.animateScrollBy(scrollCompensation, tween(150)) }
+                    }
+                }
+            } finally {
+                isBarSnapping = false
+            }
+        }
+    }
+
+    val articleOverscrollConnection = remember(
+        useDuo3ArticleBar,
+        isTitleAutoHide,
+        autoHideArticleBottomBar,
+        scrollDeltaThreshold,
+    ) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                val contentDelta = -available.y
+                if (contentDelta == 0f) return Offset.Zero
+                articleOverscrollState.isScrollInProgress = true
+                updateScrollDirection(contentDelta)
+                updateLegacyBarVisibility(contentDelta)
+                updateBarOffsets(contentDelta)
+                return Offset.Zero
+            }
+        }
     }
 
     val answerDoubleTapModifier = if (
@@ -775,141 +984,134 @@ fun ArticleScreen(
         }
     }
 
+    LaunchedEffect(article.id) {
+        articleOverscrollState.scrollValue = 0
+        articleOverscrollState.maxScrollValue = 0
+        articleOverscrollState.maxObservedScrollValue = 0
+        articleOverscrollState.isScrollingUp = false
+        articleOverscrollState.isScrollInProgress = false
+        articleOverscrollState.directionAnchorScrollValue = 0
+        showTopBar = true
+        showBottomBar = true
+        topBarOffset.snapTo(0f)
+        bottomBarOffset.snapTo(0f)
+        isBarSnapping = false
+    }
+
     // Reset bar offsets when auto-hide preferences are turned off
     LaunchedEffect(isTitleAutoHide) {
-        if (!isTitleAutoHide) topBarOffset.snapTo(0f)
+        if (!isTitleAutoHide) {
+            showTopBar = true
+            topBarOffset.snapTo(0f)
+        }
     }
     LaunchedEffect(autoHideArticleBottomBar) {
-        if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
+        if (!autoHideArticleBottomBar) {
+            showBottomBar = true
+            bottomBarOffset.snapTo(0f)
+        }
     }
 
-    LaunchedEffect(scrollState.value) {
-        val currentScroll = scrollState.value
-        val scrollDeltaAbs = abs(currentScroll - previousScrollValue)
-        if (scrollDeltaAbs > scrollDeltaThreshold) {
-            isScrollingUp = currentScroll < previousScrollValue
-            previousScrollValue = currentScroll
-        }
-
-        // Skip bar offset tracking during snap animation (scroll is driven programmatically)
-        if (useDuo3ArticleBar && !isBarSnapping) {
-            val delta = currentScroll - previousScrollForBarOffset
-            val atTop = currentScroll == 0
-            val atBottom = currentScroll >= scrollState.maxValue
-
-            // Top bar: force show at top; content-like reveal at bottom
-            if (atTop) {
-                topBarOffset.snapTo(0f)
-            } else if (isTitleAutoHide && topBarHeightPx > 0f) {
-                val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < topBarHeightPx.toInt()) {
-                    // Bottom region: use whichever shows MORE of the bar (closer to 0)
-                    val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-topBarHeightPx, 0f)
-                    topBarOffset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    topBarOffset.snapTo(deltaBasedOffset)
+    LaunchedEffect(scrollState) {
+        snapshotFlow { Triple(scrollState.value, scrollState.maxValue, scrollState.isScrollInProgress) }
+            .collect { (currentScroll, maxScroll, isScrollInProgress) ->
+                articleOverscrollState.scrollValue = currentScroll
+                articleOverscrollState.isScrollInProgress = isScrollInProgress
+                if (maxScroll != Int.MAX_VALUE) {
+                    articleOverscrollState.maxScrollValue = maxScroll
+                    articleOverscrollState.maxObservedScrollValue = max(
+                        articleOverscrollState.maxObservedScrollValue,
+                        maxScroll,
+                    )
+                }
+                if (!isScrollInProgress) {
+                    articleOverscrollState.directionAnchorScrollValue = currentScroll
+                }
+                if (viewModel.rememberedScrollYSync) {
+                    viewModel.rememberedScrollY.value = currentScroll
+                }
+                if (currentScroll == viewModel.rememberedScrollY.value && maxScroll != Int.MAX_VALUE) {
+                    viewModel.rememberedScrollYSync = true
                 }
             }
+    }
 
-            // Bottom bar: force show at top; content-like reveal at bottom
-            if (atTop) {
-                bottomBarOffset.snapTo(0f)
-            } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
-                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                if (distanceFromBottom < bottomBarHeightPx.toInt()) {
-                    // Bottom region: use whichever shows MORE of the bar
-                    val distanceBasedOffset = distanceFromBottom.toFloat().coerceIn(0f, bottomBarHeightPx)
-                    bottomBarOffset.snapTo(minOf(distanceBasedOffset, deltaBasedOffset))
-                } else {
-                    bottomBarOffset.snapTo(deltaBasedOffset)
-                }
-            }
+    LaunchedEffect(
+        articleOverscrollState.scrollValue,
+        articleOverscrollState.maxScrollValue,
+        useDuo3ArticleBar,
+        isTitleAutoHide,
+        autoHideArticleBottomBar,
+        topBarHeight,
+        articleOverscrollState.isScrollingUp,
+    ) {
+        if (useDuo3ArticleBar) return@LaunchedEffect
+        showTopBar = when {
+            !isTitleAutoHide -> true
+            articleOverscrollState.maxScrollValue <= topBarHeight -> true
+            articleOverscrollState.isScrollingUp -> true
+            articleOverscrollState.scrollValue < topBarHeight -> true
+            else -> false
         }
-        previousScrollForBarOffset = currentScroll
+        showBottomBar = when {
+            !autoHideArticleBottomBar -> true
+            articleOverscrollState.maxScrollValue <= 0 -> true
+            articleOverscrollState.isScrollingUp -> true
+            articleOverscrollState.scrollValue == 0 -> true
+            else -> false
+        }
+    }
 
-        if (viewModel.rememberedScrollYSync) {
-            viewModel.rememberedScrollY.value = currentScroll
+    LaunchedEffect(
+        articleOverscrollState.scrollValue,
+        articleOverscrollState.maxScrollValue,
+        useDuo3ArticleBar,
+        isTitleAutoHide,
+        autoHideArticleBottomBar,
+        topBarHeightPx,
+        bottomBarHeightPx,
+        isBarSnapping,
+    ) {
+        if (!useDuo3ArticleBar || isBarSnapping) return@LaunchedEffect
+        if (articleOverscrollState.scrollValue == 0) {
+            if (topBarOffset.value != 0f) topBarOffset.snapTo(0f)
+            if (bottomBarOffset.value != 0f) bottomBarOffset.snapTo(0f)
+            return@LaunchedEffect
         }
-        if (currentScroll == viewModel.rememberedScrollY.value && scrollState.maxValue != Int.MAX_VALUE) {
-            viewModel.rememberedScrollYSync = true
+
+        val distanceFromBottom = (
+            articleOverscrollState.maxScrollValue - articleOverscrollState.scrollValue
+        ).coerceAtLeast(0).toFloat()
+        if (isTitleAutoHide && topBarHeightPx > 0f && distanceFromBottom < topBarHeightPx) {
+            topBarOffset.snapTo(maxOf((-distanceFromBottom).coerceIn(-topBarHeightPx, 0f), topBarOffset.value))
+        }
+        if (autoHideArticleBottomBar && bottomBarHeightPx > 0f && distanceFromBottom < bottomBarHeightPx) {
+            bottomBarOffset.snapTo(
+                maxOf(
+                    (bottomBarHeightPx - distanceFromBottom).coerceIn(0f, bottomBarHeightPx),
+                    bottomBarOffset.value,
+                ),
+            )
         }
     }
 
     // Snap bars to fully visible or fully hidden when scrolling stops,
     // and animate content scroll to follow the snap
-    LaunchedEffect(scrollState.isScrollInProgress) {
-        if (!useDuo3ArticleBar) return@LaunchedEffect
-        if (!scrollState.isScrollInProgress) {
-            val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
-                if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
-            } else {
-                topBarOffset.value
-            }
-
-            val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
-                if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
-            } else {
-                bottomBarOffset.value
-            }
-
-            // Only compensate scroll for the top bar near the top
-            // Bottom bar: no scroll compensation (distance-based reveal handles it)
-            val topInNaturalArea = scrollState.value <= topBarHeightPx
-            val topDelta = if (topInNaturalArea) topBarOffset.value - topTarget else 0f
-            val scrollCompensation = topDelta
-
-            if (topTarget != topBarOffset.value || bottomTarget != bottomBarOffset.value) {
-                try {
-                    isBarSnapping = true
-                    kotlinx.coroutines.coroutineScope {
-                        launch { topBarOffset.animateTo(topTarget, tween(150)) }
-                        launch { bottomBarOffset.animateTo(bottomTarget, tween(150)) }
-                        if (scrollCompensation != 0f) {
-                            launch { scrollState.animateScrollBy(scrollCompensation, tween(150)) }
-                        }
-                    }
-                } finally {
-                    isBarSnapping = false
-                }
-            }
+    LaunchedEffect(
+        articleOverscrollState.isScrollInProgress,
+        useDuo3ArticleBar,
+        isTitleAutoHide,
+        autoHideArticleBottomBar,
+        topBarHeightPx,
+        bottomBarHeightPx,
+        articleOverscrollState.scrollValue,
+    ) {
+        if (!articleOverscrollState.isScrollInProgress) {
+            snapBarsAfterScrollStops()
         }
     }
 
-    LaunchedEffect(article.id) {
-        viewModel.loadArticle(context)
-        viewModel.loadCollections(context)
-    }
-
-    // Master-style bar visibility (direction-based, used when useDuo3ArticleBar is false)
-    val showTopBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > topBarHeight
-            val isNearTop = scrollState.value < topBarHeight
-            when {
-                !isTitleAutoHide -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBar by remember {
-        derivedStateOf {
-            val canScroll = scrollState.maxValue > 0
-            val isNearTop = scrollState.value == 0
-            when {
-                !autoHideArticleBottomBar -> true
-                !canScroll -> true
-                isScrollingUp -> true
-                isNearTop -> true
-                else -> false
-            }
-        }
-    }
-    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+    val showBottomBarSlot = testHooks != null || backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
     val bottomBarObscuredHeightPx by remember(
         showBottomBarSlot,
@@ -963,6 +1165,9 @@ fun ArticleScreen(
                 viewModel.content = pending.content
                 viewModel.voteUpCount = pending.voteUpCount
                 viewModel.commentCount = pending.commentCount
+                viewModel.createdAt = pending.createdAt
+                viewModel.updatedAt = pending.updatedAt
+                viewModel.ipInfo = pending.ipInfo
                 sharedData.pendingInitialContent = null
             }
         }
@@ -1070,6 +1275,7 @@ fun ArticleScreen(
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
+                .nestedScroll(articleOverscrollConnection)
                 .padding(
                     horizontal = 16.dp,
                 ).background(
@@ -1160,6 +1366,7 @@ fun ArticleScreen(
                                         VoteUpState.Neutral -> {
                                             Button(
                                                 onClick = { viewModel.toggleVoteUp(context, VoteUpState.Up) },
+                                                modifier = Modifier.testTag(ARTICLE_SCREEN_VOTE_UP_TAG),
                                                 colors = voteUpNeutralButtonColors(),
                                                 shape = RectangleShape,
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1174,6 +1381,7 @@ fun ArticleScreen(
                                                 colors = voteUpNeutralButtonColors(),
                                                 shape = RectangleShape,
                                                 modifier = Modifier
+                                                    .testTag(ARTICLE_SCREEN_VOTE_DOWN_TAG)
                                                     .height(ButtonDefaults.MinHeight)
                                                     .width(ButtonDefaults.MinHeight),
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1185,6 +1393,7 @@ fun ArticleScreen(
                                         VoteUpState.Up -> {
                                             Button(
                                                 onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
+                                                modifier = Modifier.testTag(ARTICLE_SCREEN_VOTE_UP_TAG),
                                                 colors = voteUpActiveButtonColors(),
                                                 shape = RectangleShape,
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
@@ -1202,7 +1411,9 @@ fun ArticleScreen(
                                                 onClick = { viewModel.toggleVoteUp(context, VoteUpState.Neutral) },
                                                 colors = voteUpActiveButtonColors(),
                                                 shape = RectangleShape,
-                                                modifier = Modifier.height(ButtonDefaults.MinHeight),
+                                                modifier = Modifier
+                                                    .testTag(ARTICLE_SCREEN_VOTE_DOWN_TAG)
+                                                    .height(ButtonDefaults.MinHeight),
                                                 contentPadding = PaddingValues(horizontal = 0.dp),
                                             ) {
                                                 Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
@@ -1219,6 +1430,7 @@ fun ArticleScreen(
                                 ) {
                                     IconButton(
                                         onClick = { showCollectionDialog = true },
+                                        modifier = Modifier.testTag(ARTICLE_SCREEN_BOOKMARK_TAG),
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = if (viewModel.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
                                             contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1261,7 +1473,11 @@ fun ArticleScreen(
                                     }
 
                                     Button(
-                                        onClick = { showComments = true },
+                                        onClick = {
+                                            testHooks?.onCommentClick?.invoke()
+                                            showComments = true
+                                        },
+                                        modifier = Modifier.testTag(ARTICLE_SCREEN_COMMENT_TAG),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -1275,6 +1491,7 @@ fun ArticleScreen(
 
                                     IconButton(
                                         onClick = { showActionsMenu = true },
+                                        modifier = Modifier.testTag(ARTICLE_SCREEN_TOP_ACTIONS_TAG),
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1299,7 +1516,13 @@ fun ArticleScreen(
                         .padding(
                             start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                             end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                        ).verticalScroll(scrollState),
+                        ).then(
+                            if (useWebView) {
+                                Modifier.verticalScroll(scrollState)
+                            } else {
+                                Modifier
+                            },
+                        ),
                 ) {
                     Spacer(
                         modifier = Modifier.height(
@@ -1363,12 +1586,14 @@ fun ArticleScreen(
                     @Suppress("UnusedReceiverParameter") // 确保竖式布局
                     @Composable
                     fun ColumnScope.DateTexts() {
-                        Text(
-                            "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
-                            color = Color.Gray,
-                            fontSize = 11.sp,
-                        )
-                        if (viewModel.createdAt != viewModel.updatedAt) {
+                        if (viewModel.createdAt > 0L) {
+                            Text(
+                                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
+                        if (viewModel.createdAt > 0L && viewModel.updatedAt > 0L && viewModel.createdAt != viewModel.updatedAt) {
                             Text(
                                 "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
                                 color = Color.Gray,
@@ -1386,7 +1611,7 @@ fun ArticleScreen(
                     }
 
                     if (viewModel.content.isNotEmpty()) {
-                        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                        if (useWebView) {
                             WebviewComp(
                                 scrollState = scrollState,
 //                            existingWebView = sharedData?.getOrCreateMainWebView(context),
@@ -1417,8 +1642,12 @@ fun ArticleScreen(
                             Spacer(Modifier.height(10.dp))
                             RenderMarkdown(
                                 html = viewModel.content,
-                                modifier = Modifier.fuckHonorService(),
+                                modifier = Modifier
+                                    .fuckHonorService()
+                                    .testTag(ARTICLE_SCREEN_CONTENT_TAG),
+                                scrollState = scrollState,
                                 selectable = true,
+                                enableScroll = true,
                             )
                         }
                     }
@@ -1429,7 +1658,7 @@ fun ArticleScreen(
                         if (!pinAnswerDate) {
                             DateTexts()
                         }
-                        if (viewModel.ipInfo != null) {
+                        if (!viewModel.ipInfo.isNullOrBlank()) {
                             Text(
                                 "IP属地：${viewModel.ipInfo}",
                                 color = Color.Gray,
@@ -1446,15 +1675,11 @@ fun ArticleScreen(
     @OptIn(ExperimentalMaterial3Api::class)
     val answerSwitchContent: @Composable () -> Unit = {
         val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-        // 不受到是否收起影响，在topbar最大时是否可以滚动？
-        var scrollStateMaxValue by remember { mutableStateOf(0) }
-        LaunchedEffect(scrollState.maxValue) {
-            if (scrollState.maxValue != Int.MAX_VALUE) {
-                scrollStateMaxValue = max(scrollState.maxValue, scrollStateMaxValue)
-            }
-        }
         Scaffold(
-            modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(articleOverscrollConnection)
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
                 Box(
                     modifier = Modifier
@@ -1472,9 +1697,12 @@ fun ArticleScreen(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
-                                    val activity = context as? MainActivity
-                                    activity?.navController?.popBackStack()
+                                    testHooks?.onTopAppBarBackClick?.invoke() ?: run {
+                                        val activity = context as? MainActivity
+                                        activity?.navController?.popBackStack()
+                                    }
                                 },
+                                modifier = Modifier.testTag(ARTICLE_SCREEN_TOP_BACK_TAG),
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1487,6 +1715,7 @@ fun ArticleScreen(
                             if (useDuo3ArticleActions) {
                                 IconButton(
                                     onClick = { showActionsMenu = true },
+                                    modifier = Modifier.testTag(ARTICLE_SCREEN_TOP_ACTIONS_TAG),
                                 ) {
                                     Icon(
                                         Icons.Filled.MoreVert,
@@ -1567,7 +1796,7 @@ fun ArticleScreen(
                                 }
                             }
                         },
-                        scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
+                        scrollBehavior = if (articleOverscrollState.maxObservedScrollValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(
                             scrolledContainerColor = if (MaterialTheme.colorScheme.surfaceContainer != MaterialTheme.colorScheme.background) {
                                 MaterialTheme.colorScheme.surfaceContainer
@@ -1580,7 +1809,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
-                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+                val showBottomBarCondition = testHooks != null || backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable
@@ -1741,7 +1970,8 @@ fun ArticleScreen(
                                                     context,
                                                     if (viewModel.voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
                                                 )
-                                            }.padding(6.dp, 8.dp, 12.dp, 8.dp),
+                                            }.testTag(ARTICLE_SCREEN_VOTE_UP_TAG)
+                                            .padding(6.dp, 8.dp, 12.dp, 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
@@ -1781,7 +2011,8 @@ fun ArticleScreen(
                                                     context,
                                                     if (viewModel.voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
                                                 )
-                                            }.padding(6.dp, 8.dp, 8.dp, 8.dp),
+                                            }.testTag(ARTICLE_SCREEN_VOTE_DOWN_TAG)
+                                            .padding(6.dp, 8.dp, 8.dp, 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         AnimatedVisibility(visible = viewModel.voteUpState != VoteUpState.Down) {
@@ -1815,7 +2046,11 @@ fun ArticleScreen(
                                 horizontalArrangement = Arrangement.End,
                             ) {
                                 IconButton(
-                                    onClick = { showCollectionDialog = true },
+                                    onClick = {
+                                        testHooks?.onBookmarkClick?.invoke()
+                                        showCollectionDialog = true
+                                    },
+                                    modifier = Modifier.testTag(ARTICLE_SCREEN_BOOKMARK_TAG),
                                     colors = IconButtonDefaults.iconButtonColors(
                                         containerColor = if (viewModel.isFavorited) {
                                             Color(0xFFF57C00).harmonize(MaterialTheme.colorScheme.primary)
@@ -1854,7 +2089,11 @@ fun ArticleScreen(
                                 }
 
                                 Button(
-                                    onClick = { showComments = true },
+                                    onClick = {
+                                        testHooks?.onCommentClick?.invoke()
+                                        showComments = true
+                                    },
+                                    modifier = Modifier.testTag(ARTICLE_SCREEN_COMMENT_TAG),
                                     contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1885,23 +2124,42 @@ fun ArticleScreen(
             },
         ) { innerPadding ->
             CompositionLocalProvider(LocalBringIntoViewSpec provides articleBringIntoViewSpec) {
+                val statusBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                val contentTopPadding by remember(innerPadding.calculateTopPadding(), statusBarTopPadding, topBarOffset.value) {
+                    derivedStateOf {
+                        (
+                            innerPadding.calculateTopPadding() + density.run { topBarOffset.value.toDp() }
+                        ).coerceAtLeast(statusBarTopPadding)
+                    }
+                }
                 Box {
                     Column(
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
-                            .verticalScroll(scrollState)
-                            .padding(innerPadding)
-                            .padding(top = 8.dp),
+                            .padding(
+                                start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                                end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                                bottom = innerPadding.calculateBottomPadding(),
+                            ).padding(top = contentTopPadding + 8.dp)
+                            .then(
+                                if (useWebView) {
+                                    Modifier.verticalScroll(scrollState)
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     ) {
                         @Suppress("UnusedReceiverParameter") // 确保竖式布局
                         @Composable
                         fun ColumnScope.DateTexts() {
-                            Text(
-                                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
-                                color = Color.Gray,
-                                fontSize = 11.sp,
-                            )
-                            if (viewModel.createdAt != viewModel.updatedAt) {
+                            if (viewModel.createdAt > 0L) {
+                                Text(
+                                    "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                                    color = Color.Gray,
+                                    fontSize = 11.sp,
+                                )
+                            }
+                            if (viewModel.createdAt > 0L && viewModel.updatedAt > 0L && viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
                                     "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
                                     color = Color.Gray,
@@ -1919,7 +2177,7 @@ fun ArticleScreen(
                         }
 
                         if (viewModel.content.isNotEmpty()) {
-                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                            if (useWebView) {
                                 WebviewComp(
                                     onDoubleTap = ::handleAnswerDoubleTap,
                                     scrollState = scrollState,
@@ -1948,12 +2206,27 @@ fun ArticleScreen(
                                     )
                                 }
                             } else {
-                                Box(modifier = answerDoubleTapModifier) {
-                                    RenderMarkdown(
-                                        html = viewModel.content,
-                                        modifier = Modifier.fuckHonorService(),
-                                        selectable = true,
-                                    )
+                                Box(
+                                    modifier = answerDoubleTapModifier
+                                        .then(
+                                            if (testHooks != null) {
+                                                Modifier.clickable { handleAnswerDoubleTap() }
+                                            } else {
+                                                Modifier
+                                            },
+                                        ).testTag(ARTICLE_SCREEN_DOUBLE_TAP_SURFACE_TAG),
+                                ) {
+                                    Box {
+                                        RenderMarkdown(
+                                            html = viewModel.content,
+                                            modifier = Modifier
+                                                .fuckHonorService()
+                                                .testTag(ARTICLE_SCREEN_CONTENT_TAG),
+                                            scrollState = scrollState,
+                                            selectable = true,
+                                            enableScroll = true,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1964,7 +2237,7 @@ fun ArticleScreen(
                             if (!pinAnswerDate) {
                                 DateTexts()
                             }
-                            if (viewModel.ipInfo != null) {
+                            if (!viewModel.ipInfo.isNullOrBlank()) {
                                 Text(
                                     "IP属地：${viewModel.ipInfo}",
                                     color = Color.Gray,
@@ -1977,7 +2250,9 @@ fun ArticleScreen(
                     // Skip answer button
                     if (article.type == ArticleType.Answer && buttonSkipAnswer) {
                         var navigatingToNextAnswer by remember { mutableStateOf(false) }
-                        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
+                        val showSkipButton = !autoHideSkipAnswerButton ||
+                            articleOverscrollState.isScrollingUp ||
+                            articleOverscrollState.scrollValue == 0
                         val skipButtonAlpha by animateFloatAsState(
                             targetValue = if (showSkipButton) 1f else 0f,
                             animationSpec = tween(200),
@@ -2041,8 +2316,11 @@ fun ArticleScreen(
                 nextAnswer = nav?.nextAnswer,
                 onNavigatePrevious = navigateToPrevious,
                 onNavigateNext = navigateToNext,
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                isAtTop = { articleOverscrollState.scrollValue == 0 },
+                isAtBottom = {
+                    articleOverscrollState.scrollValue >= articleOverscrollState.maxScrollValue
+                },
+                isContentNonScrollable = articleOverscrollState.maxScrollValue == 0,
                 scrollState = scrollState,
             ) {
                 (if (useDuo3ArticleBar) answerSwitchContent else answerSwitchContentOld)()
@@ -2098,6 +2376,9 @@ fun ArticleScreen(
 
         VerticalReadingProgressBar(
             scrollState = scrollState,
+            scrollValue = articleOverscrollState.scrollValue,
+            maxScrollValue = articleOverscrollState.maxScrollValue,
+            isScrollInProgress = articleOverscrollState.isScrollInProgress,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(
@@ -2120,6 +2401,7 @@ fun ArticleScreen(
             viewModel.requestAiSummary(context)
         },
         onExportRequest = { showExportDialog = true },
+        testHooks = testHooks,
     )
 
     ArticleSummarySheet(
@@ -2147,12 +2429,18 @@ fun ArticleScreen(
         viewModel = viewModel,
         context = context,
     )
+    if (showCollectionDialog) {
+        Box(modifier = Modifier.testTag(ARTICLE_SCREEN_COLLECTION_DIALOG_TAG))
+    }
 
     CommentScreenComponent(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = article,
     )
+    if (showComments) {
+        Box(modifier = Modifier.testTag(ARTICLE_SCREEN_COMMENT_SHEET_TAG))
+    }
     if (showDoubleTapActionDialog) {
         MyModalBottomSheet(
             onDismissRequest = { showDoubleTapActionDialog = false },
@@ -2160,7 +2448,8 @@ fun ArticleScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .testTag(ARTICLE_SCREEN_DOUBLE_TAP_DIALOG_TAG),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
@@ -2214,6 +2503,9 @@ fun ArticleScreen(
         onDismiss = { showExportDialog = false },
         viewModel = viewModel,
     )
+    if (showExportDialog) {
+        Box(modifier = Modifier.testTag(ARTICLE_SCREEN_EXPORT_DIALOG_TAG))
+    }
 }
 
 /**

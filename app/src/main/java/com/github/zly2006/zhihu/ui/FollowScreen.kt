@@ -61,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -86,11 +87,31 @@ class FollowScreenData : ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
 }
 
+const val FOLLOW_SCREEN_TAB_ROW_TAG = "follow_screen_tab_row"
+const val FOLLOW_SCREEN_PAGER_TAG = "follow_screen_pager"
+const val FOLLOWING_USERS_ROW_TAG = "following_users_row"
+const val FOLLOW_RECOMMEND_LIST_TAG = "follow_recommend_list"
+const val FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG = "follow_recommend_refresh_button"
+const val FOLLOW_DYNAMIC_LIST_TAG = "follow_dynamic_list"
+const val FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG = "follow_dynamic_refresh_button"
+
+fun followScreenTabTag(index: Int) = "follow_screen_tab_$index"
+
+fun followingUserItemTag(userId: String) = "following_users_item_$userId"
+
+fun followRecommendItemTag(stableKey: String) = "follow_recommend_item_$stableKey"
+
+fun followDynamicItemTag(stableKey: String) = "follow_dynamic_item_$stableKey"
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FollowScreen(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
+    onTestRecommendRefreshClick: (() -> Unit)? = null,
+    onTestRecommendLoadMore: (() -> Unit)? = null,
+    onTestDynamicRefreshClick: (() -> Unit)? = null,
+    onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
     val viewModel = viewModel<FollowScreenData>()
     val titles = listOf("推荐", "动态")
@@ -111,12 +132,14 @@ fun FollowScreen(
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
         PrimaryTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
-            modifier = Modifier.padding(
-                top = innerPadding.calculateTopPadding(),
-            ),
+            modifier = Modifier
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                ).testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
         ) {
             titles.forEachIndexed { index, title ->
                 Tab(
+                    modifier = Modifier.testTag(followScreenTabTag(index)),
                     selected = viewModel.selectedTabIndex == index,
                     onClick = {
                         viewModel.selectedTabIndex = index
@@ -131,17 +154,23 @@ fun FollowScreen(
 
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(FOLLOW_SCREEN_PAGER_TAG),
         ) { page ->
             when (page) {
                 0 -> FollowRecommendScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = pagerState.currentPage == 0,
+                    onTestRefreshClick = onTestRecommendRefreshClick,
+                    onTestLoadMore = onTestRecommendLoadMore,
                 )
 
                 1 -> FollowDynamicScreen(
                     scrollToTopTrigger = scrollToTopTrigger,
                     isActive = pagerState.currentPage == 1,
+                    onTestRefreshClick = onTestDynamicRefreshClick,
+                    onTestLoadMore = onTestDynamicLoadMore,
                 )
             }
         }
@@ -175,6 +204,7 @@ fun FollowingUsersRow() {
         }
         viewModel.users.isNotEmpty() -> {
             LazyRow(
+                modifier = Modifier.testTag(FOLLOWING_USERS_ROW_TAG),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -182,6 +212,7 @@ fun FollowingUsersRow() {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
+                            .testTag(followingUserItemTag(user.actor.id))
                             .clickable {
                                 navigator.onNavigate(
                                     Person(
@@ -228,6 +259,8 @@ fun FollowingUsersRow() {
 fun FollowRecommendScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    onTestRefreshClick: (() -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowRecommendViewModel by context.viewModels()
@@ -274,16 +307,18 @@ fun FollowRecommendScreen(
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
+                modifier = Modifier.testTag(FOLLOW_RECOMMEND_LIST_TAG),
                 topContent = {
                     item {
                         FollowingUsersRow()
                     }
                 },
-                onLoadMore = { viewModel.loadMore(context) },
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
-                    item,
+                    item = item,
+                    modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
                     onBlockUser = { feedItem ->
                         viewModel.handleBlockUser(context, feedItem) { authorInfo ->
                             userToBlock = authorInfo
@@ -298,8 +333,9 @@ fun FollowRecommendScreen(
 
             if (showRefreshFab) {
                 DraggableRefreshButton(
+                    modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
                     onClick = {
-                        viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
                     },
                 ) {
                     if (viewModel.isLoading) {
@@ -334,6 +370,8 @@ fun FollowRecommendScreen(
 fun FollowDynamicScreen(
     scrollToTopTrigger: Int = 0,
     isActive: Boolean = true,
+    onTestRefreshClick: (() -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: FollowViewModel by context.viewModels()
@@ -380,7 +418,8 @@ fun FollowDynamicScreen(
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
-                onLoadMore = { viewModel.loadMore(context) },
+                modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
                 topContent = {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -389,7 +428,8 @@ fun FollowDynamicScreen(
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
-                    item,
+                    item = item,
+                    modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
                     onLike = {
                         Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
                     },
@@ -410,8 +450,9 @@ fun FollowDynamicScreen(
 
             if (showRefreshFab) {
                 DraggableRefreshButton(
+                    modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
                     onClick = {
-                        viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
                     },
                 ) {
                     if (viewModel.isLoading) {

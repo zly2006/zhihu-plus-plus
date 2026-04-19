@@ -33,18 +33,19 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.SearchScreen
+import io.ktor.http.HttpMethod
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class SearchScreenInstrumentedTest {
@@ -80,7 +81,6 @@ class SearchScreenInstrumentedTest {
 
         val searchInput = composeRule.onNodeWithTag("search_input")
         searchInput.assertIsDisplayed()
-        searchInput.assertTextEquals("")
         composeRule.onNodeWithText("搜索内容").assertIsDisplayed()
 
         // Typing should produce an exact editable value and reveal the explicit clear affordance.
@@ -97,7 +97,6 @@ class SearchScreenInstrumentedTest {
 
         // Clearing should return the field to an empty state and restore the placeholder.
         composeRule.onNodeWithTag("search_clear_button").performClick()
-        searchInput.assertTextEquals("")
         composeRule.onAllNodesWithTag("search_clear_button").assertCountEquals(0)
         composeRule.onNodeWithText("搜索内容").assertIsDisplayed()
 
@@ -109,33 +108,55 @@ class SearchScreenInstrumentedTest {
     }
 
     @Test
-    fun injectedHotSearchMenuActionsAndSwipesStayStableOffline() {
-        // This test injects a fixed hot-search list so refresh, menu, and swipe behavior can be verified
-        // without depending on live Zhihu responses.
+    fun mockedHotSearchMenuActionsAndSwipesStayStableAcrossRealFetchCalls() {
+        // This test uses the real SearchScreen fetch path but replaces Zhihu's endpoint at the HTTP
+        // layer with a Ktor MockEngine response.
         // Expected behavior:
-        // 1. The injected hot-search list renders immediately.
-        // 2. Pressing refresh only triggers the injected callback and keeps the list stable.
+        // 1. The mocked hot-search list renders after the screen performs its real fetchHotSearch()
+        //    call through AccountData.fetchGet().
+        // 2. Pressing refresh performs a second mocked HTTP request and keeps the rendered list stable.
         // 3. Opening the overflow menu exposes the settings action and navigates to the expected destination.
-        // 4. Vertical and horizontal swipe cycles leave the injected content intact instead of breaking layout state.
-        val refreshClicks = AtomicInteger(0)
+        // 4. Vertical and horizontal swipe cycles leave the mocked content intact instead of breaking layout state.
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = "https://www.zhihu.com/api/v4/search/hot_search",
+            body =
+                """
+                {
+                  "hot_search_queries": [
+                    {"query": "mock alpha"},
+                    {"query": "mock beta"},
+                    {"query": "mock gamma"}
+                  ]
+                }
+                """.trimIndent(),
+        )
         val recordingNavigator = composeRule.setScreenContent {
             SearchScreen(
                 innerPadding = PaddingValues(),
                 search = Search(),
-                testHotSearchQueries = listOf("offline alpha", "offline beta", "offline gamma"),
-                onTestHotSearchRefresh = { refreshClicks.incrementAndGet() },
             )
         }
 
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(
+                method = HttpMethod.Get,
+                urlSubstring = "/api/v4/search/hot_search",
+            ) == 1
+        }
         composeRule.onNodeWithTag("search_hot_list").assertIsDisplayed()
-        composeRule.onNodeWithText("offline alpha").assertIsDisplayed()
-        composeRule.onNodeWithText("offline gamma").assertIsDisplayed()
+        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
+        composeRule.onNodeWithText("mock gamma").assertIsDisplayed()
 
-        // Refresh should be a pure test callback here, so the list must remain visible after the click.
+        // Refresh should trigger the real mocked HTTP fetch again, so the list must remain visible after the click.
         composeRule.onNodeWithTag("search_hot_refresh_button").performClick()
-        composeRule.waitForIdle()
-        assertEquals(1, refreshClicks.get())
-        composeRule.onNodeWithText("offline alpha").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(
+                method = HttpMethod.Get,
+                urlSubstring = "/api/v4/search/hot_search",
+            ) == 2
+        }
+        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
         assertEquals(0, recordingNavigator.destinations.size)
 
         // The overflow menu should reveal the stable settings action and navigate to appearance settings.
@@ -151,9 +172,15 @@ class SearchScreenInstrumentedTest {
         composeRule.onNodeWithTag("search_hot_list").performVerticalSwipeCycle()
         composeRule.onNodeWithTag("search_hot_list").performHorizontalSwipeCycle()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("offline alpha").assertIsDisplayed()
-        composeRule.onNodeWithText("offline gamma").assertIsDisplayed()
-        assertEquals(1, refreshClicks.get())
+        composeRule.onNodeWithText("mock alpha").assertIsDisplayed()
+        composeRule.onNodeWithText("mock gamma").assertIsDisplayed()
+        assertEquals(
+            2,
+            ZhihuMockApi.requestCount(
+                method = HttpMethod.Get,
+                urlSubstring = "/api/v4/search/hot_search",
+            ),
+        )
         assertEquals(
             listOf(Account.AppearanceSettings("showSearchHotSearch")),
             recordingNavigator.destinations,

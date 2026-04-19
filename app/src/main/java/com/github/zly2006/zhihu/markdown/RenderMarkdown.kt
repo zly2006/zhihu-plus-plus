@@ -19,9 +19,11 @@ package com.github.zly2006.zhihu.markdown
 
 import android.content.Context
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -142,8 +144,10 @@ fun RenderImage(
 @Composable
 fun RenderMarkdown(
     html: String,
+    scrollState: ScrollState = rememberScrollState(),
     modifier: Modifier = Modifier,
     selectable: Boolean = false,
+    enableScroll: Boolean = true,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     val navigator = LocalNavigator.current
@@ -164,7 +168,8 @@ fun RenderMarkdown(
             Markdown(
                 document = document,
                 imageContent = ::RenderImage,
-                enableScroll = false,
+                scrollState = scrollState,
+                enableScroll = enableScroll,
                 onLinkClick = {
                     resolveContent(it.toUri())?.let(navigator.onNavigate)
                         ?: luoTianYiUrlLauncher(context, it.toUri())
@@ -177,7 +182,8 @@ fun RenderMarkdown(
             document = document,
             modifier = modifier,
             imageContent = ::RenderImage,
-            enableScroll = false,
+            scrollState = scrollState,
+            enableScroll = enableScroll,
             onLinkClick = {
                 resolveContent(it.toUri())?.let(navigator.onNavigate)
                     ?: luoTianYiUrlLauncher(context, it.toUri())

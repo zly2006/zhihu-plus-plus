@@ -28,7 +28,10 @@ import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -137,23 +140,50 @@ object AccountData {
     }
 
     private var httpClient: HttpClient? = null
+    private var httpClientFactoryOverride: ((Context, MutableMap<String, String>?) -> HttpClient)? = null
+
+    private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.applyCommonConfiguration(
+        context: Context,
+        cookies: MutableMap<String, String>?,
+    ) {
+        install(HttpCache)
+        install(HttpCookies) {
+            storage = cookieStorage(context, cookies)
+        }
+        install(ContentNegotiation) {
+            json(json)
+        }
+        install(UserAgent) {
+            agent = data.userAgent
+        }
+    }
+
+    fun createConfiguredHttpClient(
+        context: Context,
+        cookies: MutableMap<String, String>? = null,
+        engine: HttpClientEngine? = null,
+    ): HttpClient = if (engine == null) {
+        HttpClient {
+            applyCommonConfiguration(context, cookies)
+        }
+    } else {
+        HttpClient(engine) {
+            applyCommonConfiguration(context, cookies)
+        }
+    }
+
+    @Synchronized
+    fun overrideHttpClientFactoryForTesting(factory: ((Context, MutableMap<String, String>?) -> HttpClient)?) {
+        httpClient?.close()
+        httpClient = null
+        httpClientFactoryOverride = factory
+    }
 
     fun httpClient(context: Context, cookies: MutableMap<String, String>? = null): HttpClient {
         if (httpClient != null && cookies == null) {
             return httpClient!!
         }
-        val httpClient = HttpClient {
-            install(HttpCache)
-            install(HttpCookies) {
-                storage = cookieStorage(context, cookies)
-            }
-            install(ContentNegotiation) {
-                json(json)
-            }
-            install(UserAgent) {
-                agent = data.userAgent
-            }
-        }
+        val httpClient = httpClientFactoryOverride?.invoke(context, cookies) ?: createConfiguredHttpClient(context, cookies)
         if (context is LifecycleOwner && cookies == null) { // 没有指定cookie
             // 大概率是，包括 MainActivity 等。
             ContextCompat.getMainExecutor(context).execute {
@@ -246,7 +276,7 @@ object AccountData {
     private var lastRefreshCookie = 0L
 
     suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? {
-        val client = this.httpClient ?: httpClient(context)
+        val client = httpClient(context)
         val response = client.request(url) {
             block()
         }

@@ -94,9 +94,9 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         )
         val navigator = setUpScreen()
 
-        composeRule.onNodeWithText("新版本：\n9.9.9").assertIsDisplayed()
-        composeRule.onNodeWithText("更新内容").assertIsDisplayed()
-        composeRule.onNodeWithText("#321").assertIsDisplayed()
+        waitUntilDisplayed(hasText("新版本：\n9.9.9"))
+        waitUntilDisplayed(hasText("更新内容"))
+        waitUntilDisplayed(hasText("修复若干设置项细节", substring = true))
 
         composeRule.onNodeWithText("跳过此版本").performClick()
         waitUntil(timeoutMillis = 5_000) {

@@ -159,8 +159,14 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(QUESTION_SCREEN_LIST_TAG).performHorizontalSwipeCycle()
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-18")))
         composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-18")).assertIsDisplayed()
 
+        composeRule
+            .onNodeWithTag(QUESTION_SCREEN_LIST_TAG)
+            .performScrollToNode(hasTestTag(questionFeedItemTag("offline-question-item-3")))
         composeRule.onNodeWithTag(questionFeedItemTag("offline-question-item-3")).performClick()
 
         assertTrue("Scrolling near the end should trigger the offline load-more seam", loadMoreCount > 0)

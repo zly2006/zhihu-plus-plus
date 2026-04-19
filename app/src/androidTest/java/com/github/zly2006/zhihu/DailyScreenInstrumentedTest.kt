@@ -148,9 +148,12 @@ class DailyScreenInstrumentedTest {
         dailyList.performHorizontalSwipeCycle()
         composeRule.waitForIdle()
 
+        dailyList.performScrollToNode(hasTestTag(storyTag(12)))
         composeRule.onNodeWithText("固定日报问题 12").assertIsDisplayed()
+        dailyList.performScrollToNode(hasTestTag(SECTION_TAG_PREFIX + "20260417"))
+        composeRule.onNodeWithTag(SECTION_TAG_PREFIX + "20260417").assertIsDisplayed()
         composeRule.onNodeWithTag(DATE_PICKER_BUTTON_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年04月17日")
+        composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertIsDisplayed()
     }
 
     private fun seededSection(

@@ -200,6 +200,7 @@ class BlocklistSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).assertIsDisplayed()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).performVerticalSwipeCycle()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.USER_LIST).performHorizontalSwipeCycle()
+        navigator.reset()
         composeRule.onNodeWithTag(BlocklistSettingsTestTags.userItem("offline-user-1")).performClick()
         assertEquals(
             listOf(

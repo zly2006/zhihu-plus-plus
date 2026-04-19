@@ -111,6 +111,17 @@ import io.ktor.http.Url
 import kotlinx.coroutines.DelicateCoroutinesApi
 
 internal const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
+internal const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
+internal const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
+internal const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
+internal const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
+internal const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
+internal const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
+internal const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
+internal const val ACCOUNT_SETTINGS_RECOMMEND_TAG = "accountSettings.recommend"
+internal const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
+internal const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
+internal const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 
 @OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
@@ -119,6 +130,7 @@ fun AccountSettingScreen(
     unreadCount: Int = 0,
     onDismissRequest: () -> Unit = {},
     refreshAccountProfileOnEnter: Boolean = true,
+    testAccountData: AccountData.Data? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -149,7 +161,8 @@ fun AccountSettingScreen(
             putBoolean("developer", isDeveloper)
         }
     }
-    val data by AccountData.asState()
+    val liveData by AccountData.asState()
+    val data = testAccountData ?: liveData
 
     Scaffold(
         modifier = Modifier
@@ -184,15 +197,18 @@ fun AccountSettingScreen(
 
             if (data.login) {
                 Row(
-                    Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp).clickable {
-                        navigator.onNavigate(
-                            Person(
-                                id = data.self?.id ?: "",
-                                urlToken = data.self?.urlToken ?: "",
-                                name = data.username,
-                            ),
-                        )
-                    },
+                    Modifier
+                        .testTag(ACCOUNT_SETTINGS_PROFILE_HEADER_TAG)
+                        .padding(16.dp, 0.dp, 16.dp, 16.dp)
+                        .clickable {
+                            navigator.onNavigate(
+                                Person(
+                                    id = data.self?.id ?: "",
+                                    urlToken = data.self?.urlToken ?: "",
+                                    name = data.username,
+                                ),
+                            )
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AsyncImage(
@@ -207,6 +223,7 @@ fun AccountSettingScreen(
                     Text(
                         text = data.username,
                         style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_PROFILE_NAME_TAG),
                     )
                     Spacer(Modifier.weight(1f))
                     val scanActivityLauncher = rememberLauncherForActivityResult(
@@ -262,6 +279,7 @@ fun AccountSettingScreen(
                     SettingItem(
                         title = { Text("登录知乎") },
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
                             context.startActivity(Intent(context, LoginActivity::class.java))
                         },
@@ -280,11 +298,12 @@ fun AccountSettingScreen(
                     if (data.login) {
                         Column(
                             Modifier
+                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG)
                                 .weight(1f)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
-                                    navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!))
+                                    data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
                                 }.padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -303,6 +322,7 @@ fun AccountSettingScreen(
                         }
                         Column(
                             Modifier
+                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG)
                                 .weight(1f)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -336,6 +356,7 @@ fun AccountSettingScreen(
                         if (shouldShowAccountHistoryShortcut(useDuo3HomeAccount, selectedBottomBarItemKeys)) {
                             Column(
                                 Modifier
+                                    .testTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG)
                                     .weight(1f)
                                     .clip(RoundedCornerShape(4.dp))
                                     .background(MaterialTheme.colorScheme.primaryContainer)
@@ -368,7 +389,9 @@ fun AccountSettingScreen(
                         SettingItem(
                             title = { Text("查看收藏夹") },
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
-                            onClick = { navigator.onNavigate(Collections(AccountData.data.self!!.urlToken!!)) },
+                            onClick = {
+                                data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                            },
                         )
                     }
                 }
@@ -379,6 +402,7 @@ fun AccountSettingScreen(
                     title = { Text("外观与阅读体验") },
                     description = { Text("主题颜色、字体大小等") },
                     icon = { Icon(Icons.Default.Palette, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
 
@@ -386,6 +410,7 @@ fun AccountSettingScreen(
                     title = { Text("推荐系统与内容过滤") },
                     description = { Text("推荐、智能过滤、关键词屏蔽等") },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
 
@@ -393,6 +418,7 @@ fun AccountSettingScreen(
                     title = { Text("系统与更新") },
                     description = { Text("GitHub、更新设置等") },
                     icon = { Icon(Icons.Default.Settings, null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
                 )
 
@@ -400,6 +426,7 @@ fun AccountSettingScreen(
                     SettingItem(
                         title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
                     )
                 }
@@ -488,6 +515,7 @@ fun AccountSettingScreen(
                     title = { Text("开源许可") },
                     description = { Text("查看第三方组件许可证") },
                     icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
+                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
                     onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                 )
             }

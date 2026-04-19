@@ -99,6 +99,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -144,6 +145,50 @@ typealias CommentModel = CommentItem
 private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
 private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
 val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+
+const val COMMENT_SCREEN_LIST_TAG = "comment_screen_list"
+const val COMMENT_REPLY_BANNER_TAG = "comment_reply_banner"
+const val COMMENT_CANCEL_REPLY_TAG = "comment_cancel_reply"
+const val COMMENT_INPUT_TAG = "comment_input"
+const val COMMENT_SEND_BUTTON_TAG = "comment_send_button"
+const val COMMENT_SORT_SCORE_TAG = "comment_sort_score"
+const val COMMENT_SORT_TIME_TAG = "comment_sort_time"
+const val COMMENT_IMAGE_MENU_OPEN_TAG = "comment_image_menu_open"
+const val COMMENT_IMAGE_MENU_BROWSER_TAG = "comment_image_menu_browser"
+const val COMMENT_IMAGE_MENU_SAVE_TAG = "comment_image_menu_save"
+const val COMMENT_IMAGE_MENU_SHARE_TAG = "comment_image_menu_share"
+
+fun commentRowTag(commentId: String) = "comment_row_$commentId"
+
+fun commentAuthorTag(commentId: String) = "comment_author_$commentId"
+
+fun commentReplyToAuthorTag(commentId: String) = "comment_reply_to_author_$commentId"
+
+fun commentReplyButtonTag(commentId: String) = "comment_reply_button_$commentId"
+
+fun commentReplyCountTag(commentId: String) = "comment_reply_count_$commentId"
+
+fun commentLikeButtonTag(commentId: String) = "comment_like_button_$commentId"
+
+fun commentLikeCountTag(commentId: String) = "comment_like_count_$commentId"
+
+fun commentChildButtonTag(commentId: String) = "comment_child_button_$commentId"
+
+fun commentImageTag(commentId: String) = "comment_image_$commentId"
+
+enum class CommentImageMenuAction {
+    Open,
+    OpenInBrowser,
+    Save,
+    Share,
+}
+
+data class CommentScreenTestOverrides(
+    val viewModel: BaseCommentViewModel? = null,
+    val skipInitialLoad: Boolean = false,
+    val onArchiveComment: ((CommentModel) -> Unit)? = null,
+    val onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
+)
 
 @Composable
 fun SwipeToReplyContainer(
@@ -294,20 +339,44 @@ private fun ClickableImageWithMenu(
     httpClient: HttpClient,
     modifier: Modifier = Modifier,
     contentDescription: String = "图片",
+    onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    Box {
+    fun handleAction(action: CommentImageMenuAction) {
+        if (onAction != null) {
+            onAction(action, imageUrl)
+            return
+        }
+        when (action) {
+            CommentImageMenuAction.Open -> OpenImageDislog(context, httpClient, imageUrl).show()
+            CommentImageMenuAction.OpenInBrowser -> luoTianYiUrlLauncher(context, imageUrl.toUri())
+            CommentImageMenuAction.Save -> {
+                coroutineScope.launch {
+                    saveImageToGallery(context, httpClient, imageUrl)
+                }
+            }
+
+            CommentImageMenuAction.Share -> {
+                coroutineScope.launch {
+                    shareImage(context, httpClient, imageUrl)
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier.combinedClickable(
+            onClick = { handleAction(CommentImageMenuAction.Open) },
+            onLongClick = { showContextMenu = true },
+        ),
+    ) {
         AsyncImage(
             model = imageUrl,
             contentDescription = contentDescription,
-            modifier = modifier
-                .combinedClickable(
-                    onClick = { OpenImageDislog(context, httpClient, imageUrl).show() },
-                    onLongClick = { showContextMenu = true },
-                ),
+            modifier = Modifier.fillMaxSize(),
         )
 
         DropdownMenu(
@@ -315,35 +384,35 @@ private fun ClickableImageWithMenu(
             onDismissRequest = { showContextMenu = false },
         ) {
             DropdownMenuItem(
+                modifier = Modifier.testTag(COMMENT_IMAGE_MENU_OPEN_TAG),
                 text = { Text("查看图片") },
                 onClick = {
-                    OpenImageDislog(context, httpClient, imageUrl).show()
+                    handleAction(CommentImageMenuAction.Open)
                     showContextMenu = false
                 },
             )
             DropdownMenuItem(
+                modifier = Modifier.testTag(COMMENT_IMAGE_MENU_BROWSER_TAG),
                 text = { Text("在浏览器中打开") },
                 onClick = {
-                    luoTianYiUrlLauncher(context, imageUrl.toUri())
+                    handleAction(CommentImageMenuAction.OpenInBrowser)
                     showContextMenu = false
                 },
             )
             DropdownMenuItem(
+                modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SAVE_TAG),
                 text = { Text("保存图片") },
                 onClick = {
-                    coroutineScope.launch {
-                        saveImageToGallery(context, httpClient, imageUrl)
-                    }
+                    handleAction(CommentImageMenuAction.Save)
                     showContextMenu = false
                 },
             )
             DropdownMenuItem(
+                modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SHARE_TAG),
                 text = { Text("分享图片") },
                 onClick = {
                     showContextMenu = false
-                    coroutineScope.launch {
-                        shareImage(context, httpClient, imageUrl)
-                    }
+                    handleAction(CommentImageMenuAction.Share)
                 },
             )
         }
@@ -357,26 +426,28 @@ fun CommentScreen(
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
+    testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val context = LocalContext.current
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
+    val resolvedContent = content()
 
     // 根据内容类型选择合适的ViewModel
-    val viewModel: BaseCommentViewModel = when (val content = content()) {
+    val viewModel: BaseCommentViewModel = testOverrides?.viewModel ?: when (resolvedContent) {
         is CommentHolder -> remember {
             // 子评论不进行状态保存
-            ChildCommentViewModel(content)
+            ChildCommentViewModel(resolvedContent)
         }
 
         else -> viewModel {
-            RootCommentViewModel(content)
+            RootCommentViewModel(resolvedContent)
         }
     }
-    val rootContent = when (val content = content()) {
-        is CommentHolder -> content.article
-        else -> content
+    val rootContent = when (resolvedContent) {
+        is CommentHolder -> resolvedContent.article
+        else -> resolvedContent
     }
     val commentBackgroundColor = MaterialTheme.colorScheme.surfaceContainerLow
     val commentInputBarColor = MaterialTheme.colorScheme.surfaceContainer
@@ -404,11 +475,11 @@ fun CommentScreen(
     }
 
     // 初始加载评论
-    LaunchedEffect(content) {
-        if (viewModel.article != content()) {
+    LaunchedEffect(resolvedContent, testOverrides?.skipInitialLoad) {
+        if (viewModel.article != resolvedContent) {
             error("Internal Error: Detected content mismatch")
         }
-        if (viewModel.errorMessage == null) {
+        if (!(testOverrides?.skipInitialLoad ?: false) && viewModel.errorMessage == null) {
             viewModel.loadMore(context)
         }
     }
@@ -507,6 +578,7 @@ fun CommentScreen(
                                             }
                                         },
                                         onChildCommentClick = onChildCommentClick,
+                                        onImageMenuAction = testOverrides?.onImageMenuAction,
                                     )
 
                                     // 在根评论区时 子评论
@@ -527,6 +599,7 @@ fun CommentScreen(
                                                     CommentItem(
                                                         comment = childCommentItem,
                                                         httpClient = httpClient,
+                                                        modifier = Modifier.testTag(commentRowTag(childComment.id)),
                                                         isLiked = liked,
                                                         likeCount = likeCount,
                                                         toggleLike = {
@@ -543,13 +616,15 @@ fun CommentScreen(
                                                             }
                                                         },
                                                         onChildCommentClick = onChildCommentClick,
+                                                        onImageMenuAction = testOverrides?.onImageMenuAction,
                                                     )
                                                 }
                                             }
                                             Button(
                                                 onClick = { onChildCommentClick(commentItem) },
                                                 modifier = Modifier
-                                                    .height(28.dp),
+                                                    .height(28.dp)
+                                                    .testTag(commentChildButtonTag(commentItem.item.id)),
                                                 shape = RoundedCornerShape(50),
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = actionChipColor,
@@ -575,7 +650,9 @@ fun CommentScreen(
                             }
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .testTag(COMMENT_SCREEN_LIST_TAG),
                                 contentPadding = PaddingValues(bottom = 16.dp, start = 16.dp, end = 16.dp, top = 8.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                             ) {
@@ -626,6 +703,7 @@ fun CommentScreen(
                                             horizontalArrangement = Arrangement.End,
                                         ) {
                                             SuggestionChip(
+                                                modifier = Modifier.testTag(COMMENT_SORT_SCORE_TAG),
                                                 label = {
                                                     Text(
                                                         "最热",
@@ -647,6 +725,7 @@ fun CommentScreen(
                                             )
                                             Spacer(Modifier.width(12.dp))
                                             SuggestionChip(
+                                                modifier = Modifier.testTag(COMMENT_SORT_TIME_TAG),
                                                 label = {
                                                     Text(
                                                         "最新",
@@ -675,16 +754,24 @@ fun CommentScreen(
                                     key = { it.id },
                                 ) { dto ->
                                     val commentItem = viewModel.createCommentItem(dto, article = rootContent)
-                                    SwipeToReplyContainer(onReply = {
-                                        if (activeCommentItem == null) {
-                                            if (commentItem.clickTarget != null) {
-                                                onChildCommentClick(commentItem)
+                                    SwipeToReplyContainer(
+                                        modifier = Modifier.testTag(commentRowTag(dto.id)),
+                                        onArchive = testOverrides?.onArchiveComment?.let { onArchive ->
+                                            {
+                                                onArchive(commentItem)
                                             }
-                                        } else {
-                                            // Set reply target when swiping to reply
-                                            replyToComment = commentItem
-                                        }
-                                    }) {
+                                        },
+                                        onReply = {
+                                            if (activeCommentItem == null) {
+                                                if (commentItem.clickTarget != null) {
+                                                    onChildCommentClick(commentItem)
+                                                }
+                                            } else {
+                                                // Set reply target when swiping to reply
+                                                replyToComment = commentItem
+                                            }
+                                        },
+                                    ) {
                                         Comment(
                                             commentItem,
                                             modifier = Modifier.animateItem(
@@ -740,7 +827,9 @@ fun CommentScreen(
                         ) {
                             Surface(
                                 color = MaterialTheme.colorScheme.secondaryContainer,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(COMMENT_REPLY_BANNER_TAG),
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -763,7 +852,9 @@ fun CommentScreen(
                                     )
                                     IconButton(
                                         onClick = { replyToComment = null },
-                                        modifier = Modifier.size(24.dp),
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .testTag(COMMENT_CANCEL_REPLY_TAG),
                                     ) {
                                         Icon(
                                             Icons.Default.Close,
@@ -786,7 +877,9 @@ fun CommentScreen(
                             BasicTextField(
                                 value = commentInput,
                                 onValueChange = { commentInput = it },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag(COMMENT_INPUT_TAG),
                                 decorationBox = { inner ->
                                     Box {
                                         if (commentInput.isEmpty()) {
@@ -811,7 +904,9 @@ fun CommentScreen(
 
                             IconButton(
                                 onClick = { submitComment() },
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .testTag(COMMENT_SEND_BUTTON_TAG),
                                 enabled = !isSending && commentInput.isNotBlank(),
                             ) {
                                 if (isSending) {
@@ -851,6 +946,7 @@ private fun CommentItem(
     isLikeLoading: Boolean = false,
     toggleLike: () -> Unit = {},
     onChildCommentClick: (CommentModel) -> Unit,
+    onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
     val commentData = comment.item
@@ -882,15 +978,17 @@ private fun CommentItem(
                         text = commentData.author.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        modifier = Modifier.clickable {
-                            navigator.onNavigate(
-                                Person(
-                                    id = commentData.author.id,
-                                    name = commentData.author.name,
-                                    urlToken = commentData.author.urlToken,
-                                ),
-                            )
-                        },
+                        modifier = Modifier
+                            .testTag(commentAuthorTag(commentData.id))
+                            .clickable {
+                                navigator.onNavigate(
+                                    Person(
+                                        id = commentData.author.id,
+                                        name = commentData.author.name,
+                                        urlToken = commentData.author.urlToken,
+                                    ),
+                                )
+                            },
                     )
 
                     val authorTag = comment.item.authorTag
@@ -916,15 +1014,17 @@ private fun CommentItem(
                             text = commentData.replyToAuthor.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            modifier = Modifier.clickable {
-                                navigator.onNavigate(
-                                    Person(
-                                        id = commentData.replyToAuthor.id,
-                                        name = commentData.replyToAuthor.name,
-                                        urlToken = commentData.replyToAuthor.urlToken,
-                                    ),
-                                )
-                            },
+                            modifier = Modifier
+                                .testTag(commentReplyToAuthorTag(commentData.id))
+                                .clickable {
+                                    navigator.onNavigate(
+                                        Person(
+                                            id = commentData.replyToAuthor.id,
+                                            name = commentData.replyToAuthor.name,
+                                            urlToken = commentData.replyToAuthor.urlToken,
+                                        ),
+                                    )
+                                },
                         )
                     }
                 }
@@ -968,10 +1068,12 @@ private fun CommentItem(
                             imageUrl = commentImg,
                             httpClient = httpClient,
                             modifier = Modifier
+                                .testTag(commentImageTag(commentData.id))
                                 .padding(top = 8.dp)
                                 .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
                                 .clip(RoundedCornerShape(12.dp)),
                             contentDescription = "评论图片",
+                            onAction = onImageMenuAction,
                         )
                     }
                 }
@@ -1024,7 +1126,9 @@ private fun CommentItem(
             // 回复按钮
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { onChildCommentClick(comment) },
+                modifier = Modifier
+                    .testTag(commentReplyButtonTag(commentData.id))
+                    .clickable { onChildCommentClick(comment) },
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Column(
@@ -1042,6 +1146,7 @@ private fun CommentItem(
                 if (comment.item.childCommentCount > 0) {
                     Text(
                         text = comment.item.childCommentCount.toString(),
+                        modifier = Modifier.testTag(commentReplyCountTag(commentData.id)),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1054,7 +1159,9 @@ private fun CommentItem(
             // 点赞
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(enabled = !isLikeLoading) { toggleLike() },
+                modifier = Modifier
+                    .testTag(commentLikeButtonTag(commentData.id))
+                    .clickable(enabled = !isLikeLoading) { toggleLike() },
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
@@ -1074,6 +1181,7 @@ private fun CommentItem(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = likeCount.toString(),
+                    modifier = Modifier.testTag(commentLikeCountTag(commentData.id)),
                     fontSize = 12.sp,
                     color = if (isLiked) {
                         MaterialTheme.colorScheme.primary

@@ -20,17 +20,12 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.AccountData
@@ -43,13 +38,25 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_APPEARANCE_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_DEVELOPER_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_LICENSES_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_LOGIN_ITEM_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_PROFILE_HEADER_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_RECOMMEND_TAG
 import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SCROLL_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG
+import com.github.zly2006.zhihu.ui.ACCOUNT_SETTINGS_SYSTEM_TAG
 import com.github.zly2006.zhihu.ui.AccountSettingScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import io.ktor.http.HttpMethod
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -95,7 +102,7 @@ class AccountSettingScreenInstrumentedTest {
         try {
             showScreen()
 
-            clickRow("登录知乎")
+            composeRule.onNodeWithTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG).assertIsDisplayed().performClick()
 
             val startedActivity = instrumentation.waitForMonitorWithTimeout(loginMonitor, 5_000)
             assertNotNull("Tapping the logged-out entry should launch LoginActivity", startedActivity)
@@ -119,14 +126,12 @@ class AccountSettingScreenInstrumentedTest {
         //    repeated navigation-row interaction and scrolling.
         val navigator = showScreen()
 
-        clickRow("外观与阅读体验")
-        clickRow("推荐系统与内容过滤")
-        clickRow("系统与更新")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_APPEARANCE_TAG).assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_RECOMMEND_TAG).assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SYSTEM_TAG).assertIsDisplayed().performClick()
 
         scrollContainer().performVerticalSwipeCycle()
-        scrollContainer().performScrollToNode(hasText("开源许可"))
-        composeRule.onNodeWithText("开源许可").assertIsDisplayed()
-        clickRow("开源许可")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_LICENSES_TAG).assertIsDisplayed().performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             navigator.destinations.size == 4
@@ -140,17 +145,15 @@ class AccountSettingScreenInstrumentedTest {
             ),
             navigator.destinations,
         )
-
-        scrollContainer().performScrollToNode(hasText("登录知乎"))
-        composeRule.onNodeWithText("登录知乎").assertIsDisplayed()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG).assertIsDisplayed()
     }
 
     @Test
     fun loggedInShortcutClusterNavigatesOfflineAndDismissesOnlyForOverlayDestinations() {
         // Expected behavior:
         // 1. A fully local seeded account plus SharedPreferences should be enough to render the
-        //    logged-in shortcut cluster without touching the `/me` refresh path or assuming a real
-        //    session cookie is valid on the network.
+        //    logged-in shortcut cluster, and entering the screen should refresh `/me` through the
+        //    real AccountData.fetchGet() path against the mocked HTTP layer.
         // 2. The favorites shortcut should navigate to the seeded Collections destination and must
         //    not close the surrounding account surface.
         // 3. The notification and history shortcuts represent overlay-style exits from the account
@@ -163,31 +166,54 @@ class AccountSettingScreenInstrumentedTest {
                 BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
                 linkedSetOf(Home.name, Follow.name, Daily.name),
             ).commit()
-        seedLoggedInAccount()
-
+        AccountData.saveData(composeRule.activity, seededLoggedInAccountData())
+        ZhihuMockApi.mockJson(
+            method = HttpMethod.Get,
+            url = "https://www.zhihu.com/api/v4/me",
+            body =
+                """
+                {
+                  "id": "offline-account-id",
+                  "url": "https://www.zhihu.com/people/$SEEDED_ACCOUNT_URL_TOKEN",
+                  "user_type": "people",
+                  "url_token": "$SEEDED_ACCOUNT_URL_TOKEN",
+                  "name": "$SEEDED_ACCOUNT_NAME",
+                  "headline": "用于 AccountSettingScreen 仪器测试的离线账号",
+                  "avatar_url": ""
+                }
+                """.trimIndent(),
+        )
         val dismissCount = AtomicInteger(0)
         val navigator = showScreen(
             unreadCount = 7,
             onDismissRequest = { dismissCount.incrementAndGet() },
+            refreshAccountProfileOnEnter = true,
         )
 
-        composeRule.onNodeWithText(SEEDED_ACCOUNT_NAME).assertIsDisplayed()
-        composeRule.onNodeWithText("收藏夹").assertIsDisplayed()
-        composeRule.onNodeWithText("通知").assertIsDisplayed()
-        composeRule.onNodeWithText("浏览历史").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ZhihuMockApi.requestCount(
+                method = HttpMethod.Get,
+                urlSubstring = "/api/v4/me",
+            ) == 1
+        }
 
-        clickRow("收藏夹")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_PROFILE_HEADER_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG).assertIsDisplayed()
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG).assertIsDisplayed()
+
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             navigator.destinations.size == 1
         }
         assertEquals(0, dismissCount.get())
 
-        clickRow("通知")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             navigator.destinations.size == 2 && dismissCount.get() == 1
         }
 
-        clickRow("浏览历史")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             navigator.destinations.size == 3 && dismissCount.get() == 2
         }
@@ -212,15 +238,12 @@ class AccountSettingScreenInstrumentedTest {
         //    the same scrollable list, again without any server dependency.
         // 3. Once visible, tapping the row should emit exactly the DeveloperSettings destination.
         showScreen()
-        scrollContainer().performScrollToNode(hasText("开源许可"))
-        assertNodeDoesNotExist(settingRowMatcher("开发者选项"))
+        composeRule.onAllNodesWithTag(ACCOUNT_SETTINGS_DEVELOPER_TAG).assertCountEquals(0)
 
         preferences.edit().putBoolean("developer", true).commit()
 
         val navigator = showScreen()
-        scrollContainer().performScrollToNode(hasText("开发者选项"))
-        composeRule.onNodeWithText("开发者选项").assertIsDisplayed()
-        clickRow("开发者选项")
+        composeRule.onNodeWithTag(ACCOUNT_SETTINGS_DEVELOPER_TAG).assertIsDisplayed().performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             navigator.destinations.size == 1
@@ -231,53 +254,33 @@ class AccountSettingScreenInstrumentedTest {
     private fun showScreen(
         unreadCount: Int = 0,
         onDismissRequest: () -> Unit = {},
+        refreshAccountProfileOnEnter: Boolean = false,
+        testAccountData: AccountData.Data? = null,
     ): RecordingNavigator = composeRule.setScreenContent {
         AccountSettingScreen(
             innerPadding = PaddingValues(),
             unreadCount = unreadCount,
             onDismissRequest = onDismissRequest,
-            refreshAccountProfileOnEnter = false,
+            refreshAccountProfileOnEnter = refreshAccountProfileOnEnter,
+            testAccountData = testAccountData,
         )
     }
 
-    private fun seedLoggedInAccount() {
-        AccountData.saveData(
-            composeRule.activity,
-            AccountData.Data(
-                login = true,
-                username = SEEDED_ACCOUNT_NAME,
-                self = AccountPerson(
-                    id = "offline-account-id",
-                    url = "https://www.zhihu.com/people/$SEEDED_ACCOUNT_URL_TOKEN",
-                    userType = "people",
-                    urlToken = SEEDED_ACCOUNT_URL_TOKEN,
-                    name = SEEDED_ACCOUNT_NAME,
-                    headline = "用于 AccountSettingScreen 仪器测试的离线账号",
-                    avatarUrl = "",
-                ),
-            ),
-        )
-        composeRule.waitForIdle()
-    }
+    private fun seededLoggedInAccountData(): AccountData.Data = AccountData.Data(
+        login = true,
+        username = SEEDED_ACCOUNT_NAME,
+        self = AccountPerson(
+            id = "offline-account-id",
+            url = "https://www.zhihu.com/people/$SEEDED_ACCOUNT_URL_TOKEN",
+            userType = "people",
+            urlToken = SEEDED_ACCOUNT_URL_TOKEN,
+            name = SEEDED_ACCOUNT_NAME,
+            headline = "用于 AccountSettingScreen 仪器测试的离线账号",
+            avatarUrl = "",
+        ),
+    )
 
     private fun scrollContainer() = composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SCROLL_TAG)
-
-    private fun clickRow(title: String) {
-        composeRule.onNode(settingRowMatcher(title), useUnmergedTree = true).performScrollTo().performClick()
-    }
-
-    private fun settingRowMatcher(title: String): SemanticsMatcher =
-        hasAnyDescendant(hasText(title)) and hasClickAction()
-
-    private fun assertNodeDoesNotExist(matcher: SemanticsMatcher) {
-        assertEquals(
-            0,
-            composeRule
-                .onAllNodes(matcher, useUnmergedTree = true)
-                .fetchSemanticsNodes(atLeastOneRootRequired = false)
-                .size,
-        )
-    }
 
     private companion object {
         const val SEEDED_ACCOUNT_NAME = "离线测试账号"

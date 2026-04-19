@@ -108,6 +108,9 @@ fun DeveloperSettingsScreen(
     val dataState by AccountData.asState()
     val data = dataState
     val mainActivity = context as? MainActivity
+    var developerModeEnabled by remember {
+        mutableStateOf(preferences.getBoolean("developer", false))
+    }
     val continuousUsageDurationMs by produceState(
         initialValue = mainActivity?.currentContinuousUsageDurationMs() ?: 0L,
         key1 = mainActivity,
@@ -159,8 +162,9 @@ fun DeveloperSettingsScreen(
             SettingItemOverall(
                 modifier = Modifier.testTag(DEVELOPER_SETTINGS_MODE_TAG),
                 title = { Text("开发者模式") },
-                checked = preferences.getBoolean("developer", false),
+                checked = developerModeEnabled,
                 onCheckedChange = {
+                    developerModeEnabled = it
                     preferences.edit {
                         putBoolean("developer", it)
                     }

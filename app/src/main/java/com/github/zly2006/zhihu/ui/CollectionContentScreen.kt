@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -113,6 +114,14 @@ fun CollectionContentScreen(
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
             screenViewModel.refresh(context)
         }
+    }
+
+    BackHandler(enabled = showActionsMenu) {
+        showActionsMenu = false
+    }
+
+    BackHandler(enabled = showExportOptionsDialog) {
+        showExportOptionsDialog = false
     }
 
     Scaffold(

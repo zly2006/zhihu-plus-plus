@@ -84,37 +84,40 @@ internal fun calculateScrollbarThumbOffsetPx(
 @Composable
 fun VerticalReadingProgressBar(
     scrollState: ScrollState,
+    scrollValue: Int = scrollState.value,
+    maxScrollValue: Int = scrollState.maxValue,
+    isScrollInProgress: Boolean = scrollState.isScrollInProgress,
     modifier: Modifier = Modifier,
     fadeOutDelayMillis: Long = 1200L,
     minThumbHeight: Dp = 24.dp,
     trackColor: Color = Color.Unspecified,
     thumbColor: Color = Color.Unspecified,
 ) {
-    val showProgressBar by remember(scrollState) {
-        derivedStateOf { scrollState.maxValue > 0 && scrollState.maxValue != Int.MAX_VALUE }
+    val showProgressBar by remember(maxScrollValue) {
+        derivedStateOf { maxScrollValue > 0 && maxScrollValue != Int.MAX_VALUE }
     }
     var shouldKeepVisible by remember { mutableStateOf(false) }
     var isDragging by remember { mutableStateOf(false) }
 
-    LaunchedEffect(showProgressBar, scrollState.isScrollInProgress, isDragging, fadeOutDelayMillis) {
+    LaunchedEffect(showProgressBar, isScrollInProgress, isDragging, fadeOutDelayMillis) {
         if (!showProgressBar) {
             shouldKeepVisible = false
             return@LaunchedEffect
         }
         shouldKeepVisible = true
-        if (!scrollState.isScrollInProgress && !isDragging) {
+        if (!isScrollInProgress && !isDragging) {
             delay(fadeOutDelayMillis)
-            if (!scrollState.isScrollInProgress && !isDragging) {
+            if (!isScrollInProgress && !isDragging) {
                 shouldKeepVisible = false
             }
         }
     }
 
-    val progress by remember(scrollState) {
+    val progress by remember(scrollValue, maxScrollValue) {
         derivedStateOf {
             calculateReadingProgress(
-                scrollValue = scrollState.value,
-                maxValue = scrollState.maxValue,
+                scrollValue = scrollValue,
+                maxValue = maxScrollValue,
             )
         }
     }
@@ -148,7 +151,7 @@ fun VerticalReadingProgressBar(
         val minThumbHeightPx = with(density) { minThumbHeight.toPx() }
         val thumbHeightPx = calculateScrollbarThumbHeightPx(
             viewportHeightPx = viewportHeightPx,
-            maxScrollPx = scrollState.maxValue,
+            maxScrollPx = maxScrollValue,
             minThumbHeightPx = minThumbHeightPx,
         )
         if (thumbHeightPx <= 0f) return@BoxWithConstraints
@@ -175,7 +178,7 @@ fun VerticalReadingProgressBar(
             val newOffset = (currentOffset + delta).coerceIn(0f, maxThumbOffsetPx)
             val newProgress = if (maxThumbOffsetPx > 0f) newOffset / maxThumbOffsetPx else 0f
             scope.launch {
-                scrollState.scrollTo((newProgress * scrollState.maxValue).toInt())
+                scrollState.scrollTo((newProgress * maxScrollValue).toInt())
             }
         }
 

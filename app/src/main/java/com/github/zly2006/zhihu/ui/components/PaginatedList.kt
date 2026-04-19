@@ -81,9 +81,10 @@ fun <T> PaginatedList(
         }
     }
 
-    LaunchedEffect(shouldLoadMore, items.size) {
-        while (shouldLoadMore && items.isNotEmpty()) {
+    LaunchedEffect(shouldLoadMore, items.size, isEnd()) {
+        if (shouldLoadMore && items.isNotEmpty() && !isEnd()) {
             onLoadMore()
+            // Give the caller a frame to publish new items or mark the list as finished.
             delay(50)
         }
     }

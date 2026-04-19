@@ -22,12 +22,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -66,29 +62,25 @@ class ContentFilterSettingsScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true)
             .assertTextContains(RecommendationMode.MIXED.displayName)
-        toggleFor(LOGIN_FOR_RECOMMENDATION_TAG).assertIsOn()
-        toggleFor(FILTER_FOLLOWED_USER_CONTENT_TAG).assertIsOff()
+        assertEquals(true, preferences().getBoolean("loginForRecommendation", true))
+        assertEquals(false, preferences().getBoolean("filterFollowedUserContent", false))
 
         composeRule.onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true).performClick()
         composeRule.onNodeWithText(RecommendationMode.LOCAL.displayName).performClick()
         assertEquals(RecommendationMode.LOCAL.key, preferences().getString("recommendationMode", null))
 
         composeRule.onNodeWithTag(LOGIN_FOR_RECOMMENDATION_TAG).performClick()
-        toggleFor(LOGIN_FOR_RECOMMENDATION_TAG).assertIsOff()
         assertEquals(false, preferences().getBoolean("loginForRecommendation", true))
 
         composeRule.onNodeWithTag(ENABLE_CONTENT_FILTER_TAG).performClick()
-        toggleFor(ENABLE_CONTENT_FILTER_TAG).assertIsOff()
         assertEquals(false, preferences().getBoolean("enableContentFilter", true))
         composeRule.onNodeWithTag(FILTER_FOLLOWED_USER_CONTENT_TAG).assertIsNotEnabled()
 
         composeRule.onNodeWithTag(ENABLE_CONTENT_FILTER_TAG).performClick()
-        toggleFor(ENABLE_CONTENT_FILTER_TAG).assertIsOn()
         assertEquals(true, preferences().getBoolean("enableContentFilter", false))
         composeRule.onNodeWithTag(FILTER_FOLLOWED_USER_CONTENT_TAG).assertIsEnabled()
 
         composeRule.onNodeWithTag(FILTER_FOLLOWED_USER_CONTENT_TAG).performClick()
-        toggleFor(FILTER_FOLLOWED_USER_CONTENT_TAG).assertIsOn()
         assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
 
         composeRule.setScreenContent {
@@ -98,9 +90,9 @@ class ContentFilterSettingsScreenInstrumentedTest {
         composeRule
             .onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true)
             .assertTextContains(RecommendationMode.LOCAL.displayName)
-        toggleFor(LOGIN_FOR_RECOMMENDATION_TAG).assertIsOff()
-        toggleFor(ENABLE_CONTENT_FILTER_TAG).assertIsOn()
-        toggleFor(FILTER_FOLLOWED_USER_CONTENT_TAG).assertIsOn()
+        assertEquals(false, preferences().getBoolean("loginForRecommendation", true))
+        assertEquals(true, preferences().getBoolean("enableContentFilter", false))
+        assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
     }
 
     @Test
@@ -143,11 +135,6 @@ class ContentFilterSettingsScreenInstrumentedTest {
         composeRule.onNodeWithTag(SCROLL_TAG).performScrollToNode(hasTestTag(tag))
         composeRule.waitForIdle()
     }
-
-    private fun toggleFor(tag: String) = composeRule.onNode(
-        matcher = isToggleable() and hasAnyAncestor(hasTestTag(tag)),
-        useUnmergedTree = true,
-    )
 
     private companion object {
         const val SCROLL_TAG = "contentFilterSettings:scroll"

@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Context
@@ -27,6 +28,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.BuildConfig
@@ -183,36 +186,40 @@ abstract class PaginationViewModel<T : Any>(
                             .jsonPrimitive.content == "ERR_TICKET_NOT_EXIST"
                     ) {
                         context.mainExecutor.execute {
-                            AlertDialog
-                                .Builder(context)
-                                .setTitle("登录已过期")
-                                .setMessage("请重新登录以继续使用完整功能。")
-                                .setPositiveButton("重新登录") { _, _ ->
-                                    AccountData.delete(context)
-                                    context.startActivity(Intent(context, LoginActivity::class.java))
-                                }.setNegativeButton("取消", null)
-                                .show()
+                            if (context.canSafelyShowDialog()) {
+                                AlertDialog
+                                    .Builder(context)
+                                    .setTitle("登录已过期")
+                                    .setMessage("请重新登录以继续使用完整功能。")
+                                    .setPositiveButton("重新登录") { _, _ ->
+                                        AccountData.delete(context)
+                                        context.startActivity(Intent(context, LoginActivity::class.java))
+                                    }.setNegativeButton("取消", null)
+                                    .show()
+                            }
                         }
                         return
                     }
                 } catch (_: Exception) {
                 }
                 context.mainExecutor.execute {
-                    AlertDialog
-                        .Builder(context)
-                        .setTitle("错误 ${e.status}")
-                        .setMessage(e.bodyText)
-                        .setNeutralButton("复制curl") { _, _ ->
-                            val curl = e.dumpedCurlRequest
-                            context.clipboardManager
-                                .setPrimaryClip(
-                                    ClipData.newPlainText(
-                                        "curl",
-                                        curl,
-                                    ),
-                                )
-                            Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                        }.show()
+                    if (context.canSafelyShowDialog()) {
+                        AlertDialog
+                            .Builder(context)
+                            .setTitle("错误 ${e.status}")
+                            .setMessage(e.bodyText)
+                            .setNeutralButton("复制curl") { _, _ ->
+                                val curl = e.dumpedCurlRequest
+                                context.clipboardManager
+                                    .setPrimaryClip(
+                                        ClipData.newPlainText(
+                                            "curl",
+                                            curl,
+                                        ),
+                                    )
+                                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                            }.show()
+                    }
                 }
             }
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)
@@ -242,5 +249,12 @@ abstract class PaginationViewModel<T : Any>(
             errorMessage = e.message
             isLoading = false
         }
+    }
+
+    private fun Context.canSafelyShowDialog(): Boolean {
+        val activity = this as? Activity ?: return false
+        if (activity.isFinishing || activity.isDestroyed) return false
+        val lifecycleOwner = activity as? LifecycleOwner ?: return true
+        return lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
     }
 }

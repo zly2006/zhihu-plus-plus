@@ -157,6 +157,9 @@ class ArticleViewModel(
         content = content,
         voteUpCount = voteUpCount,
         commentCount = commentCount,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        ipInfo = ipInfo,
         sourceLabel = sourceLabel,
     )
 
@@ -215,6 +218,9 @@ class ArticleViewModel(
         val content: String,
         val voteUpCount: Int,
         val commentCount: Int,
+        val createdAt: Long = 0L,
+        val updatedAt: Long = 0L,
+        val ipInfo: String? = null,
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
         val sourceLabel: String = "此问题",
     )
@@ -689,7 +695,6 @@ class ArticleViewModel(
     }
 
     fun toggleVoteUp(context: Context, newState: VoteUpState) {
-        if (httpClient == null) return
         viewModelScope.launch {
             try {
                 val endpoint = when (article.type) {

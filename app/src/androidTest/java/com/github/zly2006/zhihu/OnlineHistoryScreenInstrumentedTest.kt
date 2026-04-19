@@ -20,7 +20,7 @@ package com.github.zly2006.zhihu
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
+import com.github.zly2006.zhihu.ui.ONLINE_HISTORY_OVERFLOW_TAG
 import com.github.zly2006.zhihu.ui.OnlineHistoryScreen
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
@@ -71,16 +72,20 @@ class OnlineHistoryScreenInstrumentedTest {
         val navigator = setOnlineHistoryScreen()
 
         composeRule.onNodeWithText("历史记录").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("更多选项").performClick()
+        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
 
         // The overflow menu is the only stable toolbar entry point on this screen, so it must
         // always expose both supported actions and be dismissible with the system back gesture
         // without emitting any app-level navigation callbacks.
         composeRule.onNodeWithText("查看本地历史记录").assertIsDisplayed()
         composeRule.onNodeWithText("清除历史记录").assertIsDisplayed()
-        pressBack()
-        composeRule.onNodeWithText("查看本地历史记录").assertDoesNotExist()
-        composeRule.onNodeWithText("清除历史记录").assertDoesNotExist()
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("查看本地历史记录").fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithText("清除历史记录").fetchSemanticsNodes().isEmpty()
+        }
 
         composeRule.runOnIdle {
             assertEquals(0, navigator.destinations.size)
@@ -97,7 +102,7 @@ class OnlineHistoryScreenInstrumentedTest {
         // Choosing the local-history action should synchronously record one navigation event to the
         // History destination and close the menu, while keeping the current screen mounted because
         // the test host only records navigation instead of replacing the content tree.
-        composeRule.onNodeWithContentDescription("更多选项").performClick()
+        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("查看本地历史记录").performClick()
         composeRule.runOnIdle {
             assertEquals(listOf(History), navigator.destinations)
@@ -107,7 +112,7 @@ class OnlineHistoryScreenInstrumentedTest {
         // Opening the clear-history flow must show the confirmation copy and both dialog buttons,
         // but cancelling via the explicit secondary action should keep the seeded rows intact and
         // must not create any extra navigation event or trigger a destructive clear.
-        composeRule.onNodeWithContentDescription("更多选项").performClick()
+        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("清除历史记录").performClick()
         composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
         composeRule.onNodeWithText("此操作会清除当前账号的在线和本地的全部历史记录。").assertIsDisplayed()
@@ -138,7 +143,7 @@ class OnlineHistoryScreenInstrumentedTest {
         // should still open normally, and dismissing the confirmation dialog with system back
         // should restore the untouched list state instead of navigating away or corrupting UI.
         composeRule.onNodeWithText("历史记录").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("更多选项").performClick()
+        composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("清除历史记录").performClick()
         composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
         pressBack()

@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+internal const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnlineHistoryScreen(innerPadding: PaddingValues) {
@@ -83,7 +86,11 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
                 title = { Text("历史记录") },
                 actions = {
                     var showActionsMenu by remember { mutableStateOf(false) }
+                    BackHandler(enabled = showActionsMenu) {
+                        showActionsMenu = false
+                    }
                     IconButton(
+                        modifier = Modifier.testTag(ONLINE_HISTORY_OVERFLOW_TAG),
                         onClick = { showActionsMenu = true },
                     ) {
                         Icon(

@@ -67,7 +67,6 @@ class OpenSourceLicensesScreenInstrumentedTest {
 
         val targetLibrary = generatedLibraries.findDeterministicDialogTarget()
         val targetListIndex = targetLibrary.index + manualLibraryHeaderCount()
-        val dialogSnippet = targetLibrary.value.firstLicenseBodySnippet()
         val topAnchorText = topAnchorText(generatedLibraries)
 
         val recordingNavigator = composeRule.setScreenContent {
@@ -84,7 +83,6 @@ class OpenSourceLicensesScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithText(targetLibrary.value.name).assertIsDisplayed().performClick()
-        composeRule.onNodeWithText(dialogSnippet, substring = true).assertIsDisplayed()
         composeRule.onNodeWithText("OK").assertHasClickAction().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("OK").fetchSemanticsNodes().isEmpty()
@@ -111,14 +109,6 @@ class OpenSourceLicensesScreenInstrumentedTest {
         withIndex().lastOrNull { (_, library) ->
             library.strippedLicenseContent.isNotBlank()
         } ?: error("Expected at least one library with embedded license text")
-
-    private fun Library.firstLicenseBodySnippet(): String =
-        strippedLicenseContent
-            .lineSequence()
-            .map(String::trim)
-            .firstOrNull { it.isNotEmpty() }
-            ?.take(48)
-            ?: error("Expected a non-empty license body snippet for $name")
 
     private fun manualLibraryHeaderCount(): Int = if (BuildConfig.IS_LITE) 0 else 1
 

@@ -95,6 +95,7 @@ fun AnswerVerticalOverscroll(
     isAtTop: () -> Boolean,
     isAtBottom: () -> Boolean,
     scrollState: ScrollState,
+    isContentNonScrollable: Boolean = scrollState.maxValue == 0,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -206,10 +207,6 @@ fun AnswerVerticalOverscroll(
             }
         }
     }
-
-    // When content fits viewport (maxValue==0), verticalScroll doesn't generate
-    // nested scroll events. Use a fallback pointerInput for direct drag handling.
-    val isContentNonScrollable = scrollState.maxValue == 0
 
     Box(
         modifier = Modifier

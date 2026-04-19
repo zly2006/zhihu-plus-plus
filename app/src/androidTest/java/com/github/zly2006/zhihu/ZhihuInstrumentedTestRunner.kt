@@ -20,10 +20,12 @@ package com.github.zly2006.zhihu
 import androidx.test.runner.AndroidJUnitRunner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
+import com.github.zly2006.zhihu.test.ZhihuMockApi
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 
 class ZhihuInstrumentedTestRunner : AndroidJUnitRunner() {
     override fun onStart() {
+        ZhihuMockApi.install()
         seedStableInstrumentedTestState()
         super.onStart()
     }
@@ -59,5 +61,6 @@ class ZhihuInstrumentedTestRunner : AndroidJUnitRunner() {
                 ),
             ),
         )
+        ZhihuMockApi.reset()
     }
 }

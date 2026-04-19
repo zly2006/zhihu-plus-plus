@@ -302,7 +302,7 @@ class MainActivity : ComponentActivity() {
                             Log.i(TAG, "Using Pico TTS engine")
                             ttsState = TtsState.Ready
                         } else {
-                            Log.e(TAG, "Pico TTS engine Initialization failed")
+                            Log.w(TAG, "Pico TTS engine unavailable on this device")
                             ttsState = TtsState.Error
                         }
                     }, picoEngine)
@@ -317,7 +317,7 @@ class MainActivity : ComponentActivity() {
                             Log.i(TAG, "Using Sherpa TTS engine")
                             ttsState = TtsState.Ready
                         } else {
-                            Log.e(TAG, "Sherpa TTS engine Initialization failed")
+                            Log.w(TAG, "Sherpa TTS engine unavailable on this device")
                             ttsState = TtsState.Error
                         }
                     }, sherpaEngine)
@@ -328,7 +328,7 @@ class MainActivity : ComponentActivity() {
                     ttsEngine = TtsEngine.Google
                 }
             } else {
-                Log.e(TAG, "TTS Initialization failed")
+                Log.w(TAG, "TTS unavailable on this device")
                 ttsState = TtsState.Error
             }
         }
@@ -365,7 +365,7 @@ class MainActivity : ComponentActivity() {
             // 如果中文不支持，尝试英文
             val englishResult = textToSpeech?.setLanguage(Locale.ENGLISH)
             if (englishResult == TextToSpeech.LANG_MISSING_DATA || englishResult == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e(TAG, "Language not supported")
+                Log.w(TAG, "TTS language not supported on this device")
                 ttsState = TtsState.Error
             } else {
                 Log.i(TAG, "Using English language for TTS")
