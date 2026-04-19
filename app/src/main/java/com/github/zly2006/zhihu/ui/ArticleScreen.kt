@@ -1419,6 +1419,7 @@ fun ArticleScreen(
                                 html = viewModel.content,
                                 modifier = Modifier.fuckHonorService(),
                                 selectable = true,
+                                enableScroll = false,
                             )
                         }
                     }
@@ -1953,6 +1954,7 @@ fun ArticleScreen(
                                         html = viewModel.content,
                                         modifier = Modifier.fuckHonorService(),
                                         selectable = true,
+                                        enableScroll = false,
                                     )
                                 }
                             }
