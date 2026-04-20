@@ -1965,42 +1965,40 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                Box(modifier = answerDoubleTapModifier) {
-                                    RenderMarkdown(
-                                        html = viewModel.content,
-                                        modifier = Modifier.fuckHonorService(),
-                                        selectable = true,
-                                        enableScroll = false,
-                                        header = {
-                                            if (pinAnswerDate) {
-                                                Column(
-                                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                                    horizontalAlignment = Alignment.Start,
-                                                ) {
-                                                    DateTexts()
-                                                }
-                                            }
-                                        },
-                                        footer = {
+                                RenderMarkdown(
+                                    html = viewModel.content,
+                                    modifier = answerDoubleTapModifier.fuckHonorService(),
+                                    selectable = true,
+                                    enableScroll = false,
+                                    header = {
+                                        if (pinAnswerDate) {
                                             Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.End,
+                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                                horizontalAlignment = Alignment.Start,
                                             ) {
-                                                if (!pinAnswerDate) {
-                                                    DateTexts()
-                                                }
-                                                if (viewModel.ipInfo != null) {
-                                                    Text(
-                                                        "IP属地：${viewModel.ipInfo}",
-                                                        color = Color.Gray,
-                                                        fontSize = 11.sp,
-                                                    )
-                                                }
+                                                DateTexts()
                                             }
-                                            Spacer(modifier = Modifier.height((16 + 36).dp))
                                         }
-                                    )
-                                }
+                                    },
+                                    footer = {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.End,
+                                        ) {
+                                            if (!pinAnswerDate) {
+                                                DateTexts()
+                                            }
+                                            if (viewModel.ipInfo != null) {
+                                                Text(
+                                                    "IP属地：${viewModel.ipInfo}",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height((16 + 36).dp))
+                                    },
+                                )
                             }
                         }
                     }
