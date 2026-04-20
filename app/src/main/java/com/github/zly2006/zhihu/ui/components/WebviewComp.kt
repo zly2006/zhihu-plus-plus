@@ -739,7 +739,7 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
                     return true
                 }
             } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {
-                val destination = resolveContent(request.url)
+                val destination = resolveContent(request.url.toString())
                 if (destination != null) {
                     if (context is MainActivity) {
                         context.navigate(destination)

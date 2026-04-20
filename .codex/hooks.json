@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"/Users/zhaoliyan/codex-auto-review-hook/.codex/hooks/stop-review.py\"",
+            "statusMessage": "监督最后总结并继续要求补齐",
+            "timeout": 90
+          }
+        ]
+      }
+    ]
+  }
+}

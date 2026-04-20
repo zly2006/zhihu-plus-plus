@@ -396,7 +396,7 @@ class MainActivity : ComponentActivity() {
             if (intent.data != null) {
                 if (intent.data!!.authority != "zhihu-plus.internal") {
                     Log.i(TAG, "Intent data: ${intent.data}")
-                    val destination = resolveContent(intent.data!!)
+                    val destination = resolveContent(intent.data.toString())
                     if (destination != null) {
                         if (destination != sharedData.clipboardDestination) {
                             sharedData.clipboardDestination = destination
@@ -422,7 +422,7 @@ class MainActivity : ComponentActivity() {
                     if (text != null) {
                         val regex = Regex("""https?://[-a-zA-Z0-9@:%_+.~#?&/=]*""")
                         val destination = regex.findAll(text).firstNotNullOfOrNull {
-                            resolveContent(it.value.toUri())
+                            resolveContent(it.value)
                         }
                         if (destination != null && destination != sharedData.clipboardDestination) {
                             sharedData.clipboardDestination = destination

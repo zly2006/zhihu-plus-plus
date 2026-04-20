@@ -97,6 +97,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
@@ -127,6 +128,7 @@ class ArticleViewModel(
     var authorBio by mutableStateOf("")
     var authorAvatarSrc by mutableStateOf("")
     var content by mutableStateOf("")
+    var attachment by mutableStateOf<JsonElement?>(null)
     var voteUpCount by mutableIntStateOf(0)
     var commentCount by mutableIntStateOf(0)
     var voteUpState by mutableStateOf(VoteUpState.Neutral)
@@ -377,6 +379,7 @@ class ArticleViewModel(
                             authorId = answer.author.id
                             authorUrlToken = answer.author.urlToken
                             content = answer.content
+                            attachment = answer.attachment
                             authorBio = answer.author.headline
                             authorAvatarSrc = answer.author.avatarUrl
                             voteUpCount = answer.voteupCount

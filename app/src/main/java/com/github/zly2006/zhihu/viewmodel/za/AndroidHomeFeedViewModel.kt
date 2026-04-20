@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel.za
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -115,7 +114,7 @@ class AndroidHomeFeedViewModel :
                                     .jsonObject["parameter"]!!
                                     .jsonPrimitive.content
                                     .substringAfter("route_url=")
-                            val routeDest = resolveContent(route.decodeURLPart().toUri()) ?: return@forEach
+                            val routeDest = resolveContent(route.decodeURLPart()) ?: return@forEach
                             val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
                             val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
                             val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content

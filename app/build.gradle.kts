@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalEncodingApi::class)
 
 import buildlogic.gitHash
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -178,6 +180,14 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")
 }
 
+tasks.withType<Test>().configureEach {
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        },
+    )
+}
+
 val ktor = "3.4.1"
 val coil = "3.4.0"
 val aboutLibraries = "14.0.1"
@@ -192,8 +202,8 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
-    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.1")
-    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.1")
+    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.3")
+    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.3")
 
     implementation("io.coil-kt.coil3:coil-compose:$coil")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")

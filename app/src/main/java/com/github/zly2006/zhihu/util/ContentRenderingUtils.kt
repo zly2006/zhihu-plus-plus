@@ -144,7 +144,7 @@ fun AnnotatedString.Builder.dfsSimple(
                                 href,
                                 TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
                             ) {
-                                resolveContent(href.toUri())?.let(onNavigate)
+                                resolveContent(href)?.let(onNavigate)
                                     ?: luoTianYiUrlLauncher(context, href.toUri())
                             },
                         ) {
