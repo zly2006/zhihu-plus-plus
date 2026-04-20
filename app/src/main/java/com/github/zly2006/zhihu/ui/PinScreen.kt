@@ -420,7 +420,7 @@ private fun PinContent(
                     .testTag(PIN_SCREEN_LINK_CARD_TAG)
                     .clickable {
                         val targetUrl = linkCard.url.takeIf { it.isNotBlank() }
-                        val destination = targetUrl?.toUri()?.let(::resolveContent)
+                        val destination = targetUrl?.let(::resolveContent)
 
                         if (destination != null) {
                             navigator.onNavigate(destination)
@@ -602,7 +602,6 @@ private suspend fun fetchLinkCardPreview(
 private fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {
     val byUrl = linkCard.url
         .takeIf { it.isNotBlank() }
-        ?.toUri()
         ?.let(::resolveContent)
     if (byUrl != null) return byUrl
 

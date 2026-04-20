@@ -234,7 +234,7 @@ fun RenderMarkdown(
             scrollState = scrollState,
             enableScroll = enableScroll,
             onLinkClick = { url ->
-                resolveContent(url.toUri())?.let { navigator.onNavigate(it) }
+                resolveContent(url)?.let { navigator.onNavigate(it) }
                     ?: luoTianYiUrlLauncher(context, url.toUri())
             },
             theme = theme,

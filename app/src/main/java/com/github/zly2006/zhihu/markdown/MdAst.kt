@@ -272,9 +272,9 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
 }
 
 private fun createVideoBoxBlock(element: Element): MarkdownNode? {
-    val href = (element.attr("href"))
+    val href = element.attr("href")
     val videoId = href.takeIf { it.isNotBlank() }?.let { destination ->
-        val resolved = resolveContent(destination.toUri())
+        val resolved = resolveContent(destination)
         if (resolved is Video) resolved.id else null
     } ?: element.attr("data-lens-id").toLongOrNull() ?: return null
     val thumbnailUrl = element.selectFirst("img")?.let { image ->

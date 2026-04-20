@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
-import android.net.Uri
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
@@ -41,7 +40,7 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
 
         response.forEach { item ->
             val navDest = try {
-                resolveContent(Uri.parse(item.data.action.url))
+                resolveContent(item.data.action.url)
             } catch (e: Exception) {
                 null
             }

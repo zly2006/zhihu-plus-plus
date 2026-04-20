@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import android.net.Uri
 import android.util.Log
+import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -219,33 +219,36 @@ data class Pin(
     override fun equals(other: Any?): Boolean = other is Pin && other.id == id
 }
 
-fun resolveContent(uri: Uri): NavDestination? {
-    if (uri.scheme == "http" || uri.scheme == "https") {
-        if (uri.host == "zhihu.com" || uri.host == "www.zhihu.com") {
-            if (uri.pathSegments.size == 4 &&
-                uri.pathSegments[0] == "question" &&
-                uri.pathSegments[2] == "answer"
+fun resolveContent(url: String): NavDestination? = runCatching { resolveContent(Url(url)) }.getOrNull()
+
+fun resolveContent(url: Url): NavDestination? {
+    val segments = url.segments
+    if (url.protocol.name == "http" || url.protocol.name == "https") {
+        if (url.host == "zhihu.com" || url.host == "www.zhihu.com") {
+            if (segments.size == 4 &&
+                segments[0] == "question" &&
+                segments[2] == "answer"
             ) {
-                val answerId = uri.pathSegments[3].toLong()
+                val answerId = segments[3].toLong()
                 return Article(type = ArticleType.Answer, id = answerId)
-            } else if (uri.pathSegments.size == 2 &&
-                uri.pathSegments[0] == "answer"
+            } else if (segments.size == 2 &&
+                segments[0] == "answer"
             ) {
-                val answerId = uri.pathSegments[1].toLong()
+                val answerId = segments[1].toLong()
                 return Article(type = ArticleType.Answer, id = answerId)
-            } else if (uri.pathSegments.size == 2 &&
-                uri.pathSegments[0] == "question"
+            } else if (segments.size == 2 &&
+                segments[0] == "question"
             ) {
-                val questionId = uri.pathSegments[1].toLong()
+                val questionId = segments[1].toLong()
                 return Question(questionId)
-            } else if (uri.pathSegments.size == 3 &&
-                uri.pathSegments[0] == "oia" &&
-                uri.pathSegments[1] == "articles"
+            } else if (segments.size == 3 &&
+                segments[0] == "oia" &&
+                segments[1] == "articles"
             ) {
-                val articleId = uri.pathSegments[2].toLong()
+                val articleId = segments[2].toLong()
                 return Article(type = ArticleType.Article, id = articleId)
-            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "people") {
-                val urlToken = uri.pathSegments[1]
+            } else if (segments.size == 2 && segments[0] == "people") {
+                val urlToken = segments[1]
                 if (urlToken.length == 32 && urlToken.all { it in '0'..'9' || it in 'a'..'f' }) {
                     // 32 hex characters, likely a user ID
                     return Person(id = urlToken, urlToken = urlToken)
@@ -253,49 +256,52 @@ fun resolveContent(uri: Uri): NavDestination? {
                     // human-readable token
                     return Person(id = Person.EMPTY_ID, urlToken = urlToken)
                 }
-            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "video") {
-                val videoId = uri.pathSegments[1].toLongOrNull() ?: return null
+            } else if (segments.size == 2 && segments[0] == "video") {
+                val videoId = segments[1].toLongOrNull() ?: return null
                 return Video(id = videoId) // todo
-            } else if (uri.pathSegments.size == 2 && uri.pathSegments[0] == "pin") {
-                val pinId = uri.pathSegments[1].toLongOrNull() ?: return null
+            } else if (segments.size == 2 && segments[0] == "pin") {
+                val pinId = segments[1].toLongOrNull() ?: return null
                 return Pin(id = pinId)
-            } else if (uri.pathSegments.size == 1 &&
-                uri.pathSegments[0] == "search"
+            } else if (segments.size == 1 &&
+                segments[0] == "search"
             ) {
-                val query = uri.getQueryParameter("q") ?: ""
+                val query = url.parameters["q"] ?: ""
                 return Search(query)
             }
-            Log.w("NavDestination", "Cannot resolve content from uri: $uri")
-        } else if (uri.host == "zhuanlan.zhihu.com") {
-            if (uri.pathSegments.size == 2 &&
-                uri.pathSegments[0] == "p"
+            Log.w("NavDestination", "Cannot resolve content from url: $url")
+        } else if (url.host == "zhuanlan.zhihu.com") {
+            if (segments.size == 2 &&
+                segments[0] == "p"
             ) {
-                val articleId = uri.pathSegments[1].toLong()
+                val articleId = segments[1].toLong()
                 return Article(type = ArticleType.Article, id = articleId)
             }
-            Log.w("NavDestination", "Cannot resolve content from uri: $uri")
+            Log.w("NavDestination", "Cannot resolve content from url: $url")
+        } else if (url.host == "link.zhihu.com") {
+            val target = url.parameters["target"] ?: return null
+            return runCatching { Url(target) }.getOrNull()?.let(::resolveContent)
         }
     }
-    if (uri.scheme == "zhihu") {
-        if (uri.host == "answers") {
-            val answerId = uri.pathSegments[0].toLong()
+    if (url.protocol.name == "zhihu") {
+        if (url.host == "answers") {
+            val answerId = segments[0].toLong()
             return Article(type = ArticleType.Answer, id = answerId)
-        } else if (uri.host == "questions") {
-            val questionId = uri.pathSegments[0].toLong()
+        } else if (url.host == "questions") {
+            val questionId = segments[0].toLong()
             return Question(questionId)
-        } else if (uri.host == "feed") {
+        } else if (url.host == "feed") {
             return Home
-        } else if (uri.host == "articles") {
-            val articleId = uri.pathSegments[0].toLong()
+        } else if (url.host == "articles") {
+            val articleId = segments[0].toLong()
             return Article(type = ArticleType.Article, id = articleId)
-        } else if (uri.host == "search") {
-            val query = uri.getQueryParameter("q") ?: ""
+        } else if (url.host == "search") {
+            val query = url.parameters["q"] ?: ""
             return Search(query)
-        } else if (uri.host == "pin") {
-            val pinId = uri.pathSegments[0].toLong()
+        } else if (url.host == "pin") {
+            val pinId = segments[0].toLong()
             return Pin(id = pinId)
         }
-        Log.w("NavDestination", "Cannot resolve content from uri: $uri")
+        Log.w("NavDestination", "Cannot resolve content from url: $url")
     }
     return null
 }
