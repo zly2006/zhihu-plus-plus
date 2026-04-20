@@ -1,6 +1,8 @@
 @file:OptIn(ExperimentalEncodingApi::class)
 
 import buildlogic.gitHash
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -176,6 +178,14 @@ tasks
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.freeCompilerArgs.add("-Xdebug")
+}
+
+tasks.withType<Test>().configureEach {
+    javaLauncher.set(
+        javaToolchains.launcherFor {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        },
+    )
 }
 
 val ktor = "3.4.1"
