@@ -144,10 +144,12 @@ fun RenderImage(
 @Composable
 fun RenderMarkdown(
     html: String,
-    scrollState: ScrollState = rememberScrollState(),
     modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
     selectable: Boolean = false,
     enableScroll: Boolean = true,
+    header: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     val navigator = LocalNavigator.current
@@ -175,6 +177,8 @@ fun RenderMarkdown(
                         ?: luoTianYiUrlLauncher(context, it.toUri())
                 },
                 theme = theme,
+                header = header,
+                footer = footer,
             )
         }
     } else {
@@ -189,6 +193,8 @@ fun RenderMarkdown(
                     ?: luoTianYiUrlLauncher(context, it.toUri())
             },
             theme = theme,
+            header = header,
+            footer = footer,
         )
     }
 }
