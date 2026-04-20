@@ -162,8 +162,6 @@ import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -1592,12 +1590,23 @@ fun ArticleScreen(
                                         }
                                     },
                                     footer = {
-                                        if (viewModel.attachment?.jsonObject?.get("type")?.jsonPrimitive?.content == "video") {
-                                            val videoId =
-                                                viewModel.attachment?.jsonObject?.get("attachment_id")?.jsonPrimitive?.content?.toLongOrNull()
+                                        if (viewModel.attachment
+                                                ?.jsonObject
+                                                ?.get("type")
+                                                ?.jsonPrimitive
+                                                ?.content == "video"
+                                        ) {
+                                            val videoId = viewModel.attachment!!
+                                                .jsonObject["attachmentId"]
+                                                ?.jsonPrimitive
+                                                ?.content
+                                                ?.toLongOrNull()
                                             if (videoId != null) {
-                                                val thumbnail = viewModel.attachment!!.jsonObject["video"]!!
-                                                    .jsonObject["video_info"]!!.jsonObject["thumbnail"]!!.jsonPrimitive.content
+                                                val thumbnail = viewModel.attachment!!
+                                                    .jsonObject["video"]!!
+                                                    .jsonObject["videoInfo"]!!
+                                                    .jsonObject["thumbnail"]!!
+                                                    .jsonPrimitive.content
                                                 RenderVideoBox(
                                                     videoId = videoId,
                                                     thumbnailUrl = thumbnail,
