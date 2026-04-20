@@ -1910,17 +1910,17 @@ fun ArticleScreen(
                                 )
                             }
                         }
-                        if (pinAnswerDate) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                horizontalAlignment = Alignment.Start,
-                            ) {
-                                DateTexts()
-                            }
-                        }
 
                         if (viewModel.content.isNotEmpty()) {
                             if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
+                                if (pinAnswerDate) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                        horizontalAlignment = Alignment.Start,
+                                    ) {
+                                        DateTexts()
+                                    }
+                                }
                                 WebviewComp(
                                     onDoubleTap = ::handleAnswerDoubleTap,
                                     scrollState = scrollState,
@@ -1948,6 +1948,22 @@ fun ArticleScreen(
                                         },
                                     )
                                 }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.End,
+                                ) {
+                                    if (!pinAnswerDate) {
+                                        DateTexts()
+                                    }
+                                    if (viewModel.ipInfo != null) {
+                                        Text(
+                                            "IP属地：${viewModel.ipInfo}",
+                                            color = Color.Gray,
+                                            fontSize = 11.sp,
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
                                 Box(modifier = answerDoubleTapModifier) {
                                     RenderMarkdown(
@@ -1955,26 +1971,38 @@ fun ArticleScreen(
                                         modifier = Modifier.fuckHonorService(),
                                         selectable = true,
                                         enableScroll = false,
+                                        header = {
+                                            if (pinAnswerDate) {
+                                                Column(
+                                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                                    horizontalAlignment = Alignment.Start,
+                                                ) {
+                                                    DateTexts()
+                                                }
+                                            }
+                                        },
+                                        footer = {
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalAlignment = Alignment.End,
+                                            ) {
+                                                if (!pinAnswerDate) {
+                                                    DateTexts()
+                                                }
+                                                if (viewModel.ipInfo != null) {
+                                                    Text(
+                                                        "IP属地：${viewModel.ipInfo}",
+                                                        color = Color.Gray,
+                                                        fontSize = 11.sp,
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height((16 + 36).dp))
+                                        }
                                     )
                                 }
                             }
                         }
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.End,
-                        ) {
-                            if (!pinAnswerDate) {
-                                DateTexts()
-                            }
-                            if (viewModel.ipInfo != null) {
-                                Text(
-                                    "IP属地：${viewModel.ipInfo}",
-                                    color = Color.Gray,
-                                    fontSize = 11.sp,
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height((16 + 36).dp))
                     }
                     // Skip answer button
                     if (article.type == ArticleType.Answer && buttonSkipAnswer) {

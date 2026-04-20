@@ -51,3 +51,6 @@ __pycache__/
 
 # Local secrets
 .secret/
+.log/
+.codex/autoreview-state.json
+.codex/hooks/__pycache__/
