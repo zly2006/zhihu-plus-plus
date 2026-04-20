@@ -20,13 +20,26 @@ package com.github.zly2006.zhihu.markdown
 import android.content.Context
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,7 +49,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -47,6 +63,7 @@ import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
@@ -142,6 +159,52 @@ fun RenderImage(
 }
 
 @Composable
+fun RenderVideoBox(
+    videoId: Long,
+    thumbnailUrl: String?,
+    modifier: Modifier = Modifier,
+) {
+    val navigator = LocalNavigator.current
+    val shape = RoundedCornerShape(8.dp)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable {
+                navigator.onNavigate(Video(videoId))
+            },
+    ) {
+        if (thumbnailUrl != null) {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = "视频封面",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Surface(
+            modifier = Modifier.align(Alignment.Center),
+            shape = CircleShape,
+            color = Color.Black.copy(alpha = 0.56f),
+            onClick = {
+                navigator.onNavigate(Video(videoId))
+            },
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "播放视频",
+                tint = Color.White,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+@Composable
 fun RenderMarkdown(
     html: String,
     modifier: Modifier = Modifier,
@@ -164,37 +227,35 @@ fun RenderMarkdown(
         ),
         mathFontSize = 18f * fontSize / 100,
     )
-
-    if (selectable) {
-        SelectionContainer(modifier = modifier) {
-            Markdown(
-                document = document,
-                imageContent = ::RenderImage,
-                scrollState = scrollState,
-                enableScroll = enableScroll,
-                onLinkClick = {
-                    resolveContent(it.toUri())?.let(navigator.onNavigate)
-                        ?: luoTianYiUrlLauncher(context, it.toUri())
-                },
-                theme = theme,
-                header = header,
-                footer = footer,
-            )
-        }
-    } else {
+    val markdownBody: @Composable () -> Unit = {
         Markdown(
             document = document,
-            modifier = modifier,
             imageContent = ::RenderImage,
             scrollState = scrollState,
             enableScroll = enableScroll,
-            onLinkClick = {
-                resolveContent(it.toUri())?.let(navigator.onNavigate)
-                    ?: luoTianYiUrlLauncher(context, it.toUri())
+            onLinkClick = { url ->
+                resolveContent(url.toUri())?.let { navigator.onNavigate(it) }
+                    ?: luoTianYiUrlLauncher(context, url.toUri())
             },
             theme = theme,
-            header = header,
-            footer = footer,
         )
+    }
+
+    if (selectable) {
+        SelectionContainer(modifier = modifier) {
+            Column {
+                header?.invoke()
+                markdownBody()
+                footer?.invoke()
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier,
+        ) {
+            header?.invoke()
+            markdownBody()
+            footer?.invoke()
+        }
     }
 }

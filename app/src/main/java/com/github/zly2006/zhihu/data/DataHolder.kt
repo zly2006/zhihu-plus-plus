@@ -274,6 +274,7 @@ object DataHolder {
     data class Answer(
         val adminClosedComment: Boolean = false,
         val annotationAction: JsonElement? = null,
+        val attachment: JsonElement? = null,
         val answerType: String,
         val author: Author,
         val canComment: CanComment,

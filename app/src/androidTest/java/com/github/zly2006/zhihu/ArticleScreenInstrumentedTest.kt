@@ -115,11 +115,10 @@ class ArticleScreenInstrumentedTest {
             Scaffold(
                 modifier = androidx.compose.ui.Modifier
                     .fillMaxSize(),
-            ) { innerPadding ->
+            ) { _ ->
                 ArticleScreen(
                     article = ARTICLE,
                     viewModel = viewModel,
-                    innerPadding = innerPadding,
                 )
             }
         }

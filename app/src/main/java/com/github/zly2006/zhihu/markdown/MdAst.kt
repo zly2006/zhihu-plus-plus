@@ -18,10 +18,11 @@
 package com.github.zly2006.zhihu.markdown
 
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.navigation.Video
+import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.util.extractImageUrl
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
-import com.hrm.markdown.parser.ast.CustomContainer
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.parser.ast.Emphasis
 import com.hrm.markdown.parser.ast.FencedCodeBlock
@@ -39,6 +40,7 @@ import com.hrm.markdown.parser.ast.Link
 import com.hrm.markdown.parser.ast.ListBlock
 import com.hrm.markdown.parser.ast.ListItem
 import com.hrm.markdown.parser.ast.MathBlock
+import com.hrm.markdown.parser.ast.NativeBlock
 import com.hrm.markdown.parser.ast.Paragraph
 import com.hrm.markdown.parser.ast.Strikethrough
 import com.hrm.markdown.parser.ast.StrongEmphasis
@@ -182,13 +184,8 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
     }
 
     "a" -> {
-        // 仅对视频进行特殊处理
         if (element.attr("class").contains("video-box")) {
-            listOf(
-                CustomContainer().apply {
-                    appendChildren(element.childNodes().convertNodesToBlocks())
-                },
-            )
+            listOfNotNull(createVideoBoxBlock(element))
         } else {
             emptyList()
         }
@@ -271,6 +268,24 @@ private fun createFigureBlock(element: Element): MarkdownNode? {
     val inlines = extractInlineChildren(element)
     return inlines.takeIf { it.isNotEmpty() }?.let {
         Paragraph().apply { appendChildren(it) }
+    }
+}
+
+private fun createVideoBoxBlock(element: Element): MarkdownNode? {
+    val href = (element.attr("href"))
+    val videoId = href.takeIf { it.isNotBlank() }?.let { destination ->
+        val resolved = resolveContent(destination.toUri())
+        if (resolved is Video) resolved.id else null
+    } ?: element.attr("data-lens-id").toLongOrNull() ?: return null
+    val thumbnailUrl = element.selectFirst("img")?.let { image ->
+        extractImageUrl(image)
+    }
+
+    return NativeBlock {
+        RenderVideoBox(
+            videoId = videoId,
+            thumbnailUrl = thumbnailUrl,
+        )
     }
 }
 
