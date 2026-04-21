@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.OpenImageDislog
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -220,8 +221,9 @@ fun RenderMarkdown(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
-    val theme = MarkdownTheme.auto().copy(
-        bodyStyle = MarkdownTheme.auto().bodyStyle.copy(
+    val defaultTheme = MarkdownTheme.auto(ThemeManager.isDarkTheme())
+    val theme = defaultTheme.copy(
+        bodyStyle = defaultTheme.bodyStyle.copy(
             fontSize = 16.sp * fontSize / 100,
             lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
         ),
@@ -237,25 +239,21 @@ fun RenderMarkdown(
                 resolveContent(url)?.let { navigator.onNavigate(it) }
                     ?: luoTianYiUrlLauncher(context, url.toUri())
             },
+            header = header,
+            footer = footer,
             theme = theme,
         )
     }
 
     if (selectable) {
         SelectionContainer(modifier = modifier) {
-            Column {
-                header?.invoke()
-                markdownBody()
-                footer?.invoke()
-            }
+            markdownBody()
         }
     } else {
         Column(
             modifier = modifier,
         ) {
-            header?.invoke()
             markdownBody()
-            footer?.invoke()
         }
     }
 }
