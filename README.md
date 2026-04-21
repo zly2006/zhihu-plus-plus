@@ -1,6 +1,6 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
-[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://github.com/zly2006/zhihu-plus-plus/releases)
+[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://example.com)
 
 > [!IMPORTANT]
 >
