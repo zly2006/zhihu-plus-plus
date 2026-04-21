@@ -106,6 +106,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import kotlin.math.max
 
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
@@ -395,7 +396,7 @@ class CustomWebView : WebView {
     }
 
     fun openImage(httpClient: HttpClient, url: String) {
-        OpenImageDislog(context, httpClient, url).show()
+        OpenImageDialog(context, httpClient, url).show()
     }
 
     fun loadZhihu(
@@ -501,7 +502,7 @@ class CustomWebView : WebView {
     }
 }
 
-class OpenImageDislog(
+class OpenImageDialog(
     context: Context,
     private val httpClient: HttpClient,
     private val url: String,
@@ -525,6 +526,7 @@ class OpenImageDislog(
                     val bitmap = BitmapFactory.decodeStream(it)
                     withContext(Dispatchers.Main) {
                         photoView.setImageBitmap(bitmap)
+                        photoView.maximumScale = max(photoView.maximumScale, bitmap.height.toFloat() / bitmap.width)
                     }
                 }
         }

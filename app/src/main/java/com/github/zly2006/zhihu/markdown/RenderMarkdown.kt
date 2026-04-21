@@ -67,7 +67,7 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.components.OpenImageDislog
+import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -103,7 +103,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            val dialog = OpenImageDislog(context, httpClient, data.url)
+                            val dialog = OpenImageDialog(context, httpClient, data.url)
                             dialog.show()
                         },
                         onLongPress = { offset ->
@@ -126,7 +126,7 @@ fun RenderImage(
                 text = { Text("查看图片") },
                 onClick = {
                     expanded = false
-                    val dialog = OpenImageDislog(context, httpClient, data.url)
+                    val dialog = OpenImageDialog(context, httpClient, data.url)
                     dialog.show()
                 },
             )
@@ -210,7 +210,7 @@ fun RenderMarkdown(
     html: String,
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
-    selectable: Boolean = false,
+    selectable: Boolean = true,
     enableScroll: Boolean = true,
     header: (@Composable () -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
@@ -235,7 +235,7 @@ fun RenderMarkdown(
             imageContent = ::RenderImage,
             scrollState = scrollState,
             enableScroll = enableScroll,
-            onLinkClick = { url ->
+            onLinkClick = { url: String ->
                 resolveContent(url)?.let { navigator.onNavigate(it) }
                     ?: luoTianYiUrlLauncher(context, url.toUri())
             },

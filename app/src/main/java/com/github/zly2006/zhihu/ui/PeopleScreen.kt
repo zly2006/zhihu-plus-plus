@@ -77,7 +77,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.ui.components.FeedCard
-import com.github.zly2006.zhihu.ui.components.OpenImageDislog
+import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -1342,7 +1342,7 @@ private fun UserInfoHeader(
                     .size(80.dp)
                     .clip(CircleShape)
                     .clickable {
-                        OpenImageDislog(
+                        OpenImageDialog(
                             context,
                             AccountData.httpClient(context),
                             profile.avatar.substringBefore("_") + ".jpg",

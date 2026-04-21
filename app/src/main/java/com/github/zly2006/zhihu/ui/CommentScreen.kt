@@ -116,7 +116,7 @@ import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.ui.components.OpenImageDislog
+import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -351,7 +351,7 @@ private fun ClickableImageWithMenu(
             return
         }
         when (action) {
-            CommentImageMenuAction.Open -> OpenImageDislog(context, httpClient, imageUrl).show()
+            CommentImageMenuAction.Open -> OpenImageDialog(context, httpClient, imageUrl).show()
             CommentImageMenuAction.OpenInBrowser -> luoTianYiUrlLauncher(context, imageUrl.toUri())
             CommentImageMenuAction.Save -> {
                 coroutineScope.launch {
