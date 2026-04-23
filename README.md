@@ -1,6 +1,16 @@
+# 通知：暂停开发一个月，暂不开放release下载。
+
+转眼之间，这个项目也做了快两年了，高频更新也进行了一年了，我想给自己放个假。
+
+我想有的开源作者进行internet break确实是有必要的。网络神人太多。有人没学小学语文不会写标题的，有人觉得他果爹放个屁都是香的，还有人觉得我是超人什么都能做，生产力吊打别人一个公司的。
+
+我确实是累了，我已经unsubscribe了issue和PR，subscribe确实会带来过大的心理压力，这些垃圾会直接冲进你的邮箱。
+
+你可以自己编译apk，也欢迎发起pull request，但我在此期间不一定会review，至于何时恢复，看我心情。
+
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
-[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus) ![](https://img.shields.io/github/downloads/zly2006/zhihu-plus-plus/total)](https://github.com/zly2006/zhihu-plus-plus/releases)
+[![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
 
 本项目还不够完善，欢迎PR。
 
