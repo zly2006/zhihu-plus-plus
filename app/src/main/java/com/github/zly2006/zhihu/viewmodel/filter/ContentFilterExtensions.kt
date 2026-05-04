@@ -351,17 +351,18 @@ object ContentFilterExtensions {
         val blockZhihuAdPlatform = preferences.getBoolean("blockZhihuAdPlatform", true)
         val blockZhihuSchool = preferences.getBoolean("blockZhihuSchool", true)
         val blockWeChatOfficialAccount = preferences.getBoolean("blockWeChatOfficialAccount", true)
+        val blockPaidContent = preferences.getBoolean("blockPaidContent", true)
 
         return when (val raw = content.raw) {
             is DataHolder.Answer -> {
-                if (raw.paidInfo != null) {
+                if (blockPaidContent && raw.paidInfo != null) {
                     "知乎盐选付费内容"
                 } else {
                     getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
                 }
             }
             is DataHolder.Article -> {
-                if (raw.paidInfo != null) {
+                if (blockPaidContent && raw.paidInfo != null) {
                     "知乎盐选付费内容"
                 } else {
                     getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)

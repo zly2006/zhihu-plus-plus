@@ -400,6 +400,19 @@ fun ContentFilterSettingsScreen(
                     highlightedKey = setting,
                 )
 
+                val blockPaidContent = remember { mutableStateOf(preferences.getBoolean("blockPaidContent", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("屏蔽知乎严选付费内容") },
+                    description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
+                    checked = blockPaidContent.value,
+                    onCheckedChange = {
+                        blockPaidContent.value = it
+                        preferences.edit { putBoolean("blockPaidContent", it) }
+                    },
+                    settingKey = "blockPaidContent",
+                    highlightedKey = setting,
+                )
+
                 val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
                 SettingItemWithSwitch(
                     title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
