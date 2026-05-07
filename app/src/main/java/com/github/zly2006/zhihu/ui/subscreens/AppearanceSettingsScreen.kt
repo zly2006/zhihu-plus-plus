@@ -529,15 +529,16 @@ fun AppearanceSettingsScreen(
                                             languageExpanded = false
                                             val activity = context as? android.app.Activity
                                             if (activity != null) {
-                                                Toast.makeText(
-                                                    context,
-                                                    context.getString(
-                                                        R.string.language_changed,
-                                                        label,
-                                                    ),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                    .show()
+                                                val toast = Toast
+                                                    .makeText(
+                                                        context,
+                                                        context.getString(
+                                                            R.string.language_changed,
+                                                            label,
+                                                        ),
+                                                        Toast.LENGTH_SHORT,
+                                                    )
+                                                toast.show()
                                                 LocaleManager.applyAndRecreate(activity, code)
                                             }
                                         },
