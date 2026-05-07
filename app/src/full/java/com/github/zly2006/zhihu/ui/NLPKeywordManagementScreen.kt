@@ -606,7 +606,10 @@ fun NLPPhraseManagementTab(
                             Text(
                                 stringResource(
                                     R.string.added_at,
-                                    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                                    java.text.SimpleDateFormat(
+                                        "yyyy-MM-dd HH:mm",
+                                        java.util.Locale.getDefault(),
+                                    )
                                         .format(java.util.Date(keyword.createdTime)),
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
