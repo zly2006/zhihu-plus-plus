@@ -38,8 +38,8 @@ object LocaleManager {
 
     val SUPPORTED_LANGUAGES: List<LanguageOption> = listOf(
         LanguageOption("en", android.R.string.no, Locale.ENGLISH),
-        LanguageOption("zh-CN", android.R.string.no, Locale.SIMPLIFIED_CHINESE),
-        LanguageOption("zh-TW", android.R.string.no, Locale.TRADITIONAL_CHINESE),
+        LanguageOption("zh-CN", android.R.string.no, Locale.forLanguageTag("zh-CN")),
+        LanguageOption("zh-TW", android.R.string.no, Locale.forLanguageTag("zh-TW")),
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(
@@ -70,9 +70,13 @@ object LocaleManager {
         }
         val language = sysLocale.language
         val country = sysLocale.country
+        val script = sysLocale.script
         return when {
+            language == "zh" && script == "Hant" -> "zh-TW"
+            language == "zh" && script == "Hans" -> "zh-CN"
             language == "zh" && country == "TW" -> "zh-TW"
             language == "zh" && country == "HK" -> "zh-TW"
+            language == "zh" && country == "MO" -> "zh-TW"
             language == "zh" -> "zh-CN"
             else -> "en"
         }

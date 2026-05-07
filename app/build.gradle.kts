@@ -65,7 +65,7 @@ android {
 
     androidResources {
         @Suppress("UnstableApiUsage")
-        localeFilters += listOf("en", "zh")
+        localeFilters += listOf("en", "zh", "zh-rCN", "zh-rTW")
     }
 
     sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("generated/androidTestSecrets"))
