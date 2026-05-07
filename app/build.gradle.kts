@@ -102,6 +102,8 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             if (!System.getenv("signingKey").isNullOrEmpty()) {
                 signingConfig = signingConfigs["env"]
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
