@@ -1,14 +1,6 @@
 name: Instrument Tests
 
 on:
-  pull_request:
-    paths:
-      - "app/**"
-      - ".github/workflows/instrument-test.yml"
-      - "build.gradle.kts"
-      - "settings.gradle.kts"
-      - "gradle.properties"
-      - "gradle/**"
   workflow_dispatch:
 
 jobs:
