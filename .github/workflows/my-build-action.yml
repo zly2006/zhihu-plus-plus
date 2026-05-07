@@ -120,8 +120,16 @@ jobs:
           mkdir -p app/build/upload
           mv app/build/outputs/apk/full/release/app-full-release*.apk app/build/upload/zhihu++-full.apk
           mv app/build/outputs/apk/lite/release/app-lite-release*.apk app/build/upload/zhihu++-lite.apk
+      - name: Check signing key
+        id: check_signing
+        run: |
+          if [ -f app/zhihu.jks ] && [ -n "${{ secrets.ANDROID_SIGNING_KEY }}" ]; then
+            echo "has_signing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_signing=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Recompress APK
-        if: ${{ inputs.minify }}
+        if: ${{ inputs.minify && steps.check_signing.outputs.has_signing == 'true' }}
         env:
           KEYSTORE_PATH: ../app/zhihu.jks
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
