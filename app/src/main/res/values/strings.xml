@@ -99,7 +99,7 @@
     <string name="create">Create</string>
     <string name="block_user">Block User</string>
     <string name="block_user_confirm_message">Block user &quot;%1$s&quot;?</string>
-    <string name="block_user_confirm_desc">After blocking, this user&apos;s content will no longer appear in recommendation feeds.</string>
+    <string name="block_user_confirm_desc">After blocking, this user\'s content will no longer appear in recommendation feeds.</string>
     <string name="block_user_success">Blocked user: %1$s</string>
     <string name="block_user_failed">Failed to block user: %1$s</string>
     <string name="block_user_confirm">Block</string>
