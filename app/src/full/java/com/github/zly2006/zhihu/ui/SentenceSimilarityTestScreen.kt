@@ -57,8 +57,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.nlp.ModelState
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
@@ -82,8 +84,10 @@ fun SentenceSimilarityTestScreen(
         SentenceEmbeddingManager.setDefaultContext(context.applicationContext)
     }
 
-    var sentence1 by remember { mutableStateOf("我喜欢研究自然语言处理。") }
-    var sentence2 by remember { mutableStateOf("自然语言任务总是让我很兴奋。") }
+    val defaultSentence1 = stringResource(R.string.sentence_similarity_default_first)
+    val defaultSentence2 = stringResource(R.string.sentence_similarity_default_second)
+    var sentence1 by remember(defaultSentence1) { mutableStateOf(defaultSentence1) }
+    var sentence2 by remember(defaultSentence2) { mutableStateOf(defaultSentence2) }
     var similarity by remember { mutableStateOf<Float?>(null) }
     var inferenceTimeMs by remember { mutableStateOf<Long?>(null) }
     var computeError by remember { mutableStateOf<String?>(null) }
@@ -122,14 +126,14 @@ fun SentenceSimilarityTestScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "句子相似度测试",
+                        text = stringResource(R.string.sentence_similarity_test),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -145,7 +149,7 @@ fun SentenceSimilarityTestScreen(
                         is ModelState.Downloading -> {
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "下载中 ${(modelState.progress * 100).toInt()}%",
+                                    text = stringResource(R.string.model_downloading_percent, (modelState.progress * 100).toInt()),
                                     style = MaterialTheme.typography.labelMedium,
                                     modifier = Modifier.padding(end = 16.dp),
                                 )
@@ -157,7 +161,7 @@ fun SentenceSimilarityTestScreen(
                         }
                         is ModelState.Error -> {
                             Text(
-                                text = "加载失败",
+                                text = stringResource(R.string.model_load_failed_short),
                                 style = MaterialTheme.typography.labelMedium,
                                 modifier = Modifier.padding(end = 16.dp),
                                 color = MaterialTheme.colorScheme.error,
@@ -172,7 +176,7 @@ fun SentenceSimilarityTestScreen(
                         }
                         ModelState.Uninitialized -> {
                             Text(
-                                text = "未加载",
+                                text = stringResource(R.string.model_not_loaded_short),
                                 style = MaterialTheme.typography.labelMedium,
                                 modifier = Modifier.padding(end = 16.dp),
                             )
@@ -195,7 +199,7 @@ fun SentenceSimilarityTestScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = "这个页面基于 text2vec-base-chinese 模型，实现与参考 Demo 类似的语义相似度计算，方便在设备上快速验证算法效果。",
+                text = stringResource(R.string.sentence_similarity_intro),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
@@ -206,11 +210,11 @@ fun SentenceSimilarityTestScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 val statusText = when (val state = modelState) {
-                    ModelState.Uninitialized -> "当前状态：未加载"
-                    ModelState.Loading -> "当前状态：正在加载模型……"
-                    is ModelState.Downloading -> "当前状态：正在下载模型 ${(state.progress * 100).toInt()}%"
-                    ModelState.Ready -> "当前状态：模型已就绪"
-                    is ModelState.Error -> "当前状态：加载失败"
+                    ModelState.Uninitialized -> stringResource(R.string.model_status_not_loaded)
+                    ModelState.Loading -> stringResource(R.string.model_status_loading_model)
+                    is ModelState.Downloading -> stringResource(R.string.model_status_downloading, (state.progress * 100).toInt())
+                    ModelState.Ready -> stringResource(R.string.model_status_ready)
+                    is ModelState.Error -> stringResource(R.string.model_status_load_failed)
                 }
                 Text(statusText, style = MaterialTheme.typography.bodyMedium)
                 if (modelError != null) {
@@ -227,13 +231,13 @@ fun SentenceSimilarityTestScreen(
                         onClick = { loadModel() },
                         enabled = !isModelReady && !isModelLoading,
                     ) {
-                        Text(if (isModelLoading) "加载中..." else "加载模型")
+                        Text(if (isModelLoading) stringResource(R.string.loading) else stringResource(R.string.load_model))
                     }
                     TextButton(
                         onClick = { unloadModel() },
                         enabled = isModelReady && !isComputing,
                     ) {
-                        Text("卸载模型")
+                        Text(stringResource(R.string.unload_model))
                     }
                 }
             }
@@ -242,14 +246,14 @@ fun SentenceSimilarityTestScreen(
                 modifier = Modifier.fillMaxWidth(),
                 value = sentence1,
                 onValueChange = { sentence1 = it },
-                label = { Text("第一句话") },
+                label = { Text(stringResource(R.string.first_sentence)) },
                 maxLines = 4,
             )
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = sentence2,
                 onValueChange = { sentence2 = it },
-                label = { Text("第二句话") },
+                label = { Text(stringResource(R.string.second_sentence)) },
                 maxLines = 4,
             )
 
@@ -281,12 +285,12 @@ fun SentenceSimilarityTestScreen(
                 enabled = canCompute,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(if (isComputing) "计算中..." else "计算相似度")
+                Text(if (isComputing) stringResource(R.string.computing) else stringResource(R.string.compute_similarity))
             }
 
             computeError?.let { error ->
                 Text(
-                    text = "计算失败：$error",
+                    text = stringResource(R.string.compute_failed, error),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -294,8 +298,10 @@ fun SentenceSimilarityTestScreen(
 
             similarity?.let { score ->
                 val normalized = ((score + 1f) / 2f).coerceIn(0f, 1f)
-                Text("余弦相似度：${"%.4f".format(score)}", style = MaterialTheme.typography.titleMedium)
-                inferenceTimeMs?.let { Text("推理耗时：$it ms", style = MaterialTheme.typography.bodyMedium) }
+                Text(stringResource(R.string.cosine_similarity_result, score), style = MaterialTheme.typography.titleMedium)
+                inferenceTimeMs?.let {
+                    Text(stringResource(R.string.inference_time_ms, it), style = MaterialTheme.typography.bodyMedium)
+                }
                 LinearProgressIndicator(
                     progress = { normalized },
                     modifier = Modifier.fillMaxWidth(),
@@ -312,7 +318,7 @@ fun SentenceSimilarityTestScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("交换输入")
+                Text(stringResource(R.string.swap_inputs))
             }
         }
     }

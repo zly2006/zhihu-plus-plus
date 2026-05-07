@@ -50,6 +50,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
@@ -105,6 +106,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.File
 import java.text.SimpleDateFormat
@@ -150,7 +152,7 @@ class ArticleViewModel(
     var rememberedScrollY = MutableLiveData(0)
     var rememberedScrollYSync = true
 
-    fun toCachedContent(sourceLabel: String = "此问题"): CachedAnswerContent = CachedAnswerContent(
+    fun toCachedContent(sourceLabel: String): CachedAnswerContent = CachedAnswerContent(
         article = article,
         title = title,
         authorName = authorName,
@@ -224,7 +226,7 @@ class ArticleViewModel(
         val updatedAt: Long = 0L,
         val ipInfo: String? = null,
         /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
-        val sourceLabel: String = "此问题",
+        val sourceLabel: String = "",
     )
 
     // todo: replace this with sqlite
@@ -420,16 +422,26 @@ class ArticleViewModel(
                                         ?.let { nav -> answer.paginationInfo?.let { nav.updateFromPaginationInfo(it) } }
                                 } else {
                                     sharedData.navigator = answer.paginationInfo?.let {
-                                        PaginationInfoNavigator(questionId, it)
+                                        PaginationInfoNavigator(
+                                            questionId = questionId,
+                                            initialPaginationInfo = it,
+                                            sourceName = context.getString(R.string.current_question),
+                                            loadingText = context.getString(R.string.loading),
+                                        )
                                     } ?: run {
                                         withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, "【回答切换】无法获取分页信息，使用默认回答排序", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.answer_switch_fallback_notice), Toast.LENGTH_SHORT).show()
                                         }
-                                        QuestionAnswerNavigator(questionId)
+                                        QuestionAnswerNavigator(
+                                            questionId = questionId,
+                                            sourceName = context.getString(R.string.current_question),
+                                        )
                                     }
                                 }
                             }
-                            sharedData.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+                            sharedData.navigator?.pushAnswer(
+                                toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: context.getString(R.string.current_question)),
+                            )
 
                             // 仅在无前向历史时预取下一个回答
                             sharedData.navigator?.let { nav ->
@@ -439,7 +451,7 @@ class ArticleViewModel(
                                 nav.prefetchPrevious(context, article.id)
                             }
                         } else {
-                            content = "<h1>回答不存在</h1>"
+                            content = "<h1>${context.getString(R.string.answer_not_found)}</h1>"
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
@@ -477,7 +489,7 @@ class ArticleViewModel(
                                 ),
                             )
                         } else {
-                            content = "<h1>文章不存在</h1>"
+                            content = "<h1>${context.getString(R.string.article_not_found)}</h1>"
                             Log.e("ArticleViewModel", "Article not found")
                         }
                     }
@@ -507,20 +519,24 @@ class ArticleViewModel(
 
                 if (response.status.isSuccess()) {
                     loadCollections(context)
-                    Toast.makeText(context, if (remove) "取消收藏成功" else "收藏成功", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        if (remove) context.getString(R.string.unfavorite_success) else context.getString(R.string.favorite_success),
+                        Toast.LENGTH_SHORT,
+                    ).show()
                 } else {
-                    Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.favorite_operation_failed), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Favorite toggle failed", e)
-                Toast.makeText(context, "收藏操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.favorite_operation_failed_with_error, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     fun requestAiSummary(context: Context) {
         if (httpClient == null) {
-            aiSummaryError = "未初始化网络客户端"
+            aiSummaryError = context.getString(R.string.network_client_not_initialized)
             return
         }
         aiSummaryJob?.cancel()
@@ -536,7 +552,8 @@ class ArticleViewModel(
                 val request = buildZhidaSummaryRequest(
                     contentId = article.id,
                     contentType = contentType,
-                    title = title.ifBlank { "知乎内容" },
+                    title = title.ifBlank { context.getString(R.string.zhihu_content) },
+                    messageContent = context.getString(R.string.zhida_summary_prompt),
                 )
                 val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
@@ -549,7 +566,7 @@ class ArticleViewModel(
                     val errorBody = response.bodyAsText()
                     val status = response.status.value
                     val message = parseSummaryErrorMessage(errorBody)
-                    throw IllegalStateException(message ?: "总结请求失败（HTTP $status）")
+                    throw IllegalStateException(message ?: context.getString(R.string.summary_request_failed_http, status))
                 }
 
                 val channel = response.bodyAsChannel()
@@ -571,7 +588,7 @@ class ArticleViewModel(
                             }
                         }
                         "error" -> {
-                            val message = decodeZhidaStreamErrorMessage(payload.data) ?: "总结失败"
+                            val message = decodeZhidaStreamErrorMessage(payload.data) ?: context.getString(R.string.summary_failed)
                             throw IllegalStateException(message)
                         }
                         "end" -> streamEnded = true
@@ -610,13 +627,13 @@ class ArticleViewModel(
                 }
 
                 if (!seenAnswerEvent || aiSummaryText.isBlank()) {
-                    aiSummaryError = "未返回可显示的总结内容"
+                    aiSummaryError = context.getString(R.string.summary_no_display_content)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Failed to summarize article", e)
-                aiSummaryError = e.message ?: "总结失败"
+                aiSummaryError = e.message ?: context.getString(R.string.summary_failed)
             } finally {
                 aiSummaryLoading = false
             }
@@ -717,7 +734,7 @@ class ArticleViewModel(
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
-                Toast.makeText(context, "点赞失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.vote_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -735,7 +752,7 @@ class ArticleViewModel(
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
-            successMessage = "图片已保存到相册",
+            successMessage = context.getString(R.string.image_saved_to_gallery),
             onComplete = onComplete,
         )
     }
@@ -752,7 +769,7 @@ class ArticleViewModel(
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
-            successMessage = "带评论图片已保存到相册",
+            successMessage = context.getString(R.string.comment_image_saved_to_gallery),
             onComplete = onComplete,
         )
     }
@@ -762,9 +779,9 @@ class ArticleViewModel(
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
-        runCatching { requireExportSourceContent() }.onFailure { error ->
+        runCatching { requireExportSourceContent(context) }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, error.message ?: context.getString(R.string.content_not_loaded), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
             return
@@ -774,7 +791,7 @@ class ArticleViewModel(
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
                 permissionRequested.value = Unit
-                Toast.makeText(context, "需要存储权限才能导出 HTML，正在请求权限", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.storage_permission_required_export_html), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
             return
@@ -786,13 +803,13 @@ class ArticleViewModel(
                 saveHtmlToDownloads(context, htmlContent)
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "HTML 已保存到 $savedLocation", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.html_saved_to, savedLocation), Toast.LENGTH_LONG).show()
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "HTML export failed", e)
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "HTML 导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.html_export_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
         }
@@ -806,9 +823,9 @@ class ArticleViewModel(
         successMessage: String,
         onComplete: (Boolean) -> Unit,
     ) {
-        runCatching { requireExportSourceContent() }.onFailure { error ->
+        runCatching { requireExportSourceContent(context) }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, error.message ?: context.getString(R.string.content_not_loaded), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
             return
@@ -818,7 +835,7 @@ class ArticleViewModel(
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
                 permissionRequested.value = Unit
-                Toast.makeText(context, "需要存储权限才能导出图片，正在请求权限", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.storage_permission_required_export_image), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
             return
@@ -847,9 +864,13 @@ class ArticleViewModel(
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
-            val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
+            val errorPrefix = if (includeComments) {
+                context.getString(R.string.comment_image_export_failed_short)
+            } else {
+                context.getString(R.string.image_export_failed_short)
+            }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "$errorPrefix: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.error_with_message, errorPrefix, e.message ?: ""), Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
         } finally {
@@ -906,7 +927,7 @@ class ArticleViewModel(
 
                     val contentHeightPx = computeExportContentHeightPx(webView)
                     if (contentHeightPx <= 1 && attempt >= 24) {
-                        fail(IllegalStateException("内容为空"))
+                        fail(IllegalStateException(context.getString(R.string.content_empty)))
                         return@postDelayed
                     }
 
@@ -930,7 +951,7 @@ class ArticleViewModel(
             }
 
             timeoutRunnable = Runnable {
-                fail(IllegalStateException("超时"))
+                fail(IllegalStateException(context.getString(R.string.operation_timeout)))
             }
 
             webView.webViewClient = object : android.webkit.WebViewClient() {
@@ -952,7 +973,7 @@ class ArticleViewModel(
                 ) {
                     super.onReceivedError(view, request, error)
                     if (request?.isForMainFrame != false) {
-                        fail(IllegalStateException("加载错误"))
+                        fail(IllegalStateException(context.getString(R.string.load_error)))
                     }
                 }
             }
@@ -1002,7 +1023,11 @@ class ArticleViewModel(
         }
 
         runCatching {
-            webView.evaluateJavascript(jsCode) {
+            val localizedJs = """
+                window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};
+                window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};
+            """.trimIndent()
+            webView.evaluateJavascript("$localizedJs\n$jsCode") {
                 onInjected()
             }
         }.onFailure { error ->
@@ -1078,6 +1103,7 @@ class ArticleViewModel(
     ): String {
         val commentsHtml = if (includeComments && commentCount > 0) {
             buildArticleExportCommentsHtml(
+                context = context,
                 comments = fetchExportComments(context, commentCount),
                 requestedCount = commentCount,
             )
@@ -1088,7 +1114,7 @@ class ArticleViewModel(
         return buildArticleExportHtml(
             context = context,
             exportData = buildArticleExportData(
-                content = requireExportSourceContent(),
+                content = requireExportSourceContent(context),
                 includeAppAttribution = includeAppAttribution,
             ),
             extraSectionsHtml = commentsHtml,
@@ -1101,7 +1127,7 @@ class ArticleViewModel(
     ): String = withContext(Dispatchers.IO) {
         buildOfflineArticleExportHtml(
             context = context,
-            content = requireExportSourceContent(),
+            content = requireExportSourceContent(context),
             includeAppAttribution = includeAppAttribution,
             httpClient = httpClient ?: AccountData.httpClient(context),
         )
@@ -1141,18 +1167,19 @@ class ArticleViewModel(
             .format(Date(comment.createdTime * 1000)),
     )
 
-    private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
-        content = requireExportSourceContent(),
+    private fun buildExportFileName(context: Context, extension: String): String = buildArticleExportFileName(
+        context = context,
+        content = requireExportSourceContent(context),
         extension = extension,
     )
 
-    private fun requireExportSourceContent(): DataHolder.Content = exportSourceContent
-        ?: throw IllegalStateException("内容未加载完成")
+    private fun requireExportSourceContent(context: Context): DataHolder.Content = exportSourceContent
+        ?: throw IllegalStateException(context.getString(R.string.content_not_loaded))
 
     // 使用MediaStore保存图片到公共目录
     private fun saveImageToMediaStore(context: Context, bitmap: Bitmap) {
         val contentResolver = context.contentResolver
-        val displayName = buildExportFileName("png")
+        val displayName = buildExportFileName(context, "png")
 
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
@@ -1175,11 +1202,11 @@ class ArticleViewModel(
     }
 
     private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
-        val displayName = buildExportFileName("html")
+        val displayName = buildExportFileName(context, "html")
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             saveHtmlToDownloadsWithMediaStore(context, displayName, htmlContent)
         } else {
-            saveHtmlToLegacyDownloads(displayName, htmlContent)
+            saveHtmlToLegacyDownloads(context, displayName, htmlContent)
         }
     }
 
@@ -1198,12 +1225,12 @@ class ArticleViewModel(
         }
 
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            ?: throw IllegalStateException("无法创建下载文件")
+            ?: throw IllegalStateException(context.getString(R.string.download_file_create_failed))
 
         return try {
             resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
                 writer.write(htmlContent)
-            } ?: throw IllegalStateException("无法打开下载文件")
+            } ?: throw IllegalStateException(context.getString(R.string.download_file_open_failed))
 
             contentValues.clear()
             contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
@@ -1216,13 +1243,13 @@ class ArticleViewModel(
     }
 
     @Suppress("DEPRECATION")
-    private fun saveHtmlToLegacyDownloads(displayName: String, htmlContent: String): String {
+    private fun saveHtmlToLegacyDownloads(context: Context, displayName: String, htmlContent: String): String {
         val downloadsDir = File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "Zhihu++",
         )
         if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-            throw IllegalStateException("无法创建下载目录")
+            throw IllegalStateException(context.getString(R.string.download_dir_create_failed))
         }
 
         val file = File(downloadsDir, displayName)
@@ -1231,16 +1258,16 @@ class ArticleViewModel(
     }
 
     // 转换为Markdown格式
-    fun convertToMarkdown(): String {
+    fun convertToMarkdown(context: Context): String {
         val sb = StringBuilder()
 
         // 标题
         sb.append("# $title\n\n")
 
         // 作者信息
-        sb.append("**作者**: $authorName\n\n")
+        sb.append("**${context.getString(R.string.markdown_author_label)}**: $authorName\n\n")
         if (authorBio.isNotEmpty()) {
-            sb.append("**简介**: $authorBio\n\n")
+            sb.append("**${context.getString(R.string.markdown_bio_label)}**: $authorBio\n\n")
         }
 
         // 分隔线
@@ -1385,12 +1412,12 @@ class ArticleViewModel(
 
     // 导出到剪贴板
     fun exportToClipboard(context: Context) {
-        val markdown = convertToMarkdown()
+        val markdown = convertToMarkdown(context)
 
         // 将Markdown文本复制到剪贴板
         val clip = ClipData.newPlainText("Zhihu Article", markdown)
         context.clipboardManager.setPrimaryClip(clip)
 
-        Toast.makeText(context, "文章已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.article_copied_to_clipboard), Toast.LENGTH_SHORT).show()
     }
 }

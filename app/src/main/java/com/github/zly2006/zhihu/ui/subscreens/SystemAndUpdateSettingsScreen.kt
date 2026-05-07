@@ -113,7 +113,7 @@ fun SystemAndUpdateSettingsScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
-                title = { Text("系统与更新") },
+                title = { Text(context.getString(R.string.system_and_update)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navigator.onNavigateBack,
@@ -122,7 +122,10 @@ fun SystemAndUpdateSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = context.getString(R.string.back),
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -166,12 +169,12 @@ fun SystemAndUpdateSettingsScreen(
                     Column(modifier = Modifier.padding(16.dp, 12.dp)) {
                         if (updateVersion.isNotEmpty()) {
                             Text(
-                                text = "新版本：\n$updateVersion",
+                                text = "${context.getString(R.string.new_version_title)}\n$updateVersion",
                                 style = MaterialTheme.typography.titleLarge,
                             )
                         } else {
                             Text(
-                                text = "检测到新版本",
+                                text = context.getString(R.string.new_version_detected),
                                 style = MaterialTheme.typography.titleLarge,
                             )
                         }
@@ -185,7 +188,7 @@ fun SystemAndUpdateSettingsScreen(
                             ) {
                                 Column(modifier = Modifier.padding(12.dp, 8.dp)) {
                                     Text(
-                                        "更新内容",
+                                        context.getString(R.string.release_notes),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.padding(bottom = 8.dp),
@@ -220,7 +223,7 @@ fun SystemAndUpdateSettingsScreen(
                                         onClick = { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri()) },
                                         modifier = Modifier.align(Alignment.End),
                                     ) {
-                                        Text("查看完整更新日志")
+                                        Text(context.getString(R.string.view_full_changelog))
                                         Icon(
                                             Icons.Default.ArrowOutward,
                                             null,
@@ -239,15 +242,16 @@ fun SystemAndUpdateSettingsScreen(
                                     runCatching {
                                         context.startActivity(Intent(Intent.ACTION_VIEW, cnDownloadUrl.toUri()))
                                     }.onFailure {
-                                        UpdateManager.updateState.value = UpdateState.Error(it.message ?: "无法打开浏览器")
+                                        UpdateManager.updateState.value =
+                                            UpdateState.Error(it.message ?: context.getString(R.string.cannot_open_browser))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("使用国内网盘加速下载", Modifier.padding(0.dp, 4.dp))
+                                Text(context.getString(R.string.cn_download), Modifier.padding(0.dp, 4.dp))
                             }
                             Text(
-                                "使用国内网盘下载，不需要梯，还可以帮助作者获得流量。您也可以选择使用GitHub下载。",
+                                context.getString(R.string.cn_download_desc),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Spacer(modifier = Modifier.height(12.dp))
@@ -267,7 +271,7 @@ fun SystemAndUpdateSettingsScreen(
                                 },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text("跳过此版本", Modifier.padding(0.dp, 4.dp))
+                                Text(context.getString(R.string.skip_version), Modifier.padding(0.dp, 4.dp))
                             }
 
                             Button(
@@ -284,10 +288,10 @@ fun SystemAndUpdateSettingsScreen(
                             ) {
                                 Text(
                                     when (updateState) {
-                                        is UpdateState.UpdateAvailable -> "下载更新"
-                                        is UpdateState.Downloading -> "下载中..."
-                                        is UpdateState.Downloaded -> "安装更新"
-                                        else -> "下载更新"
+                                        is UpdateState.UpdateAvailable -> context.getString(R.string.download_update)
+                                        is UpdateState.Downloading -> context.getString(R.string.downloading)
+                                        is UpdateState.Downloaded -> context.getString(R.string.install_update)
+                                        else -> context.getString(R.string.download_update)
                                     },
                                     Modifier.padding(0.dp, 4.dp),
                                 )
@@ -303,10 +307,10 @@ fun SystemAndUpdateSettingsScreen(
 
             SettingItemGroup {
                 SettingItem(
-                    title = { Text("GitHub Token") },
+                    title = { Text(context.getString(R.string.github_token)) },
                     description = {
                         Text(
-                            "用于访问 GitHub API 时解除限速，提高更新检查的稳定性。留空则使用匿名访问，检查更新可能会失败。",
+                            context.getString(R.string.github_token_desc),
                         )
                     },
                     bottomAction = {
@@ -333,8 +337,8 @@ fun SystemAndUpdateSettingsScreen(
 
                 var autoCheckUpdates by remember { mutableStateOf(UpdateManager.isAutoCheckEnabled(context)) }
                 SettingItemWithSwitch(
-                    title = { Text("自动检查更新") },
-                    description = { Text("应用启动后后台检查新版本，并在首页显示更新提醒") },
+                    title = { Text(context.getString(R.string.auto_check_updates)) },
+                    description = { Text(context.getString(R.string.auto_check_updates_desc)) },
                     checked = autoCheckUpdates,
                     onCheckedChange = {
                         autoCheckUpdates = it
@@ -347,8 +351,8 @@ fun SystemAndUpdateSettingsScreen(
 
                 var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
                 SettingItemWithSwitch(
-                    title = { Text("检查 Nightly 版本更新") },
-                    description = { Text("检查每日构建版本 (可能不稳定)") },
+                    title = { Text(context.getString(R.string.check_nightly_updates)) },
+                    description = { Text(context.getString(R.string.check_nightly_updates_desc)) },
                     checked = checkNightlyUpdates,
                     onCheckedChange = {
                         checkNightlyUpdates = it
@@ -409,8 +413,8 @@ fun SystemAndUpdateSettingsScreen(
 
                 var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("允许发送遥测统计数据") },
-                    description = { Text("仅用于统计使用人数，不包含个人隐私") },
+                    title = { Text(context.getString(R.string.allow_telemetry)) },
+                    description = { Text(context.getString(R.string.allow_telemetry_desc)) },
                     checked = allowTelemetry,
                     onCheckedChange = {
                         allowTelemetry = it
@@ -441,10 +445,10 @@ fun SystemAndUpdateSettingsScreen(
                 ) {
                     Text(
                         when (updateState) {
-                            is UpdateState.NoUpdate -> "检查更新"
-                            is UpdateState.Checking -> "检查中..."
-                            is UpdateState.Latest -> "已经是最新版本"
-                            is UpdateState.Error -> "检查更新失败，点击重试"
+                            is UpdateState.NoUpdate -> context.getString(R.string.check_update)
+                            is UpdateState.Checking -> context.getString(R.string.checking)
+                            is UpdateState.Latest -> context.getString(R.string.already_latest)
+                            is UpdateState.Error -> context.getString(R.string.check_update_failed_retry)
                             else -> ""
                         },
                         Modifier.padding(0.dp, 4.dp),
@@ -464,18 +468,18 @@ fun SystemAndUpdateSettingsScreen(
                 )
             }
             val reminderOptions = listOf(
-                0 to "关闭",
-                15 to "每 15 分钟",
-                30 to "每 30 分钟",
-                60 to "每 1 小时",
+                0 to context.getString(R.string.anti_addiction_off),
+                15 to context.getString(R.string.anti_addiction_15min),
+                30 to context.getString(R.string.anti_addiction_30min),
+                60 to context.getString(R.string.anti_addiction_1hour),
             )
 
             SettingItemGroup(
-                title = "防沉迷",
+                title = context.getString(R.string.anti_addiction),
             ) {
                 SettingItem(
-                    title = { Text("防沉迷提醒") },
-                    description = { Text("你已经连续浏览知乎 N 小时 M 分钟了，休息一下吧。退出后 5 分钟内重开仍视为连续使用。") },
+                    title = { Text(context.getString(R.string.anti_addiction_reminder)) },
+                    description = { Text(context.getString(R.string.anti_addiction_reminder_desc, 0, 0)) },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = reminderExpanded,
@@ -484,7 +488,7 @@ fun SystemAndUpdateSettingsScreen(
                             OutlinedTextField(
                                 value = reminderOptions
                                     .find { it.first == reminderIntervalMinutes }
-                                    ?.second ?: "关闭",
+                                    ?.second ?: context.getString(R.string.anti_addiction_off),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = {
@@ -522,12 +526,12 @@ fun SystemAndUpdateSettingsScreen(
             }
 
             SettingItemGroup(
-                title = "交流 & 闲聊",
-                footer = { Text("代码和功能反馈请前往GitHub。上边的频道用于用户交流和闲聊，开发者不一定会在线回答问题。") },
+                title = context.getString(R.string.community),
+                footer = { Text(context.getString(R.string.community_footer)) },
             ) {
                 SettingItem(
-                    title = { Text("Discord 频道") },
-                    description = { Text("请在 my-other-apps/zhihu-plus-plus 频道讨论") },
+                    title = { Text(context.getString(R.string.discord_channel)) },
+                    description = { Text(context.getString(R.string.discord_channel_desc)) },
                     icon = { Icon(painterResource(R.drawable.ic_discord_24dp), null) },
                     endAction = {
                         Icon(
@@ -540,8 +544,8 @@ fun SystemAndUpdateSettingsScreen(
                 )
 
                 SettingItem(
-                    title = { Text("Telegram 群组 (Hydrogen)") },
-                    description = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
+                    title = { Text(context.getString(R.string.telegram_group)) },
+                    description = { Text(context.getString(R.string.telegram_group_desc)) },
                     icon = { Icon(painterResource(R.drawable.ic_telegram_24dp), null) },
                     endAction = {
                         Icon(
@@ -554,8 +558,8 @@ fun SystemAndUpdateSettingsScreen(
                 )
 
                 SettingItem(
-                    title = { Text("Github issue") },
-                    description = { Text("欢迎提交 issue 讨论功能和反馈问题") },
+                    title = { Text(context.getString(R.string.github_issue)) },
+                    description = { Text(context.getString(R.string.github_issue_desc)) },
                     icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
                     endAction = {
                         Icon(

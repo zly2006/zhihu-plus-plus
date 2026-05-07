@@ -42,6 +42,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 abstract class AnswerNavigator(
     val sourceName: String,
+    val loadingText: String = "",
 ) {
     // ── 历史记录 ──────────────────────────────────────────────────────────────
 
@@ -157,7 +158,8 @@ abstract class AnswerNavigator(
  */
 class QuestionAnswerNavigator(
     val questionId: Long,
-) : AnswerNavigator("此问题") {
+    sourceName: String,
+) : AnswerNavigator(sourceName) {
     private val destinations = ArrayDeque<Feed>()
     private var nextUrl: String = ""
 
@@ -231,7 +233,7 @@ class CollectionAnswerNavigator(
     collectionTitle: String,
     initialNextItems: List<CollectionContentViewModel.CollectionItem>,
     initialPreviousItems: List<CollectionContentViewModel.CollectionItem> = emptyList(),
-) : AnswerNavigator("「$collectionTitle」") {
+) : AnswerNavigator(collectionTitle) {
     private val queue = ArrayDeque<Article>().also { deque ->
         initialNextItems.forEach { item ->
             val article = item.content.navDestination as? Article
@@ -403,7 +405,9 @@ class CollectionAnswerNavigator(
 class PaginationInfoNavigator(
     val questionId: Long,
     initialPaginationInfo: DataHolder.Answer.PaginationInfo,
-) : AnswerNavigator("此问题") {
+    sourceName: String,
+    loadingText: String,
+) : AnswerNavigator(sourceName, loadingText) {
     // 前进队列（有序，无重复）
     private val nextQueue = ArrayDeque<Long>().also { it.addAll(initialPaginationInfo.nextAnswerIds) }
 
@@ -425,7 +429,7 @@ class PaginationInfoNavigator(
             val id = prevQueue.firstOrNull() ?: return null
             return CachedAnswerContent(
                 article = Article(id = id, type = ArticleType.Answer),
-                title = "加载中...",
+                title = loadingText,
                 authorName = "",
                 authorBio = "",
                 authorAvatarUrl = "",

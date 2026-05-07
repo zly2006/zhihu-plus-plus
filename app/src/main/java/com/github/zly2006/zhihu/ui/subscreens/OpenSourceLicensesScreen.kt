@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.BuildConfig
@@ -52,7 +54,7 @@ import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 private data class ManualLicenseEntry(
     val name: String,
     val license: String,
-    val summary: String,
+    @StringRes val summaryResId: Int,
     val url: String,
     val icon: @Composable () -> Unit,
 )
@@ -61,42 +63,42 @@ private val fullVariantManualLibraries = listOf(
     ManualLicenseEntry(
         name = "Sentence-Embeddings-Android",
         license = "Apache-2.0",
-        summary = "用于执行句子嵌入。",
+        summaryResId = R.string.license_summary_sentence_embeddings_android,
         url = "https://github.com/shubham0204/Sentence-Embeddings-Android",
         icon = { Icon(Icons.Default.Memory, contentDescription = null) },
     ),
     ManualLicenseEntry(
         name = "huggingface/tokenizers 0.22.2",
         license = "Apache-2.0",
-        summary = "huggingface tokenizer",
+        summaryResId = R.string.license_summary_huggingface_tokenizers,
         url = "https://github.com/huggingface/tokenizers",
         icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
     ),
     ManualLicenseEntry(
         name = "jni 0.21.1",
         license = "MIT/Apache-2.0",
-        summary = "Rust JNI 绑定。",
+        summaryResId = R.string.license_summary_jni,
         url = "https://github.com/jni-rs/jni-rs",
         icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
     ),
     ManualLicenseEntry(
         name = "bytes 1.11.1",
         license = "MIT",
-        summary = "Rust bytes 缓冲区库。",
+        summaryResId = R.string.license_summary_bytes,
         url = "https://github.com/tokio-rs/bytes",
         icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
     ),
     ManualLicenseEntry(
         name = "serde 1.0.228",
         license = "MIT OR Apache-2.0",
-        summary = "Rust 序列化框架。",
+        summaryResId = R.string.license_summary_serde,
         url = "https://github.com/serde-rs/serde",
         icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
     ),
     ManualLicenseEntry(
         name = "serde_json 1.0.149",
         license = "MIT OR Apache-2.0",
-        summary = "Rust JSON 序列化实现。",
+        summaryResId = R.string.license_summary_serde_json,
         url = "https://github.com/serde-rs/json",
         icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
     ),
@@ -118,7 +120,7 @@ fun OpenSourceLicensesScreen() {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             LargeTopAppBar(
-                title = { Text("开源许可") },
+                title = { Text(stringResource(R.string.open_source_licenses)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navigator.onNavigateBack,
@@ -127,7 +129,7 @@ fun OpenSourceLicensesScreen() {
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -148,11 +150,11 @@ fun OpenSourceLicensesScreen() {
             header = {
                 if (manualLibraries.isNotEmpty()) {
                     item {
-                        SettingItemGroup(title = "Full 版本特有组件") {
+                        SettingItemGroup(title = stringResource(R.string.full_variant_components)) {
                             manualLibraries.forEach { entry ->
                                 SettingItem(
                                     title = { Text(entry.name) },
-                                    description = { Text("${entry.license} · ${entry.summary}") },
+                                    description = { Text("${entry.license} · ${stringResource(entry.summaryResId)}") },
                                     icon = entry.icon,
                                     onClick = {
                                         luoTianYiUrlLauncher(context, entry.url.toUri())

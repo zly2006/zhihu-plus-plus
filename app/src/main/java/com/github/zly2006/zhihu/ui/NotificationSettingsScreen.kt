@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,19 +46,20 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 
 enum class NotificationType(
-    val displayName: String,
+    @StringRes val displayNameResId: Int,
     val defaultValue: Boolean,
     val regex: Regex,
 ) {
-    LIKE_ANSWER("喜欢了你的回答", true, Regex("喜欢了你的回答")),
-    LIKE_COMMENT("喜欢了你的评论", true, Regex("喜欢了.*你的评论")),
-    REPLY_COMMENT("回复了你的评论", true, Regex("回复了.*你的评论")),
-    INVITE_ANSWER("邀请你回答问题", false, Regex("\\s?(邀请你回答问题|的提问等你来答|邀请你回答)")),
+    LIKE_ANSWER(R.string.notification_type_like_answer, true, Regex("喜欢了你的回答")),
+    LIKE_COMMENT(R.string.notification_type_like_comment, true, Regex("喜欢了.*你的评论")),
+    REPLY_COMMENT(R.string.notification_type_reply_comment, true, Regex("回复了.*你的评论")),
+    INVITE_ANSWER(R.string.notification_type_invite_answer, false, Regex("\\s?(邀请你回答问题|的提问等你来答|邀请你回答)")),
 }
 
 object NotificationPreferences {
@@ -130,7 +132,7 @@ fun NotificationSettingsScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
-                title = { Text("通知设置") },
+                title = { Text(context.getString(R.string.notification_settings)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navigator.onNavigateBack,
@@ -139,7 +141,7 @@ fun NotificationSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -158,11 +160,11 @@ fun NotificationSettingsScreen(
                 .padding(vertical = 16.dp),
         ) {
             SettingItemGroup(
-                title = "阅读行为",
-                footer = { Text("进入通知页后，自动把当前通知批次标记为已读") },
+                title = context.getString(R.string.notification_reading_behavior),
+                footer = { Text(context.getString(R.string.notification_auto_mark_read_desc)) },
             ) {
                 SettingItemWithSwitch(
-                    title = { Text("打开通知自动已读") },
+                    title = { Text(context.getString(R.string.notification_auto_mark_read)) },
                     checked = autoMarkAsRead,
                     onCheckedChange = { checked ->
                         autoMarkAsRead = checked
@@ -171,10 +173,10 @@ fun NotificationSettingsScreen(
                 )
             }
 
-            SettingItemGroup(title = "系统通知") {
+            SettingItemGroup(title = context.getString(R.string.system_notifications)) {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(
-                        title = { Text(type.displayName) },
+                        title = { Text(context.getString(type.displayNameResId)) },
                         checked = systemNotificationSettings[type] ?: false,
                         onCheckedChange = { checked ->
                             systemNotificationSettings = systemNotificationSettings.toMutableMap().apply {
@@ -187,12 +189,12 @@ fun NotificationSettingsScreen(
             }
 
             SettingItemGroup(
-                title = "应用内显示",
-                footer = { Text("选择在通知页面显示哪些通知") },
+                title = context.getString(R.string.notification_display_in_app),
+                footer = { Text(context.getString(R.string.notification_display_in_app_desc)) },
             ) {
                 NotificationType.entries.forEach { type ->
                     SettingItemWithSwitch(
-                        title = { Text(type.displayName) },
+                        title = { Text(context.getString(type.displayNameResId)) },
                         checked = displayInAppSettings[type] ?: true,
                         onCheckedChange = { checked ->
                             displayInAppSettings = displayInAppSettings.toMutableMap().apply {

@@ -190,7 +190,13 @@ fun AccountSettingScreen(
                         )
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "获取用户信息失败", Toast.LENGTH_SHORT).show()
+                        Toast
+                            .makeText(
+                                context,
+                                context.getString(R.string.fetch_profile_failed),
+                                Toast.LENGTH_SHORT,
+                            )
+                            .show()
                     }
                 }
             }
@@ -213,7 +219,7 @@ fun AccountSettingScreen(
                 ) {
                     AsyncImage(
                         model = data.self?.avatarUrl,
-                        contentDescription = "头像",
+                        contentDescription = context.getString(R.string.avatar),
                         modifier = Modifier
                             .size(64.dp)
                             .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
@@ -233,10 +239,22 @@ fun AccountSettingScreen(
                             val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
                             val url = Url(scanResult)
                             if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
-                                Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
+                                Toast
+                                    .makeText(
+                                        context,
+                                        context.getString(R.string.qr_invalid_content),
+                                        Toast.LENGTH_SHORT,
+                                    )
+                                    .show()
                                 return@scan
                             }
-                            Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.qr_scan_success),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                             Intent(context, WebviewActivity::class.java).let {
                                 it.data = scanResult.toUri()
                                 context.startActivity(it)
@@ -252,7 +270,7 @@ fun AccountSettingScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "扫码登录",
+                            contentDescription = context.getString(R.string.qr_scan_login),
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -269,7 +287,7 @@ fun AccountSettingScreen(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "退出登录",
+                            contentDescription = context.getString(R.string.logout),
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -277,7 +295,7 @@ fun AccountSettingScreen(
             } else {
                 SettingItemGroup {
                     SettingItem(
-                        title = { Text("登录知乎") },
+                        title = { Text(context.getString(R.string.login_to_zhihu)) },
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
@@ -315,7 +333,7 @@ fun AccountSettingScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "收藏夹",
+                                context.getString(R.string.collections),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
@@ -348,7 +366,7 @@ fun AccountSettingScreen(
                             }
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                "通知",
+                                context.getString(R.string.notifications),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
@@ -374,7 +392,7 @@ fun AccountSettingScreen(
                                 )
                                 Spacer(Modifier.height(4.dp))
                                 Text(
-                                    "浏览历史",
+                                    context.getString(R.string.browsing_history),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
@@ -387,7 +405,7 @@ fun AccountSettingScreen(
                 SettingItemGroup {
                     if (data.login) {
                         SettingItem(
-                            title = { Text("查看收藏夹") },
+                            title = { Text(context.getString(R.string.view_collections)) },
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
                             onClick = {
                                 data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
@@ -399,24 +417,24 @@ fun AccountSettingScreen(
 
             SettingItemGroup {
                 SettingItem(
-                    title = { Text("外观与阅读体验") },
-                    description = { Text("主题颜色、字体大小等") },
+                    title = { Text(context.getString(R.string.appearance_and_reading)) },
+                    description = { Text(context.getString(R.string.appearance_desc)) },
                     icon = { Icon(Icons.Default.Palette, null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                     onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                 )
 
                 SettingItem(
-                    title = { Text("推荐系统与内容过滤") },
-                    description = { Text("推荐、智能过滤、关键词屏蔽等") },
+                    title = { Text(context.getString(R.string.recommend_and_filter)) },
+                    description = { Text(context.getString(R.string.recommend_desc)) },
                     icon = { Icon(Icons.Default.FilterAlt, null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
                     onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                 )
 
                 SettingItem(
-                    title = { Text("系统与更新") },
-                    description = { Text("GitHub、更新设置等") },
+                    title = { Text(context.getString(R.string.system_and_update)) },
+                    description = { Text(context.getString(R.string.system_and_update_desc)) },
                     icon = { Icon(Icons.Default.Settings, null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings) },
@@ -424,7 +442,7 @@ fun AccountSettingScreen(
 
                 AnimatedVisibility(isDeveloper) {
                     SettingItem(
-                        title = { Text("开发者选项") },
+                        title = { Text(context.getString(R.string.developer_options)) },
                         icon = { Icon(Icons.Default.Code, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
@@ -436,21 +454,47 @@ fun AccountSettingScreen(
             LaunchedEffect(updateState) {
                 if (updateState is UpdateState.UpdateAvailable) {
                     val state = updateState as UpdateState.UpdateAvailable
-                    val versionType = if (state.isNightly) "Nightly版本" else "正式版本"
-                    Toast.makeText(context, "发现新$versionType ${state.version}", Toast.LENGTH_SHORT).show()
+                    val versionType = context.getString(
+                        if (state.isNightly) R.string.nightly_version else R.string.standard_version,
+                    )
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(R.string.new_version_found, versionType, state.version),
+                            Toast.LENGTH_SHORT,
+                        )
+                        .show()
                 }
                 if (updateState is UpdateState.Error) {
-                    Toast.makeText(context, "检查更新失败: ${(updateState as UpdateState.Error).message}", Toast.LENGTH_LONG).show()
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(
+                                R.string.update_check_failed,
+                                (updateState as UpdateState.Error).message,
+                            ),
+                            Toast.LENGTH_LONG,
+                        )
+                        .show()
                 }
             }
 
             SettingItemGroup(
-                title = "关于",
-                footer = { Text("本软件仅供学习交流使用，应用内内容由知乎网站提供，著作权归其对应作者所有。") },
+                title = context.getString(R.string.about),
+                footer = { Text(context.getString(R.string.about_footer)) },
             ) {
                 SettingItem(
-                    title = { Text("知乎++") },
-                    description = { Text("版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}") },
+                    title = { Text(context.getString(R.string.about_app_title)) },
+                    description = {
+                        Text(
+                            context.getString(
+                                R.string.version_number,
+                                BuildConfig.VERSION_NAME,
+                                BuildConfig.BUILD_TYPE,
+                                BuildConfig.GIT_HASH,
+                            ),
+                        )
+                    },
                     icon = {
                         Image(
                             painterResource(R.drawable.ic_launcher_foreground),
@@ -467,19 +511,25 @@ fun AccountSettingScreen(
                             if (clickTimes == 5) {
                                 clickTimes = 0
                                 isDeveloper = true
-                                Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.developer_mode_enabled), Toast.LENGTH_SHORT).show()
                             }
                         },
                         onLongClick = {
                             val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
                             val clip = android.content.ClipData.newPlainText("version", versionInfo)
                             context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.version_copied),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                         },
                     ),
                 )
                 SettingItem(
-                    title = { Text("GitHub 项目地址") },
+                    title = { Text(context.getString(R.string.github_project)) },
                     description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
                     icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
                     onClick = {
@@ -496,7 +546,7 @@ fun AccountSettingScreen(
                 )
 
                 SettingItem(
-                    title = { Text("项目协议") },
+                    title = { Text(context.getString(R.string.project_license)) },
                     description = { Text("AGPL-3.0-only") },
                     icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
                     onClick = {
@@ -512,8 +562,8 @@ fun AccountSettingScreen(
                     },
                 )
                 SettingItem(
-                    title = { Text("开源许可") },
-                    description = { Text("查看第三方组件许可证") },
+                    title = { Text(context.getString(R.string.open_source_licenses)) },
+                    description = { Text(context.getString(R.string.open_source_licenses_desc)) },
                     icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
                     onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
@@ -525,8 +575,8 @@ fun AccountSettingScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("退出登录") },
-            text = { Text("确定要退出登录吗？") },
+            title = { Text(context.getString(R.string.logout_confirm)) },
+            text = { Text(context.getString(R.string.logout_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -534,12 +584,12 @@ fun AccountSettingScreen(
                         showLogoutDialog = false
                     },
                 ) {
-                    Text("退出")
+                    Text(context.getString(R.string.exit))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("取消")
+                    Text(context.getString(R.string.cancel))
                 }
             },
         )

@@ -39,9 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.github.zly2006.zhihu.R
 
 @Composable
 fun CreateCollectionDialog(
@@ -49,6 +51,7 @@ fun CreateCollectionDialog(
     onDismiss: () -> Unit,
     onConfirm: (title: String, description: String, Boolean) -> Unit,
 ) {
+    val context = LocalContext.current
     if (showDialog) {
         var title by remember { mutableStateOf("") }
         var description by remember { mutableStateOf("") }
@@ -67,7 +70,7 @@ fun CreateCollectionDialog(
                 ) {
                     // 标题
                     Text(
-                        text = "新建收藏夹",
+                        text = context.getString(R.string.create_collection),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
@@ -76,8 +79,8 @@ fun CreateCollectionDialog(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text("收藏夹名称") },
-                        placeholder = { Text("请输入收藏夹名称") },
+                        label = { Text(context.getString(R.string.collection_name)) },
+                        placeholder = { Text(context.getString(R.string.collection_name_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                     )
@@ -86,8 +89,8 @@ fun CreateCollectionDialog(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("描述（可选）") },
-                        placeholder = { Text("请输入收藏夹描述") },
+                        label = { Text(context.getString(R.string.description_optional)) },
+                        placeholder = { Text(context.getString(R.string.collection_description_placeholder)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
                     )
@@ -101,7 +104,7 @@ fun CreateCollectionDialog(
                             onCheckedChange = { isPublic = it },
                         )
                         Text(
-                            text = "公开收藏夹",
+                            text = context.getString(R.string.public_collection),
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.weight(1f),
                         )
@@ -113,7 +116,7 @@ fun CreateCollectionDialog(
                         horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(onClick = onDismiss) {
-                            Text("取消")
+                            Text(context.getString(R.string.cancel))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(
@@ -125,7 +128,7 @@ fun CreateCollectionDialog(
                             },
                             enabled = title.isNotBlank(),
                         ) {
-                            Text("创建")
+                            Text(context.getString(R.string.create))
                         }
                     }
                 }

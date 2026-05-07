@@ -21,6 +21,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -49,7 +50,7 @@ class LocalHomeFeedViewModel :
             val recommendations = engine.generateRecommendations(20)
 
             if (recommendations.isEmpty()) {
-                generateFallbackContent()
+                generateFallbackContent(context)
             } else {
                 addDisplayItems(recommendations.map(::createLocalFeedDisplayItem))
             }
@@ -59,13 +60,13 @@ class LocalHomeFeedViewModel :
                 withContext(Dispatchers.Main) {
                     AlertDialog
                         .Builder(context)
-                        .setTitle("数据库错误")
-                        .setMessage("本地推荐系统的数据库未正确初始化。请尝试重启应用或清除应用数据。")
-                        .setPositiveButton("确定") { dialog, _ -> dialog.dismiss() }
+                        .setTitle(context.getString(R.string.database_error))
+                        .setMessage(context.getString(R.string.local_database_error_desc))
+                        .setPositiveButton(context.getString(R.string.ok)) { dialog, _ -> dialog.dismiss() }
                         .show()
                 }
             }
-            generateFallbackContent()
+            generateFallbackContent(context)
         } finally {
             isLoading = false
         }
@@ -117,19 +118,19 @@ class LocalHomeFeedViewModel :
         localReason = entry.result.reason.name,
     )
 
-    private suspend fun generateFallbackContent() {
+    private suspend fun generateFallbackContent(context: Context) {
         val fallbackItems = listOf(
             FeedDisplayItem(
-                title = "本地推荐正在建立候选池",
-                summary = "系统会先抓取关注动态、热门内容和相关话题，再根据你的点击与反馈逐步调整排序。",
-                details = "本地推荐 · 冷启动",
+                title = context.getString(R.string.local_fallback_pool_title),
+                summary = context.getString(R.string.local_fallback_pool_summary),
+                details = context.getString(R.string.local_fallback_pool_details),
                 feed = null,
                 isFiltered = false,
             ),
             FeedDisplayItem(
-                title = "你的行为只在本地学习",
-                summary = "点开、喜欢、不喜欢都会影响后续排序，但这些学习信号不会作为推荐特征上传到服务器。",
-                details = "本地推荐 · 隐私优先",
+                title = context.getString(R.string.local_fallback_privacy_title),
+                summary = context.getString(R.string.local_fallback_privacy_summary),
+                details = context.getString(R.string.local_fallback_privacy_details),
                 feed = null,
                 isFiltered = false,
             ),

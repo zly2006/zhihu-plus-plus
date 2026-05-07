@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.util
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
@@ -106,9 +107,9 @@ object LocaleManager {
     /**
      * 切换语言后重新创建 Activity 以应用新 locale。
      */
-    fun applyAndRecreate(activity: Activity, languageCode: String) {
-        setLanguage(activity, languageCode)
-        activity.recreate()
+    fun applyAndRecreate(context: Context, languageCode: String) {
+        setLanguage(context, languageCode)
+        context.findActivity()?.recreate()
     }
 
     private fun updateResources(context: Context, locale: Locale): Context {
@@ -134,6 +135,12 @@ object LocaleManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             LocaleList.setDefault(LocaleList(locale))
         }
+    }
+
+    private tailrec fun Context.findActivity(): Activity? = when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
 
     private fun codeToLocale(code: String): Locale =

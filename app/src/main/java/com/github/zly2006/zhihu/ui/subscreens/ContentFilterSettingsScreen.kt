@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -112,7 +113,7 @@ fun ContentFilterSettingsScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
-                title = { Text("推荐系统与内容过滤") },
+                title = { Text(context.getString(R.string.recommend_and_filter)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navigator.onNavigateBack,
@@ -121,7 +122,7 @@ fun ContentFilterSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -142,7 +143,7 @@ fun ContentFilterSettingsScreen(
         ) {
             SettingItemGroup {
                 SettingItem(
-                    title = { Text("推荐算法") },
+                    title = { Text(context.getString(R.string.recommendation_algorithm)) },
                     settingKey = "recommendationMode",
                     highlightedKey = setting,
                     endAction = {
@@ -162,7 +163,7 @@ fun ContentFilterSettingsScreen(
                             modifier = Modifier.width(256.dp),
                         ) {
                             OutlinedTextField(
-                                value = currentRecommendationMode.value.displayName,
+                                value = context.getString(currentRecommendationMode.value.displayNameResId),
                                 onValueChange = { },
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -178,8 +179,8 @@ fun ContentFilterSettingsScreen(
                                     DropdownMenuItem(
                                         text = {
                                             Column {
-                                                Text(mode.displayName)
-                                                Text(mode.description, style = MaterialTheme.typography.bodySmall)
+                                                Text(context.getString(mode.displayNameResId))
+                                                Text(context.getString(mode.descriptionResId), style = MaterialTheme.typography.bodySmall)
                                             }
                                         },
                                         onClick = {
@@ -199,8 +200,8 @@ fun ContentFilterSettingsScreen(
                 }
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
-                    title = { Text("推荐内容时登录") },
-                    description = { Text("获取推荐内容时携带登录凭证") },
+                    title = { Text(context.getString(R.string.login_for_recommendation)) },
+                    description = { Text(context.getString(R.string.login_for_recommendation_desc)) },
                     checked = isLoginForRecommendation.value,
                     onCheckedChange = { checked ->
                         isLoginForRecommendation.value = checked
@@ -215,8 +216,8 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("启用质量过滤规则") },
-                    description = { Text("根据赞同数、关注数等指标过滤低质量内容") },
+                    title = { Text(context.getString(R.string.enable_quality_filter)) },
+                    description = { Text(context.getString(R.string.enable_quality_filter_desc)) },
                     checked = enableQualityFilter.value,
                     onCheckedChange = {
                         enableQualityFilter.value = it
@@ -228,8 +229,8 @@ fun ContentFilterSettingsScreen(
 
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
-                    title = { Text("启用智能内容过滤") },
-                    description = { Text("自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐") },
+                    title = { Text(context.getString(R.string.enable_smart_content_filter)) },
+                    description = { Text(context.getString(R.string.enable_smart_content_filter_desc)) },
                     checked = enableContentFilter.value,
                     onCheckedChange = {
                         enableContentFilter.value = it
@@ -242,8 +243,8 @@ fun ContentFilterSettingsScreen(
                 val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
-                    title = { Text("过滤已关注用户内容") },
-                    description = { Text("是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示") },
+                    title = { Text(context.getString(R.string.filter_followed_user_content)) },
+                    description = { Text(context.getString(R.string.filter_followed_user_content_desc)) },
                     checked = filterFollowedUserContent.value,
                     onCheckedChange = {
                         filterFollowedUserContent.value = it
@@ -258,8 +259,8 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("启用关键词屏蔽") },
-                    description = { Text("屏蔽包含特定关键词的内容") },
+                    title = { Text(context.getString(R.string.enable_keyword_blocking)) },
+                    description = { Text(context.getString(R.string.enable_keyword_blocking_desc)) },
                     checked = enableKeywordBlocking.value,
                     onCheckedChange = {
                         enableKeywordBlocking.value = it
@@ -271,8 +272,8 @@ fun ContentFilterSettingsScreen(
 
                 val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("启用用户屏蔽") },
-                    description = { Text("屏蔽特定用户发布的内容") },
+                    title = { Text(context.getString(R.string.enable_user_blocking)) },
+                    description = { Text(context.getString(R.string.enable_user_blocking_desc)) },
                     checked = enableUserBlocking.value,
                     onCheckedChange = {
                         enableUserBlocking.value = it
@@ -284,8 +285,8 @@ fun ContentFilterSettingsScreen(
 
                 val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("启用主题屏蔽") },
-                    description = { Text("屏蔽包含特定主题的内容") },
+                    title = { Text(context.getString(R.string.enable_topic_blocking)) },
+                    description = { Text(context.getString(R.string.enable_topic_blocking_desc)) },
                     checked = enableTopicBlocking.value,
                     onCheckedChange = {
                         enableTopicBlocking.value = it
@@ -300,10 +301,10 @@ fun ContentFilterSettingsScreen(
                     var showThresholdDialog by remember { mutableStateOf(false) }
 
                     SettingItem(
-                        title = { Text("主题屏蔽阈值") },
+                        title = { Text(context.getString(R.string.topic_blocking_threshold)) },
                         description = {
                             Text(
-                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
+                                context.getString(R.string.topic_blocking_threshold_desc, topicThreshold.value),
                             )
                         },
                         endAction = {
@@ -321,15 +322,15 @@ fun ContentFilterSettingsScreen(
 
                         AlertDialog(
                             onDismissRequest = { showThresholdDialog = false },
-                            title = { Text("设置主题屏蔽阈值") },
+                            title = { Text(context.getString(R.string.set_topic_blocking_threshold)) },
                             text = {
                                 Column {
-                                    Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
+                                    Text(context.getString(R.string.topic_blocking_threshold_dialog_desc))
                                     Spacer(modifier = Modifier.height(16.dp))
                                     OutlinedTextField(
                                         value = inputValue,
                                         onValueChange = { inputValue = it },
-                                        label = { Text("阈值") },
+                                        label = { Text(context.getString(R.string.threshold)) },
                                         singleLine = true,
                                     )
                                 }
@@ -343,16 +344,16 @@ fun ContentFilterSettingsScreen(
                                             preferences.edit { putInt("topicBlockingThreshold", newThreshold) }
                                             showThresholdDialog = false
                                         } else {
-                                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.positive_integer_required), Toast.LENGTH_SHORT).show()
                                         }
                                     },
                                 ) {
-                                    Text("确定")
+                                    Text(context.getString(R.string.ok))
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showThresholdDialog = false }) {
-                                    Text("取消")
+                                    Text(context.getString(R.string.cancel))
                                 }
                             },
                         )
@@ -363,8 +364,8 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 val blockZhihuAdPlatform = remember { mutableStateOf(preferences.getBoolean("blockZhihuAdPlatform", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("屏蔽知乎广告平台内容") },
-                    description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容") },
+                    title = { Text(context.getString(R.string.block_zhihu_ad_platform)) },
+                    description = { Text(context.getString(R.string.block_zhihu_ad_platform_desc)) },
                     checked = blockZhihuAdPlatform.value,
                     onCheckedChange = {
                         blockZhihuAdPlatform.value = it
@@ -376,8 +377,8 @@ fun ContentFilterSettingsScreen(
 
                 val blockZhihuSchool = remember { mutableStateOf(preferences.getBoolean("blockZhihuSchool", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("屏蔽知乎学堂内容") },
-                    description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容") },
+                    title = { Text(context.getString(R.string.block_zhihu_school)) },
+                    description = { Text(context.getString(R.string.block_zhihu_school_desc)) },
                     checked = blockZhihuSchool.value,
                     onCheckedChange = {
                         blockZhihuSchool.value = it
@@ -389,8 +390,8 @@ fun ContentFilterSettingsScreen(
 
                 val blockWeChatOfficialAccount = remember { mutableStateOf(preferences.getBoolean("blockWeChatOfficialAccount", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("屏蔽微信公众号文章") },
-                    description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章") },
+                    title = { Text(context.getString(R.string.block_wechat_official_account)) },
+                    description = { Text(context.getString(R.string.block_wechat_official_account_desc)) },
                     checked = blockWeChatOfficialAccount.value,
                     onCheckedChange = {
                         blockWeChatOfficialAccount.value = it
@@ -402,8 +403,8 @@ fun ContentFilterSettingsScreen(
 
                 val blockPaidContent = remember { mutableStateOf(preferences.getBoolean("blockPaidContent", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("屏蔽知乎严选付费内容") },
-                    description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
+                    title = { Text(context.getString(R.string.block_paid_content)) },
+                    description = { Text(context.getString(R.string.block_paid_content_desc)) },
                     checked = blockPaidContent.value,
                     onCheckedChange = {
                         blockPaidContent.value = it
@@ -415,8 +416,8 @@ fun ContentFilterSettingsScreen(
 
                 val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
                 SettingItemWithSwitch(
-                    title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
-                    description = { Text("开启后，首页将只保留广告和付费内容，屏蔽其余所有内容") },
+                    title = { Text(context.getString(R.string.reverse_block)) },
+                    description = { Text(context.getString(R.string.reverse_block_desc)) },
                     checked = reverseBlock.value,
                     onCheckedChange = {
                         reverseBlock.value = it
@@ -430,7 +431,7 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 SettingItem(
                     modifier = Modifier.testTag("contentFilterSettings:blocklist"),
-                    title = { Text("管理屏蔽列表") },
+                    title = { Text(context.getString(R.string.manage_blocklist)) },
                     onClick = { navigator.onNavigate(Account.RecommendSettings.Blocklist) },
                     endAction = {
                         Icon(
@@ -445,7 +446,7 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 SettingItem(
                     modifier = Modifier.testTag("contentFilterSettings:blockedFeedHistory"),
-                    title = { Text("屏蔽记录") },
+                    title = { Text(context.getString(R.string.blocked_feed_history)) },
                     onClick = { navigator.onNavigate(Account.RecommendSettings.BlockedFeedHistory) },
                     endAction = {
                         Icon(
@@ -473,10 +474,10 @@ fun ContentFilterSettingsScreen(
             SettingItemGroup {
                 AnimatedVisibility(visible = enableContentFilter.value && filterStats != null) {
                     SettingItem(
-                        title = { Text("过滤统计") },
+                        title = { Text(context.getString(R.string.filter_stats)) },
                         description = {
                             Text(
-                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
+                                context.getString(R.string.filter_stats_summary, filterStats?.filteredCount ?: 0),
                             )
                         },
                         onClick = { showStatsDialog = true },
@@ -487,15 +488,15 @@ fun ContentFilterSettingsScreen(
             if (showStatsDialog && filterStats != null) {
                 AlertDialog(
                     onDismissRequest = { showStatsDialog = false },
-                    title = { Text("过滤统计详情") },
+                    title = { Text(context.getString(R.string.filter_stats_details)) },
                     text = {
                         Column {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text("总记录数: ${filterStats?.totalRecords}")
-                                Text("过滤率: %.1f%%".format((filterStats?.filterRate ?: 0f) * 100))
+                                Text(context.getString(R.string.total_records, filterStats?.totalRecords ?: 0))
+                                Text(context.getString(R.string.filter_rate, (filterStats?.filterRate ?: 0f) * 100))
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
@@ -505,7 +506,7 @@ fun ContentFilterSettingsScreen(
                                             val contentFilterManager = ContentFilterManager.getInstance(context)
                                             contentFilterManager.cleanupOldData()
                                             filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.old_data_cleaned), Toast.LENGTH_SHORT).show()
                                         } catch (e: Exception) {
                                             // ignore
                                         }
@@ -513,7 +514,7 @@ fun ContentFilterSettingsScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("清理过期数据")
+                                Text(context.getString(R.string.cleanup_old_data))
                             }
                             Button(
                                 onClick = {
@@ -522,7 +523,7 @@ fun ContentFilterSettingsScreen(
                                             val contentFilterManager = ContentFilterManager.getInstance(context)
                                             contentFilterManager.clearAllData()
                                             filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.all_data_reset), Toast.LENGTH_SHORT).show()
                                             showStatsDialog = false
                                         } catch (e: Exception) {
                                             // ignore
@@ -532,13 +533,13 @@ fun ContentFilterSettingsScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             ) {
-                                Text("重置所有数据")
+                                Text(context.getString(R.string.reset_all_data))
                             }
                         }
                     },
                     confirmButton = {
                         TextButton(onClick = { showStatsDialog = false }) {
-                            Text("关闭")
+                            Text(context.getString(R.string.close))
                         }
                     },
                 )

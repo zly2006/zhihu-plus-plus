@@ -38,8 +38,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import kotlinx.coroutines.delay
 
 val ProgressIndicatorFooter: @Composable (LazyListState) -> Unit = { state ->
@@ -68,6 +70,7 @@ fun <T> PaginatedList(
     topContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
 ) {
+    val context = LocalContext.current
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -117,7 +120,7 @@ fun <T> PaginatedList(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "已经到底啦",
+                        text = context.getString(R.string.list_end_reached),
                         textAlign = TextAlign.Center,
                     )
                 }

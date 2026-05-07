@@ -276,7 +276,7 @@ fun AppearanceSettingsScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
-                title = { Text("外观与阅读体验") },
+                title = { Text(context.getString(R.string.appearance_title)) },
                 navigationIcon = {
                     IconButton(
                         onClick = navigator.onNavigateBack,
@@ -285,7 +285,10 @@ fun AppearanceSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = context.getString(R.string.back),
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -310,11 +313,11 @@ fun AppearanceSettingsScreen(
             // ── 主题 ────────────────────────────────────────────────────────────
 
             SettingItemGroup(
-                title = "主题",
+                title = context.getString(R.string.theme),
             ) {
                 SettingItem(
-                    title = { Text("主题模式") },
-                    description = { Text("设置应用的显示主题。") },
+                    title = { Text(context.getString(R.string.theme_mode)) },
+                    description = { Text(context.getString(R.string.theme_mode_desc)) },
                     settingKey = "nightMode",
                     highlightedKey = setting,
                     bringIntoViewRequester = requesterFor("nightMode"),
@@ -324,16 +327,22 @@ fun AppearanceSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         ) {
                             val themeModes = listOf(
-                                ThemeMode.SYSTEM to "自动",
-                                ThemeMode.LIGHT to "亮色",
-                                ThemeMode.DARK to "暗色",
+                                ThemeMode.SYSTEM to context.getString(R.string.theme_auto),
+                                ThemeMode.LIGHT to context.getString(R.string.theme_light),
+                                ThemeMode.DARK to context.getString(R.string.theme_dark),
                             )
                             themeModes.forEach { (mode, label) ->
                                 val isSelected = currentThemeMode == mode
                                 OutlinedButton(
                                     onClick = {
                                         ThemeManager.setThemeMode(context, mode)
-                                        Toast.makeText(context, "已切换到$label", Toast.LENGTH_SHORT).show()
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                context.getString(R.string.switched_to, label),
+                                                Toast.LENGTH_SHORT,
+                                            )
+                                            .show()
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         containerColor = if (isSelected) {
@@ -357,12 +366,19 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("使用 Material You 动态取色") },
-                    description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
+                    title = { Text(context.getString(R.string.dynamic_color)) },
+                    description = { Text(context.getString(R.string.dynamic_color_desc)) },
                     checked = useDynamicColor,
                     onCheckedChange = {
                         ThemeManager.setUseDynamicColor(context, it)
-                        Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
+                        val messageResId = if (it) {
+                            R.string.dynamic_color_enabled
+                        } else {
+                            R.string.dynamic_color_disabled
+                        }
+                        Toast
+                            .makeText(context, context.getString(messageResId), Toast.LENGTH_SHORT)
+                            .show()
                     },
                     settingKey = "dynamicColor",
                     highlightedKey = setting,
@@ -374,8 +390,8 @@ fun AppearanceSettingsScreen(
 
                 AnimatedVisibility(visible = !useDynamicColor) {
                     SettingItem(
-                        title = { Text("自定义主题色") },
-                        description = { Text("点击选择您喜欢的主题颜色") },
+                        title = { Text(context.getString(R.string.custom_color)) },
+                        description = { Text(context.getString(R.string.custom_color_desc)) },
                         onClick = { showColorPicker = true },
                         endAction = {
                             Box(
@@ -390,12 +406,18 @@ fun AppearanceSettingsScreen(
                 }
                 if (showColorPicker) {
                     ColorPickerDialog(
-                        title = "选择主题色",
+                        title = context.getString(R.string.pick_theme_color),
                         initialColor = customColor,
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
                             ThemeManager.setCustomColor(context, color)
-                            Toast.makeText(context, "主题色已保存", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.theme_color_saved),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                             showColorPicker = false
                         },
                     )
@@ -407,8 +429,8 @@ fun AppearanceSettingsScreen(
                 }
 
                 SettingItem(
-                    title = { Text("唤起浏览器主题色") },
-                    description = { Text("应用内浏览器的工具栏颜色") },
+                    title = { Text(context.getString(R.string.browser_theme_color)) },
+                    description = { Text(context.getString(R.string.browser_theme_color_desc)) },
                     onClick = { showLuotianYiColorPicker = true },
                     endAction = {
                         Box(
@@ -423,7 +445,7 @@ fun AppearanceSettingsScreen(
 
                 if (showLuotianYiColorPicker) {
                     ColorPickerDialog(
-                        title = "选择浏览器主题色",
+                        title = context.getString(R.string.pick_browser_color),
                         initialColor = luotianYiColor,
                         presetColors = listOf(
                             Color(0xFF66CCFF),
@@ -442,7 +464,13 @@ fun AppearanceSettingsScreen(
                                 (color.blue * 255).toInt(),
                             )
                             preferences.edit { putInt("luotianyi_color", argbColor) }
-                            Toast.makeText(context, "浏览器主题色已保存", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.browser_color_saved),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                             showLuotianYiColorPicker = false
                         },
                     )
@@ -453,8 +481,14 @@ fun AppearanceSettingsScreen(
                 val backgroundColor = ThemeManager.getBackgroundColor()
 
                 SettingItem(
-                    title = { Text("自定义背景颜色") },
-                    description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
+                    title = { Text(context.getString(R.string.custom_background_color)) },
+                    description = {
+                        Text(
+                            context.getString(
+                                if (currentIsDarkTheme) R.string.dark_mode_bg_color else R.string.light_mode_bg_color,
+                            ),
+                        )
+                    },
                     onClick = { showBackgroundColorPicker = true },
                     endAction = {
                         Box(
@@ -469,7 +503,7 @@ fun AppearanceSettingsScreen(
 
                 if (showBackgroundColorPicker) {
                     ColorPickerDialog(
-                        title = "选择背景颜色",
+                        title = context.getString(R.string.pick_background_color),
                         initialColor = backgroundColor,
                         presetColors = listOfNotNull(
                             Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
@@ -479,7 +513,13 @@ fun AppearanceSettingsScreen(
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
                             ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
-                            Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.bg_color_saved),
+                                    Toast.LENGTH_SHORT,
+                                )
+                                .show()
                             showBackgroundColorPicker = false
                         },
                     )
@@ -492,9 +532,9 @@ fun AppearanceSettingsScreen(
                 var languageExpanded by remember { mutableStateOf(false) }
                 val currentLanguageCode = remember { mutableStateOf(LocaleManager.getLanguageCode(context)) }
                 val languageOptions = listOf(
-                    Triple("en", "English", context.getString(R.string.language_en)),
-                    Triple("zh-CN", "简体中文", context.getString(R.string.language_zh_cn)),
-                    Triple("zh-TW", "繁體中文", context.getString(R.string.language_zh_tw)),
+                    "en" to context.getString(R.string.language_en),
+                    "zh-CN" to context.getString(R.string.language_zh_cn),
+                    "zh-TW" to context.getString(R.string.language_zh_tw),
                 )
                 SettingItem(
                     title = { Text(context.getString(R.string.language)) },
@@ -507,8 +547,8 @@ fun AppearanceSettingsScreen(
                             OutlinedTextField(
                                 value = languageOptions
                                     .find { it.first == currentLanguageCode.value }
-                                    ?.third
-                                    ?: "English",
+                                    ?.second
+                                    ?: context.getString(R.string.language_en),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
@@ -521,26 +561,23 @@ fun AppearanceSettingsScreen(
                                 expanded = languageExpanded,
                                 onDismissRequest = { languageExpanded = false },
                             ) {
-                                languageOptions.forEach { (code, _name, label) ->
+                                languageOptions.forEach { (code, label) ->
                                     DropdownMenuItem(
                                         text = { Text(label) },
                                         onClick = {
                                             currentLanguageCode.value = code
                                             languageExpanded = false
-                                            val activity = context as? android.app.Activity
-                                            if (activity != null) {
-                                                val toast = Toast
-                                                    .makeText(
-                                                        context,
-                                                        context.getString(
-                                                            R.string.language_changed,
-                                                            label,
-                                                        ),
-                                                        Toast.LENGTH_SHORT,
-                                                    )
-                                                toast.show()
-                                                LocaleManager.applyAndRecreate(activity, code)
-                                            }
+                                            val toast = Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(
+                                                        R.string.language_changed,
+                                                        label,
+                                                    ),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                            toast.show()
+                                            LocaleManager.applyAndRecreate(context, code)
                                         },
                                     )
                                 }
@@ -552,12 +589,12 @@ fun AppearanceSettingsScreen(
 
             // ── 阅读 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title = "阅读",
+                title = context.getString(R.string.reading),
             ) {
                 var fontSize by remember { mutableIntStateOf(preferences.getInt(PREF_FONT_SIZE, 100)) }
                 SettingItem(
-                    title = { Text("字号") },
-                    description = { Text("调整内容文字大小 ($fontSize%)") },
+                    title = { Text(context.getString(R.string.font_size)) },
+                    description = { Text(context.getString(R.string.font_size_desc, fontSize)) },
                     settingKey = "fontScale",
                     highlightedKey = setting,
                     bringIntoViewRequester = requesterFor("fontScale"),
@@ -577,8 +614,8 @@ fun AppearanceSettingsScreen(
 
                 var lineHeight by remember { mutableIntStateOf(preferences.getInt(PREF_LINE_HEIGHT, 160)) }
                 SettingItem(
-                    title = { Text("行高") },
-                    description = { Text("调整内容行间距 (${lineHeight / 100f})") },
+                    title = { Text(context.getString(R.string.line_height)) },
+                    description = { Text(context.getString(R.string.line_height_desc, lineHeight / 100f)) },
                     bottomAction = {
                         Slider(
                             value = lineHeight.toFloat(),
@@ -597,12 +634,12 @@ fun AppearanceSettingsScreen(
             // ── 信息流 ──────────────────────────────────────────────────────────
             val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
             SettingItemGroup(
-                title = "信息流",
+                title = context.getString(R.string.feed),
             ) {
                 val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("显示 Feed 卡片缩略图") },
-                    description = { Text("在信息流卡片中显示文章缩略图。") },
+                    title = { Text(context.getString(R.string.show_feed_thumbnail)) },
+                    description = { Text(context.getString(R.string.show_feed_thumbnail_desc)) },
                     checked = showFeedThumbnail.value,
                     onCheckedChange = {
                         showFeedThumbnail.value = it
@@ -611,8 +648,8 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("显示刷新 FAB 按钮") },
-                    description = { Text("在页面上显示可拖动的刷新按钮。") },
+                    title = { Text(context.getString(R.string.show_refresh_fab)) },
+                    description = { Text(context.getString(R.string.show_refresh_fab_desc)) },
                     checked = showRefreshFab.value,
                     onCheckedChange = {
                         showRefreshFab.value = it
@@ -625,19 +662,22 @@ fun AppearanceSettingsScreen(
                     mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
                 }
                 val feedCardStyleOptions = listOf(
-                    "card" to "卡片样式",
-                    "divider" to "分割线样式",
+                    "card" to context.getString(R.string.card_style),
+                    "divider" to context.getString(R.string.divider_style),
                 )
                 SettingItem(
-                    title = { Text("信息流样式") },
-                    description = { Text("卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目。") },
+                    title = { Text(context.getString(R.string.feed_card_style)) },
+                    description = { Text(context.getString(R.string.feed_card_style_desc)) },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = feedCardStyleExpanded,
                             onExpandedChange = { feedCardStyleExpanded = it },
                         ) {
                             OutlinedTextField(
-                                value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
+                                value = feedCardStyleOptions
+                                    .find { it.first == feedCardStyle.value }
+                                    ?.second
+                                    ?: context.getString(R.string.card_style),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
@@ -657,7 +697,13 @@ fun AppearanceSettingsScreen(
                                             feedCardStyle.value = mode
                                             preferences.edit { putString("feedCardStyle", mode) }
                                             feedCardStyleExpanded = false
-                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.set_to, label),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
                                         },
                                     )
                                 }
@@ -670,15 +716,15 @@ fun AppearanceSettingsScreen(
             // ── 回答页 ──────────────────────────────────────────────────────────
             val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
             SettingItemGroup(
-                title = "回答页",
+                title = context.getString(R.string.answer_page),
             ) {
                 val articleUseWebview = remember {
                     mutableStateOf(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
                 }
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
-                    title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
+                    title = { Text(context.getString(R.string.use_webview_article)) },
+                    description = { Text(context.getString(R.string.use_webview_article_desc)) },
                     checked = articleUseWebview.value,
                     onCheckedChange = {
                         articleUseWebview.value = it
@@ -706,7 +752,13 @@ fun AppearanceSettingsScreen(
                             putString("webviewCustomFontName", name)
                         }
                         customFontName = name
-                        Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
+                        Toast
+                            .makeText(
+                                context,
+                                context.getString(R.string.font_applied_on_reload),
+                                Toast.LENGTH_SHORT,
+                            )
+                            .show()
                     }
                     Column(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
@@ -716,11 +768,11 @@ fun AppearanceSettingsScreen(
                             modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
                             title = {
                                 Text(
-                                    "WebView 自定义字体",
+                                    context.getString(R.string.webview_custom_font),
                                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
                                 )
                             },
-                            description = { Text(customFontName ?: "未设置") },
+                            description = { Text(customFontName ?: context.getString(R.string.not_set)) },
                             bottomAction = {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -733,7 +785,7 @@ fun AppearanceSettingsScreen(
                                         modifier = Modifier.weight(1f),
                                     ) {
                                         Icon(Icons.Default.FolderOpen, contentDescription = null)
-                                        Text("选择", modifier = Modifier.padding(start = 4.dp))
+                                        Text(context.getString(R.string.select), modifier = Modifier.padding(start = 4.dp))
                                     }
                                     if (customFontName != null) {
                                         OutlinedButton(
@@ -741,12 +793,18 @@ fun AppearanceSettingsScreen(
                                                 java.io.File(context.filesDir, "custom_font").delete()
                                                 preferences.edit { remove("webviewCustomFontName") }
                                                 customFontName = null
-                                                Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        context.getString(R.string.font_cleared),
+                                                        Toast.LENGTH_SHORT,
+                                                    )
+                                                    .show()
                                             },
                                             modifier = Modifier.weight(1f),
                                         ) {
                                             Icon(Icons.Default.Clear, contentDescription = null)
-                                            Text("清除", modifier = Modifier.padding(start = 4.dp))
+                                            Text(context.getString(R.string.clear), modifier = Modifier.padding(start = 4.dp))
                                         }
                                     }
                                 }
@@ -755,8 +813,8 @@ fun AppearanceSettingsScreen(
 
                         val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
                         SettingItemWithSwitch(
-                            title = { Text("WebView 硬件加速") },
-                            description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                            title = { Text(context.getString(R.string.webview_hardware_acceleration)) },
+                            description = { Text(context.getString(R.string.webview_hardware_acceleration_desc)) },
                             checked = useHardwareAcceleration.value,
                             onCheckedChange = {
                                 useHardwareAcceleration.value = it
@@ -768,8 +826,8 @@ fun AppearanceSettingsScreen(
 
                 val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
                 SettingItemWithSwitch(
-                    title = { Text("自动隐藏回答标题") },
-                    description = { Text("滚动时自动隐藏回答标题栏。") },
+                    title = { Text(context.getString(R.string.auto_hide_answer_title)) },
+                    description = { Text(context.getString(R.string.auto_hide_answer_title_desc)) },
                     checked = isTitleAutoHide.value,
                     onCheckedChange = {
                         isTitleAutoHide.value = it
@@ -781,8 +839,8 @@ fun AppearanceSettingsScreen(
                     mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
                 }
                 SettingItemWithSwitch(
-                    title = { Text("自动隐藏回答底部按钮") },
-                    description = { Text("上划时隐藏回答底部操作按钮，下划时重新显示。") },
+                    title = { Text(context.getString(R.string.auto_hide_bottom_bar)) },
+                    description = { Text(context.getString(R.string.auto_hide_bottom_bar_desc)) },
                     checked = autoHideArticleBottomBar.value,
                     onCheckedChange = {
                         autoHideArticleBottomBar.value = it
@@ -791,8 +849,8 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("显示跳转下一个回答按钮") },
-                    description = { Text("在回答页面显示可拖动的快速跳转按钮。") },
+                    title = { Text(context.getString(R.string.show_skip_next_button)) },
+                    description = { Text(context.getString(R.string.show_skip_next_button_desc)) },
                     checked = buttonSkipAnswer.value,
                     onCheckedChange = {
                         buttonSkipAnswer.value = it
@@ -803,8 +861,8 @@ fun AppearanceSettingsScreen(
                 val autoHideSkipAnswerButton = remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
                 AnimatedVisibility(buttonSkipAnswer.value) {
                     SettingItemWithSwitch(
-                        title = { Text("滚动时自动隐藏跳转按钮") },
-                        description = { Text("上划时淡出「下一个回答」按钮，下划时淡入显示。") },
+                        title = { Text(context.getString(R.string.auto_hide_skip_button)) },
+                        description = { Text(context.getString(R.string.auto_hide_skip_button_desc)) },
                         checked = autoHideSkipAnswerButton.value,
                         onCheckedChange = {
                             autoHideSkipAnswerButton.value = it
@@ -815,8 +873,8 @@ fun AppearanceSettingsScreen(
 
                 val pinAnswerDate = remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
                 SettingItemWithSwitch(
-                    title = { Text("置顶回答日期") },
-                    description = { Text("将回答的发布日期和编辑日期移动到内容最前面显示。") },
+                    title = { Text(context.getString(R.string.pin_answer_date)) },
+                    description = { Text(context.getString(R.string.pin_answer_date_desc)) },
                     checked = pinAnswerDate.value,
                     onCheckedChange = {
                         pinAnswerDate.value = it
@@ -829,20 +887,23 @@ fun AppearanceSettingsScreen(
                     mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
                 }
                 val answerSwitchOptions = listOf(
-                    "off" to "关闭",
-                    "vertical" to "上下滑动",
-                    "horizontal" to "左右滑动",
+                    "off" to context.getString(R.string.answer_switch_off),
+                    "vertical" to context.getString(R.string.answer_switch_vertical),
+                    "horizontal" to context.getString(R.string.answer_switch_horizontal),
                 )
                 SettingItem(
-                    title = { Text("回答切换手势") },
-                    description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
+                    title = { Text(context.getString(R.string.answer_switch_gesture)) },
+                    description = { Text(context.getString(R.string.answer_switch_gesture_desc)) },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = answerSwitchExpanded,
                             onExpandedChange = { answerSwitchExpanded = it },
                         ) {
                             OutlinedTextField(
-                                value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
+                                value = answerSwitchOptions
+                                    .find { it.first == answerSwitchMode.value }
+                                    ?.second
+                                    ?: context.getString(R.string.answer_switch_vertical),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
@@ -862,7 +923,13 @@ fun AppearanceSettingsScreen(
                                             answerSwitchMode.value = mode
                                             preferences.edit { putString("answerSwitchMode", mode) }
                                             answerSwitchExpanded = false
-                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.set_to, label),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
                                         },
                                     )
                                 }
@@ -882,9 +949,15 @@ fun AppearanceSettingsScreen(
                         ),
                     )
                 }
+                fun answerDoubleTapLabel(action: AnswerDoubleTapAction): String = when (action) {
+                    AnswerDoubleTapAction.None -> context.getString(R.string.double_tap_none)
+                    AnswerDoubleTapAction.Ask -> context.getString(R.string.double_tap_ask)
+                    AnswerDoubleTapAction.VoteUp -> context.getString(R.string.double_tap_vote_up)
+                    AnswerDoubleTapAction.OpenComments -> context.getString(R.string.double_tap_open_comments)
+                }
                 SettingItem(
-                    title = { Text("双击回答动作") },
-                    description = { Text("双击回答正文时执行的动作。默认弹窗询问。") },
+                    title = { Text(context.getString(R.string.answer_double_tap)) },
+                    description = { Text(context.getString(R.string.answer_double_tap_desc)) },
                     settingKey = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
                     highlightedKey = setting,
                     bringIntoViewRequester = requesterFor(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY),
@@ -894,7 +967,7 @@ fun AppearanceSettingsScreen(
                             onExpandedChange = { answerDoubleTapExpanded = it },
                         ) {
                             OutlinedTextField(
-                                value = answerDoubleTapAction.value.label,
+                                value = answerDoubleTapLabel(answerDoubleTapAction.value),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerDoubleTapExpanded) },
@@ -909,8 +982,9 @@ fun AppearanceSettingsScreen(
                                 onDismissRequest = { answerDoubleTapExpanded = false },
                             ) {
                                 AnswerDoubleTapAction.entries.forEach { action ->
+                                    val actionLabel = answerDoubleTapLabel(action)
                                     DropdownMenuItem(
-                                        text = { Text(action.label) },
+                                        text = { Text(actionLabel) },
                                         onClick = {
                                             answerDoubleTapAction.value = action
                                             preferences.edit {
@@ -920,7 +994,13 @@ fun AppearanceSettingsScreen(
                                                 )
                                             }
                                             answerDoubleTapExpanded = false
-                                            Toast.makeText(context, "已设置为：${action.label}", Toast.LENGTH_SHORT).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.set_to, actionLabel),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
                                         },
                                     )
                                 }
@@ -1015,7 +1095,13 @@ fun AppearanceSettingsScreen(
                                             startDestinationKey = key
                                             preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, key) }
                                             startDestinationExpanded = false
-                                            Toast.makeText(context, "已设置启动页：$label，重启后生效", Toast.LENGTH_SHORT).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.start_page_restart_hint, label),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
                                         },
                                     )
                                 }
@@ -1051,11 +1137,23 @@ fun AppearanceSettingsScreen(
                                         .clickable(enabled = isEnabled) {
                                             when {
                                                 candidateSet.size < 3 -> {
-                                                    Toast.makeText(context, "至少保留3项", Toast.LENGTH_SHORT).show()
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            context.getString(R.string.at_least_3_items),
+                                                            Toast.LENGTH_SHORT,
+                                                        )
+                                                        .show()
                                                 }
 
                                                 candidateSet.size > 5 -> {
-                                                    Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
+                                                    Toast
+                                                        .makeText(
+                                                            context,
+                                                            context.getString(R.string.at_most_5_items),
+                                                            Toast.LENGTH_SHORT,
+                                                        )
+                                                        .show()
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateSet)
@@ -1082,8 +1180,8 @@ fun AppearanceSettingsScreen(
 
                 val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("点击底部导航栏回到顶部/刷新") },
-                    description = { Text("点击底部导航栏当前页面按钮回到顶部，已在顶部时则刷新页面。双击可直接刷新。") },
+                    title = { Text(context.getString(R.string.tap_nav_to_top)) },
+                    description = { Text(context.getString(R.string.tap_nav_to_top_desc)) },
                     checked = tapToRefresh.value,
                     onCheckedChange = {
                         tapToRefresh.value = it
@@ -1093,8 +1191,8 @@ fun AppearanceSettingsScreen(
 
                 val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
                 SettingItemWithSwitch(
-                    title = { Text("滚动时自动隐藏底部导航栏") },
-                    description = { Text("上划时隐藏底部导航栏，下划时重新显示。") },
+                    title = { Text(context.getString(R.string.auto_hide_nav_bar)) },
+                    description = { Text(context.getString(R.string.auto_hide_nav_bar_desc)) },
                     checked = autoHideBottomBar.value,
                     onCheckedChange = {
                         autoHideBottomBar.value = it
@@ -1105,20 +1203,20 @@ fun AppearanceSettingsScreen(
 
             // ── 交互 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title = "交互",
+                title = context.getString(R.string.interaction),
             ) {
                 var shareActionExpanded by remember { mutableStateOf(false) }
                 val shareActionMode = remember {
                     mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
                 }
                 val shareActionOptions = listOf(
-                    "ask" to "询问",
-                    "copy" to "复制链接",
-                    "share" to "Android分享",
+                    "ask" to context.getString(R.string.share_action_ask),
+                    "copy" to context.getString(R.string.share_action_copy),
+                    "share" to context.getString(R.string.share_action_android),
                 )
                 SettingItem(
-                    title = { Text("分享操作") },
-                    description = { Text("点击分享按钮时的默认行为。") },
+                    title = { Text(context.getString(R.string.share_action)) },
+                    description = { Text(context.getString(R.string.share_action_desc)) },
                     settingKey = "shareAction",
                     highlightedKey = setting,
                     bringIntoViewRequester = requesterFor("shareAction"),
@@ -1128,7 +1226,10 @@ fun AppearanceSettingsScreen(
                             onExpandedChange = { shareActionExpanded = it },
                         ) {
                             OutlinedTextField(
-                                value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
+                                value = shareActionOptions
+                                    .find { it.first == shareActionMode.value }
+                                    ?.second
+                                    ?: context.getString(R.string.share_action_ask),
                                 onValueChange = {},
                                 readOnly = true,
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
@@ -1148,7 +1249,13 @@ fun AppearanceSettingsScreen(
                                             shareActionMode.value = mode
                                             preferences.edit { putString("shareActionMode", mode) }
                                             shareActionExpanded = false
-                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                            Toast
+                                                .makeText(
+                                                    context,
+                                                    context.getString(R.string.set_to, label),
+                                                    Toast.LENGTH_SHORT,
+                                                )
+                                                .show()
                                         },
                                     )
                                 }
@@ -1160,12 +1267,12 @@ fun AppearanceSettingsScreen(
 
             // ── 搜索 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title = "搜索",
+                title = context.getString(R.string.search),
             ) {
                 val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("搜索界面显示热搜") },
-                    description = { Text("在搜索界面空白时显示知乎热搜关键词。") },
+                    title = { Text(context.getString(R.string.show_hot_search)) },
+                    description = { Text(context.getString(R.string.show_hot_search_desc)) },
                     checked = showSearchHotSearch.value,
                     onCheckedChange = {
                         showSearchHotSearch.value = it
@@ -1179,24 +1286,26 @@ fun AppearanceSettingsScreen(
 
             // ── 导航 ────────────────────────────────────────────────────────────
             SettingItemGroup(
-                title = "技术性导航设置",
+                title = context.getString(R.string.nav_technical),
             ) {
                 val useCustomNavHost = remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("使用自定义导航") },
-                    description = { Text("使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。") },
+                    title = { Text(context.getString(R.string.use_custom_nav_host)) },
+                    description = { Text(context.getString(R.string.use_custom_nav_host_desc)) },
                     checked = useCustomNavHost.value,
                     onCheckedChange = {
                         useCustomNavHost.value = it
                         preferences.edit { putBoolean("use_custom_nav_host", it) }
-                        Toast.makeText(context, "需要重启应用生效", Toast.LENGTH_SHORT).show()
+                        Toast
+                            .makeText(context, context.getString(R.string.restart_required), Toast.LENGTH_SHORT)
+                            .show()
                     },
                 )
 
                 val enablePredictiveBack = remember { mutableStateOf(preferences.getBoolean("enable_predictive_back", true)) }
                 SettingItemWithSwitch(
-                    title = { Text("启用预测性返回") },
-                    description = { Text("开启 Android 14+ 的预测性返回手势动画。") },
+                    title = { Text(context.getString(R.string.enable_predictive_back)) },
+                    description = { Text(context.getString(R.string.enable_predictive_back_desc)) },
                     checked = enablePredictiveBack.value,
                     onCheckedChange = {
                         enablePredictiveBack.value = it
@@ -1264,13 +1373,13 @@ fun AppearanceSettingsScreen(
             }
 
             SettingItemGroup(
-                title = "123Duo3 的 UI/UX 改进（beta）",
+                title = context.getString(R.string.duo3_title),
                 settingKey = "123Duo3",
                 highlightedKey = setting,
                 bringIntoViewRequester = requesterFor("123Duo3"),
                 header = {
                     SettingItemOverall(
-                        title = { Text("启用所有修改并关闭浮动按钮") },
+                        title = { Text(context.getString(R.string.duo3_enable_all)) },
                         checked = duo3All.value,
                         onCheckedChange = {
                             duo3All.value = it
@@ -1286,7 +1395,8 @@ fun AppearanceSettingsScreen(
                 footer = {
                     Text(
                         text = buildAnnotatedString {
-                            append("以上设置项可能随时更改，或并入主线。\n欢迎")
+                            append(context.getString(R.string.duo3_footer_text))
+                            append(" ")
                             withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues")) {
                                 withStyle(
                                     MaterialTheme.typography.bodyMedium
@@ -1296,17 +1406,18 @@ fun AppearanceSettingsScreen(
                                             fontWeight = FontWeight.Medium,
                                         ).toSpanStyle(),
                                 ) {
-                                    append("提交 Issue")
+                                    append(context.getString(R.string.duo3_footer_link))
                                 }
                             }
-                            append(" 讨论本次 UI/UX 修改和反馈问题。")
+                            append(" ")
+                            append(context.getString(R.string.duo3_footer_suffix))
                         },
                     )
                 },
             ) {
                 SettingItemWithSwitch(
-                    title = { Text("主页：账号入口迁移至顶部头像") },
-                    description = { Text("搜索栏样式变更；点击头像弹出账号与设置；「历史」入口可挪入账号设置页。") },
+                    title = { Text(context.getString(R.string.duo3_home_account)) },
+                    description = { Text(context.getString(R.string.duo3_home_account_desc)) },
                     checked = duo3HomeAccount.value,
                     onCheckedChange = {
                         duo3HomeAccount.value = it
@@ -1321,8 +1432,8 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("底部导航栏：改为 Material 样式") },
-                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
+                    title = { Text(context.getString(R.string.duo3_nav_style)) },
+                    description = { Text(context.getString(R.string.duo3_nav_style_desc)) },
                     checked = duo3NavStyle.value,
                     onCheckedChange = {
                         duo3NavStyle.value = it
@@ -1331,8 +1442,8 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("信息流卡片：外观更改") },
-                    description = { Text("卡片圆角增大，移除阴影；修改背景与卡片颜色。") },
+                    title = { Text(context.getString(R.string.duo3_card_appearance)) },
+                    description = { Text(context.getString(R.string.duo3_card_appearance_desc)) },
                     checked = duo3CardAppearance.value,
                     onCheckedChange = {
                         duo3CardAppearance.value = it
@@ -1341,8 +1452,8 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItemWithSwitch(
-                    title = { Text("信息流卡片：更改内容排版") },
-                    description = { Text("作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），规范字体样式。") },
+                    title = { Text(context.getString(R.string.duo3_card_layout)) },
+                    description = { Text(context.getString(R.string.duo3_card_layout_desc)) },
                     checked = duo3CardLayout.value,
                     onCheckedChange = {
                         duo3CardLayout.value = it
@@ -1352,8 +1463,8 @@ fun AppearanceSettingsScreen(
 
                 AnimatedVisibility(visible = duo3CardLayout.value) {
                     SettingItemWithSwitch(
-                        title = { Text("信息流卡片：使用更大的标题字体") },
-                        description = { Text("默认启用；关闭后标题会缩小一档。") },
+                        title = { Text(context.getString(R.string.duo3_card_large_title)) },
+                        description = { Text(context.getString(R.string.duo3_card_large_title_desc)) },
                         checked = duo3CardLargeTitle.value,
                         onCheckedChange = {
                             duo3CardLargeTitle.value = it
@@ -1363,8 +1474,8 @@ fun AppearanceSettingsScreen(
                 }
 
                 SettingItemWithSwitch(
-                    title = { Text("文章阅读页：更改整体顶/底栏框架") },
-                    description = { Text("更改标题栏样式；优化顶/底栏隐藏逻辑。") },
+                    title = { Text(context.getString(R.string.duo3_article_bar)) },
+                    description = { Text(context.getString(R.string.duo3_article_bar_desc)) },
                     checked = duo3ArticleBar.value,
                     onCheckedChange = {
                         duo3ArticleBar.value = it
@@ -1374,8 +1485,8 @@ fun AppearanceSettingsScreen(
 
                 AnimatedVisibility(visible = duo3ArticleBar.value) {
                     SettingItemWithSwitch(
-                        title = { Text("文章阅读页：更改操作栏样式") },
-                        description = { Text("底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。") },
+                        title = { Text(context.getString(R.string.duo3_article_actions)) },
+                        description = { Text(context.getString(R.string.duo3_article_actions_desc)) },
                         checked = duo3ArticleActions.value,
                         onCheckedChange = {
                             duo3ArticleActions.value = it

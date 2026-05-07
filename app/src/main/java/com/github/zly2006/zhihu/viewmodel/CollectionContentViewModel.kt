@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -39,6 +40,8 @@ import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel.CollectionItem
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
+import com.github.zly2006.zhihu.viewmodel.feed.localizedDescription
+import com.github.zly2006.zhihu.viewmodel.feed.localizedDetailsText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,7 +57,7 @@ class CollectionContentViewModel(
     val displayItems = mutableStateListOf<FeedDisplayItem>()
     var collection by mutableStateOf<Collection?>(null)
     val title by derivedStateOf {
-        collection?.title ?: "收藏夹"
+        collection?.title.orEmpty()
     }
     var exportDialogState by mutableStateOf<CollectionHtmlExportDialogState?>(null)
         private set
@@ -88,13 +91,13 @@ class CollectionContentViewModel(
 
     override fun processResponse(context: Context, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
-        displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据
+        displayItems.addAll(data.map { createDisplayItem(context, it) }) // 展示用的已flatten数据
     }
 
-    private fun createDisplayItem(item: CollectionItem): FeedDisplayItem = FeedDisplayItem(
+    private fun createDisplayItem(context: Context, item: CollectionItem): FeedDisplayItem = FeedDisplayItem(
         title = item.content.title,
         summary = item.content.excerpt,
-        details = item.content.detailsText,
+        details = item.content.localizedDetailsText(context),
         navDestination = item.content.navDestination,
         feed = null,
         avatarSrc = when (item.content) {
@@ -126,7 +129,7 @@ class CollectionContentViewModel(
 
         viewModelScope.launch {
             exportDialogState = CollectionHtmlExportDialogState(
-                phaseText = "正在加载收藏夹条目",
+                phaseText = context.getString(R.string.collection_loading_items),
                 totalCount = 0,
                 processedCount = 0,
                 successCount = 0,
@@ -139,20 +142,20 @@ class CollectionContentViewModel(
                 val items = ensureAllCollectionItemsLoaded(context)
                 if (items.isEmpty()) {
                     exportDialogState = CollectionHtmlExportDialogState(
-                        phaseText = "没有可导出的内容",
+                        phaseText = context.getString(R.string.collection_no_exportable_content),
                         totalCount = 0,
                         processedCount = 0,
                         successCount = 0,
                         skippedCount = 0,
                         failedCount = 0,
                         isCompleted = true,
-                        resultMessage = "收藏夹为空，或内容加载失败。",
+                        resultMessage = context.getString(R.string.collection_empty_or_load_failed),
                     )
                     return@launch
                 }
 
                 val outputDir = context.getExternalFilesDir(null)
-                    ?: throw IllegalStateException("外部文件目录不可用")
+                    ?: throw IllegalStateException(context.getString(R.string.external_files_dir_unavailable))
                 val exportHttpClient = httpClient(context)
                 val exportTitle = title
                 val result = withContext(Dispatchers.IO) {
@@ -161,8 +164,11 @@ class CollectionContentViewModel(
                         items = items,
                         cacheDir = context.cacheDir,
                         outputDir = outputDir,
+                        fallbackCollectionTitle = context.getString(R.string.collection_default_title),
+                        createCacheDirFailedMessage = context.getString(R.string.collection_export_cache_dir_failed),
+                        createZipDirFailedMessage = context.getString(R.string.collection_export_zip_dir_failed),
                         displayTitle = { item ->
-                            item.content.title.ifBlank { item.content.description() }
+                            item.content.title.ifBlank { item.content.localizedDescription(context) }
                         },
                         resolveItem = { item ->
                             resolveCollectionItemForHtmlExport(
@@ -175,7 +181,11 @@ class CollectionContentViewModel(
                         onProgress = { progress ->
                             withContext(Dispatchers.Main) {
                                 exportDialogState = CollectionHtmlExportDialogState(
-                                    phaseText = "正在导出 ${progress.processedCount} / ${progress.totalCount}",
+                                    phaseText = context.getString(
+                                        R.string.collection_export_progress,
+                                        progress.processedCount,
+                                        progress.totalCount,
+                                    ),
                                     totalCount = progress.totalCount,
                                     processedCount = progress.processedCount,
                                     successCount = progress.successCount,
@@ -189,12 +199,12 @@ class CollectionContentViewModel(
                 }
 
                 val resultMessage = if (result.zipFile != null) {
-                    "已导出 ${result.successCount} 篇，跳过 ${result.skippedCount} 条，失败 ${result.failedCount} 条。"
+                    context.getString(R.string.collection_export_finished_counts, result.successCount, result.skippedCount, result.failedCount)
                 } else {
-                    "没有可导出的回答或文章，已跳过 ${result.skippedCount} 条，失败 ${result.failedCount} 条。"
+                    context.getString(R.string.collection_export_no_articles_counts, result.skippedCount, result.failedCount)
                 }
                 exportDialogState = CollectionHtmlExportDialogState(
-                    phaseText = "导出完成",
+                    phaseText = context.getString(R.string.export_complete),
                     totalCount = result.totalCount,
                     processedCount = result.totalCount,
                     successCount = result.successCount,
@@ -209,7 +219,7 @@ class CollectionContentViewModel(
                 if (e is CancellationException) throw e
                 Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", e)
                 exportDialogState = CollectionHtmlExportDialogState(
-                    phaseText = "导出失败",
+                    phaseText = context.getString(R.string.export_failed_short),
                     totalCount = exportDialogState?.totalCount ?: 0,
                     processedCount = exportDialogState?.processedCount ?: 0,
                     successCount = exportDialogState?.successCount ?: 0,
@@ -217,9 +227,9 @@ class CollectionContentViewModel(
                     failedCount = exportDialogState?.failedCount ?: 0,
                     currentTitle = exportDialogState?.currentTitle.orEmpty(),
                     isCompleted = true,
-                    resultMessage = e.message ?: "未知错误",
+                    resultMessage = e.message ?: context.getString(R.string.unknown_error),
                 )
-                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.export_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -227,8 +237,10 @@ class CollectionContentViewModel(
     private suspend fun loadCollectionInfo(context: Context) {
         val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
             signFetchRequest()
-        } ?: throw IllegalStateException("收藏夹信息加载失败")
-        collection = AccountData.decodeJson<Collection>(jojo["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+        } ?: throw IllegalStateException(context.getString(R.string.collection_info_load_failed))
+        collection = AccountData.decodeJson<Collection>(
+            jojo["collection"] ?: throw IllegalStateException(context.getString(R.string.collection_info_empty)),
+        )
     }
 
     private suspend fun ensureAllCollectionItemsLoaded(context: Context): List<CollectionItem> {
@@ -269,13 +281,13 @@ class CollectionContentViewModel(
     ): ResolvedCollectionHtmlExportItem? {
         val navDestination = item.content.navDestination as? ArticleDestination ?: return null
         val content = ContentDetailCache.getOrFetch(context, navDestination)
-            ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
+            ?: throw IllegalStateException(context.getString(R.string.collection_item_detail_load_failed, item.content.title))
         if (content !is DataHolder.Answer && content !is DataHolder.Article) {
             return null
         }
 
         return ResolvedCollectionHtmlExportItem(
-            htmlFileName = buildArticleExportFileName(content, "html"),
+            htmlFileName = buildArticleExportFileName(context, content, "html"),
             htmlContent = buildOfflineArticleExportHtml(
                 context = context,
                 content = content,

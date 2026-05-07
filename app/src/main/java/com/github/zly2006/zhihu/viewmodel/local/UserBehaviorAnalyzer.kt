@@ -97,10 +97,10 @@ class UserBehaviorAnalyzer(
 
         RecommendationBehaviorProfile(
             reasonPreferences = CrawlingReason.entries.associateWith { reason ->
-                buildReasonPreference(reasonStats[reason] ?: LocalReasonStats())
+                buildReasonPreference(context, reasonStats[reason] ?: LocalReasonStats())
             },
             contentAffinities = contentStats.mapValues { (_, stats) ->
-                buildContentAffinity(stats)
+                buildContentAffinity(context, stats)
             },
         )
     }

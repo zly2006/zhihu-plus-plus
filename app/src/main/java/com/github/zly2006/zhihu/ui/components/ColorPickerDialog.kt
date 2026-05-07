@@ -46,12 +46,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import kotlin.math.roundToInt
 
 @Composable
 fun ColorPickerDialog(
-    title: String = "选择颜色",
+    title: String? = null,
     initialColor: Color,
     presetColors: List<Color> = listOf(
         Color(0xFF2196F3),
@@ -64,6 +66,7 @@ fun ColorPickerDialog(
     onDismiss: () -> Unit,
     onColorSelected: (Color) -> Unit,
 ) {
+    val context = LocalContext.current
     var red by remember { mutableFloatStateOf(initialColor.red) }
     var green by remember { mutableFloatStateOf(initialColor.green) }
     var blue by remember { mutableFloatStateOf(initialColor.blue) }
@@ -72,7 +75,7 @@ fun ColorPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title ?: context.getString(R.string.select_color)) },
         text = {
             Column {
                 Box(
@@ -87,21 +90,21 @@ fun ColorPickerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 ColorSlider(
-                    label = "红色",
+                    label = context.getString(R.string.color_red),
                     value = red,
                     color = Color.Red,
                     onValueChange = { red = it },
                 )
 
                 ColorSlider(
-                    label = "绿色",
+                    label = context.getString(R.string.color_green),
                     value = green,
                     color = Color.Green,
                     onValueChange = { green = it },
                 )
 
                 ColorSlider(
-                    label = "蓝色",
+                    label = context.getString(R.string.color_blue),
                     value = blue,
                     color = Color.Blue,
                     onValueChange = { blue = it },
@@ -117,7 +120,7 @@ fun ColorPickerDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("预设颜色", style = MaterialTheme.typography.labelMedium)
+                Text(context.getString(R.string.preset_colors), style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
@@ -136,12 +139,12 @@ fun ColorPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onColorSelected(currentColor) }) {
-                Text("确定")
+                Text(context.getString(R.string.confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(context.getString(R.string.cancel))
             }
         },
     )

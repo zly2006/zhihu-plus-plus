@@ -60,7 +60,7 @@ data class ZhidaSummaryRequest(
     @SerialName("content_type")
     val contentType: String,
     @SerialName("message_content")
-    val messageContent: String = "这篇内容讲了什么",
+    val messageContent: String = "What is this content about?",
 )
 
 @Serializable
@@ -107,7 +107,7 @@ fun buildZhidaSummaryRequest(
     contentId: Long,
     contentType: String,
     title: String,
-    messageContent: String = "这篇内容讲了什么",
+    messageContent: String = "What is this content about?",
 ): ZhidaSummaryRequest = ZhidaSummaryRequest(
     attachments = listOf(
         ZhidaSummaryAttachment(

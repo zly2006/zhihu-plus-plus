@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import android.content.Context
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -144,23 +146,23 @@ fun scoreFeedTarget(target: Feed.Target): Double {
     return score.coerceIn(0.1, 10.0)
 }
 
-fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference {
+fun buildReasonPreference(context: Context, stats: LocalReasonStats): LocalReasonPreference {
     val signal = (stats.clicks * 0.12) + (stats.likes * 0.35) - (stats.dislikes * 0.45)
     val multiplier = (1.0 + signal).coerceIn(0.55, 1.6)
     val explanation = when {
-        stats.likes > 0 -> "你最近更偏好这类来源"
-        stats.clicks >= 2 -> "你经常点开这类来源"
+        stats.likes > 0 -> context.getString(R.string.local_reason_prefer_source)
+        stats.clicks >= 2 -> context.getString(R.string.local_reason_often_open_source)
         else -> null
     }
     return LocalReasonPreference(multiplier = multiplier, explanation = explanation)
 }
 
-fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity {
+fun buildContentAffinity(context: Context, stats: LocalContentStats): LocalContentAffinity {
     val signal = (stats.clicks * 0.08) + (stats.likes * 0.40) - (stats.dislikes * 0.70)
     val multiplier = (1.0 + signal).coerceIn(0.15, 1.8)
     val explanation = when {
-        stats.likes > 0 -> "你明确喜欢过类似内容"
-        stats.clicks >= 2 -> "你最近点开过类似内容"
+        stats.likes > 0 -> context.getString(R.string.local_content_prefer_similar)
+        stats.clicks >= 2 -> context.getString(R.string.local_content_recently_opened_similar)
         else -> null
     }
     return LocalContentAffinity(multiplier = multiplier, explanation = explanation)

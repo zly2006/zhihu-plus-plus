@@ -54,10 +54,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -78,7 +80,7 @@ fun ExportDialogComponent(
         val allGranted = permissions.values.all { it }
         if (!allGranted) {
             android.widget.Toast
-                .makeText(context, "权限被拒绝，无法导出", android.widget.Toast.LENGTH_SHORT)
+                .makeText(context, context.getString(R.string.export_permission_denied), android.widget.Toast.LENGTH_SHORT)
                 .show()
         }
     }
@@ -103,7 +105,7 @@ fun ExportDialogComponent(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        text = "导出文章",
+                        text = stringResource(R.string.export_article_title),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 24.dp),
@@ -134,12 +136,12 @@ fun ExportDialogComponent(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    text = "导出为 PDF",
+                                    text = stringResource(R.string.export_as_pdf),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    text = "暂时禁用，后续切第三方库实现",
+                                    text = stringResource(R.string.export_pdf_disabled_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -183,12 +185,12 @@ fun ExportDialogComponent(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    text = "导出为 HTML",
+                                    text = stringResource(R.string.export_as_html),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                                 Text(
-                                    text = "图片会内联为 data URL，便于离线保存",
+                                    text = stringResource(R.string.export_html_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
@@ -232,7 +234,7 @@ fun ExportDialogComponent(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "导出为图片",
+                                text = stringResource(R.string.export_as_image),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -266,7 +268,7 @@ fun ExportDialogComponent(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "复制 Markdown",
+                                text = stringResource(R.string.copy_markdown),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -277,7 +279,7 @@ fun ExportDialogComponent(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "带评论导出",
+                        text = stringResource(R.string.export_with_comments),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(bottom = 8.dp),
@@ -289,7 +291,7 @@ fun ExportDialogComponent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            text = "包含评论数量: $commentCount 条",
+                            text = stringResource(R.string.export_comment_count, commentCount),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -339,7 +341,7 @@ fun ExportDialogComponent(
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                text = "导出图片（含评论）",
+                                text = stringResource(R.string.export_image_with_comments),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer,
                             )
@@ -359,7 +361,7 @@ fun ExportDialogComponent(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "在导出底部加入知乎++开源项目说明",
+                            text = stringResource(R.string.export_include_project_note),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -377,7 +379,7 @@ fun ExportDialogComponent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "导出中...",
+                                text = stringResource(R.string.exporting),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -393,7 +395,7 @@ fun ExportDialogComponent(
                             onClick = onDismiss,
                             enabled = !isExporting,
                         ) {
-                            Text("取消")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 }

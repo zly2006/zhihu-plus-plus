@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.theme.Typography
@@ -82,7 +83,7 @@ fun CommentScreenComponent(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,
             ),
-            dragHandle = { DragHandleTitle("评论") },
+            dragHandle = { DragHandleTitle(context.getString(R.string.article_comments)) },
         ) {
             CommentScreen(
                 httpClient = httpClient,
@@ -101,7 +102,7 @@ fun CommentScreenComponent(
                 shouldDismissOnBackPress = true,
                 shouldDismissOnClickOutside = true,
             ),
-            dragHandle = { DragHandleTitle("回复") },
+            dragHandle = { DragHandleTitle(context.getString(R.string.reply)) },
         ) {
             CommentScreen(
                 httpClient = httpClient,

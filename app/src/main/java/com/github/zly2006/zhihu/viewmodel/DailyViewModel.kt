@@ -55,7 +55,7 @@ class DailyViewModel : ViewModel() {
             nextDate = data.date
             error = null
         } catch (e: Exception) {
-            error = "加载失败: ${e.message}"
+            error = e.message
         } finally {
             isLoading = false
         }
@@ -75,7 +75,7 @@ class DailyViewModel : ViewModel() {
             nextDate = data.date
             error = null
         } catch (e: Exception) {
-            error = "加载失败: ${e.message}"
+            error = e.message
         } finally {
             isLoading = false
         }

@@ -255,10 +255,10 @@ class AnnouncementCardColors(
 fun AnnouncementCardPreview() {
     AnnouncementCard(
         visible = true,
-        title = "你好吗",
+        title = "How are you",
         leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
-        content = "我很好",
-        dismiss = { Text("不好") },
+        content = "I am fine",
+        dismiss = { Text("Dismiss") },
         onDismiss = { /*TODO*/ },
         modifier = Modifier.width(360.dp),
     )

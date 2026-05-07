@@ -35,6 +35,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.ui.HttpStatusException
@@ -189,12 +190,12 @@ abstract class PaginationViewModel<T : Any>(
                             if (context.canSafelyShowDialog()) {
                                 AlertDialog
                                     .Builder(context)
-                                    .setTitle("登录已过期")
-                                    .setMessage("请重新登录以继续使用完整功能。")
-                                    .setPositiveButton("重新登录") { _, _ ->
+                                    .setTitle(context.getString(R.string.login_expired))
+                                    .setMessage(context.getString(R.string.login_expired_desc))
+                                    .setPositiveButton(context.getString(R.string.login_again)) { _, _ ->
                                         AccountData.delete(context)
                                         context.startActivity(Intent(context, LoginActivity::class.java))
-                                    }.setNegativeButton("取消", null)
+                                    }.setNegativeButton(context.getString(R.string.cancel), null)
                                     .show()
                             }
                         }
@@ -206,9 +207,9 @@ abstract class PaginationViewModel<T : Any>(
                     if (context.canSafelyShowDialog()) {
                         AlertDialog
                             .Builder(context)
-                            .setTitle("错误 ${e.status}")
+                            .setTitle(context.getString(R.string.http_error_title, e.status))
                             .setMessage(e.bodyText)
-                            .setNeutralButton("复制curl") { _, _ ->
+                            .setNeutralButton(context.getString(R.string.copy_curl)) { _, _ ->
                                 val curl = e.dumpedCurlRequest
                                 context.clipboardManager
                                     .setPrimaryClip(
@@ -217,14 +218,14 @@ abstract class PaginationViewModel<T : Any>(
                                             curl,
                                         ),
                                     )
-                                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.copied_to_clipboard), Toast.LENGTH_SHORT).show()
                             }.show()
                     }
                 }
             }
             Log.e(this::class.simpleName, "Failed to fetch feeds", e)
             context.mainExecutor.execute {
-                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.load_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         } finally {
             isLoading = false

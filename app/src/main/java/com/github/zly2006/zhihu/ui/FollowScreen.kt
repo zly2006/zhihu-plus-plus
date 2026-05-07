@@ -70,6 +70,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
@@ -113,8 +114,9 @@ fun FollowScreen(
     onTestDynamicRefreshClick: (() -> Unit)? = null,
     onTestDynamicLoadMore: (() -> Unit)? = null,
 ) {
+    val context = LocalActivity.current as MainActivity
     val viewModel = viewModel<FollowScreenData>()
-    val titles = listOf("推荐", "动态")
+    val titles = listOf(context.getString(R.string.follow_tab_recommend), context.getString(R.string.follow_tab_dynamic))
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val coroutineScope = rememberCoroutineScope()
 
@@ -219,7 +221,7 @@ fun FollowingUsersRow() {
                                         id = user.actor.id,
                                         urlToken = user.actor.urlToken,
                                         name = user.actor.name,
-                                        jumpTo = "动态",
+                                        jumpTo = "activities",
                                     ),
                                 )
                             }.padding(vertical = 4.dp),
@@ -341,7 +343,7 @@ fun FollowRecommendScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh))
                     }
                 }
             }
@@ -431,10 +433,10 @@ fun FollowDynamicScreen(
                     item = item,
                     modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
                     onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.like_feedback_received), Toast.LENGTH_SHORT).show()
                     },
                     onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.feedback_received), Toast.LENGTH_SHORT).show()
                     },
                     onBlockUser = { feedItem ->
                         viewModel.handleBlockUser(context, feedItem) { authorInfo ->
@@ -458,7 +460,7 @@ fun FollowDynamicScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh))
                     }
                 }
             }

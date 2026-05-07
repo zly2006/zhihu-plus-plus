@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.DataHolder
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -92,6 +93,7 @@ fun buildArticleExportHtml(
     exportData: ArticleExportData,
     extraSectionsHtml: String = "",
 ): String = renderArticleExportHtml(
+    context = context,
     template = loadArticleExportTemplate(context),
     exportData = exportData,
     extraSectionsHtml = extraSectionsHtml,
@@ -138,11 +140,35 @@ fun buildArticleExportData(
 }
 
 fun renderArticleExportHtml(
+    context: Context,
+    template: String,
+    exportData: ArticleExportData,
+    extraSectionsHtml: String = "",
+): String = renderArticleExportHtml(
+    text = articleExportText(context),
+    template = template,
+    exportData = exportData,
+    extraSectionsHtml = extraSectionsHtml,
+)
+
+fun renderArticleExportHtml(
+    template: String,
+    exportData: ArticleExportData,
+    extraSectionsHtml: String = "",
+): String = renderArticleExportHtml(
+    text = defaultArticleExportText,
+    template = template,
+    exportData = exportData,
+    extraSectionsHtml = extraSectionsHtml,
+)
+
+private fun renderArticleExportHtml(
+    text: ArticleExportText,
     template: String,
     exportData: ArticleExportData,
     extraSectionsHtml: String = "",
 ): String {
-    val footerPlaceholders = buildArticleExportFooterPlaceholders(exportData.footerData)
+    val footerPlaceholders = buildArticleExportFooterPlaceholders(text, exportData.footerData)
     val authorAvatarHtml = exportData.authorAvatarSrc
         .takeIf { it.isNotBlank() }
         ?.let {
@@ -150,7 +176,7 @@ fun renderArticleExportHtml(
             <img
                 class="author-avatar"
                 src="${escapeHtml(normalizeArticleExportUrl(it))}"
-                alt="作者头像"
+                alt="${escapeHtml(text.authorAvatarAlt)}"
             />
             """.trimIndent()
         } ?: "<div class=\"author-avatar author-avatar-placeholder\"></div>"
@@ -177,6 +203,9 @@ fun renderArticleExportHtml(
             "{{editedDate}}" to footerPlaceholders.editedDate,
             "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
             "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
+            "{{appName}}" to escapeHtml(text.appName),
+            "{{appAttributionPrefix}}" to escapeHtml(text.appAttributionPrefix),
+            "{{appAttributionSuffix}}" to escapeHtml(text.appAttributionSuffix(footerPlaceholders.githubUrl)),
             "{{githubUrl}}" to escapeHtml(footerPlaceholders.githubUrl),
         ),
     )
@@ -199,7 +228,7 @@ suspend fun buildOfflineArticleExportHtml(
     }
 
     return inlineArticleExportImagesInHtml(htmlContent) { imageUrl ->
-        fetchArticleExportImageDataUrl(httpClient, imageUrl)
+        fetchArticleExportImageDataUrl(context, httpClient, imageUrl)
     }
 }
 
@@ -294,18 +323,88 @@ private data class ArticleExportFooterPlaceholders(
     val githubUrl: String,
 )
 
-private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooterData): ArticleExportFooterPlaceholders {
+private data class ArticleExportText(
+    val appName: String,
+    val authorAvatarAlt: String,
+    val commentImageAlt: String,
+    val publishedDate: (String) -> String,
+    val editedDate: (String) -> String,
+    val exportedDate: (String) -> String,
+    val topComments: String,
+    val topCommentsLimited: (Int) -> String,
+    val typeAnswer: String,
+    val typeArticle: String,
+    val fileUntitled: String,
+    val fileAnonymousAuthor: String,
+    val appAttributionPrefix: String,
+    val appAttributionSuffix: (String) -> String,
+    val fileName: (String, String, String, String, Long, String, String) -> String,
+)
+
+private val defaultArticleExportText = ArticleExportText(
+    appName = "Zhihu++",
+    authorAvatarAlt = "Author avatar",
+    commentImageAlt = "Comment image",
+    publishedDate = { "Published: $it" },
+    editedDate = { "Edited: $it" },
+    exportedDate = { "Exported: $it" },
+    topComments = "Top comments",
+    topCommentsLimited = { "Top comments (first $it)" },
+    typeAnswer = "answer",
+    typeArticle = "article",
+    fileUntitled = "untitled",
+    fileAnonymousAuthor = "anonymous",
+    appAttributionPrefix = "Exported with",
+    appAttributionSuffix = { ", a free, open-source, ad-free third-party Zhihu client. Please star it. (GitHub: $it)" },
+    fileName = { safeTitle, safeAuthorName, typeLabel, typeKey, articleId, timestamp, extension ->
+        "zhihu++_${safeTitle}_${safeAuthorName}_${typeLabel}_${typeKey}_${articleId}_$timestamp.$extension"
+    },
+)
+
+private fun articleExportText(context: Context): ArticleExportText = ArticleExportText(
+    appName = context.getString(R.string.app_name),
+    authorAvatarAlt = context.getString(R.string.article_export_author_avatar_alt),
+    commentImageAlt = context.getString(R.string.article_export_comment_image_alt),
+    publishedDate = { context.getString(R.string.article_export_published_date, it) },
+    editedDate = { context.getString(R.string.article_export_edited_date, it) },
+    exportedDate = { context.getString(R.string.article_export_exported_date, it) },
+    topComments = context.getString(R.string.article_export_top_comments),
+    topCommentsLimited = { context.getString(R.string.article_export_top_comments_limited, it) },
+    typeAnswer = context.getString(R.string.article_export_type_answer),
+    typeArticle = context.getString(R.string.article_export_type_article),
+    fileUntitled = context.getString(R.string.article_export_file_untitled),
+    fileAnonymousAuthor = context.getString(R.string.article_export_file_anonymous_author),
+    appAttributionPrefix = context.getString(R.string.article_export_app_attribution_prefix),
+    appAttributionSuffix = { context.getString(R.string.article_export_app_attribution_suffix, it) },
+    fileName = { safeTitle, safeAuthorName, typeLabel, typeKey, articleId, timestamp, extension ->
+        context.getString(
+            R.string.article_export_file_name_format,
+            safeTitle,
+            safeAuthorName,
+            typeLabel,
+            typeKey,
+            articleId,
+            timestamp,
+            extension,
+        )
+    },
+)
+
+private fun buildArticleExportFooterPlaceholders(
+    text: ArticleExportText,
+    footerData: ArticleExportFooterData,
+): ArticleExportFooterPlaceholders {
     val publishedDate = footerData.createdEpochSeconds
         .takeIf { it > 0L }
-        ?.let { "发布日期：" + formatArticleExportDate(it * 1000L) }
+        ?.let { text.publishedDate(formatArticleExportDate(it * 1000L)) }
         .orEmpty()
     val editedDate = footerData.updatedEpochSeconds
         .takeIf { it > 0L && it != footerData.createdEpochSeconds }
-        ?.let { "编辑日期：" + formatArticleExportDate(it * 1000L) }
+        ?.let { text.editedDate(formatArticleExportDate(it * 1000L)) }
         .orEmpty()
 
     return ArticleExportFooterPlaceholders(
-        exportedDate = "导出日期：" + formatArticleExportDate(footerData.exportEpochMillis),
+        exportedDate = text.exportedDate(formatArticleExportDate(footerData.exportEpochMillis)),
         publishedDate = publishedDate,
         editedDate = editedDate,
         editedDateClass = if (editedDate.isBlank()) "export-footer-line is-hidden" else "export-footer-line",
@@ -361,24 +460,44 @@ fun prepareArticleExportComment(
 }
 
 fun buildArticleExportCommentsHtml(
+    context: Context,
+    comments: List<ArticleExportComment>,
+    requestedCount: Int? = null,
+): String = buildArticleExportCommentsHtml(
+    text = articleExportText(context),
+    comments = comments,
+    requestedCount = requestedCount,
+)
+
+fun buildArticleExportCommentsHtml(
+    comments: List<ArticleExportComment>,
+    requestedCount: Int? = null,
+): String = buildArticleExportCommentsHtml(
+    text = defaultArticleExportText,
+    comments = comments,
+    requestedCount = requestedCount,
+)
+
+private fun buildArticleExportCommentsHtml(
+    text: ArticleExportText,
     comments: List<ArticleExportComment>,
     requestedCount: Int? = null,
 ): String {
     if (comments.isEmpty()) return ""
-    val titleSuffix = requestedCount
+    val title = requestedCount
         ?.takeIf { it > 0 }
-        ?.let { " (前 ${minOf(it, comments.size)} 条)" }
-        .orEmpty()
+        ?.let { text.topCommentsLimited(minOf(it, comments.size)) }
+        ?: text.topComments
 
     return buildString {
-        append("<div class='comments-title'>热门评论$titleSuffix</div>")
+        append("<div class='comments-title'>${escapeHtml(title)}</div>")
         comments.forEach { comment ->
             append(
                 """
                 <div class="comment">
                     <div class="comment-author">${escapeHtml(comment.authorName)}</div>
                     <div class="comment-content">${comment.contentHtml}</div>
-                    ${buildArticleExportCommentImageHtml(comment.imageSrc)}
+                    ${buildArticleExportCommentImageHtml(text, comment.imageSrc)}
                     <div class="comment-time">${escapeHtml(comment.createdTimeText)}</div>
                 </div>
                 """.trimIndent(),
@@ -387,14 +506,14 @@ fun buildArticleExportCommentsHtml(
     }
 }
 
-private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc
+private fun buildArticleExportCommentImageHtml(text: ArticleExportText, imageSrc: String): String = imageSrc
     .takeIf { it.isNotBlank() }
     ?.let {
         """
         <img
             class="comment-image"
             src="${escapeHtml(it)}"
-            alt="评论图片"
+            alt="${escapeHtml(text.commentImageAlt)}"
         />
         """.trimIndent()
     }.orEmpty()
@@ -405,6 +524,26 @@ fun normalizeArticleExportUrl(url: String): String = when {
 }
 
 fun buildArticleExportFileName(
+    context: Context,
+    content: DataHolder.Content,
+    extension: String,
+): String = buildArticleExportFileName(
+    text = articleExportText(context),
+    content = content,
+    extension = extension,
+)
+
+fun buildArticleExportFileName(
+    content: DataHolder.Content,
+    extension: String,
+): String = buildArticleExportFileName(
+    text = defaultArticleExportText,
+    content = content,
+    extension = extension,
+)
+
+private fun buildArticleExportFileName(
+    text: ArticleExportText,
     content: DataHolder.Content,
     extension: String,
 ): String {
@@ -413,39 +552,48 @@ fun buildArticleExportFileName(
         is DataHolder.Answer -> ExportFileMeta(
             title = content.question.title,
             authorName = content.author.name,
-            typeLabel = "回答",
+            typeLabel = text.typeAnswer,
             typeKey = "answer",
             articleId = content.id,
         )
         is DataHolder.Article -> ExportFileMeta(
             title = content.title,
             authorName = content.author.name,
-            typeLabel = "文章",
+            typeLabel = text.typeArticle,
             typeKey = "article",
             articleId = content.id,
         )
         else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
     }
-    val safeTitle = sanitizeArticleExportFileNamePart(title).ifBlank { "无标题" }
+    val safeTitle = sanitizeArticleExportFileNamePart(title).ifBlank { text.fileUntitled }
     val safeAuthorName = sanitizeArticleExportFileNamePart(authorName)
-        .ifBlank { "匿名作者" }
+        .ifBlank { text.fileAnonymousAuthor }
     val normalizedExtension = extension.trimStart('.')
 
-    return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
+    return text.fileName(
+        safeTitle,
+        safeAuthorName,
+        typeLabel,
+        typeKey,
+        articleId,
+        timestamp,
+        normalizedExtension,
+    )
 }
 
 suspend fun fetchArticleExportImageDataUrl(
+    context: Context,
     httpClient: HttpClient,
     imageUrl: String,
 ): String {
     val response = httpClient.get(imageUrl)
     if (!response.status.isSuccess()) {
-        throw IllegalStateException("下载图片失败: ${response.status.value}")
+        throw IllegalStateException(context.getString(R.string.article_export_image_download_failed, response.status.value))
     }
 
     val bytes = response.readRawBytes()
     if (bytes.isEmpty()) {
-        throw IllegalStateException("图片内容为空")
+        throw IllegalStateException(context.getString(R.string.article_export_image_empty))
     }
 
     val mimeType = resolveArticleExportImageMimeType(

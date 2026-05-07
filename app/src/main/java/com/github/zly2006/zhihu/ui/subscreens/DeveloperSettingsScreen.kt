@@ -71,6 +71,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -131,7 +132,7 @@ fun DeveloperSettingsScreen(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeTopAppBar(
-                title = { Text("开发者选项") },
+                title = { Text(context.getString(R.string.developer_options)) },
                 navigationIcon = {
                     IconButton(
                         modifier = Modifier.testTag(DEVELOPER_SETTINGS_BACK_BUTTON_TAG),
@@ -141,7 +142,7 @@ fun DeveloperSettingsScreen(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -161,7 +162,7 @@ fun DeveloperSettingsScreen(
         ) {
             SettingItemOverall(
                 modifier = Modifier.testTag(DEVELOPER_SETTINGS_MODE_TAG),
-                title = { Text("开发者模式") },
+                title = { Text(context.getString(R.string.developer_mode)) },
                 checked = developerModeEnabled,
                 onCheckedChange = {
                     developerModeEnabled = it
@@ -175,33 +176,42 @@ fun DeveloperSettingsScreen(
             )
             SelectionContainer {
                 Column {
-                    val networkStatus = remember {
+                    val networkStatus = remember(context) {
                         buildString {
                             val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
                             val activeNetwork = connectivityManager.activeNetwork
-                            append("网络状态：")
+                            append(context.getString(R.string.network_status))
+                            append(": ")
                             if (activeNetwork != null) {
-                                append("已连接")
+                                append(context.getString(R.string.network_connected))
                                 if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                                    append(" (移动数据)")
+                                    append(" ")
+                                    append(context.getString(R.string.network_mobile))
                                 } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                                    append(" (Wi-Fi)")
+                                    append(" ")
+                                    append(context.getString(R.string.network_wifi))
                                 } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                                    append(" (VPN)")
+                                    append(" ")
+                                    append(context.getString(R.string.network_vpn))
                                 }
                             } else {
-                                append("未连接")
+                                append(context.getString(R.string.network_disconnected))
                             }
                         }
                     }
                     Text(networkStatus)
 
                     when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-                        PowerSaveModeCompat.POWER_SAVE -> Text("省电模式：已开启")
-                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text("省电模式：华为傻逼模式已开启")
+                        PowerSaveModeCompat.POWER_SAVE -> Text(context.getString(R.string.power_save_mode))
+                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text(context.getString(R.string.huawei_power_save))
                         else -> {}
                     }
-                    Text("连续使用时长：${formatContinuousUsageDuration(continuousUsageDurationMs)}")
+                    Text(
+                        context.getString(
+                            R.string.continuous_usage_duration,
+                            formatContinuousUsageDuration(context, continuousUsageDurationMs),
+                        ),
+                    )
 
                     Spacer(Modifier.height(16.dp))
                 }
@@ -210,38 +220,38 @@ fun DeveloperSettingsScreen(
                 Button(onClick = {
                     coroutineScope.launch {
                         if (AccountData.verifyLogin(context, data.cookies)) {
-                            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.login_success), Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.login_failed), Toast.LENGTH_SHORT).show()
                         }
                     }
-                }) { Text("验证登录") }
+                }) { Text(context.getString(R.string.verify_login)) }
 
                 Button(onClick = {
                     coroutineScope.launch {
                         val httpClient = AccountData.httpClient(context)
                         ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshToken(httpClient), httpClient)
-                        Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.token_refreshed), Toast.LENGTH_SHORT).show()
                     }
-                }) { Text("刷新Token") }
+                }) { Text(context.getString(R.string.refresh_token)) }
 
-                Button(onClick = { showCookieDialog = true }) { Text("手动设置Cookie") }
+                Button(onClick = { showCookieDialog = true }) { Text(context.getString(R.string.manual_cookie)) }
 
-                Button(onClick = { showSignedRequestDialog = true }) { Text("签名请求") }
+                Button(onClick = { showSignedRequestDialog = true }) { Text(context.getString(R.string.signed_request)) }
 
                 Button(
                     modifier = Modifier.testTag(DEVELOPER_SETTINGS_SENTENCE_SIMILARITY_TAG),
                     onClick = {
                         navigator.onNavigate(SentenceSimilarityTest)
                     },
-                ) { Text("句子相似度") }
+                ) { Text(context.getString(R.string.sentence_similarity)) }
 
                 Button(
                     modifier = Modifier.testTag(DEVELOPER_SETTINGS_COLOR_SCHEME_TAG),
                     onClick = {
                         navigator.onNavigate(Account.DeveloperSettings.ColorScheme)
                     },
-                ) { Text("Color Scheme") }
+                ) { Text(context.getString(R.string.color_scheme)) }
             }
 
             // TTS引擎信息显示
@@ -257,7 +267,7 @@ fun DeveloperSettingsScreen(
                     modifier = Modifier.padding(16.dp),
                 ) {
                     Text(
-                        "语音朗读引擎信息",
+                        context.getString(R.string.tts_engine_info),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -268,7 +278,7 @@ fun DeveloperSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            "当前引擎",
+                            context.getString(R.string.tts_current_engine),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -277,7 +287,7 @@ fun DeveloperSettingsScreen(
                                 MainActivity.TtsEngine.Pico -> "Pico TTS"
                                 MainActivity.TtsEngine.Google -> "Google TTS"
                                 MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
-                                else -> "未初始化"
+                                else -> context.getString(R.string.tts_not_ready)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
@@ -289,17 +299,17 @@ fun DeveloperSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            "引擎状态",
+                            context.getString(R.string.tts_engine_status),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
                             if (mainActivity?.isSpeaking() == true) {
-                                "正在朗读"
+                                context.getString(R.string.tts_speaking)
                             } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
-                                "就绪"
+                                context.getString(R.string.tts_ready)
                             } else {
-                                "未就绪"
+                                context.getString(R.string.tts_not_ready)
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
@@ -315,7 +325,7 @@ fun DeveloperSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            "引擎列表",
+                            context.getString(R.string.tts_engine_list),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
@@ -343,11 +353,11 @@ fun DeveloperSettingsScreen(
                 cookieInputText = ""
                 showCookieText = false
             },
-            title = { Text("手动设置Cookie") },
+            title = { Text(context.getString(R.string.manual_cookie)) },
             text = {
                 Column {
                     Text(
-                        "请输入完整的Cookie字符串，格式类似于document.cookie，使用 \"; \" 分割各个cookie项",
+                        context.getString(R.string.cookie_dialog_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
@@ -355,14 +365,14 @@ fun DeveloperSettingsScreen(
                     OutlinedTextField(
                         value = cookieInputText,
                         onValueChange = { cookieInputText = it },
-                        label = { Text("Cookie字符串") },
+                        label = { Text(context.getString(R.string.cookie_input_label)) },
                         placeholder = { Text("name1=value1; name2=value2; name3=value3") },
                         visualTransformation = if (showCookieText) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { showCookieText = !showCookieText }) {
                                 Icon(
                                     imageVector = if (showCookieText) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (showCookieText) "隐藏" else "显示",
+                                    contentDescription = if (showCookieText) context.getString(R.string.hide) else context.getString(R.string.show),
                                 )
                             }
                         },
@@ -400,12 +410,12 @@ fun DeveloperSettingsScreen(
                                     coroutineScope.launch {
                                         try {
                                             if (AccountData.verifyLogin(context, cookies)) {
-                                                Toast.makeText(context, "Cookie设置成功并验证登录状态", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.cookie_set_success), Toast.LENGTH_SHORT).show()
                                             } else {
-                                                Toast.makeText(context, "Cookie设置成功，但验证登录失败，请检查Cookie是否有效", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, context.getString(R.string.cookie_set_but_verify_failed), Toast.LENGTH_LONG).show()
                                             }
                                         } catch (e: Exception) {
-                                            Toast.makeText(context, "验证登录时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, context.getString(R.string.cookie_verify_error, e.message.orEmpty()), Toast.LENGTH_LONG).show()
                                         }
                                     }
 
@@ -413,17 +423,17 @@ fun DeveloperSettingsScreen(
                                     cookieInputText = ""
                                     showCookieText = false
                                 } else {
-                                    Toast.makeText(context, "未能解析有效的Cookie数据", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.cookie_parse_failed), Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "解析Cookie时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, context.getString(R.string.cookie_parse_error, e.message.orEmpty()), Toast.LENGTH_LONG).show()
                             }
                         } else {
-                            Toast.makeText(context, "请输入Cookie字符串", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.cookie_input_required), Toast.LENGTH_SHORT).show()
                         }
                     },
                 ) {
-                    Text("确认设置")
+                    Text(context.getString(R.string.confirm))
                 }
             },
             dismissButton = {
@@ -434,7 +444,7 @@ fun DeveloperSettingsScreen(
                         showCookieText = false
                     },
                 ) {
-                    Text("取消")
+                    Text(context.getString(R.string.cancel))
                 }
             },
         )
@@ -452,11 +462,11 @@ fun DeveloperSettingsScreen(
                 responseText = ""
                 isLoading = false
             },
-            title = { Text("签名GET请求") },
+            title = { Text(context.getString(R.string.signed_get_request)) },
             text = {
                 Column {
                     Text(
-                        "输入需要签名的GET请求URL，将自动添加签名头并发送请求",
+                        context.getString(R.string.signed_request_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp),
@@ -464,7 +474,7 @@ fun DeveloperSettingsScreen(
                     OutlinedTextField(
                         value = urlInput,
                         onValueChange = { urlInput = it },
-                        label = { Text("请求URL") },
+                        label = { Text(context.getString(R.string.request_url)) },
                         placeholder = { Text("https://www.zhihu.com/api/v4/me") },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
@@ -473,7 +483,7 @@ fun DeveloperSettingsScreen(
                     if (responseText.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "响应内容:",
+                            context.getString(R.string.response),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -506,21 +516,21 @@ fun DeveloperSettingsScreen(
                                     val clip = ClipData.newPlainText("Signed Request Response", body)
                                     context.clipboardManager.setPrimaryClip(clip)
 
-                                    Toast.makeText(context, "响应已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.response_copied), Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
-                                    responseText = "错误: ${e.message}"
-                                    Toast.makeText(context, "请求失败: ${e.message}", Toast.LENGTH_LONG).show()
+                                    responseText = context.getString(R.string.response_error, e.message.orEmpty())
+                                    Toast.makeText(context, context.getString(R.string.request_failed, e.message.orEmpty()), Toast.LENGTH_LONG).show()
                                 } finally {
                                     isLoading = false
                                 }
                             }
                         } else {
-                            Toast.makeText(context, "请输入有效的URL", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.valid_url_required), Toast.LENGTH_SHORT).show()
                         }
                     },
                     enabled = !isLoading,
                 ) {
-                    Text(if (isLoading) "请求中..." else "发送请求")
+                    Text(if (isLoading) context.getString(R.string.requesting) else context.getString(R.string.send_request))
                 }
             },
             dismissButton = {
@@ -533,22 +543,22 @@ fun DeveloperSettingsScreen(
                     },
                     enabled = !isLoading,
                 ) {
-                    Text("关闭")
+                    Text(context.getString(R.string.close))
                 }
             },
         )
     }
 }
 
-private fun formatContinuousUsageDuration(durationMs: Long): String {
+private fun formatContinuousUsageDuration(context: Context, durationMs: Long): String {
     val safeDurationMs = durationMs.coerceAtLeast(0L)
     val totalSeconds = safeDurationMs / 1_000L
     val hours = totalSeconds / 3_600L
     val minutes = (totalSeconds % 3_600L) / 60L
     val seconds = totalSeconds % 60L
     return when {
-        hours > 0 -> "${hours}小时${minutes}分${seconds}秒"
-        minutes > 0 -> "${minutes}分${seconds}秒"
-        else -> "${seconds}秒"
+        hours > 0 -> context.getString(R.string.duration_hours_minutes_seconds, hours, minutes, seconds)
+        minutes > 0 -> context.getString(R.string.duration_minutes_seconds, minutes, seconds)
+        else -> context.getString(R.string.duration_seconds, seconds)
     }
 }

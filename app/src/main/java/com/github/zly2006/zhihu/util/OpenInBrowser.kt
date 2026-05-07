@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -43,7 +44,7 @@ object OpenInBrowser {
                     contentType(ContentType.Application.Json)
                     setBody(
                         buildJsonObject {
-                            put("title", "Zhihu++: 要在浏览器中打开的内容")
+                            put("title", context.getString(R.string.open_in_browser_collection_title))
                             put("description", "com.github.zly2006.zhplus.openinbrowser")
                             put("is_public", false)
                         },

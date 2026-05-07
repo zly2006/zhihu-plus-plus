@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
@@ -186,16 +187,16 @@ fun PinScreen(
                     onClick = navigator.onNavigateBack,
                     modifier = Modifier.testTag(PIN_SCREEN_BACK_BUTTON_TAG),
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                 }
                 Text(
-                    "想法",
+                    context.getString(R.string.content_type_pin),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 IconButton(
                     onClick = {
-                        val shareText = getShareText(pin)
+                        val shareText = getShareText(pin, context = context)
                         if (shareText != null) {
                             testOverrides?.onShareAction?.invoke { showShareDialog = true }
                                 ?: handleShareAction(context, pin) {
@@ -205,7 +206,7 @@ fun PinScreen(
                     },
                     modifier = Modifier.testTag(PIN_SCREEN_SHARE_BUTTON_TAG),
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = "分享")
+                    Icon(Icons.Default.Share, contentDescription = context.getString(R.string.article_share))
                 }
             }
         },
@@ -233,7 +234,7 @@ fun PinScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "加载失败: ${screenState.errorMessage}",
+                            context.getString(R.string.load_failed, screenState.errorMessage),
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.testTag(PIN_SCREEN_ERROR_TAG),
                         )
@@ -268,7 +269,7 @@ fun PinScreen(
                         )
                     }
 
-                    val shareText = getShareText(pin)
+                    val shareText = getShareText(pin, context = context)
                     if (shareText != null) {
                         if (testOverrides?.shareDialogContent != null) {
                             testOverrides.shareDialogContent.invoke(
@@ -332,7 +333,7 @@ private fun PinContent(
         ) {
             AsyncImage(
                 model = pin.author.avatarUrl,
-                contentDescription = "头像",
+                contentDescription = context.getString(R.string.avatar),
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape),
@@ -438,14 +439,14 @@ private fun PinContent(
                     modifier = Modifier.padding(12.dp),
                 ) {
                     Text(
-                        "关联内容",
+                        context.getString(R.string.related_content),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (isRelatedLoading) {
                         Text(
-                            text = "正在加载关联内容...",
+                            text = context.getString(R.string.related_content_loading),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -469,7 +470,7 @@ private fun PinContent(
                         }
                     } else {
                         Text(
-                            text = "${linkCardTypeLabel(linkCard.dataContentType)} · ${linkCard.dataContentId}",
+                            text = "${linkCardTypeLabel(context, linkCard.dataContentType)} · ${linkCard.dataContentId}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -497,7 +498,7 @@ private fun PinContent(
             ) {
                 Icon(
                     if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "赞",
+                    contentDescription = context.getString(R.string.like),
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -513,7 +514,7 @@ private fun PinContent(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Comment,
-                    contentDescription = "评论",
+                    contentDescription = context.getString(R.string.article_comments),
                     modifier = Modifier.size(20.dp),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -528,7 +529,7 @@ private fun PinContent(
         if (pin.topics?.isNotEmpty() == true) {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
-                "话题",
+                context.getString(R.string.topics),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
             )
@@ -545,13 +546,13 @@ private fun PinContent(
     }
 }
 
-private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase(Locale.ROOT)) {
-    "answer" -> "回答"
-    "article" -> "文章"
-    "question" -> "问题"
-    "pin" -> "想法"
-    "people" -> "用户"
-    "video", "zvideo" -> "视频"
+private fun linkCardTypeLabel(context: Context, dataContentType: String): String = when (dataContentType.lowercase(Locale.ROOT)) {
+    "answer" -> context.getString(R.string.content_type_answer)
+    "article" -> context.getString(R.string.content_type_article)
+    "question" -> context.getString(R.string.content_type_question)
+    "pin" -> context.getString(R.string.content_type_pin)
+    "people" -> context.getString(R.string.content_type_people)
+    "video", "zvideo" -> context.getString(R.string.content_type_video)
     else -> dataContentType
 }
 
@@ -589,7 +590,7 @@ private suspend fun fetchLinkCardPreview(
         is Pin -> {
             DataHolder.getContentDetail(context, destination)?.let { detail ->
                 PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
+                    title = context.getString(R.string.pin_author_title, detail.author.name),
                     preview = compactPreview(detail.contentHtml),
                 )
             }

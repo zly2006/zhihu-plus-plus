@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
@@ -185,7 +186,7 @@ fun QuestionScreen(
         mutableStateOf(initialUiState.isQuestionDetailExpanded)
     }
     val questionContentPreview = remember(questionContent) { Jsoup.parse(questionContent).text().trim() }
-    val shareText = getShareText(question, title)
+    val shareText = getShareText(question, title, context = context)
 
     // 加载问题详情和答案
     LaunchedEffect(question.questionId, testOverrides) {
@@ -224,12 +225,12 @@ fun QuestionScreen(
                     )
                 } else {
                     context.mainExecutor.execute {
-                        Toast.makeText(context, "获取问题详情失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.question_detail_fetch_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 context.mainExecutor.execute {
-                    Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.load_failed, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -278,7 +279,7 @@ fun QuestionScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
-                                            text = "问题详情",
+                                            text = context.getString(R.string.question_detail),
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Medium,
                                         )
@@ -291,7 +292,13 @@ fun QuestionScreen(
                                                 contentDescription = null,
                                             )
                                             Spacer(Modifier.width(4.dp))
-                                            Text(if (isQuestionDetailExpanded) "收起详情" else "展开详情")
+                                            Text(
+                                                if (isQuestionDetailExpanded) {
+                                                    context.getString(R.string.collapse_detail)
+                                                } else {
+                                                    context.getString(R.string.expand_detail)
+                                                },
+                                            )
                                         }
                                     }
                                     AnimatedVisibility(
@@ -347,7 +354,7 @@ fun QuestionScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("排序：", style = MaterialTheme.typography.bodyMedium)
+                                Text(context.getString(R.string.sort_label), style = MaterialTheme.typography.bodyMedium)
                                 Spacer(Modifier.width(8.dp))
                                 FilledTonalButton(
                                     onClick = {
@@ -367,7 +374,7 @@ fun QuestionScreen(
                                     },
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 ) {
-                                    Text("默认")
+                                    Text(context.getString(R.string.sort_default))
                                 }
                                 Spacer(Modifier.width(8.dp))
                                 FilledTonalButton(
@@ -388,7 +395,7 @@ fun QuestionScreen(
                                     },
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 ) {
-                                    Text("最新")
+                                    Text(context.getString(R.string.latest))
                                 }
                             }
 
@@ -408,7 +415,11 @@ fun QuestionScreen(
                                             Toast
                                                 .makeText(
                                                     context,
-                                                    if (isFollowing) "已关注问题" else "已取消关注问题",
+                                                    if (isFollowing) {
+                                                        context.getString(R.string.question_followed)
+                                                    } else {
+                                                        context.getString(R.string.question_unfollowed)
+                                                    },
                                                     Toast.LENGTH_SHORT,
                                                 ).show()
                                         }
@@ -430,9 +441,16 @@ fun QuestionScreen(
                                     )
                                 },
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = if (isFollowing) "取消关注" else "关注问题")
+                                Icon(
+                                    Icons.Filled.Add,
+                                    contentDescription = if (isFollowing) {
+                                        context.getString(R.string.unfollow_question)
+                                    } else {
+                                        context.getString(R.string.follow_question)
+                                    },
+                                )
                                 Spacer(Modifier.width(8.dp))
-                                Text(if (isFollowing) "已关注" else "关注问题")
+                                Text(if (isFollowing) context.getString(R.string.followed) else context.getString(R.string.follow_question))
                             }
                         }
                         FlowRow(
@@ -450,14 +468,14 @@ fun QuestionScreen(
                                             }
                                             context.startActivity(intent)
                                         } catch (e: Exception) {
-                                            Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.open_log_failed, e.message), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 },
                                 modifier = Modifier.testTag(QUESTION_VIEW_LOG_BUTTON_TAG),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                Text("查看日志")
+                                Text(context.getString(R.string.view_log))
                             }
                             Spacer(Modifier.width(8.dp))
 
@@ -481,9 +499,9 @@ fun QuestionScreen(
                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                                 ),
                             ) {
-                                Icon(Icons.Filled.Share, contentDescription = "分享")
+                                Icon(Icons.Filled.Share, contentDescription = context.getString(R.string.article_share))
                                 Spacer(Modifier.width(8.dp))
-                                Text("分享")
+                                Text(context.getString(R.string.article_share))
                             }
 
                             Spacer(Modifier.width(8.dp))
@@ -496,13 +514,13 @@ fun QuestionScreen(
                                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                                 ),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = context.getString(R.string.article_comments))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(text = "$commentCount")
                             }
                         }
                         Text(
-                            "$answerCount 个回答  $visitCount 次浏览  $commentCount 条评论  $followerCount 人关注",
+                            context.getString(R.string.question_stats, answerCount, visitCount, commentCount, followerCount),
                             modifier = Modifier
                                 .padding(16.dp)
                                 .testTag(QUESTION_STATS_TAG),
@@ -546,7 +564,7 @@ fun QuestionScreen(
 @Composable
 @Preview(showBackground = true)
 fun QuestionScreenPreview() {
-    val question = Question(123456789, "这是一个问题的标题")
+    val question = Question(123456789, "Sample question title")
     QuestionScreen(
         question = question,
     )

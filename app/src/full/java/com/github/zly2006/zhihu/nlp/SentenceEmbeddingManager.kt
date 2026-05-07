@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.nlp
 
 import android.annotation.SuppressLint
 import android.content.Context
+import com.github.zly2006.zhihu.R
 import com.ml.shubham0204.sentence_embeddings.SentenceEmbedding
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,7 +84,7 @@ object SentenceEmbeddingManager {
                 _state.value = ModelState.Ready
                 model
             } catch (e: Exception) {
-                _state.value = ModelState.Error(e.message ?: "模型加载失败")
+                _state.value = ModelState.Error(e.message ?: resolvedContext.getString(R.string.model_load_failed_short))
                 embedding?.close()
                 embedding = null
                 throw e

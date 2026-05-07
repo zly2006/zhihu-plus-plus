@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -89,18 +90,18 @@ fun handleShareAction(
         "copy" -> {
             // 直接复制链接
             (context as? MainActivity)?.sharedData?.clipboardDestination = content
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content)))
-            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content, context = context)))
+            Toast.makeText(context, context.getString(R.string.article_link_copied), Toast.LENGTH_SHORT).show()
         }
         "share" -> {
             // 直接调用系统分享
             val shareIntent = Intent().apply {
                 action = Intent.ACTION_SEND
                 type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, getShareText(content))
-                putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
+                putExtra(Intent.EXTRA_TEXT, getShareText(content, context = context))
+                putExtra(Intent.EXTRA_TITLE, getShareTitle(content, context))
             }
-            val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+            val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.article_share_to))
             chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(chooserIntent)
         }
@@ -210,7 +211,7 @@ fun ShareDialog(
 
                         MenuActionButton(
                             icon = Icons.Filled.Share,
-                            text = "分享",
+                            text = context.getString(R.string.article_share),
                             onClick = {
                                 onDismissRequest()
                                 val shareIntent = Intent().apply {
@@ -218,7 +219,7 @@ fun ShareDialog(
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, shareText)
                                 }
-                                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                                val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.article_share_to))
                                 chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 context.startActivity(chooserIntent)
                             },
@@ -228,12 +229,12 @@ fun ShareDialog(
 
                         MenuActionButton(
                             icon = Icons.Filled.ContentCopy,
-                            text = "复制链接",
+                            text = context.getString(R.string.article_copy_link),
                             onClick = {
                                 onDismissRequest()
                                 (context as? MainActivity)?.sharedData?.clipboardDestination = content
                                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
-                                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.article_link_copied), Toast.LENGTH_SHORT).show()
                             },
                         )
 
@@ -241,7 +242,7 @@ fun ShareDialog(
 
                         MenuActionButton(
                             icon = Icons.Filled.Settings,
-                            text = "分享设置",
+                            text = context.getString(R.string.share_settings),
                             onClick = {
                                 onDismissRequest()
                                 navigator.onNavigate(Account.AppearanceSettings(setting = "shareAction"))
@@ -256,19 +257,24 @@ fun ShareDialog(
     }
 }
 
-fun getShareText(content: NavDestination, title: String = "", authorName: String = ""): String? = when (content) {
+fun getShareText(content: NavDestination, title: String = "", authorName: String = "", context: Context? = null): String? = when (content) {
     is Article -> {
         when (content.type) {
             ArticleType.Answer -> {
-                "https://www.zhihu.com/answer/${content.id}\n【$title - $authorName 的回答】"
+                val url = "https://www.zhihu.com/answer/${content.id}"
+                context?.getString(R.string.article_share_answer_format, url, title, authorName)
+                    ?: "$url\n[$title - answer by $authorName]"
             }
             ArticleType.Article -> {
-                "https://zhuanlan.zhihu.com/p/${content.id}\n【$title - $authorName 的文章】"
+                val url = "https://zhuanlan.zhihu.com/p/${content.id}"
+                context?.getString(R.string.article_share_article_format, url, title, authorName)
+                    ?: "$url\n[$title - article by $authorName]"
             }
         }
     }
     is Question -> {
-        "https://www.zhihu.com/question/${content.questionId}\n【${content.title}】"
+        val url = "https://www.zhihu.com/question/${content.questionId}"
+        context?.getString(R.string.share_question_format, url, content.title) ?: "$url\n[${content.title}]"
     }
     is Pin -> {
         "https://www.zhihu.com/pin/${content.id}"
@@ -276,11 +282,11 @@ fun getShareText(content: NavDestination, title: String = "", authorName: String
     else -> null
 }
 
-fun getShareTitle(content: NavDestination): String = when (content) {
+fun getShareTitle(content: NavDestination, context: Context? = null): String = when (content) {
     is Article -> content.title + when (content.type) {
-        ArticleType.Answer -> " - ${content.authorName} 的回答"
-        ArticleType.Article -> " - ${content.authorName} 的文章"
+        ArticleType.Answer -> context?.getString(R.string.share_answer_title_suffix, content.authorName) ?: " - answer by ${content.authorName}"
+        ArticleType.Article -> context?.getString(R.string.share_article_title_suffix, content.authorName) ?: " - article by ${content.authorName}"
     }
     is Question -> content.title
-    else -> "分享内容"
+    else -> context?.getString(R.string.share_content) ?: "Share content"
 }

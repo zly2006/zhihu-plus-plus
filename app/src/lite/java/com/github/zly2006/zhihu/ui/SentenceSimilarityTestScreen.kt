@@ -25,12 +25,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.github.zly2006.zhihu.R
 
 @Composable
 fun SentenceSimilarityTestScreen(
     innerPadding: PaddingValues,
 ) {
-    Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-        Text("AI features are not available in this version.")
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(stringResource(R.string.ai_features_unavailable_lite))
     }
 }

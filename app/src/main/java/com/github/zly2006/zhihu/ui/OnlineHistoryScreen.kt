@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -83,7 +84,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("历史记录") },
+                title = { Text(context.getString(R.string.browsing_history)) },
                 actions = {
                     var showActionsMenu by remember { mutableStateOf(false) }
                     BackHandler(enabled = showActionsMenu) {
@@ -95,7 +96,7 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
                     ) {
                         Icon(
                             Icons.Filled.MoreVert,
-                            contentDescription = "更多选项",
+                            contentDescription = context.getString(R.string.article_more_options),
                         )
 
                         DropdownMenu(
@@ -103,14 +104,14 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
                             onDismissRequest = { showActionsMenu = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("查看本地历史记录") },
+                                text = { Text(context.getString(R.string.view_local_history)) },
                                 onClick = {
                                     showActionsMenu = false
                                     navigator.onNavigate(History)
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("清除历史记录") },
+                                text = { Text(context.getString(R.string.clear_history)) },
                                 onClick = {
                                     showActionsMenu = false
                                     showClearHistoryDialog = true
@@ -125,8 +126,8 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
         if (showClearHistoryDialog) {
             AlertDialog(
                 onDismissRequest = { showClearHistoryDialog = false },
-                title = { Text("确认清除历史记录") },
-                text = { Text("此操作会清除当前账号的在线和本地的全部历史记录。") },
+                title = { Text(context.getString(R.string.clear_history_confirm_title)) },
+                text = { Text(context.getString(R.string.clear_history_confirm_desc)) },
                 confirmButton = {
                     TextButton(onClick = {
                         showClearHistoryDialog = false
@@ -143,15 +144,15 @@ fun OnlineHistoryScreen(innerPadding: PaddingValues) {
                                 )
                             }
                             viewModel.displayItems.clear()
-                            Toast.makeText(context, "已清除所有历史记录", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.history_cleared), Toast.LENGTH_SHORT).show()
                         }
                     }) {
-                        Text("确认")
+                        Text(context.getString(R.string.confirm))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showClearHistoryDialog = false }) {
-                        Text("我再想想")
+                        Text(context.getString(R.string.think_again))
                     }
                 },
             )

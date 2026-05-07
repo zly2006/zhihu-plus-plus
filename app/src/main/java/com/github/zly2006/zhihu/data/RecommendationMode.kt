@@ -17,13 +17,15 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.R
+
 enum class RecommendationMode(
-    val displayName: String,
+    val displayNameResId: Int,
     val key: String,
-    val description: String,
+    val descriptionResId: Int,
 ) {
-    WEB("Web 端推荐", "server", "使用知乎网页端的推荐算法"),
-    ANDROID("安卓端推荐", "android", "使用知乎安卓端的推荐算法"),
-    LOCAL("本地推荐", "local", "基于本地数据的推荐算法"),
-    MIXED("混合推荐", "mixed", "融合安卓和网页端推荐算法，并过滤严选内容"),
+    WEB(R.string.recommendation_mode_web, "server", R.string.recommendation_mode_web_desc),
+    ANDROID(R.string.recommendation_mode_android, "android", R.string.recommendation_mode_android_desc),
+    LOCAL(R.string.recommendation_mode_local, "local", R.string.recommendation_mode_local_desc),
+    MIXED(R.string.recommendation_mode_mixed, "mixed", R.string.recommendation_mode_mixed_desc),
 }

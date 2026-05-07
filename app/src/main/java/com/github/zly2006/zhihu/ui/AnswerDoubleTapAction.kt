@@ -21,23 +21,18 @@ const val ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY = "answerDoubleTapAction"
 
 enum class AnswerDoubleTapAction(
     val preferenceValue: String,
-    val label: String,
 ) {
     None(
         preferenceValue = "none",
-        label = "无操作",
     ),
     Ask(
         preferenceValue = "ask",
-        label = "询问并记住",
     ),
     VoteUp(
         preferenceValue = "voteUp",
-        label = "点赞",
     ),
     OpenComments(
         preferenceValue = "openComments",
-        label = "打开评论区",
     ),
     ;
 

@@ -66,6 +66,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +75,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -98,6 +100,7 @@ fun AnswerVerticalOverscroll(
     isContentNonScrollable: Boolean = scrollState.maxValue == 0,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
     val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
@@ -309,7 +312,7 @@ fun AnswerVerticalOverscroll(
                 authorName = previousAnswer.authorName,
                 excerpt = previousAnswer.title,
                 avatarUrl = previousAnswer.authorAvatarUrl,
-                label = "${previousAnswer.sourceLabel}的上一个回答",
+                label = context.getString(R.string.previous_answer_from, previousAnswer.sourceLabel),
                 icon = Icons.Filled.ArrowUpward,
                 isTriggered = overscrollOffset.value >= triggerThresholdPx,
                 progress = progress,
@@ -327,7 +330,7 @@ fun AnswerVerticalOverscroll(
                 authorName = nextAnswer.authorName,
                 excerpt = nextAnswer.title,
                 avatarUrl = nextAnswer.authorAvatarUrl,
-                label = "${nextAnswer.sourceLabel}的下一个回答",
+                label = context.getString(R.string.next_answer_from, nextAnswer.sourceLabel),
                 icon = Icons.Filled.ArrowDownward,
                 isTriggered = abs(overscrollOffset.value) >= triggerThresholdPx,
                 progress = progress,
@@ -362,6 +365,7 @@ private fun AnswerPreviewCard(
     reverseLayout: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val bgColor = if (isTriggered) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -391,7 +395,7 @@ private fun AnswerPreviewCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = if (isTriggered) "松手切换" else label,
+                    text = if (isTriggered) context.getString(R.string.release_to_switch) else label,
                     style = MaterialTheme.typography.labelSmall,
                     color = contentColor,
                     fontWeight = if (isTriggered) FontWeight.Bold else FontWeight.Normal,
@@ -403,7 +407,7 @@ private fun AnswerPreviewCard(
                 if (avatarUrl.isNotEmpty()) {
                     AsyncImage(
                         model = avatarUrl,
-                        contentDescription = "头像",
+                        contentDescription = context.getString(R.string.avatar),
                         modifier = Modifier
                             .size(28.dp)
                             .clip(CircleShape),

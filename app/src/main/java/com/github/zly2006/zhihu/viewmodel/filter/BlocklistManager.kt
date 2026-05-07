@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import android.content.Context
 import android.net.Uri
+import com.github.zly2006.zhihu.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -302,7 +303,7 @@ class BlocklistManager private constructor(
             .openInputStream(uri)
             ?.bufferedReader()
             ?.readText()
-            ?: return@withContext "读取文件失败"
+            ?: return@withContext context.getString(R.string.blocklist_import_read_failed)
         val backup = json.decodeFromString(BlocklistBackup.serializer(), text)
 
         backup.keywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
@@ -334,7 +335,13 @@ class BlocklistManager private constructor(
             topicDao.insertTopic(BlockedTopic(topicId = t.topicId, topicName = t.topicName))
         }
 
-        "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+        context.getString(
+            R.string.blocklist_import_summary,
+            backup.keywords.size,
+            backup.nlpKeywords.size,
+            backup.users.size,
+            backup.topics.size,
+        )
     }
 
     suspend fun getTopicName(topicId: String): String = topicDao.getTopicNameById(topicId)

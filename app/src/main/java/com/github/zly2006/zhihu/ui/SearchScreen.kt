@@ -72,6 +72,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -170,7 +171,7 @@ fun SearchScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Search,
-                                    contentDescription = "搜索",
+                                    contentDescription = context.getString(R.string.search),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp),
                                 )
@@ -199,7 +200,7 @@ fun SearchScreen(
                                     decorationBox = { innerTextField ->
                                         if (searchText.isEmpty()) {
                                             Text(
-                                                text = "搜索内容",
+                                                text = context.getString(R.string.search_content),
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 style = MaterialTheme.typography.bodyLarge,
                                             )
@@ -217,7 +218,7 @@ fun SearchScreen(
                                     ) {
                                         Icon(
                                             Icons.Default.Clear,
-                                            contentDescription = "清除",
+                                            contentDescription = context.getString(R.string.clear),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp),
                                         )
@@ -232,7 +233,7 @@ fun SearchScreen(
                         onClick = navigator.onNavigateBack,
                         modifier = Modifier.testTag("search_back_button"),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 windowInsets = WindowInsets(0.dp),
@@ -259,7 +260,7 @@ fun SearchScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
-                                text = "热搜",
+                                text = context.getString(R.string.hot_search),
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -276,7 +277,7 @@ fun SearchScreen(
                                         .size(32.dp)
                                         .testTag("search_hot_refresh_button"),
                                 ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "刷新热搜", modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh_hot_search), modifier = Modifier.size(18.dp))
                                 }
                                 Spacer(modifier = Modifier.width(4.dp))
                                 IconButton(
@@ -285,13 +286,13 @@ fun SearchScreen(
                                         .size(32.dp)
                                         .testTag("search_hot_more_button"),
                                 ) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "更多", modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.MoreVert, contentDescription = context.getString(R.string.article_more_options), modifier = Modifier.size(18.dp))
                                     DropdownMenu(
                                         expanded = moreMenuExpanded,
                                         onDismissRequest = { moreMenuExpanded = false },
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("关闭热搜显示") },
+                                            text = { Text(context.getString(R.string.hide_hot_search)) },
                                             onClick = {
                                                 moreMenuExpanded = false
                                                 navigator.onNavigate(Account.AppearanceSettings("showSearchHotSearch"))
@@ -339,7 +340,7 @@ fun SearchScreen(
                     }
                 } else if (!showHotSearch.value) {
                     Text(
-                        text = "请输入搜索内容",
+                        text = context.getString(R.string.enter_search_content),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
@@ -370,7 +371,7 @@ fun SearchScreen(
                             if (viewModel.isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(36.dp))
                             } else {
-                                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                                Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh))
                             }
                         }
                     }

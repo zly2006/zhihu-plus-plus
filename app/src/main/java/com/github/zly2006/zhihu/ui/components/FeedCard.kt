@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
@@ -144,7 +145,7 @@ fun FeedCard(
                     },
                 )
             } else {
-                Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.unsupported_content), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -316,7 +317,7 @@ fun FeedCard(
                             "like" -> {
                                 Icon(
                                     imageVector = Icons.Default.Favorite,
-                                    contentDescription = "喜欢",
+                                    contentDescription = context.getString(R.string.like),
                                     tint = Color(0xFF4CAF50),
                                     modifier = Modifier
                                         .size(32.dp)
@@ -324,7 +325,7 @@ fun FeedCard(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "向上滑动 - 喜欢",
+                                    text = context.getString(R.string.swipe_up_like),
                                     color = Color(0xFF4CAF50),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
@@ -334,7 +335,7 @@ fun FeedCard(
                             "dislike" -> {
                                 Icon(
                                     imageVector = Icons.Default.ThumbDown,
-                                    contentDescription = "不喜欢",
+                                    contentDescription = context.getString(R.string.dislike),
                                     tint = Color(0xFFFF5722),
                                     modifier = Modifier
                                         .size(32.dp)
@@ -342,7 +343,7 @@ fun FeedCard(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "向下滑动 - 不喜欢",
+                                    text = context.getString(R.string.swipe_down_dislike),
                                     color = Color(0xFFFF5722),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
@@ -351,7 +352,7 @@ fun FeedCard(
                             }
                             "neutral" -> {
                                 Text(
-                                    text = "上下滑动选择",
+                                    text = context.getString(R.string.swipe_to_choose),
                                     color = Color(0xFF9E9E9E),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
@@ -376,6 +377,7 @@ private fun FeedCardMenuBox(
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     navigator: Navigator,
 ) {
+    val context = LocalContext.current
     Box {
         IconButton(
             onClick = { onShowMenuChange(true) },
@@ -383,7 +385,7 @@ private fun FeedCardMenuBox(
         ) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
-                contentDescription = "更多选项",
+                contentDescription = context.getString(R.string.article_more_options),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp),
             )
@@ -395,7 +397,7 @@ private fun FeedCardMenuBox(
             @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
             if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
                 DropdownMenuItem(
-                    text = { Text("按关键词屏蔽") },
+                    text = { Text(context.getString(R.string.block_by_keyword)) },
                     onClick = {
                         onShowMenuChange(false)
                         onBlockByKeywords(item)
@@ -403,7 +405,7 @@ private fun FeedCardMenuBox(
                 )
             }
             DropdownMenuItem(
-                text = { Text("屏蔽用户") },
+                text = { Text(context.getString(R.string.block_user)) },
                 onClick = {
                     onShowMenuChange(false)
                     onBlockUser?.invoke(item)
@@ -418,7 +420,7 @@ private fun FeedCardMenuBox(
                 }
                 topics.forEach { topic ->
                     DropdownMenuItem(
-                        text = { Text("屏蔽「${topic.name}」") },
+                        text = { Text(context.getString(R.string.block_topic_format, topic.name)) },
                         onClick = {
                             onShowMenuChange(false)
                             onBlockTopic(topic.id, topic.name)
@@ -427,7 +429,7 @@ private fun FeedCardMenuBox(
                 }
             }
             DropdownMenuItem(
-                text = { Text("外观设置") },
+                text = { Text(context.getString(R.string.appearance_title)) },
                 onClick = {
                     onShowMenuChange(false)
                     navigator.onNavigate(Account.AppearanceSettings())
@@ -435,7 +437,7 @@ private fun FeedCardMenuBox(
             )
             if (item.isFiltered) {
                 DropdownMenuItem(
-                    text = { Text("不再屏蔽低赞内容") },
+                    text = { Text(context.getString(R.string.stop_blocking_low_vote_content)) },
                     onClick = {
                         onShowMenuChange(false)
                         navigator.onNavigate(Account.RecommendSettings("enableQualityFilter"))
@@ -493,7 +495,7 @@ private fun FeedCardContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     AsyncImage(
                         model = thumbnailUrl,
-                        contentDescription = "Thumbnail",
+                        contentDescription = context.getString(R.string.feed_thumbnail),
                         modifier = Modifier
                             .padding(top = 8.dp)
                             .sizeIn(maxHeight = 80.dp, maxWidth = 128.dp)
@@ -517,7 +519,7 @@ private fun FeedCardContent(
                             item.avatarSrc.let {
                                 AsyncImage(
                                     model = it,
-                                    contentDescription = "Avatar",
+                                    contentDescription = context.getString(R.string.avatar),
                                     modifier = Modifier
                                         .clip(CircleShape)
                                         .size(24.dp),
@@ -570,7 +572,7 @@ private fun FeedCardContent(
                 item.avatarSrc.let {
                     AsyncImage(
                         model = it,
-                        contentDescription = "Avatar",
+                        contentDescription = context.getString(R.string.avatar),
                         modifier = Modifier
                             .clip(CircleShape)
                             .size(20.dp),
@@ -615,7 +617,7 @@ private fun FeedCardContent(
                 Spacer(modifier = Modifier.width(8.dp))
                 AsyncImage(
                     model = thumbnailUrl,
-                    contentDescription = "Thumbnail",
+                    contentDescription = context.getString(R.string.feed_thumbnail),
                     modifier = Modifier
                         .weight(1f)
                         .sizeIn(maxWidth = 60.dp)

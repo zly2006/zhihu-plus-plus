@@ -126,11 +126,11 @@ class ArticleExportHtmlTest {
         )
 
         // 避免时区等因素导致日期显示不一致，测试中只验证日期标签的存在与否，而不验证具体日期文本
-        assertTrue(html.contains("导出日期："))
-        assertTrue(html.contains("发布日期："))
-        assertFalse("编辑和发布同一时间时不应显示编辑日期", html.contains("编辑日期："))
-        assertTrue(html.contains("知乎++"))
-        assertTrue(html.contains("GitHub地址：https://github.com/zly2006/zhihu-plus-plus"))
+        assertTrue(html.contains("Exported:"))
+        assertTrue(html.contains("Published:"))
+        assertFalse("编辑和发布同一时间时不应显示编辑日期", html.contains("Edited:"))
+        assertTrue(html.contains("Zhihu++"))
+        assertTrue(html.contains("GitHub: https://github.com/zly2006/zhihu-plus-plus"))
     }
 
     @Test
@@ -152,8 +152,8 @@ class ArticleExportHtmlTest {
         )
 
         // 同样不验证具体日期文本，只验证标签显示与否
-        assertTrue(html.contains("导出日期："))
-        assertTrue(html.contains("编辑日期："))
+        assertTrue(html.contains("Exported:"))
+        assertTrue(html.contains("Edited:"))
         assertTrue(html.contains("export-credit is-hidden"))
     }
 
@@ -180,7 +180,7 @@ class ArticleExportHtmlTest {
             extraSectionsHtml = commentsHtml,
         )
 
-        assertTrue(html.contains("热门评论"))
+        assertTrue(html.contains("Top comments"))
         assertTrue(html.contains("真实评论用户"))
         assertTrue(html.contains("这是一条真实评论"))
         assertTrue(html.contains("2026-03-26 18:30"))

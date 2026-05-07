@@ -80,6 +80,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
@@ -131,9 +132,6 @@ interface IHomeFeedViewModel {
 
     fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem)
 
-    /**
-     * 发送"已读"状态到知乎服务器的通用实现
-     */
     suspend fun sendReadStatusToServer(context: Context, feed: Feed) {
         try {
             AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
@@ -353,12 +351,12 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             ) {
                                 Icon(
                                     Icons.Default.Search,
-                                    contentDescription = "搜索",
+                                    contentDescription = context.getString(R.string.search),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "搜索",
+                                    text = context.getString(R.string.search),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyLarge,
                                     modifier = Modifier.weight(1f),
@@ -382,7 +380,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                             if (avatarUrl != null) {
                                                 AsyncImage(
                                                     model = avatarUrl,
-                                                    contentDescription = "账号",
+                                                    contentDescription = context.getString(R.string.nav_account),
                                                     contentScale = ContentScale.Crop,
                                                     modifier = Modifier
                                                         .size(40.dp)
@@ -392,7 +390,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                             } else {
                                                 Icon(
                                                     Icons.Default.AccountCircle,
-                                                    contentDescription = "账号",
+                                                    contentDescription = context.getString(R.string.nav_account),
                                                     tint = MaterialTheme.colorScheme.onSurface,
                                                     modifier = Modifier.size(40.dp),
                                                 )
@@ -434,12 +432,12 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             ) {
                                 Icon(
                                     Icons.Default.Search,
-                                    contentDescription = "搜索",
+                                    contentDescription = context.getString(R.string.search),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "搜索内容",
+                                    text = context.getString(R.string.search_content),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyLarge,
                                 )
@@ -459,7 +457,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             ) {
                                 Icon(
                                     Icons.Default.Notifications,
-                                    contentDescription = "通知",
+                                    contentDescription = context.getString(R.string.notifications),
                                     tint = MaterialTheme.colorScheme.onSurface,
                                 )
                             }
@@ -500,13 +498,17 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
 
                         AnnouncementCard(
                             visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version.toString(),
-                            title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
+                            title = context.getString(
+                                R.string.home_update_available_title,
+                                availableUpdate?.version,
+                                if (availableUpdate?.isNightly == true) " (Nightly)" else "",
+                            ),
                             leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
-                            accept = { Text("查看更新") },
+                            accept = { Text(context.getString(R.string.view_update)) },
                             onAccept = {
                                 context.navigate(Account.SystemAndUpdateSettings)
                             },
-                            dismiss = { Text("以后") },
+                            dismiss = { Text(context.getString(R.string.later)) },
                             onDismiss = {
                                 availableUpdate?.version?.toString()?.let { versionStr ->
                                     dismissedUpdateVersion = versionStr
@@ -516,11 +518,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         )
                         AnnouncementCard(
                             visible = showArticleRenderChangeAnnouncement,
-                            title = "文章渲染默认已改为 Compose",
+                            title = context.getString(R.string.article_render_announcement_title),
                             leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) },
-                            content = "我们已默认关闭 WebView 渲染文章，以提供代码高亮等高级渲染能力，并修复了许多由 WebView 带来的 bug。" +
-                                "新的渲染方式可能存在 bug，如遇到请在 GitHub 反馈，也可在设置中重新开启 WebView。",
-                            accept = { Text("去设置") },
+                            content = context.getString(R.string.article_render_announcement_content),
+                            accept = { Text(context.getString(R.string.go_to_settings)) },
                             onAccept = {
                                 preferences.edit {
                                     putBoolean(
@@ -531,7 +532,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                                 showArticleRenderChangeAnnouncement = false
                                 context.navigate(Account.AppearanceSettings(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
                             },
-                            dismiss = { Text("知道了") },
+                            dismiss = { Text(context.getString(R.string.got_it)) },
                             onDismiss = {
                                 preferences.edit {
                                     putBoolean(
@@ -545,12 +546,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         )
                         AnnouncementCard(
                             visible = showFilterExplainDialog,
-                            title = "为什么有的内容突然消失了？",
+                            title = context.getString(R.string.filter_explain_title),
                             leadingIcon = { Icon(Icons.AutoMirrored.Default.HelpOutline, contentDescription = null) },
-                            content = "知乎++会默认屏蔽知乎盐选、知乎广告平台、知乎学堂、微信公众号文章。" +
-                                "除此之外，您也可以手动屏蔽的用户、话题、问题等内容。" +
-                                "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
-                            dismiss = { Text("好") },
+                            content = context.getString(R.string.filter_explain_content),
+                            dismiss = { Text(context.getString(R.string.ok)) },
                             onDismiss = {
                                 preferences.edit { putBoolean("filterExplainDialogShown", true) }
                                 showFilterExplainDialog = false
@@ -568,17 +567,17 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                     onLike = {
                         if (localHomeViewModel != null && it.localContentId != null) {
                             localHomeViewModel.onLocalItemFeedback(context, it, 1.0)
-                            Toast.makeText(context, "已记录喜欢，本地推荐会逐步学习", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.local_like_recorded), Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.like_feedback_received), Toast.LENGTH_SHORT).show()
                         }
                     },
                     onDislike = {
                         if (localHomeViewModel != null && it.localContentId != null) {
                             localHomeViewModel.onLocalItemFeedback(context, it, -1.0)
-                            Toast.makeText(context, "已降低这类本地推荐的优先级", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.local_dislike_recorded), Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.feedback_received), Toast.LENGTH_SHORT).show()
                         }
                     },
                     onBlockUser = { feedItem ->
@@ -616,11 +615,11 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             val data = Json.encodeToString(viewModel.debugData)
                             val clip = ClipData.newPlainText("data", data)
                             context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.debug_data_copied), Toast.LENGTH_SHORT).show()
                         },
                         preferenceName = "copyAll",
                     ) {
-                        Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                        Icon(Icons.Default.CopyAll, contentDescription = context.getString(R.string.copy))
                     }
                 }
                 DraggableRefreshButton(
@@ -630,7 +629,7 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(30.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh))
                     }
                 }
             }

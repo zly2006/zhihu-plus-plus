@@ -67,6 +67,7 @@ import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
@@ -103,6 +104,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -193,21 +195,21 @@ class CustomWebView : WebView {
                 val url = imgElement?.let { extractImageUrl(it) }
                     ?: result.extra?.takeIf { !it.startsWith("data") }
                 if (url != null) {
-                    menu.add("查看图片").setOnMenuItemClickListener {
+                    menu.add(context.getString(R.string.view_image)).setOnMenuItemClickListener {
                         openImage(AccountData.httpClient(context), url)
                         true
                     }
-                    menu.add("在浏览器中打开").setOnMenuItemClickListener {
+                    menu.add(context.getString(R.string.open_in_browser)).setOnMenuItemClickListener {
                         luoTianYiUrlLauncher(context, url.toUri())
                         true
                     }
-                    menu.add("保存图片").setOnMenuItemClickListener {
+                    menu.add(context.getString(R.string.save_image)).setOnMenuItemClickListener {
                         GlobalScope.launch(Dispatchers.Main) {
                             saveImageToGallery(context, AccountData.httpClient(context), url)
                         }
                         true
                     }
-                    menu.add("分享图片").setOnMenuItemClickListener {
+                    menu.add(context.getString(R.string.share_image)).setOnMenuItemClickListener {
                         GlobalScope.launch(Dispatchers.Main) {
                             shareImage(context, AccountData.httpClient(context), url)
                         }
@@ -390,7 +392,11 @@ class CustomWebView : WebView {
     fun injectFootnoteScript() {
         val jsCode = loadJavaScriptFromAssets("footnotes.js")
         if (jsCode.isNotEmpty()) {
-            evaluateJavascript(jsCode, null)
+            val localizedJs = """
+                window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};
+                window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};
+            """.trimIndent()
+            evaluateJavascript("$localizedJs\n$jsCode", null)
         }
     }
 

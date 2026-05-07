@@ -41,11 +41,11 @@ sealed interface Feed {
         fun filterReason(): String? = null
 
         fun description(): String = when (this) {
-            is AnswerTarget -> "回答"
-            is VideoTarget -> "视频"
-            is ArticleTarget -> "文章"
-            is PinTarget -> "想法"
-            is QuestionTarget -> "问题"
+            is AnswerTarget -> "Answer"
+            is VideoTarget -> "Video"
+            is ArticleTarget -> "Article"
+            is PinTarget -> "Pin"
+            is QuestionTarget -> "Question"
         }
 
         val detailsText: String
@@ -105,12 +105,12 @@ sealed interface Feed {
         val answerType: String? = null,
     ) : Target {
         override fun filterReason(): String? = if (voteupCount < 10 && author?.isFollowing == false) {
-            "规则：回答；赞数 < 10，未关注作者"
+            "Rule: answer; votes < 10 and author is not followed"
         } else {
             null
         }
 
-        override val detailsText = "回答 · $voteupCount 赞同 · $commentCount 评论"
+        override val detailsText = "Answer · $voteupCount upvotes · $commentCount comments"
         override val title: String
             get() = question.title
         override val navDestination = Article(
@@ -137,12 +137,12 @@ sealed interface Feed {
         override val excerpt: String,
     ) : Target {
         override fun filterReason(): String? = if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
-            "规则：所有视频"
+            "Rule: all videos"
         } else {
             null
         }
 
-        override val detailsText = "视频 · $voteCount 赞 · $commentCount 评论"
+        override val detailsText = "Video · $voteCount likes · $commentCount comments"
 
         override val navDestination = null
 
@@ -180,12 +180,12 @@ sealed interface Feed {
         val favoriteCount: Int = 0,
     ) : Target {
         override fun filterReason(): String? = if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
-            "规则：文章；作者粉丝数 < 50 或 文章赞数 < 20，未关注作者"
+            "Rule: article; author followers < 50 or article votes < 20, and author is not followed"
         } else {
             null
         }
 
-        override val detailsText = "文章 · $voteupCount 赞 · $commentCount 评论"
+        override val detailsText = "Article · $voteupCount likes · $commentCount comments"
 
         override val navDestination = Article(
             title = title,
@@ -225,9 +225,9 @@ sealed interface Feed {
     ) : Target {
         override fun filterReason(): String? = null
 
-        override val detailsText = "想法 · $likeCount 赞 · $commentCount 评论"
+        override val detailsText = "Pin · $likeCount likes · $commentCount comments"
         override val title: String
-            get() = "想法"
+            get() = "Pin"
         override val excerpt = excerptTitle.ifEmpty { null }
         override val navDestination = Pin(id)
 
@@ -275,12 +275,12 @@ sealed interface Feed {
         override val author: Person? = null
 
         override fun filterReason(): String? = if (answerCount < 5 && followerCount < 50) {
-            "规则：问题；回答数 < 5，关注数 < 50"
+            "Rule: question; answers < 5 and followers < 50"
         } else {
             null
         }
 
-        override val detailsText = "问题 · $followerCount 关注 · $answerCount 回答"
+        override val detailsText = "Question · $followerCount followers · $answerCount answers"
 
         override val navDestination = Question(
             questionId = id,

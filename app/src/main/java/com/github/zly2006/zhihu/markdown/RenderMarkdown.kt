@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Video
@@ -123,7 +124,7 @@ fun RenderImage(
             offset = pressOffset,
         ) {
             DropdownMenuItem(
-                text = { Text("查看图片") },
+                text = { Text(context.getString(R.string.view_image)) },
                 onClick = {
                     expanded = false
                     val dialog = OpenImageDislog(context, httpClient, data.url)
@@ -131,14 +132,14 @@ fun RenderImage(
                 },
             )
             DropdownMenuItem(
-                text = { Text("在浏览器中打开") },
+                text = { Text(context.getString(R.string.open_in_browser)) },
                 onClick = {
                     expanded = false
                     luoTianYiUrlLauncher(context, data.url.toUri())
                 },
             )
             DropdownMenuItem(
-                text = { Text("保存图片") },
+                text = { Text(context.getString(R.string.save_image)) },
                 onClick = {
                     expanded = false
                     coroutineScope.launch {
@@ -147,7 +148,7 @@ fun RenderImage(
                 },
             )
             DropdownMenuItem(
-                text = { Text("分享图片") },
+                text = { Text(context.getString(R.string.share_image)) },
                 onClick = {
                     expanded = false
                     coroutineScope.launch {
@@ -165,6 +166,7 @@ fun RenderVideoBox(
     thumbnailUrl: String?,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val navigator = LocalNavigator.current
     val shape = RoundedCornerShape(8.dp)
 
@@ -181,7 +183,7 @@ fun RenderVideoBox(
         if (thumbnailUrl != null) {
             AsyncImage(
                 model = thumbnailUrl,
-                contentDescription = "视频封面",
+                contentDescription = context.getString(R.string.video_cover),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -197,7 +199,7 @@ fun RenderVideoBox(
         ) {
             Icon(
                 imageVector = Icons.Default.PlayArrow,
-                contentDescription = "播放视频",
+                contentDescription = context.getString(R.string.play_video),
                 tint = Color.White,
                 modifier = Modifier.padding(16.dp),
             )

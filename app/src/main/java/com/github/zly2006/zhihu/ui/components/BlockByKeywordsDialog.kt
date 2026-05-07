@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.nlp.KeywordAnalyzer
 import com.github.zly2006.zhihu.nlp.KeywordWithWeight
@@ -106,7 +107,7 @@ fun BlockByKeywordsDialog(
                 selectedKeywords = extractedKeywords.take(3).toSet()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "提取关键词失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.keyword_extract_failed, e.message.orEmpty()), Toast.LENGTH_SHORT).show()
             } finally {
                 isLoading = false
             }
@@ -116,7 +117,7 @@ fun BlockByKeywordsDialog(
     if (showDialog) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("按关键词屏蔽") },
+            title = { Text(context.getString(R.string.block_by_keywords)) },
             text = {
                 Column(
                     modifier = Modifier
@@ -132,7 +133,7 @@ fun BlockByKeywordsDialog(
                         ) {
                             CircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("正在提取关键词...")
+                            Text(context.getString(R.string.extracting_keywords))
                         }
                     } else if (extractedKeywords.isEmpty()) {
                         Column(
@@ -142,18 +143,18 @@ fun BlockByKeywordsDialog(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                "未能提取到关键词",
+                                context.getString(R.string.no_keywords_extracted),
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
                     } else {
                         Text(
-                            "从内容中提取到以下关键词，选择要屏蔽的关键词：",
+                            context.getString(R.string.extracted_keywords_hint),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "提示：选中的关键词将用空格串联成一个短语进行NLP语义匹配",
+                            context.getString(R.string.nlp_phrase_tip),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -179,14 +180,14 @@ fun BlockByKeywordsDialog(
                                         {
                                             Icon(
                                                 Icons.Default.Check,
-                                                contentDescription = "已选中",
+                                                contentDescription = context.getString(R.string.selected),
                                             )
                                         }
                                     } else {
                                         {
                                             Icon(
                                                 Icons.Default.Add,
-                                                contentDescription = "添加",
+                                                contentDescription = context.getString(R.string.add),
                                             )
                                         }
                                     },
@@ -207,7 +208,7 @@ fun BlockByKeywordsDialog(
                                     modifier = Modifier.padding(12.dp),
                                 ) {
                                     Text(
-                                        "短语预览",
+                                        context.getString(R.string.phrase_preview),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     )
@@ -224,7 +225,7 @@ fun BlockByKeywordsDialog(
 
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            "提示：基于NLP语义相似度，即使用词不同，主题相似的内容也会被过滤",
+                            context.getString(R.string.nlp_similarity_tip),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -242,10 +243,10 @@ fun BlockByKeywordsDialog(
                     ) {
                         Icon(
                             Icons.Default.Info,
-                            contentDescription = "详细信息",
+                            contentDescription = context.getString(R.string.details),
                             modifier = Modifier.padding(end = 4.dp),
                         )
-                        Text("详细信息")
+                        Text(context.getString(R.string.details))
                     }
 
                     Button(
@@ -260,7 +261,7 @@ fun BlockByKeywordsDialog(
                                         Toast
                                             .makeText(
                                                 context,
-                                                "已添加NLP屏蔽短语: $phrase",
+                                                context.getString(R.string.nlp_phrase_added, phrase),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                         onConfirm()
@@ -269,7 +270,7 @@ fun BlockByKeywordsDialog(
                                         Toast
                                             .makeText(
                                                 context,
-                                                "添加失败: ${e.message}",
+                                                context.getString(R.string.add_failed, e.message.orEmpty()),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                     } finally {
@@ -286,7 +287,7 @@ fun BlockByKeywordsDialog(
                                 color = MaterialTheme.colorScheme.onPrimary,
                             )
                         } else {
-                            Text("屏蔽 (${selectedKeywords.size})")
+                            Text(context.getString(R.string.block_count, selectedKeywords.size))
                         }
                     }
                 }
@@ -296,7 +297,7 @@ fun BlockByKeywordsDialog(
                     onClick = onDismiss,
                     enabled = !isAdding,
                 ) {
-                    Text("取消")
+                    Text(context.getString(R.string.cancel))
                 }
             },
         )
@@ -324,12 +325,13 @@ fun KeywordDetailDialog(
     feedExcerpt: String?,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     // 找到最大权重用于归一化显示
     val maxWeight = keywordInfoList.maxOfOrNull { it.weight } ?: 1.0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("关键词详细信息") },
+        title = { Text(context.getString(R.string.keyword_details)) },
         text = {
             Column(
                 modifier = Modifier
@@ -347,7 +349,7 @@ fun KeywordDetailDialog(
                         modifier = Modifier.padding(12.dp),
                     ) {
                         Text(
-                            "内容预览",
+                            context.getString(R.string.content_preview),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -372,7 +374,7 @@ fun KeywordDetailDialog(
 
                 // 关键词列表
                 Text(
-                    "提取的关键词（按重要性排序）",
+                    context.getString(R.string.extracted_keywords_by_importance),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
@@ -391,7 +393,7 @@ fun KeywordDetailDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    "说明：权重值由TextRank算法计算得出，数值越高表示该关键词在内容中越重要",
+                    context.getString(R.string.keyword_weight_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -399,7 +401,7 @@ fun KeywordDetailDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text(context.getString(R.string.close))
             }
         },
     )

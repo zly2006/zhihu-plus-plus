@@ -22,6 +22,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
@@ -206,7 +207,7 @@ object ContentFilterExtensions {
                     filterManager.recordContentView(identity.type, identity.id)
                 } else {
                     blockedItems.add(
-                        item.toFilterableContent(identity, DataHolder.DummyContent) to "已读过且未关注作者",
+                        item.toFilterableContent(identity, DataHolder.DummyContent) to context.getString(R.string.filter_reason_read_unfollowed_author),
                     )
                 }
             }
@@ -286,7 +287,7 @@ object ContentFilterExtensions {
                 } + items.filter { it.feed is AdvertisementFeed }
             }
             val nonAdContents = filterableContents.filter { content ->
-                val blockReason = getAdBlockReason(content, preferences)
+                val blockReason = getAdBlockReason(context, content, preferences)
                 if (blockReason != null) adBlockedContents.add(content to blockReason)
                 blockReason == null
             }
@@ -338,16 +339,16 @@ object ContentFilterExtensions {
     }
 
     private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
-        is DataHolder.Answer -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
-        is DataHolder.Article -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
-        is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, true, true, true) != null
+        is DataHolder.Answer -> raw.paidInfo != null || hasLinkBasedAd(raw.content, true, true, true)
+        is DataHolder.Article -> raw.paidInfo != null || hasLinkBasedAd(raw.content, true, true, true)
+        is DataHolder.Pin -> hasLinkBasedAd(raw.contentHtml, true, true, true)
         else -> false
     }
 
     /**
      * 获取广告或付费内容的具体屏蔽原因
      */
-    private fun getAdBlockReason(content: FilterableContent, preferences: SharedPreferences): String? {
+    private fun getAdBlockReason(context: Context, content: FilterableContent, preferences: SharedPreferences): String? {
         val blockZhihuAdPlatform = preferences.getBoolean("blockZhihuAdPlatform", true)
         val blockZhihuSchool = preferences.getBoolean("blockZhihuSchool", true)
         val blockWeChatOfficialAccount = preferences.getBoolean("blockWeChatOfficialAccount", true)
@@ -356,32 +357,43 @@ object ContentFilterExtensions {
         return when (val raw = content.raw) {
             is DataHolder.Answer -> {
                 if (blockPaidContent && raw.paidInfo != null) {
-                    "知乎盐选付费内容"
+                    context.getString(R.string.filter_reason_paid_content)
                 } else {
-                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+                    getLinkBasedAdReason(context, raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
                 }
             }
             is DataHolder.Article -> {
                 if (blockPaidContent && raw.paidInfo != null) {
-                    "知乎盐选付费内容"
+                    context.getString(R.string.filter_reason_paid_content)
                 } else {
-                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+                    getLinkBasedAdReason(context, raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
                 }
             }
-            is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
+            is DataHolder.Pin -> getLinkBasedAdReason(context, raw.contentHtml, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
             else -> null
         }
     }
 
+    private fun hasLinkBasedAd(
+        content: String,
+        blockZhihuAdPlatform: Boolean,
+        blockZhihuSchool: Boolean,
+        blockWeChatOfficialAccount: Boolean,
+    ): Boolean =
+        blockZhihuAdPlatform && "xg.zhihu.com" in content ||
+            blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content) ||
+            blockWeChatOfficialAccount && "mp.weixin.qq.com" in content
+
     private fun getLinkBasedAdReason(
+        context: Context,
         content: String,
         blockZhihuAdPlatform: Boolean,
         blockZhihuSchool: Boolean,
         blockWeChatOfficialAccount: Boolean,
     ): String? {
-        if (blockZhihuAdPlatform && "xg.zhihu.com" in content) return "知乎广告平台内容"
-        if (blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content)) return "知乎学堂内容"
-        if (blockWeChatOfficialAccount && "mp.weixin.qq.com" in content) return "微信公众号文章"
+        if (blockZhihuAdPlatform && "xg.zhihu.com" in content) return context.getString(R.string.filter_reason_zhihu_ad_platform)
+        if (blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content)) return context.getString(R.string.filter_reason_zhihu_school)
+        if (blockWeChatOfficialAccount && "mp.weixin.qq.com" in content) return context.getString(R.string.filter_reason_wechat_official_account)
         return null
     }
 
@@ -400,7 +412,7 @@ object ContentFilterExtensions {
         if (isUserBlockingEnabled(context)) {
             val blocklistManager = BlocklistManager.getInstance(context)
             val (kept, removed) = filteredContents.partition { !blocklistManager.isUserBlocked(it.authorId) }
-            removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
+            removed.forEach { blocked.add(it to context.getString(R.string.filter_reason_blocked_author, it.authorName ?: it.authorId.orEmpty())) }
             filteredContents = kept
         }
 
@@ -412,7 +424,7 @@ object ContentFilterExtensions {
                     !blocklistManager.containsBlockedKeyword(content.summary ?: "") &&
                     !blocklistManager.containsBlockedKeyword(content.content ?: "")
             }
-            removed.forEach { blocked.add(it to "关键词屏蔽") }
+            removed.forEach { blocked.add(it to context.getString(R.string.filter_reason_keyword_blocked)) }
             filteredContents = kept
         }
 
@@ -444,7 +456,7 @@ object ContentFilterExtensions {
                         matchedKeywords = matchedKeywords,
                     )
                     val keywordNames = matchedKeywords.joinToString("、") { it.keyword }
-                    blocked.add(content to "NLP语义屏蔽：$keywordNames")
+                    blocked.add(content to context.getString(R.string.filter_reason_nlp_blocked, keywordNames))
                     blockedThisRound.add(content)
                 }
             }
@@ -452,7 +464,11 @@ object ContentFilterExtensions {
             if (blockedThisRound.isNotEmpty()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {
-                        Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.nlp_blocked_toast, blockedThisRound.first().title.take(10), blockedThisRound.size),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                 }
             }
@@ -475,7 +491,7 @@ object ContentFilterExtensions {
                         }?.let { topicId ->
                             blocklistManager.getTopicName(topicId)
                         }
-                    blocked.add(content to "屏蔽主题：$topicName")
+                    blocked.add(content to context.getString(R.string.filter_reason_topic_blocked, topicName.orEmpty()))
                 }
                 kept
             }

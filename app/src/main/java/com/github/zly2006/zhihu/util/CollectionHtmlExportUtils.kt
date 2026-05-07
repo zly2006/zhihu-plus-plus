@@ -52,8 +52,9 @@ data class CollectionHtmlZipExportResult(
 fun buildCollectionExportZipFileName(
     collectionTitle: String,
     timestampMillis: Long = System.currentTimeMillis(),
+    fallbackCollectionTitle: String = "collection",
 ): String {
-    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { "收藏夹" }
+    val safeTitle = sanitizeArticleExportFileNamePart(collectionTitle).ifBlank { fallbackCollectionTitle }
     val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(timestampMillis))
     return "zhihu++_${safeTitle}_$timestamp.zip"
 }
@@ -64,6 +65,9 @@ suspend fun <T> exportCollectionItemsToZip(
     cacheDir: File,
     outputDir: File,
     timestampMillis: Long = System.currentTimeMillis(),
+    fallbackCollectionTitle: String = "collection",
+    createCacheDirFailedMessage: String = "Cannot create export cache directory",
+    createZipDirFailedMessage: String = "Cannot create export ZIP directory",
     displayTitle: (T) -> String,
     resolveItem: suspend (T) -> ResolvedCollectionHtmlExportItem?,
     onProgress: suspend (CollectionHtmlZipExportProgress) -> Unit = {},
@@ -76,7 +80,7 @@ suspend fun <T> exportCollectionItemsToZip(
         stagingDir.deleteRecursively()
     }
     if (!stagingDir.mkdirs()) {
-        throw IllegalStateException("无法创建导出缓存目录")
+        throw IllegalStateException(createCacheDirFailedMessage)
     }
 
     val totalCount = items.size
@@ -124,10 +128,10 @@ suspend fun <T> exportCollectionItemsToZip(
 
     val zipFile = if (successCount > 0) {
         if (!outputDir.exists() && !outputDir.mkdirs()) {
-            throw IllegalStateException("无法创建导出 ZIP 目录")
+            throw IllegalStateException(createZipDirFailedMessage)
         }
 
-        File(outputDir, buildCollectionExportZipFileName(collectionTitle, timestampMillis)).also { file ->
+        File(outputDir, buildCollectionExportZipFileName(collectionTitle, timestampMillis, fallbackCollectionTitle)).also { file ->
             if (file.exists()) {
                 file.delete()
             }

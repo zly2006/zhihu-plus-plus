@@ -191,7 +191,7 @@ class MainActivity : ComponentActivity() {
                         Toast
                             .makeText(
                                 this@MainActivity,
-                                "刷新登录状态失败，如多次看到此提示请重新登录",
+                                getString(R.string.refresh_login_failed),
                                 Toast.LENGTH_LONG,
                             ).show()
                     }
@@ -449,7 +449,7 @@ class MainActivity : ComponentActivity() {
             }.getOrNull()
             if (current == null) {
                 Toast
-                    .makeText(this, "无法打开视频：未知的内容类型", Toast.LENGTH_SHORT)
+                    .makeText(this, getString(R.string.article_cannot_open_video), Toast.LENGTH_SHORT)
                     .show()
                 return
             }
@@ -469,7 +469,7 @@ class MainActivity : ComponentActivity() {
                 val videoUrl = getHighestQualityVideoUrl(this@MainActivity, httpClient, route.id.toString(), contentId, contentType)
                 if (videoUrl == null) {
                     Toast
-                        .makeText(this@MainActivity, "获取视频链接失败", Toast.LENGTH_SHORT)
+                        .makeText(this@MainActivity, getString(R.string.article_fetch_video_failed), Toast.LENGTH_SHORT)
                         .show()
                     return@launch
                 }
@@ -530,7 +530,7 @@ class MainActivity : ComponentActivity() {
                             override fun onStart(utteranceId: String?) {
                                 if (currentIndex == 0) {
                                     Toast
-                                        .makeText(this@MainActivity, "开始朗读：$title", Toast.LENGTH_SHORT)
+                                        .makeText(this@MainActivity, getString(R.string.article_reading_started, title), Toast.LENGTH_SHORT)
                                         .show()
                                 }
                                 if (utteranceId == "chunk_$currentIndex") {

@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -118,11 +119,11 @@ abstract class BaseCommentViewModel(
                         onSuccess()
                     }
                 } else {
-                    Toast.makeText(context, "操作失败：${response.status}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.operation_failed, response.status), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "操作失败：${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.operation_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
                 }
             } finally {
                 withContext(Dispatchers.Main) {

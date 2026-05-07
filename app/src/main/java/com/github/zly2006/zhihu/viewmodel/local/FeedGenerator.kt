@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
+import com.github.zly2006.zhihu.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -71,10 +72,10 @@ class FeedGenerator(
      * 根据推荐原因获取理由显示文本
      */
     fun getReasonDisplayText(reason: CrawlingReason): String = when (reason) {
-        CrawlingReason.Following -> "关注用户的最新动态"
-        CrawlingReason.Trending -> "热门推荐"
-        CrawlingReason.FollowingUpvote -> "关注用户点赞的内容"
-        CrawlingReason.UpvotedQuestion -> "相关问题的优质回答"
-        CrawlingReason.CollaborativeFiltering -> "相似用户喜欢的内容"
+        CrawlingReason.Following -> context.getString(R.string.local_reason_following)
+        CrawlingReason.Trending -> context.getString(R.string.local_reason_trending)
+        CrawlingReason.FollowingUpvote -> context.getString(R.string.local_reason_following_upvote)
+        CrawlingReason.UpvotedQuestion -> context.getString(R.string.local_reason_upvoted_question)
+        CrawlingReason.CollaborativeFiltering -> context.getString(R.string.local_reason_collaborative_filtering)
     }
 }

@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
@@ -49,13 +50,13 @@ fun BlockUserConfirmDialog(
     if (showDialog && userToBlock != null) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("屏蔽用户") },
+            title = { Text(context.getString(R.string.block_user)) },
             text = {
                 Column {
-                    Text("确定要屏蔽用户 \"${userToBlock.second}\" 吗？")
+                    Text(context.getString(R.string.block_user_confirm_message, userToBlock.second))
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "屏蔽后，该用户的内容将不会在推荐流中显示。",
+                        context.getString(R.string.block_user_confirm_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -85,22 +86,22 @@ fun BlockUserConfirmDialog(
                                                 avatarUrl = author.avatarUrl,
                                             )
                                             onConfirm()
-                                            Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.block_user_success, author.name), Toast.LENGTH_SHORT).show()
                                         }
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.block_user_failed, e.message), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
                     },
                 ) {
-                    Text("确定屏蔽")
+                    Text(context.getString(R.string.block_user_confirm))
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismiss) {
-                    Text("取消")
+                    Text(context.getString(R.string.cancel))
                 }
             },
         )

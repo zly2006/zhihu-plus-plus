@@ -22,6 +22,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
@@ -47,10 +48,10 @@ class QuestionFeedViewModel(
         val target = feed.target
         if (target is Feed.AnswerTarget) {
             return FeedDisplayItem(
-                authorName = target.author?.name ?: "未知作者",
+                authorName = target.author?.name ?: context.getString(R.string.unknown_author),
                 avatarSrc = target.author?.avatarUrl,
                 summary = target.excerpt,
-                details = target.detailsText,
+                details = target.localizedDetailsText(context),
                 feed = feed,
                 title = "",
             )

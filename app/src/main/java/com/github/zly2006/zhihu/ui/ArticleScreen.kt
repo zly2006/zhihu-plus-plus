@@ -351,7 +351,11 @@ fun ArticleActionsMenu(
                     )
                 }
             },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
+            text = if (ttsState.isSpeaking) {
+                context.getString(R.string.article_stop_reading)
+            } else {
+                context.getString(R.string.article_start_reading)
+            },
             enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
             onClick = {
                 onDismissRequest()
@@ -390,7 +394,7 @@ fun ArticleActionsMenu(
                         } catch (e: Exception) {
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                 Toast
-                                    .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
+                                    .makeText(context, context.getString(R.string.article_read_failed, e.message.orEmpty()), Toast.LENGTH_SHORT)
                                     .show()
                             }
                         }
@@ -404,16 +408,26 @@ fun ArticleActionsMenu(
         // 分享按钮
         MenuActionButton(
             icon = Icons.Filled.Share,
-            text = "分享",
+            text = context.getString(R.string.article_share),
             onClick = {
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        context.getString(
+                            R.string.article_share_answer_format,
+                            "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}",
+                            viewModel.title,
+                            viewModel.authorName,
+                        )
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        context.getString(
+                            R.string.article_share_article_format,
+                            "https://zhuanlan.zhihu.com/p/${article.id}",
+                            viewModel.title,
+                            viewModel.authorName,
+                        )
                     }
                 }
                 val shareIntent = Intent().apply {
@@ -421,7 +435,7 @@ fun ArticleActionsMenu(
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, text)
                 }
-                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                val chooserIntent = Intent.createChooser(shareIntent, context.getString(R.string.article_share_to))
                 chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(chooserIntent)
             },
@@ -431,7 +445,7 @@ fun ArticleActionsMenu(
 
         MenuActionButton(
             icon = Icons.AutoMirrored.Filled.Comment,
-            text = "总结本文",
+            text = context.getString(R.string.article_summarize),
             onClick = {
                 onDismissRequest()
                 onSummaryRequest()
@@ -443,21 +457,31 @@ fun ArticleActionsMenu(
         // 复制链接按钮
         MenuActionButton(
             icon = Icons.Filled.ContentCopy,
-            text = "复制链接",
+            text = context.getString(R.string.article_copy_link),
             onClick = {
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        context.getString(
+                            R.string.article_share_answer_format,
+                            "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}",
+                            viewModel.title,
+                            viewModel.authorName,
+                        )
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        context.getString(
+                            R.string.article_share_article_format,
+                            "https://zhuanlan.zhihu.com/p/${article.id}",
+                            viewModel.title,
+                            viewModel.authorName,
+                        )
                     }
                 }
                 (context as? MainActivity)?.sharedData?.clipboardDestination = article
                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.article_link_copied), Toast.LENGTH_SHORT).show()
             },
         )
 
@@ -466,7 +490,7 @@ fun ArticleActionsMenu(
         // 导出按钮
         MenuActionButton(
             icon = Icons.Filled.GetApp,
-            text = "导出文章 (Markdown、图片、HTML、PDF)",
+            text = context.getString(R.string.article_export),
             onClick = {
                 onDismissRequest()
                 onExportRequest()
@@ -477,12 +501,12 @@ fun ArticleActionsMenu(
 
         MenuActionButton(
             icon = Icons.Outlined.DesktopWindows,
-            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
+            text = context.getString(R.string.article_open_in_browser),
             onClick = {
                 coroutineScope.launch {
                     OpenInBrowser.openUrlInBrowser(context, article)
                     onDismissRequest()
-                    Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.article_sent_to_browser), Toast.LENGTH_SHORT).show()
                 }
             },
         )
@@ -527,7 +551,7 @@ private fun ArticleSummarySheet(
                 .padding(16.dp)
                 .verticalScroll(scrollState),
         ) {
-            Text("总结本文", style = MaterialTheme.typography.titleLarge)
+            Text(context.getString(R.string.article_summarize), style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(12.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -538,7 +562,7 @@ private fun ArticleSummarySheet(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Text("正在生成总结...")
+                        Text(context.getString(R.string.article_summarizing))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -563,12 +587,12 @@ private fun ArticleSummarySheet(
                 horizontalArrangement = Arrangement.End,
             ) {
                 TextButton(onClick = onDismissRequest) {
-                    Text("关闭")
+                    Text(context.getString(R.string.close))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 if (!loading) {
                     TextButton(onClick = onRetryRequest) {
-                        Text("重新总结")
+                        Text(context.getString(R.string.article_regenerate))
                     }
                 }
             }
@@ -605,7 +629,7 @@ private fun prepareContentDocument(content: String, context: Context): Document 
                         } else {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                                 context.mainExecutor.execute {
-                                    Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.article_image_load_failed), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -708,6 +732,13 @@ fun ArticleScreen(
                 action.preferenceValue,
             )
         }
+    }
+
+    fun answerDoubleTapLabel(action: AnswerDoubleTapAction): String = when (action) {
+        AnswerDoubleTapAction.None -> context.getString(R.string.double_tap_none)
+        AnswerDoubleTapAction.Ask -> context.getString(R.string.double_tap_ask)
+        AnswerDoubleTapAction.VoteUp -> context.getString(R.string.double_tap_vote_up)
+        AnswerDoubleTapAction.OpenComments -> context.getString(R.string.double_tap_open_comments)
     }
 
     fun handleAnswerDoubleTap() {
@@ -964,7 +995,9 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: context.getString(R.string.current_question)),
+        )
         val prev = sharedData?.navigator?.goToPrevious()
         if (prev != null) {
             sharedData.pendingInitialContent = prev
@@ -1012,7 +1045,9 @@ fun ArticleScreen(
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
-        sharedData?.navigator?.pushAnswer(viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+        sharedData?.navigator?.pushAnswer(
+            viewModel.toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: context.getString(R.string.current_question)),
+        )
         // 优先使用前向历史
         val historyNext = sharedData?.navigator?.goToNext()
         if (historyNext != null) {
@@ -1089,7 +1124,7 @@ fun ArticleScreen(
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 ),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                             }
                         },
                         actions = {
@@ -1099,7 +1134,7 @@ fun ArticleScreen(
                                 ) {
                                     Icon(
                                         Icons.Filled.MoreVert,
-                                        contentDescription = "更多选项",
+                                        contentDescription = context.getString(R.string.article_more_options),
                                     )
                                 }
                             }
@@ -1142,7 +1177,7 @@ fun ArticleScreen(
                                 if (viewModel.authorAvatarSrc.isNotEmpty()) {
                                     AsyncImage(
                                         model = viewModel.authorAvatarSrc,
-                                        contentDescription = "作者头像",
+                                        contentDescription = context.getString(R.string.article_author_avatar),
                                         modifier = Modifier
                                             .size(if (expanded) 40.dp else 20.dp)
                                             .clip(CircleShape),
@@ -1225,7 +1260,7 @@ fun ArticleScreen(
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), context.getString(R.string.article_agree))
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(text = viewModel.voteUpCount.toString())
                                         }
@@ -1236,7 +1271,7 @@ fun ArticleScreen(
                                             modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
-                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), context.getString(R.string.article_disagree))
                                         }
                                     }
 
@@ -1248,7 +1283,7 @@ fun ArticleScreen(
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
+                                            Icon(painterResource(R.drawable.ic_vote_up_24dp), context.getString(R.string.article_agree))
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(text = viewModel.voteUpCount.toString())
                                             Spacer(modifier = Modifier.width(8.dp))
@@ -1263,9 +1298,9 @@ fun ArticleScreen(
                                             modifier = Modifier.height(ButtonDefaults.MinHeight),
                                             contentPadding = PaddingValues(horizontal = 0.dp),
                                         ) {
-                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), "反对")
+                                            Icon(painterResource(R.drawable.ic_vote_down_24dp), context.getString(R.string.article_disagree))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("反对")
+                                            Text(context.getString(R.string.article_disagree))
                                             Spacer(modifier = Modifier.width(8.dp))
                                         }
                                     }
@@ -1279,7 +1314,10 @@ fun ArticleScreen(
                                         contentColor = if (viewModel.isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
                                     ),
                                 ) {
-                                    Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
+                                    Icon(
+                                        if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                        contentDescription = context.getString(R.string.article_bookmark),
+                                    )
                                 }
                                 val mainActivity = context as? MainActivity
                                 val ttsState = mainActivity?.ttsState
@@ -1287,10 +1325,10 @@ fun ArticleScreen(
                                     IconButton(
                                         onClick = {
                                             mainActivity.stopSpeaking()
-                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.article_stopped_reading), Toast.LENGTH_SHORT).show()
                                         },
                                     ) {
-                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
+                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = context.getString(R.string.article_stop_reading_short))
                                     }
                                 }
                                 Button(
@@ -1298,7 +1336,7 @@ fun ArticleScreen(
                                     contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
                                     colors = voteUpNeutralButtonColors(),
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = context.getString(R.string.article_comments))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(text = "${viewModel.commentCount}")
                                 }
@@ -1312,7 +1350,7 @@ fun ArticleScreen(
                                 ) {
                                     Icon(
                                         Icons.Filled.MoreVert,
-                                        contentDescription = "更多选项",
+                                        contentDescription = context.getString(R.string.article_more_options),
                                     )
                                 }
                             }
@@ -1356,7 +1394,7 @@ fun ArticleScreen(
                                     ) {
                                         Icon(
                                             painter = painterResource(R.drawable.ic_vote_up_24dp),
-                                            contentDescription = "赞同",
+                                            contentDescription = context.getString(R.string.article_agree),
                                             tint = upContentColor,
                                             modifier = Modifier.size(24.dp),
                                         )
@@ -1399,14 +1437,14 @@ fun ArticleScreen(
                                         }
                                         Icon(
                                             painter = painterResource(R.drawable.ic_vote_down_24dp),
-                                            contentDescription = "反对",
+                                            contentDescription = context.getString(R.string.article_disagree),
                                             tint = downContentColor,
                                             modifier = Modifier.size(24.dp),
                                         )
                                         AnimatedVisibility(visible = viewModel.voteUpState == VoteUpState.Down) {
                                             Row {
                                                 Text(
-                                                    text = "反对",
+                                                    text = context.getString(R.string.article_disagree),
                                                     color = downContentColor,
                                                     style = MaterialTheme.typography.titleMedium,
                                                     modifier = Modifier.padding(horizontal = 4.dp),
@@ -1441,7 +1479,7 @@ fun ArticleScreen(
                                 ) {
                                     Icon(
                                         if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                                        contentDescription = "收藏",
+                                        contentDescription = context.getString(R.string.article_bookmark),
                                     )
                                 }
 
@@ -1451,7 +1489,7 @@ fun ArticleScreen(
                                     IconButton(
                                         onClick = {
                                             mainActivity?.stopSpeaking()
-                                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.article_stopped_reading), Toast.LENGTH_SHORT).show()
                                         },
                                         enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing, null),
                                         colors = IconButtonDefaults.iconButtonColors(
@@ -1459,7 +1497,7 @@ fun ArticleScreen(
                                             contentColor = Color.White,
                                         ),
                                     ) {
-                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
+                                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = context.getString(R.string.article_stop_reading_short))
                                     }
                                 }
 
@@ -1471,7 +1509,7 @@ fun ArticleScreen(
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = context.getString(R.string.article_comments))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(text = "${viewModel.commentCount}", style = MaterialTheme.typography.titleMedium)
                                 }
@@ -1507,13 +1545,13 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.DateTexts() {
                             Text(
-                                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                                context.getString(R.string.article_published_at, YMDHMS.format(viewModel.createdAt * 1000)),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                    context.getString(R.string.article_edited_at, YMDHMS.format(viewModel.updatedAt * 1000)),
                                     color = Color.Gray,
                                     fontSize = 11.sp,
                                 )
@@ -1566,7 +1604,7 @@ fun ArticleScreen(
                                     }
                                     if (viewModel.ipInfo != null) {
                                         Text(
-                                            "IP属地：${viewModel.ipInfo}",
+                                            context.getString(R.string.article_ip_location, viewModel.ipInfo),
                                             color = Color.Gray,
                                             fontSize = 11.sp,
                                         )
@@ -1622,7 +1660,7 @@ fun ArticleScreen(
                                             }
                                             if (viewModel.ipInfo != null) {
                                                 Text(
-                                                    "IP属地：${viewModel.ipInfo}",
+                                                    context.getString(R.string.article_ip_location, viewModel.ipInfo),
                                                     color = Color.Gray,
                                                     fontSize = 11.sp,
                                                 )
@@ -1657,7 +1695,7 @@ fun ArticleScreen(
                             if (navigatingToNextAnswer) {
                                 CircularProgressIndicator(modifier = Modifier.size(30.dp))
                             } else {
-                                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
+                                Icon(Icons.Filled.SkipNext, contentDescription = context.getString(R.string.article_next_answer))
                             }
                         }
                     }
@@ -1814,12 +1852,12 @@ fun ArticleScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = "设置双击回答动作",
+                    text = context.getString(R.string.answer_double_tap_setup_title),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
+                    text = context.getString(R.string.answer_double_tap_setup_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1827,33 +1865,45 @@ fun ArticleScreen(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.None.label}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.None)),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("设为无操作")
+                    Text(context.getString(R.string.answer_double_tap_set_none))
                 }
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.VoteUp)),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("设为点赞")
+                    Text(context.getString(R.string.answer_double_tap_set_vote_up))
                 }
                 Button(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.OpenComments)),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("设为打开评论区")
+                    Text(context.getString(R.string.answer_double_tap_set_open_comments))
                 }
             }
         }
@@ -1925,7 +1975,7 @@ private fun CachedAnswerPreview(
                             contentPadding = PaddingValues(horizontal = 0.dp),
                         ) {
                             Spacer(modifier = Modifier.width(4.dp))
-                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
+                            Icon(painterResource(R.drawable.ic_vote_up_24dp), context.getString(R.string.article_agree))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = cached.voteUpCount.toString())
                         }
@@ -1938,7 +1988,7 @@ private fun CachedAnswerPreview(
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = context.getString(R.string.article_comments))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(text = "${cached.commentCount}")
                     }
@@ -1963,7 +2013,7 @@ private fun CachedAnswerPreview(
                 if (cached.authorAvatarUrl.isNotEmpty()) {
                     AsyncImage(
                         model = cached.authorAvatarUrl,
-                        contentDescription = "作者头像",
+                        contentDescription = context.getString(R.string.article_author_avatar),
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape),
@@ -2006,21 +2056,21 @@ private fun CachedAnswerPreview(
 fun ArticleScreenPreview() {
     ArticleScreen(
         Article(
-            "如何看待《狂暴之翼》中的人物设定？",
+            "Sample question title",
             ArticleType.Answer,
             123456789,
-            "知乎用户",
-            "知乎用户",
+            "Zhihu User",
+            "Zhihu User",
             "",
         ),
         viewModel = viewModel {
             ArticleViewModel(
                 Article(
-                    "如何看待《狂暴之翼》中的人物设定？",
+                    "Sample question title",
                     ArticleType.Answer,
                     123456789,
-                    "知乎用户",
-                    "知乎用户",
+                    "Zhihu User",
+                    "Zhihu User",
                     "",
                 ),
                 null,
@@ -2037,21 +2087,21 @@ fun ArticleActionsMenuPreview() {
         Surface {
             ArticleActionsMenu(
                 article = Article(
-                    "如何看待《狂暴之翼》中的人物设定？",
+                    "Sample question title",
                     ArticleType.Answer,
                     123456789,
-                    "知乎用户",
-                    "知乎用户",
+                    "Zhihu User",
+                    "Zhihu User",
                     "",
                 ),
                 viewModel = viewModel {
                     ArticleViewModel(
                         Article(
-                            "如何看待《狂暴之翼》中的人物设定？",
+                            "Sample question title",
                             ArticleType.Answer,
                             123456789,
-                            "知乎用户",
-                            "知乎用户",
+                            "Zhihu User",
+                            "Zhihu User",
                             "",
                         ),
                         null,

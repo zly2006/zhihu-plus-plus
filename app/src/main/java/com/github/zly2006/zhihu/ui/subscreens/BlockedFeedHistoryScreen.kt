@@ -51,8 +51,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
@@ -79,16 +81,16 @@ fun BlockedFeedHistoryScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("屏蔽记录") },
+                title = { Text(stringResource(R.string.blocked_feed_history_short)) },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     if (records.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "清空记录")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.clear_records))
                         }
                     }
                 },
@@ -102,7 +104,11 @@ fun BlockedFeedHistoryScreen() {
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("暂无屏蔽记录", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.no_blocked_feed_records),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         } else {
             LazyColumn(
@@ -127,8 +133,8 @@ fun BlockedFeedHistoryScreen() {
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("清空屏蔽记录") },
-            text = { Text("确定要清空所有屏蔽记录吗？此操作不可撤销。") },
+            title = { Text(stringResource(R.string.clear_blocked_feed_records)) },
+            text = { Text(stringResource(R.string.clear_blocked_feed_records_desc)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -136,12 +142,12 @@ fun BlockedFeedHistoryScreen() {
                         showClearDialog = false
                     },
                 ) {
-                    Text("清空")
+                    Text(stringResource(R.string.clear))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
@@ -154,6 +160,7 @@ private fun BlockedFeedRecordItem(
     onDelete: () -> Unit,
 ) {
     val navigator = LocalNavigator.current
+    val noTitle = stringResource(R.string.no_title)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,7 +175,7 @@ private fun BlockedFeedRecordItem(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = record.title.ifBlank { "（无标题）" },
+                text = record.title.ifBlank { noTitle },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -195,7 +202,7 @@ private fun BlockedFeedRecordItem(
             onClick = onDelete,
             modifier = Modifier.testTag("blocked_feed_history_delete_${record.id}"),
         ) {
-            Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

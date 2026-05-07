@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.comment
 import android.content.Context
 import androidx.core.text.htmlEncode
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.CommentHolder
@@ -94,10 +95,10 @@ class ChildCommentViewModel(
                     allData.add(0, model)
                     onSuccess()
                 } else {
-                    errorMessage = "评论发送失败: ${response.status}"
+                    errorMessage = context.getString(R.string.comment_send_failed, response.status)
                 }
             } catch (e: Exception) {
-                errorMessage = "评论发送异常: ${e.message}"
+                errorMessage = context.getString(R.string.comment_send_exception, e.message ?: "")
             }
         }
     }

@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Pin
@@ -68,11 +69,11 @@ class PinViewModel(
                         ?.jsonPrimitive
                         ?.boolean ?: false
                 } else {
-                    errorMessage = "无法加载想法详情"
+                    errorMessage = context.getString(R.string.pin_detail_load_failed)
                 }
             } catch (e: Exception) {
                 Log.e("PinViewModel", "Failed to load pin detail", e)
-                errorMessage = e.message ?: "未知错误"
+                errorMessage = e.message ?: context.getString(R.string.unknown_error)
             } finally {
                 isLoading = false
             }
@@ -95,7 +96,7 @@ class PinViewModel(
                 likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1
             } catch (e: Exception) {
                 Log.e("PinViewModel", "Toggle like failed", e)
-                Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.operation_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     }

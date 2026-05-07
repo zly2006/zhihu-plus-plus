@@ -23,6 +23,7 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -102,10 +103,22 @@ class ContinuousUsageReminderManager(
         if (reminderDialog?.isShowing == true) return
         reminderDialog = AlertDialog
             .Builder(activity)
-            .setTitle("连续浏览提醒")
-            .setMessage("你已经连续浏览知乎 ${reminder.durationText}\n\n休息一下吧")
-            .setPositiveButton("知道了", null)
+            .setTitle(activity.getString(R.string.continuous_browsing_reminder))
+            .setMessage(activity.getString(R.string.continuous_browsing_reminder_message, formatReminderDuration(reminder.elapsedForegroundMs)))
+            .setPositiveButton(activity.getString(R.string.ok), null)
             .show()
+    }
+
+    private fun formatReminderDuration(elapsedForegroundMs: Long): String {
+        val totalMinutes = (elapsedForegroundMs / ONE_MINUTE_MS).coerceAtLeast(1L)
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+
+        return when {
+            hours > 0L && minutes > 0L -> activity.getString(R.string.duration_hours_minutes, hours, minutes)
+            hours > 0L -> activity.getString(R.string.duration_hours, hours)
+            else -> activity.getString(R.string.duration_minutes, minutes)
+        }
     }
 
     private fun restoreSessionForForegroundStart() {
@@ -161,7 +174,6 @@ class ContinuousUsageReminderManager(
 
 data class ContinuousUsageReminder(
     val elapsedForegroundMs: Long,
-    val durationText: String,
 )
 
 class ContinuousUsageReminderPolicy(
@@ -185,7 +197,6 @@ class ContinuousUsageReminderPolicy(
         lastReminderBucket = currentBucket
         return ContinuousUsageReminder(
             elapsedForegroundMs = elapsedForegroundMs,
-            durationText = formatDuration(elapsedForegroundMs),
         )
     }
 
@@ -202,18 +213,6 @@ class ContinuousUsageReminderPolicy(
 
     fun resetSession() {
         lastReminderBucket = 0
-    }
-
-    private fun formatDuration(elapsedForegroundMs: Long): String {
-        val totalMinutes = (elapsedForegroundMs / ONE_MINUTE_MS).coerceAtLeast(1L)
-        val hours = totalMinutes / 60L
-        val minutes = totalMinutes % 60L
-
-        return when {
-            hours > 0L && minutes > 0L -> "${hours}小时${minutes}分钟"
-            hours > 0L -> "${hours}小时"
-            else -> "${minutes}分钟"
-        }
     }
 
     companion object {

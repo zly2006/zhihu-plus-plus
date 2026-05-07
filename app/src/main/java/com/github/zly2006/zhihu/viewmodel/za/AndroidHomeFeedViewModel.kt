@@ -21,6 +21,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.Feed
@@ -124,7 +125,7 @@ class AndroidHomeFeedViewModel :
                                 val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
                                 val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
                                 val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
-                                "$voteUp 赞同 · $comment 评论 · $collect 收藏"
+                                context.getString(R.string.android_feed_footer, voteUp, comment, collect)
                             } else {
                                 val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
                                 footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
@@ -155,7 +156,7 @@ class AndroidHomeFeedViewModel :
                                     authorName = authorName,
                                     summary = summary,
                                     title = title,
-                                    details = "$footerText · 手机版推荐",
+                                    details = context.getString(R.string.android_feed_details, footerText),
                                     feed = null,
                                 ),
                             )
@@ -202,7 +203,7 @@ class AndroidHomeFeedViewModel :
             if (e !is CancellationException) {
                 Log.e(this::class.simpleName, "Failed to fetch feeds", e)
                 context.mainExecutor.execute {
-                    Toast.makeText(context, "安卓端推荐加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.android_feed_load_failed, e.message ?: ""), Toast.LENGTH_SHORT).show()
                 }
             }
             throw e

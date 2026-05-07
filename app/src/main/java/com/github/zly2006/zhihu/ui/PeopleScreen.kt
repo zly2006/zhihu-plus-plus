@@ -68,6 +68,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
@@ -402,16 +403,16 @@ suspend fun HttpResponse.raiseForStatus() = apply {
     }
 }
 
-private val PEOPLE_SCREEN_TITLES = listOf(
-    "回答",
-    "文章",
-    "动态",
-    "收藏",
-    "提问",
-    "想法",
-    "专栏",
-    "粉丝",
-    "关注",
+private val PEOPLE_SCREEN_TAB_KEYS = listOf(
+    "answers",
+    "articles",
+    "activities",
+    "collections",
+    "questions",
+    "pins",
+    "columns",
+    "followers",
+    "following",
 )
 
 const val PEOPLE_SCREEN_ROOT_TAG = "people_screen_root"
@@ -465,8 +466,21 @@ fun peopleScreenFollowingItemTag(id: String): String = "people_screen_following_
 fun peopleScreenFollowingActionTag(id: String): String = "people_screen_following_action_$id"
 
 private fun peopleScreenInitialPage(person: Person): Int {
-    val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
+    val jumpToIndex = PEOPLE_SCREEN_TAB_KEYS.indexOf(person.jumpTo)
     return if (jumpToIndex >= 0) jumpToIndex else 0
+}
+
+private fun peopleScreenTabTitle(context: Context, index: Int): String = when (index) {
+    0 -> context.getString(R.string.people_tab_answers)
+    1 -> context.getString(R.string.people_tab_articles)
+    2 -> context.getString(R.string.people_tab_activities)
+    3 -> context.getString(R.string.people_tab_collections)
+    4 -> context.getString(R.string.people_tab_questions)
+    5 -> context.getString(R.string.people_tab_pins)
+    6 -> context.getString(R.string.people_tab_columns)
+    7 -> context.getString(R.string.people_tab_followers)
+    8 -> context.getString(R.string.people_tab_following)
+    else -> ""
 }
 
 data class PeopleProfileUiState(
@@ -600,7 +614,7 @@ fun PeopleScreen(
 
     val pagerState = rememberPagerState(
         initialPage = testOverrides?.initialPage ?: peopleScreenInitialPage(person),
-        pageCount = { PEOPLE_SCREEN_TITLES.size },
+        pageCount = { PEOPLE_SCREEN_TAB_KEYS.size },
     )
 
     LaunchedEffect(viewModel, testOverrides) {
@@ -615,7 +629,7 @@ fun PeopleScreen(
             Toast
                 .makeText(
                     context,
-                    "加载用户信息失败: ${e.message}",
+                    context.getString(R.string.user_info_load_failed, e.message),
                     Toast.LENGTH_LONG,
                 ).show()
         }
@@ -631,7 +645,7 @@ fun PeopleScreen(
             Toast
                 .makeText(
                     context,
-                    "加载页面内容失败: ${e.message}",
+                    context.getString(R.string.page_content_load_failed, e.message),
                     Toast.LENGTH_LONG,
                 ).show()
         }
@@ -690,7 +704,7 @@ fun PeopleScreen(
                                     try {
                                         viewModel.toggleFollow(context)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.operation_failed, e.message), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -705,7 +719,7 @@ fun PeopleScreen(
                                     try {
                                         viewModel.toggleBlock(context)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.operation_failed, e.message), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -724,11 +738,15 @@ fun PeopleScreen(
                                         Toast
                                             .makeText(
                                                 context,
-                                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
+                                                if (viewModel.isBlockedInRecommendations) {
+                                                    context.getString(R.string.recommendation_blocked)
+                                                } else {
+                                                    context.getString(R.string.recommendation_unblocked)
+                                                },
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.operation_failed, e.message), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -753,7 +771,7 @@ fun PeopleScreen(
                 selectedTabIndex = pagerState.currentPage,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_TAB_ROW_TAG),
             ) {
-                PEOPLE_SCREEN_TITLES.forEachIndexed { index, title ->
+                PEOPLE_SCREEN_TAB_KEYS.forEachIndexed { index, _ ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = {
@@ -764,7 +782,7 @@ fun PeopleScreen(
                         modifier = Modifier.testTag(peopleScreenTabTag(index)),
                     ) {
                         Text(
-                            text = title,
+                            text = peopleScreenTabTitle(context, index),
                             modifier = Modifier.padding(16.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -809,7 +827,7 @@ fun PeopleScreen(
                                     BaseFeedViewModel.FeedDisplayItem(
                                         title = it.question.title,
                                         summary = it.excerpt,
-                                        details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                        details = context.getString(R.string.people_answer_details, it.voteupCount, it.commentCount),
                                         feed = null,
                                     ),
                                     modifier = Modifier.testTag(peopleScreenAnswerItemTag(it.id)),
@@ -829,7 +847,7 @@ fun PeopleScreen(
                     }
 
                     1 -> {
-                        // 文章
+                        // Articles
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -858,7 +876,7 @@ fun PeopleScreen(
                                     BaseFeedViewModel.FeedDisplayItem(
                                         title = it.title,
                                         summary = it.excerpt,
-                                        details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
+                                        details = context.getString(R.string.people_article_details, it.voteupCount, it.commentCount),
                                         feed = null,
                                     ),
                                     modifier = Modifier.testTag(peopleScreenArticleItemTag(it.id)),
@@ -1053,7 +1071,7 @@ private fun CollectionListItem(
                 Toast
                     .makeText(
                         context,
-                        "收藏夹详情功能开发中",
+                        context.getString(R.string.collection_detail_in_development),
                         Toast.LENGTH_SHORT,
                     ).show()
             }.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -1063,7 +1081,7 @@ private fun CollectionListItem(
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
-            text = "${collection.answerCount} 内容 · ${collection.followerCount} 关注",
+            text = context.getString(R.string.collection_list_stats, collection.answerCount, collection.followerCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -1077,6 +1095,7 @@ private fun QuestionListItem(
     itemTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1090,7 +1109,7 @@ private fun QuestionListItem(
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
-            text = "${question.answerCount} 回答 · ${question.followerCount} 关注",
+            text = context.getString(R.string.question_list_stats, question.answerCount, question.followerCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -1104,6 +1123,7 @@ private fun PinListItem(
     itemTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1120,7 +1140,7 @@ private fun PinListItem(
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = "${pin.likeCount} 赞 · ${pin.commentCount} 评论",
+            text = context.getString(R.string.pin_list_stats, pin.likeCount, pin.commentCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp),
@@ -1143,7 +1163,7 @@ private fun ColumnListItem(
                 Toast
                     .makeText(
                         context,
-                        "专栏详情功能开发中",
+                        context.getString(R.string.column_detail_in_development),
                         Toast.LENGTH_SHORT,
                     ).show()
             }.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -1165,7 +1185,7 @@ private fun ColumnListItem(
                 )
             }
             Text(
-                text = "${column.articlesCount} 文章 · ${column.followerCount} 关注",
+                text = context.getString(R.string.column_list_stats, column.articlesCount, column.followerCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
@@ -1181,6 +1201,7 @@ private fun PeopleListItem(
     actionTag: String? = null,
 ) {
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1190,7 +1211,7 @@ private fun PeopleListItem(
     ) {
         AsyncImage(
             model = people.avatarUrl,
-            contentDescription = "用户头像",
+            contentDescription = context.getString(R.string.user_avatar),
             modifier = Modifier
                 .padding(end = 12.dp)
                 .size(48.dp)
@@ -1215,17 +1236,17 @@ private fun PeopleListItem(
                 modifier = Modifier.padding(top = 4.dp),
             ) {
                 Text(
-                    text = "${people.answerCount} 回答",
+                    text = context.getString(R.string.people_answer_count, people.answerCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${people.articlesCount} 文章",
+                    text = context.getString(R.string.people_article_count, people.articlesCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${people.followerCount} 粉丝",
+                    text = context.getString(R.string.people_follower_count, people.followerCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1243,7 +1264,7 @@ private fun PeopleListItem(
             },
             modifier = if (actionTag != null) Modifier.testTag(actionTag) else Modifier,
         ) {
-            Text("查看")
+            Text(context.getString(R.string.view))
         }
     }
 }
@@ -1270,6 +1291,7 @@ private fun SortBar(
     hotTag: String? = null,
     timeTag: String? = null,
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1291,7 +1313,7 @@ private fun SortBar(
                 ButtonDefaults.outlinedButtonColors()
             },
         ) {
-            Text("按热度")
+            Text(context.getString(R.string.sort_by_popularity))
         }
         OutlinedButton(
             onClick = { onSortChange("created") },
@@ -1308,7 +1330,7 @@ private fun SortBar(
                 ButtonDefaults.outlinedButtonColors()
             },
         ) {
-            Text("按时间")
+            Text(context.getString(R.string.sort_by_time))
         }
     }
 }
@@ -1335,7 +1357,7 @@ private fun UserInfoHeader(
         ) {
             AsyncImage(
                 model = profile.avatar,
-                contentDescription = "用户头像",
+                contentDescription = context.getString(R.string.user_avatar),
                 modifier = Modifier
                     .testTag(PEOPLE_SCREEN_AVATAR_TAG)
                     .padding(end = 16.dp)
@@ -1365,22 +1387,22 @@ private fun UserInfoHeader(
                 .padding(top = 16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            StatItem("回答", profile.answerCount, onClick = {
+            StatItem(context.getString(R.string.people_tab_answers), profile.answerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(0)
                 }
             }, tag = PEOPLE_SCREEN_ANSWER_COUNT_TAG)
-            StatItem("文章", profile.articleCount, onClick = {
+            StatItem(context.getString(R.string.people_tab_articles), profile.articleCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(1)
                 }
             }, tag = PEOPLE_SCREEN_ARTICLE_COUNT_TAG)
-            StatItem("粉丝", profile.followerCount, onClick = {
+            StatItem(context.getString(R.string.people_tab_followers), profile.followerCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(7)
                 }
             }, tag = PEOPLE_SCREEN_FOLLOWER_COUNT_TAG)
-            StatItem("关注", profile.followingCount, onClick = {
+            StatItem(context.getString(R.string.people_tab_following), profile.followingCount, onClick = {
                 coroutineScope.launch {
                     pagerState.animateScrollToPage(8)
                 }
@@ -1396,19 +1418,25 @@ private fun UserInfoHeader(
                 onClick = onFollowToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_FOLLOW_BUTTON_TAG),
             ) {
-                Text(if (profile.isFollowing) "取消关注" else "关注")
+                Text(if (profile.isFollowing) context.getString(R.string.unfollow_user) else context.getString(R.string.follow_user))
             }
             OutlinedButton(
                 onClick = onBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_BLOCK_BUTTON_TAG),
             ) {
-                Text(if (profile.isBlocking) "取消拉黑" else "拉黑")
+                Text(if (profile.isBlocking) context.getString(R.string.unblock_user) else context.getString(R.string.block_user))
             }
             OutlinedButton(
                 onClick = onRecommendationBlockToggle,
                 modifier = Modifier.testTag(PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG),
             ) {
-                Text(if (profile.isBlockedInRecommendations) "取消屏蔽推荐" else "屏蔽推荐")
+                Text(
+                    if (profile.isBlockedInRecommendations) {
+                        context.getString(R.string.unblock_recommendations)
+                    } else {
+                        context.getString(R.string.block_recommendations)
+                    },
+                )
             }
         }
     }

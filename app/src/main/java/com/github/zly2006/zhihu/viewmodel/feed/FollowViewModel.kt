@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.launch
@@ -66,7 +67,7 @@ class RecentMomentsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 if (!AccountData.data.login) {
-                    errorMessage = "请登录后查看关注动态"
+                    errorMessage = context.getString(R.string.follow_login_required)
                     return@launch
                 }
                 val json = AccountData.fetchGet(context, "https://api.zhihu.com/moments/recent?type=raw") {
@@ -85,7 +86,7 @@ class RecentMomentsViewModel : ViewModel() {
                 )
             } catch (e: Exception) {
                 Log.e("RecentMomentsVM", "Failed to load recent moments", e)
-                errorMessage = "加载关注动态失败"
+                errorMessage = context.getString(R.string.follow_recent_load_failed)
             } finally {
                 isLoading = false
             }

@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.NotificationItem
 import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.navigation.Article
@@ -83,7 +85,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
@@ -111,12 +113,12 @@ fun NotificationScreen(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("通知")
+                        Text(context.getString(R.string.notifications))
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 actions = {
@@ -124,16 +126,16 @@ fun NotificationScreen(
                         IconButton(onClick = {
                             coroutineScope.launch {
                                 viewModel.markAllAsRead(context)
-                                Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.notification_all_marked_read), Toast.LENGTH_SHORT).show()
                             }
                         }) {
-                            Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
+                            Icon(Icons.Default.MarkChatRead, contentDescription = context.getString(R.string.notification_mark_read))
                         }
                     }
                     IconButton(onClick = {
                         navigator.onNavigate(Notification.NotificationSettings)
                     }) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
+                        Icon(Icons.Default.Settings, contentDescription = context.getString(R.string.settings))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -165,10 +167,10 @@ fun NotificationScreen(
                                 is NotificationTarget
                                     .Comment,
                                 -> {
-                                    Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, context.getString(R.string.notification_comment_navigation_fallback), Toast.LENGTH_LONG).show()
                                     notification.target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
-                                    } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
+                                    } ?: Toast.makeText(context, context.getString(R.string.navigation_failed), Toast.LENGTH_LONG).show()
                                 }
 
                                 is NotificationTarget.Question -> {
@@ -212,11 +214,11 @@ fun NotificationScreen(
                         val data = Json.encodeToString(viewModel.debugData)
                         val clip = ClipData.newPlainText("data", data)
                         context.clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.debug_data_copied), Toast.LENGTH_SHORT).show()
                     },
                     preferenceName = "copyAll",
                 ) {
-                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+                    Icon(Icons.Default.CopyAll, contentDescription = context.getString(R.string.copy))
                 }
             }
         }
@@ -228,6 +230,7 @@ fun NotificationItemView(
     notification: NotificationItem,
     onClick: () -> Unit,
 ) {
+    val context = LocalContext.current
     val backgroundColor = if (notification.isRead) {
         Color.Transparent
     } else {
@@ -279,7 +282,7 @@ fun NotificationItemView(
                 if (!notification.isRead) {
                     Icon(
                         imageVector = Icons.Default.Circle,
-                        contentDescription = "未读",
+                        contentDescription = context.getString(R.string.notification_unread),
                         modifier = Modifier.size(8.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
@@ -326,7 +329,7 @@ fun NotificationItemView(
 
             // 时间
             Text(
-                text = formatTime(notification.createTime),
+                text = formatTime(context, notification.createTime),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -339,6 +342,7 @@ fun NotificationItemView(
  */
 @Composable
 private fun buildNotificationText(notification: NotificationItem) = buildAnnotatedString {
+    val context = LocalContext.current
     val content = notification.content
 
     // 显示actors
@@ -348,14 +352,14 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
                 append(actor.name)
             }
             if (index < content.actors.size - 1) {
-                append("、")
+                append(context.getString(R.string.notification_actor_separator))
             }
         }
         append(" ")
     }
 
     if (notification.mergeCount > 1 && content.actors.size != notification.mergeCount) {
-        append(" 等${notification.mergeCount}人")
+        append(context.getString(R.string.notification_merge_count, notification.mergeCount))
     }
 
     // 显示动作
@@ -373,18 +377,18 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
 /**
  * 格式化时间
  */
-private fun formatTime(timestamp: Long): String {
+private fun formatTime(context: Context, timestamp: Long): String {
     val now = System.currentTimeMillis() / 1000
     val diff = now - timestamp
 
     return when {
-        diff < 60 -> "刚刚"
-        diff < 3600 -> "${diff / 60}分钟前"
-        diff < 86400 -> "${diff / 3600}小时前"
-        diff < 604800 -> "${diff / 86400}天前"
+        diff < 60 -> context.getString(R.string.time_just_now)
+        diff < 3600 -> context.getString(R.string.time_minutes_ago, diff / 60)
+        diff < 86400 -> context.getString(R.string.time_hours_ago, diff / 3600)
+        diff < 604800 -> context.getString(R.string.time_days_ago, diff / 86400)
         else -> {
             val date = Date(timestamp * 1000)
-            SimpleDateFormat("MM-dd HH:mm", Locale.CHINA).format(date)
+            DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, Locale.getDefault()).format(date)
         }
     }
 }

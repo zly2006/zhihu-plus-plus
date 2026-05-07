@@ -83,11 +83,11 @@ object ZhihuCredentialRefresher {
      */
     suspend fun refreshZhihuToken(refreshToken: String, httpClient: HttpClient): String {
         httpClient.pluginOrNull(HttpCookies)?.get(Url("https://www.zhihu.com/"))?.get("z_c0")
-            ?: throw IllegalArgumentException("刷新失败：缺失关键 cookie z_c0，请重新登录")
+            ?: throw IllegalArgumentException("Token refresh failed: missing required cookie z_c0. Please log in again.")
 
         val timestamp = System.currentTimeMillis()
         val payloadMap = generateRefreshPayload(refreshToken, timestamp)
-        println("请求原始数据: $payloadMap")
+        println("Raw request payload: $payloadMap")
 
         val formData = payloadMap.entries.joinToString("&") {
             "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"

@@ -42,8 +42,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +60,10 @@ fun ColorSchemeScreen(
         modifier = Modifier.padding(innerPadding),
         topBar = {
             TopAppBar(
-                title = { Text("Color Scheme") },
+                title = { Text(stringResource(R.string.color_scheme)) },
                 navigationIcon = {
                     IconButton(onClick = navigator.onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 windowInsets = WindowInsets(0),

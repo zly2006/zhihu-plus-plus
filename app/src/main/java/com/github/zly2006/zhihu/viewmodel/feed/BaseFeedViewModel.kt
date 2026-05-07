@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
@@ -106,13 +107,13 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                 val enableQualityFilter = preferences.getBoolean("enableQualityFilter", true)
                 val eatShit = preferences.getBoolean("reverseBlock", false)
 
-                val filterReason = if (!enableQualityFilter || eatShit) null else feed.target?.filterReason()
+                val filterReason = if (!enableQualityFilter || eatShit) null else feed.target?.localizedFilterReason(context)
 
                 if (filterReason != null) {
                     FeedDisplayItem(
-                        title = "已屏蔽",
+                        title = context.getString(R.string.feed_blocked),
                         summary = filterReason,
-                        details = feed.target!!.detailsText,
+                        details = feed.target!!.localizedDetailsText(context),
                         feed = feed,
                         isFiltered = true,
                     )
@@ -125,7 +126,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                             FeedDisplayItem(
                                 title = feed.target!!.title,
                                 summary = feed.target!!.excerpt,
-                                details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
+                                details = listOfNotNull(feed.target!!.localizedDetailsText(context), feed.actionText)
                                     .joinToString(" · "),
                                 avatarSrc = feed.target?.author?.avatarUrl,
                                 authorName = feed.target?.author?.name,
@@ -135,9 +136,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
                         is Feed.PinTarget -> {
                             FeedDisplayItem(
-                                title = feed.target!!.author!!.name + "的想法",
+                                title = context.getString(R.string.feed_pin_by_author, feed.target!!.author!!.name),
                                 summary = feed.target!!.excerpt,
-                                details = feed.target!!.detailsText,
+                                details = feed.target!!.localizedDetailsText(context),
                                 avatarSrc = feed.target?.author?.avatarUrl,
                                 authorName = feed.target?.author?.name,
                                 feed = feed,
@@ -146,9 +147,9 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
                         else -> {
                             FeedDisplayItem(
-                                title = feed.target?.javaClass?.simpleName ?: "广告",
-                                summary = "Not Implemented",
-                                details = feed.target?.detailsText ?: "广告",
+                                title = feed.target?.javaClass?.simpleName ?: context.getString(R.string.feed_ad),
+                                summary = context.getString(R.string.not_implemented),
+                                details = feed.target?.localizedDetailsText(context) ?: context.getString(R.string.feed_ad),
                                 feed = feed,
                             )
                         }
@@ -172,7 +173,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     } else {
                         feed.actionText
                     },
-                    details = feed.actionText + "广告",
+                    details = context.getString(R.string.feed_ad_detail, feed.actionText),
                     feed = feed,
                     isFiltered = !preferences.getBoolean("reverseBlock", false),
                     content = feed.ad.creatives
@@ -274,7 +275,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             if (authorInfo != null) {
                 onShowDialog(authorInfo)
             } else {
-                Toast.makeText(context, "无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.block_user_data_unavailable), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -292,7 +293,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             if (contentInfo != null) {
                 onShowDialog(feedItem to contentInfo)
             } else {
-                Toast.makeText(context, "无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.keyword_block_data_unavailable), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -309,7 +310,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             try {
                 val blocklistManager = BlocklistManager.getInstance(context)
                 blocklistManager.addBlockedTopic(topicId, topicName)
-                Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.topic_blocked, topicName), Toast.LENGTH_SHORT).show()
                 displayItems.removeAll {
                     val topics = when (val content = it.raw) {
                         is DataHolder.Answer -> content.question.topics
@@ -320,9 +321,49 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                     topics?.any { topic -> topic.id == topicId } == true
                 }
             } catch (e: Exception) {
-                val message = "屏蔽失败: ${e.message}"
+                val message = context.getString(R.string.block_failed, e.message ?: "")
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+}
+
+fun Feed.Target.localizedDescription(context: Context): String = when (this) {
+    is Feed.AnswerTarget -> context.getString(R.string.content_type_answer)
+    is Feed.VideoTarget -> context.getString(R.string.content_type_video)
+    is Feed.ArticleTarget -> context.getString(R.string.content_type_article)
+    is Feed.PinTarget -> context.getString(R.string.content_type_pin)
+    is Feed.QuestionTarget -> context.getString(R.string.content_type_question)
+}
+
+fun Feed.Target.localizedDetailsText(context: Context): String = when (this) {
+    is Feed.AnswerTarget -> context.getString(R.string.feed_answer_details, voteupCount, commentCount)
+    is Feed.VideoTarget -> context.getString(R.string.feed_video_details, voteCount, commentCount)
+    is Feed.ArticleTarget -> context.getString(R.string.feed_article_details, voteupCount, commentCount)
+    is Feed.PinTarget -> context.getString(R.string.feed_pin_details, likeCount, commentCount)
+    is Feed.QuestionTarget -> context.getString(R.string.feed_question_details, followerCount, answerCount)
+}
+
+fun Feed.Target.localizedFilterReason(context: Context): String? = when (this) {
+    is Feed.AnswerTarget -> if (voteupCount < 10 && author?.isFollowing == false) {
+        context.getString(R.string.feed_filter_low_vote_answer)
+    } else {
+        null
+    }
+    is Feed.VideoTarget -> if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
+        context.getString(R.string.feed_filter_video)
+    } else {
+        null
+    }
+    is Feed.ArticleTarget -> if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
+        context.getString(R.string.feed_filter_low_article)
+    } else {
+        null
+    }
+    is Feed.PinTarget -> null
+    is Feed.QuestionTarget -> if (answerCount < 5 && followerCount < 50) {
+        context.getString(R.string.feed_filter_low_question)
+    } else {
+        null
     }
 }

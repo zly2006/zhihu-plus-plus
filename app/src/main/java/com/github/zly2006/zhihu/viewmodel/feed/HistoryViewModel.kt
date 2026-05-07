@@ -19,13 +19,14 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = error("不需要URL")
+        get() = error("URL is not needed")
 
     override val isEnd: Boolean
         get() = displayItems.isNotEmpty()
@@ -54,7 +55,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                 is Question -> {
                     FeedDisplayItem(
                         title = dest.title,
-                        details = "问题",
+                        details = context.getString(R.string.content_type_question),
                         feed = null,
                         navDestination = dest,
                         summary = "",
@@ -63,7 +64,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                 is Person -> {
                     FeedDisplayItem(
                         title = dest.name,
-                        details = "用户",
+                        details = context.getString(R.string.content_type_people),
                         feed = null,
                         navDestination = dest,
                         summary = "",

@@ -452,33 +452,33 @@ fun SettingItemPreview() {
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         SettingItemGroup(
-            title = "芭乐",
+            title = "Sample",
             header = {
                 SettingItemOverall(
-                    title = { Text("我好") },
+                    title = { Text("Enabled") },
                     checked = true,
                     onCheckedChange = {},
                 )
             },
             footer = {
-                Text("这是一个脚注")
+                Text("This is a footer")
             },
         ) {
             SettingItemWithSwitch(
-                title = { Text("你好") },
-                description = { Text("欢迎光临") },
+                title = { Text("Hello") },
+                description = { Text("Welcome") },
                 icon = { Icon(Icons.Default.AutoFixHigh, null) },
                 checked = true,
                 onCheckedChange = {},
             )
             SettingItemWithSwitch(
-                title = { Text("再见") },
+                title = { Text("Goodbye") },
                 checked = false,
                 onCheckedChange = {},
             )
             SettingItemWithSwitch(
-                title = { Text("你好") },
-                description = { Text("欢迎光临") },
+                title = { Text("Hello") },
+                description = { Text("Welcome") },
                 checked = true,
                 onCheckedChange = {},
                 enabled = false,

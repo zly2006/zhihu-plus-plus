@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -92,6 +93,7 @@ fun CollectionContentScreen(
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
+    val collectionTitle = screenViewModel.title.ifBlank { context.getString(R.string.collection_default_title) }
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
@@ -130,7 +132,7 @@ fun CollectionContentScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = screenViewModel.title,
+                        text = collectionTitle,
                         modifier = Modifier.testTag("collection_content_title"),
                     )
                 },
@@ -139,7 +141,7 @@ fun CollectionContentScreen(
                         onClick = navigator.onNavigateBack,
                         modifier = Modifier.testTag("collection_content_back_button"),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 actions = {
@@ -149,7 +151,7 @@ fun CollectionContentScreen(
                             enabled = screenViewModel.exportDialogState?.isCompleted != false,
                             modifier = Modifier.testTag("collection_content_more_button"),
                         ) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                            Icon(Icons.Filled.MoreVert, contentDescription = context.getString(R.string.article_more_options))
                         }
                         DropdownMenu(
                             expanded = showActionsMenu,
@@ -158,7 +160,7 @@ fun CollectionContentScreen(
                         ) {
                             DropdownMenuItem(
                                 modifier = Modifier.testTag("collection_content_export_action"),
-                                text = { Text("全部导出HTML") },
+                                text = { Text(context.getString(R.string.collection_export_all_html)) },
                                 enabled = screenViewModel.exportDialogState?.isCompleted != false,
                                 onClick = {
                                     showActionsMenu = false
@@ -202,10 +204,12 @@ fun CollectionContentScreen(
                 item(0) {
                     Text(
                         listOfNotNull(
-                            "${screenViewModel.collection?.itemCount} 条收藏",
-                            "${screenViewModel.collection?.likeCount} 个赞同",
-                            "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
+                            context.getString(R.string.collection_item_count, screenViewModel.collection?.itemCount ?: 0),
+                            context.getString(R.string.collection_like_count, screenViewModel.collection?.likeCount ?: 0),
+                            context.getString(R.string.collection_comment_count, screenViewModel.collection?.commentCount ?: 0),
+                            screenViewModel.collection?.updatedTime?.let {
+                                context.getString(R.string.collection_updated_at, YMDHMS.format(Date(it * 1000)))
+                            },
                         ).fastJoinToString(" · "),
                         modifier = Modifier.testTag("collection_content_stats"),
                     )
@@ -226,7 +230,7 @@ fun CollectionContentScreen(
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
                     sharedData.pendingNavigator = CollectionAnswerNavigator(
                         collectionId = collectionId,
-                        collectionTitle = screenViewModel.title,
+                        collectionTitle = collectionTitle,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
                     )
@@ -243,13 +247,14 @@ private fun CollectionHtmlExportOptionsDialog(
     onConfirm: (Boolean) -> Unit,
 ) {
     var includeImages by remember { mutableStateOf(true) }
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("导出收藏夹 HTML") },
+        title = { Text(context.getString(R.string.collection_export_html_title)) },
         text = {
             Column {
-                Text("可以选择是否一并导出图片。导出图片会把图片下载并内嵌到 HTML 中，速度可能更慢。")
+                Text(context.getString(R.string.collection_export_html_desc))
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -263,10 +268,10 @@ private fun CollectionHtmlExportOptionsDialog(
                     Column(
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("导出图片（更慢）")
+                        Text(context.getString(R.string.collection_export_include_images))
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "关闭后保留原始图片链接，不转成 base64",
+                            text = context.getString(R.string.collection_export_include_images_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -279,7 +284,7 @@ private fun CollectionHtmlExportOptionsDialog(
                 onClick = { onConfirm(includeImages) },
                 modifier = Modifier.testTag("collection_content_export_confirm"),
             ) {
-                Text("开始导出")
+                Text(context.getString(R.string.collection_start_export))
             }
         },
         dismissButton = {
@@ -287,7 +292,7 @@ private fun CollectionHtmlExportOptionsDialog(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("collection_content_export_cancel"),
             ) {
-                Text("取消")
+                Text(context.getString(R.string.cancel))
             }
         },
     )
@@ -298,6 +303,7 @@ private fun CollectionHtmlExportDialog(
     state: CollectionContentViewModel.CollectionHtmlExportDialogState,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = {
             if (state.isCompleted) {
@@ -305,14 +311,14 @@ private fun CollectionHtmlExportDialog(
             }
         },
         title = {
-            Text(if (state.isCompleted) state.phaseText else "正在导出收藏夹")
+            Text(if (state.isCompleted) state.phaseText else context.getString(R.string.collection_exporting))
         },
         text = {
             androidx.compose.foundation.layout.Column {
                 Text(state.phaseText)
                 if (state.currentTitle.isNotBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("当前：${state.currentTitle}")
+                    Text(context.getString(R.string.collection_export_current, state.currentTitle))
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 if (state.isIndeterminate) {
@@ -324,7 +330,14 @@ private fun CollectionHtmlExportDialog(
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("成功 ${state.successCount} · 跳过 ${state.skippedCount} · 失败 ${state.failedCount}")
+                Text(
+                    context.getString(
+                        R.string.collection_export_result_counts,
+                        state.successCount,
+                        state.skippedCount,
+                        state.failedCount,
+                    ),
+                )
                 state.resultMessage?.takeIf { it.isNotBlank() }?.let { message ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(message)
@@ -338,7 +351,7 @@ private fun CollectionHtmlExportDialog(
         confirmButton = {
             if (state.isCompleted) {
                 TextButton(onClick = onDismiss) {
-                    Text("确定")
+                    Text(context.getString(R.string.ok))
                 }
             }
         },

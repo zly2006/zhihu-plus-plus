@@ -132,7 +132,7 @@ private fun QRCodeScanScreen(
     ) { isGranted ->
         hasCameraPermission = isGranted
         if (!isGranted) {
-            Toast.makeText(context, "需要相机权限才能扫描二维码", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.qr_camera_permission_required), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -153,10 +153,10 @@ private fun QRCodeScanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("扫码登录") },
+                title = { Text(context.getString(R.string.qr_scan_login)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
             )
@@ -172,7 +172,7 @@ private fun QRCodeScanScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
-                contentDescription = "扫码登录",
+                contentDescription = context.getString(R.string.qr_scan_login),
                 modifier = Modifier.size(120.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -180,7 +180,7 @@ private fun QRCodeScanScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "扫描电脑端登录二维码",
+                text = context.getString(R.string.scan_desktop_login_qr),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -188,7 +188,7 @@ private fun QRCodeScanScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "在电脑浏览器中打开知乎网站，使用此功能扫描登录二维码",
+                text = context.getString(R.string.scan_desktop_login_desc),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -199,7 +199,7 @@ private fun QRCodeScanScreen(
                 onClick = {
                     if (hasCameraPermission) {
                         val options = ScanOptions().apply {
-                            setPrompt("将登录二维码对准扫描框")
+                            setPrompt(context.getString(R.string.qr_scanner_prompt))
                             setBeepEnabled(false)
                             setDesiredBarcodeFormats(
                                 ScanOptions.QR_CODE,
@@ -222,7 +222,11 @@ private fun QRCodeScanScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (hasCameraPermission) "开始扫描" else "授权相机权限",
+                    text = if (hasCameraPermission) {
+                        context.getString(R.string.start_scanning)
+                    } else {
+                        context.getString(R.string.authorize_camera_permission)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -236,7 +240,7 @@ private fun QRCodeScanScreen(
             onDismiss = { showResultDialog = false },
             onCopy = { text ->
                 copyToClipboard(context, text)
-                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.copied_to_clipboard), Toast.LENGTH_SHORT).show()
             },
             onConfirm = { text ->
                 onScanResult(text)
@@ -252,14 +256,15 @@ private fun QRResultDialog(
     onCopy: (String) -> Unit,
     onConfirm: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("扫描结果")
+            Text(context.getString(R.string.scan_result))
         },
         text = {
             Column {
-                Text("扫描到的内容：")
+                Text(context.getString(R.string.scanned_content))
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -280,25 +285,25 @@ private fun QRResultDialog(
                 TextButton(
                     onClick = { onCopy(result) },
                 ) {
-                    Text("复制")
+                    Text(context.getString(R.string.copy))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 TextButton(
                     onClick = { onConfirm(result) },
                 ) {
-                    Text("确定")
+                    Text(context.getString(R.string.ok))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(context.getString(R.string.cancel))
             }
         },
     )
 }
 
 private fun copyToClipboard(context: Context, text: String) {
-    val clipData = ClipData.newPlainText("QR扫描结果", text)
+    val clipData = ClipData.newPlainText(context.getString(R.string.qr_scan_result_label), text)
     context.clipboardManager.setPrimaryClip(clipData)
 }

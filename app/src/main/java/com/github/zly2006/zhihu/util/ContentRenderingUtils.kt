@@ -39,6 +39,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import io.ktor.client.HttpClient
@@ -243,7 +244,7 @@ suspend fun saveImageToGallery(
             Toast
                 .makeText(
                     context,
-                    "图片已保存到相册",
+                    context.getString(R.string.image_saved_to_gallery),
                     Toast.LENGTH_SHORT,
                 ).show()
         }
@@ -251,7 +252,7 @@ suspend fun saveImageToGallery(
         Toast
             .makeText(
                 context,
-                "保存失败: ${e.message}",
+                context.getString(R.string.save_failed, e.message ?: ""),
                 Toast.LENGTH_SHORT,
             ).show()
     }
@@ -279,12 +280,12 @@ suspend fun shareImage(
             type = "image/jpeg"
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
+        context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_image)))
     } catch (e: Exception) {
         Toast
             .makeText(
                 context,
-                "分享失败: ${e.message}",
+                context.getString(R.string.share_failed, e.message ?: ""),
                 Toast.LENGTH_SHORT,
             ).show()
     }

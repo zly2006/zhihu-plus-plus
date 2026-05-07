@@ -77,6 +77,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DailyStory
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -85,6 +86,7 @@ import com.github.zly2006.zhihu.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
+import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -196,10 +198,10 @@ fun DailyScreen(
                             }
                         }
                     }
-                }) { Text("确认") }
+                }) { Text(context.getString(R.string.confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
+                TextButton(onClick = { showDatePicker = false }) { Text(context.getString(R.string.cancel)) }
             },
         ) {
             DatePicker(state = datePickerState)
@@ -212,7 +214,7 @@ fun DailyScreen(
                 title = {
                     Column {
                         Text(
-                            "知乎日报",
+                            context.getString(R.string.daily_title),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                             ),
@@ -234,7 +236,7 @@ fun DailyScreen(
                         onClick = { showDatePicker = true },
                         modifier = Modifier.testTag(DAILY_SCREEN_DATE_PICKER_BUTTON_TAG),
                     ) {
-                        Icon(Icons.Filled.DateRange, contentDescription = "选择日期")
+                        Icon(Icons.Filled.DateRange, contentDescription = context.getString(R.string.daily_select_date))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -266,7 +268,7 @@ fun DailyScreen(
                             CircularProgressIndicator()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "正在加载...",
+                                context.getString(R.string.loading),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             )
@@ -282,7 +284,7 @@ fun DailyScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            uiState.error ?: "未知错误",
+                            context.getString(R.string.load_failed, uiState.error ?: context.getString(R.string.unknown_error)),
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -296,7 +298,7 @@ fun DailyScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "暂无内容",
+                            context.getString(R.string.no_content),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         )
@@ -482,9 +484,8 @@ fun DailyStoryCard(
 
 private fun formatDate(dateString: String): String = try {
     val inputFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-    val outputFormat = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
     val date = inputFormat.parse(dateString)
-    outputFormat.format(date ?: Date())
+    DateFormat.getDateInstance(DateFormat.LONG, Locale.getDefault()).format(date ?: Date())
 } catch (e: Exception) {
     dateString
 }

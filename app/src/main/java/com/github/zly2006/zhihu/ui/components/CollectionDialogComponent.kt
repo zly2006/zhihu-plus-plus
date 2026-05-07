@@ -50,8 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
@@ -84,7 +86,7 @@ fun CollectionDialogComponent(
             ) {
                 // 标题
                 Text(
-                    text = "选择收藏夹",
+                    text = context.getString(R.string.select_collection),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 16.dp),
@@ -114,13 +116,13 @@ fun CollectionDialogComponent(
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
-                                    contentDescription = "新建收藏夹",
+                                    contentDescription = context.getString(R.string.create_collection),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(24.dp),
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
-                                    text = "新建收藏夹",
+                                    text = context.getString(R.string.create_collection),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -164,6 +166,7 @@ private fun CollectionItem(
     collection: Collection,
     onToggle: () -> Unit,
 ) {
+    val context = LocalContext.current
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,7 +197,7 @@ private fun CollectionItem(
                     )
                 }
                 Text(
-                    text = "${collection.itemCount} 篇内容",
+                    text = context.getString(R.string.collection_content_count, collection.itemCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 2.dp),
@@ -203,7 +206,11 @@ private fun CollectionItem(
 
             Icon(
                 imageVector = if (collection.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                contentDescription = if (collection.isFavorited) "已收藏" else "未收藏",
+                contentDescription = if (collection.isFavorited) {
+                    context.getString(R.string.collection_favorited)
+                } else {
+                    context.getString(R.string.collection_not_favorited)
+                },
                 tint = if (collection.isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp),
             )

@@ -136,8 +136,8 @@ class LoginActivity : ComponentActivity() {
                             0 ->
                                 LoginNoticeScreen(
                                     stepTag = "login_notice_step_1",
-                                    message = "我清楚，本应用由开源社区开发和维护，不由知乎官方开发并运营，也不受到知乎官方的承认或支持，使用本应用的一切后果由我本人承担。我可以在 https://www.zhihu.com/app/ 下载官方应用。",
-                                    secondaryButtonText = "下载官方App",
+                                    message = getString(R.string.login_notice_community),
+                                    secondaryButtonText = getString(R.string.download_official_app),
                                     onSecondaryAction = {
                                         luoTianYiUrlLauncher(
                                             this@LoginActivity,
@@ -151,8 +151,8 @@ class LoginActivity : ComponentActivity() {
                             1 ->
                                 LoginNoticeScreen(
                                     stepTag = "login_notice_step_2",
-                                    message = "在使用本应用的过程中，我承诺遵守知乎使用协议 https://www.zhihu.com/term/zhihu-terms 。我保证在使用过程中不侵犯知乎及其他作者的著作权，使用本应用产生的一切输出仅用于个人浏览和备份，不会进行传播等其他影响作者著作权的行为。",
-                                    secondaryButtonText = "查看协议",
+                                    message = getString(R.string.login_notice_terms),
+                                    secondaryButtonText = getString(R.string.view_terms),
                                     onSecondaryAction = {
                                         luoTianYiUrlLauncher(
                                             this@LoginActivity,
@@ -166,8 +166,8 @@ class LoginActivity : ComponentActivity() {
                             else ->
                                 LoginNoticeScreen(
                                     stepTag = "login_notice_step_3",
-                                    message = "我知晓，本应用可能会收集部分匿名化的使用信息来确定使用人数，我可以在设置中随时关闭此项遥测。",
-                                    secondaryButtonText = "查看设置",
+                                    message = getString(R.string.login_notice_telemetry),
+                                    secondaryButtonText = getString(R.string.view_settings),
                                     onSecondaryAction = {
                                         startActivity(
                                             Intent(this@LoginActivity, MainActivity::class.java),
@@ -263,9 +263,9 @@ class LoginActivity : ComponentActivity() {
                 AlertDialog
                     .Builder(this)
                     .apply {
-                        setTitle("登录成功")
-                        setMessage("欢迎回来，${data.username}")
-                        setPositiveButton("OK") { _, _ -> }
+                        setTitle(getString(R.string.login_success))
+                        setMessage(getString(R.string.welcome_back, data.username))
+                        setPositiveButton(getString(R.string.ok)) { _, _ -> }
                         setOnDismissListener {
                             finish()
                         }
@@ -277,9 +277,9 @@ class LoginActivity : ComponentActivity() {
                 AlertDialog
                     .Builder(this)
                     .apply {
-                        setTitle("登录失败")
-                        setMessage("请重试")
-                        setPositiveButton("OK") { _, _ -> }
+                        setTitle(getString(R.string.login_failed))
+                        setMessage(getString(R.string.please_retry))
+                        setPositiveButton(getString(R.string.ok)) { _, _ -> }
                     }.create()
                     .show()
                 false
@@ -296,6 +296,7 @@ private fun LoginModeScreen(
     loginMode: Int,
     onModeChanged: (Int) -> Unit,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -307,14 +308,14 @@ private fun LoginModeScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LoginModeButton(
-                text = "网页登录",
+                text = context.getString(R.string.web_login),
                 selected = loginMode == LOGIN_MODE_WEB,
                 tag = "login_mode_web",
                 modifier = Modifier.weight(1f),
                 onClick = { onModeChanged(LOGIN_MODE_WEB) },
             )
             LoginModeButton(
-                text = "扫码登录",
+                text = context.getString(R.string.qr_scan_login),
                 selected = loginMode == LOGIN_MODE_QR,
                 tag = "login_mode_qr",
                 modifier = Modifier.weight(1f),
@@ -371,7 +372,7 @@ private fun QrLoginPane(activity: LoginActivity) {
     val context = LocalContext.current
     var refreshKey by rememberSaveable { mutableIntStateOf(0) }
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var statusText by remember { mutableStateOf("正在获取二维码") }
+    var statusText by remember(context) { mutableStateOf(context.getString(R.string.qr_fetching)) }
     var sessionCookies by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var riskControlUrl by remember { mutableStateOf<String?>(null) }
     var riskControlMessage by remember { mutableStateOf<String?>(null) }
@@ -381,17 +382,17 @@ private fun QrLoginPane(activity: LoginActivity) {
         val cookies = sessionCookies.toMutableMap()
         val client = AccountData.httpClient(context, cookies)
         qrBitmap = null
-        statusText = "正在获取二维码"
+        statusText = context.getString(R.string.qr_fetching)
         isWorking = true
 
         try {
             prefetchQrLoginContext(client, cookies)
-            val qrCode = requestQrCode(client, cookies)
+            val qrCode = requestQrCode(context, client, cookies)
             sessionCookies = cookies.toMap()
-            val qrLink = qrCode.link ?: throw IllegalStateException("知乎没有返回二维码链接")
-            val qrToken = qrCode.token ?: qrCode.qrcodeToken ?: throw IllegalStateException("知乎没有返回二维码 token")
+            val qrLink = qrCode.link ?: throw IllegalStateException(context.getString(R.string.qr_missing_link))
+            val qrToken = qrCode.token ?: qrCode.qrcodeToken ?: throw IllegalStateException(context.getString(R.string.qr_missing_token))
             qrBitmap = generateQrBitmap(qrLink)
-            statusText = "请打开知乎++ App 扫一扫"
+            statusText = context.getString(R.string.qr_open_zhihu_app_scan)
 
             val deadline = normalizeDeadline(qrCode.expiresAt)
             val success = pollQrCodeLogin(
@@ -400,30 +401,30 @@ private fun QrLoginPane(activity: LoginActivity) {
                 token = qrToken,
                 deadline = deadline,
                 onScanned = {
-                    statusText = "请在知乎 App 上确认登录"
+                    statusText = context.getString(R.string.qr_confirm_on_zhihu_app)
                 },
                 onRiskControl = { message, redirectUrl ->
                     sessionCookies = cookies.toMap()
-                    riskControlMessage = message ?: "知乎需要验证当前网络环境"
+                    riskControlMessage = message ?: context.getString(R.string.zhihu_risk_control_required)
                     riskControlUrl = redirectUrl ?: RISK_CONTROL_URL
-                    statusText = riskControlMessage ?: "知乎需要验证当前网络环境"
+                    statusText = riskControlMessage ?: context.getString(R.string.zhihu_risk_control_required)
                 },
             )
 
             if (success) {
-                statusText = "正在验证登录"
+                statusText = context.getString(R.string.qr_verifying_login)
                 isWorking = false
                 activity.finalizeLoginFromCookies(cookies)
             } else if (!riskControlUrl.isNullOrBlank()) {
                 isWorking = false
             } else {
-                statusText = "二维码已过期，请重试"
+                statusText = context.getString(R.string.qr_expired_retry)
                 isWorking = false
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            statusText = e.message ?: "二维码获取失败，请重试"
+            statusText = e.message ?: context.getString(R.string.qr_fetch_failed_retry)
             isWorking = false
         } finally {
             client.close()
@@ -438,7 +439,7 @@ private fun QrLoginPane(activity: LoginActivity) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = riskControlMessage ?: "请先完成知乎的网络环境验证",
+                text = riskControlMessage ?: context.getString(R.string.zhihu_risk_control_required),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
@@ -454,7 +455,7 @@ private fun QrLoginPane(activity: LoginActivity) {
                     .fillMaxWidth()
                     .testTag("qr_risk_control_continue"),
             ) {
-                Text("完成验证后继续扫码")
+                Text(context.getString(R.string.qr_complete_risk_continue))
             }
             Box(
                 modifier = Modifier
@@ -491,7 +492,7 @@ private fun QrLoginPane(activity: LoginActivity) {
         if (qrBitmap != null) {
             Image(
                 bitmap = qrBitmap!!.asImageBitmap(),
-                contentDescription = "知乎登录二维码",
+                contentDescription = context.getString(R.string.zhihu_login_qr),
                 modifier = Modifier
                     .size(260.dp)
                     .testTag("qr_login_image"),
@@ -537,7 +538,7 @@ private fun QrLoginPane(activity: LoginActivity) {
                 },
                 modifier = Modifier.testTag("qr_login_retry"),
             ) {
-                Text("刷新二维码")
+                Text(context.getString(R.string.refresh_qr_code))
             }
         }
     }
@@ -596,7 +597,7 @@ private fun LoginNoticeScreen(
                         .fillMaxWidth()
                         .testTag("login_notice_confirm"),
                 ) {
-                    Text("确认")
+                    Text(LocalContext.current.getString(R.string.confirm))
                 }
             }
         }
@@ -662,6 +663,7 @@ private suspend fun prefetchQrLoginContext(
 }
 
 private suspend fun requestQrCode(
+    context: android.content.Context,
     client: HttpClient,
     cookies: Map<String, String>,
 ): ZhihuQrCodeResponse {
@@ -677,7 +679,7 @@ private suspend fun requestQrCode(
     )
     val token = result.token ?: result.qrcodeToken
     if (response.status.value >= 400 || token.isNullOrBlank() || result.link.isNullOrBlank()) {
-        throw IllegalStateException("二维码获取失败：${response.status.value}")
+        throw IllegalStateException(context.getString(R.string.qr_fetch_failed_status, response.status.value))
     }
     return result.copy(token = token)
 }
@@ -704,7 +706,7 @@ private suspend fun pollQrCodeLogin(
             }
             if (response.status == HttpStatusCode.Forbidden) {
                 onRiskControl(
-                    "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
+                    null,
                     RISK_CONTROL_URL,
                 )
                 return false

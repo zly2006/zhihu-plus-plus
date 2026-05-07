@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.PaginatedList
@@ -76,7 +77,7 @@ fun CollectionScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "我的收藏夹",
+                        text = context.getString(R.string.my_collections),
                         modifier = Modifier.testTag(COLLECTION_SCREEN_TITLE_TAG),
                     )
                 },
@@ -85,7 +86,7 @@ fun CollectionScreen(
                         onClick = navigator.onNavigateBack,
                         modifier = Modifier.testTag(COLLECTION_SCREEN_BACK_BUTTON_TAG),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = context.getString(R.string.back))
                     }
                 },
                 windowInsets = WindowInsets(0),

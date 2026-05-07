@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
@@ -111,7 +112,7 @@ fun HotListScreen(
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(36.dp))
                     } else {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = context.getString(R.string.refresh))
                     }
                 }
             }

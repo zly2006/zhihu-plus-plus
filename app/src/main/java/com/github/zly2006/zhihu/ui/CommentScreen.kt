@@ -110,6 +110,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
@@ -338,7 +339,7 @@ private fun ClickableImageWithMenu(
     imageUrl: String,
     httpClient: HttpClient,
     modifier: Modifier = Modifier,
-    contentDescription: String = "图片",
+    contentDescription: String? = null,
     onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
@@ -385,7 +386,7 @@ private fun ClickableImageWithMenu(
         ) {
             DropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_OPEN_TAG),
-                text = { Text("查看图片") },
+                text = { Text(context.getString(R.string.view_image)) },
                 onClick = {
                     handleAction(CommentImageMenuAction.Open)
                     showContextMenu = false
@@ -393,7 +394,7 @@ private fun ClickableImageWithMenu(
             )
             DropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_BROWSER_TAG),
-                text = { Text("在浏览器中打开") },
+                text = { Text(context.getString(R.string.open_in_browser)) },
                 onClick = {
                     handleAction(CommentImageMenuAction.OpenInBrowser)
                     showContextMenu = false
@@ -401,7 +402,7 @@ private fun ClickableImageWithMenu(
             )
             DropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SAVE_TAG),
-                text = { Text("保存图片") },
+                text = { Text(context.getString(R.string.save_image)) },
                 onClick = {
                     handleAction(CommentImageMenuAction.Save)
                     showContextMenu = false
@@ -409,7 +410,7 @@ private fun ClickableImageWithMenu(
             )
             DropdownMenuItem(
                 modifier = Modifier.testTag(COMMENT_IMAGE_MENU_SHARE_TAG),
-                text = { Text("分享图片") },
+                text = { Text(context.getString(R.string.share_image)) },
                 onClick = {
                     showContextMenu = false
                     handleAction(CommentImageMenuAction.Share)
@@ -542,7 +543,7 @@ fun CommentScreen(
                         activeCommentItem == null && viewModel.allData.isEmpty() -> {
                             // Note: see LazyColumn below for activeCommentItem != null
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("暂无评论")
+                                Text(context.getString(R.string.no_comments))
                             }
                         }
 
@@ -634,12 +635,12 @@ fun CommentScreen(
                                             ) {
                                                 Icon(
                                                     Icons.AutoMirrored.Outlined.Comment,
-                                                    contentDescription = "查看子评论",
+                                                    contentDescription = context.getString(R.string.view_child_comments),
                                                     modifier = Modifier.size(16.dp),
                                                     tint = actionChipIconColor,
                                                 )
                                                 Text(
-                                                    "查看 ${commentItem.item.childCommentCount} 条子评论",
+                                                    context.getString(R.string.view_child_comments_count, commentItem.item.childCommentCount),
                                                     fontSize = 12.sp,
                                                     modifier = Modifier.padding(vertical = 1.dp, horizontal = 4.dp),
                                                 )
@@ -676,7 +677,7 @@ fun CommentScreen(
                                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                                     Text(
                                                         // Note: activeCommentItem != null, so this is a child comment view
-                                                        "暂无回复",
+                                                        context.getString(R.string.no_replies),
                                                     )
                                                 }
                                             }
@@ -706,7 +707,7 @@ fun CommentScreen(
                                                 modifier = Modifier.testTag(COMMENT_SORT_SCORE_TAG),
                                                 label = {
                                                     Text(
-                                                        "最热",
+                                                        context.getString(R.string.hottest),
                                                         color = if (viewModel.sortOrder == CommentSortOrder.SCORE) {
                                                             MaterialTheme.colorScheme.primary
                                                         } else {
@@ -728,7 +729,7 @@ fun CommentScreen(
                                                 modifier = Modifier.testTag(COMMENT_SORT_TIME_TAG),
                                                 label = {
                                                     Text(
-                                                        "最新",
+                                                        context.getString(R.string.latest),
                                                         color = if (viewModel.sortOrder == CommentSortOrder.TIME) {
                                                             MaterialTheme.colorScheme.primary
                                                         } else {
@@ -845,7 +846,7 @@ fun CommentScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "回复 ${replyToComment?.item?.author?.name ?: ""}",
+                                        text = context.getString(R.string.reply_to, replyToComment?.item?.author?.name ?: ""),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.weight(1f),
@@ -858,7 +859,7 @@ fun CommentScreen(
                                     ) {
                                         Icon(
                                             Icons.Default.Close,
-                                            contentDescription = "取消回复",
+                                            contentDescription = context.getString(R.string.cancel_reply),
                                             modifier = Modifier.size(16.dp),
                                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                         )
@@ -885,9 +886,9 @@ fun CommentScreen(
                                         if (commentInput.isEmpty()) {
                                             Text(
                                                 if (replyToComment != null) {
-                                                    "回复 ${replyToComment?.item?.author?.name}..."
+                                                    context.getString(R.string.reply_to_placeholder, replyToComment?.item?.author?.name ?: "")
                                                 } else {
-                                                    "写下你的评论..."
+                                                    context.getString(R.string.comment_placeholder)
                                                 },
                                                 fontSize = 16.sp,
                                             )
@@ -918,7 +919,7 @@ fun CommentScreen(
                                 } else {
                                     Icon(
                                         Icons.AutoMirrored.Outlined.Send,
-                                        contentDescription = "发送评论",
+                                        contentDescription = context.getString(R.string.send_comment),
                                         tint = if (commentInput.isNotBlank()) {
                                             MaterialTheme.colorScheme.primary
                                         } else {
@@ -949,6 +950,7 @@ private fun CommentItem(
     onImageMenuAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
     val commentData = comment.item
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -959,7 +961,7 @@ private fun CommentItem(
             // 头像
             AsyncImage(
                 model = commentData.author.avatarUrl,
-                contentDescription = "头像",
+                contentDescription = context.getString(R.string.avatar),
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape),
@@ -1005,7 +1007,7 @@ private fun CommentItem(
                     if (commentData.replyToAuthor != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            "回复",
+                            context.getString(R.string.reply),
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -1034,8 +1036,6 @@ private fun CommentItem(
                     document.selectFirst("a.comment_img")?.attr("href")
                         ?: document.selectFirst("a.comment_gif")?.attr("href")
                         ?: document.selectFirst("a.comment_sticker")?.attr("href")
-                val context = LocalContext.current
-
                 // 收集所有使用的emoji
                 val emojisUsed = remember { mutableSetOf<String>() }
                 val string = remember(commentData.content) {
@@ -1072,7 +1072,7 @@ private fun CommentItem(
                                 .padding(top = 8.dp)
                                 .sizeIn(maxHeight = 100.dp, maxWidth = 240.dp)
                                 .clip(RoundedCornerShape(12.dp)),
-                            contentDescription = "评论图片",
+                            contentDescription = context.getString(R.string.comment_image),
                             onAction = onImageMenuAction,
                         )
                     }
@@ -1137,7 +1137,7 @@ private fun CommentItem(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Outlined.Comment,
-                        contentDescription = "回复",
+                        contentDescription = context.getString(R.string.reply),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1170,7 +1170,7 @@ private fun CommentItem(
                     } else {
                         Icons.Outlined.ThumbUp
                     },
-                    contentDescription = "点赞",
+                    contentDescription = context.getString(R.string.like),
                     modifier = Modifier.size(16.dp),
                     tint = if (isLiked) {
                         MaterialTheme.colorScheme.primary
@@ -1215,17 +1215,17 @@ private fun CommentItemPreview() {
     val comment = CommentModel(
         item = DataHolder.Comment(
             id = "123",
-            content = "<p>这是一条评论<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
+            content = "<p>This is a comment<br/>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eleifend nisl vitae est tincidunt, non rhoncus magna cursus.</p>",
             createdTime = System.currentTimeMillis() / 1000,
             author = DataHolder.Comment.Author(
-                name = "作者",
+                name = "Author",
                 avatarUrl = "https://i1.hdslb.com/bfs/face/b93b6ff0c1d434ae8026a4bedc82d0d883b5da95.jpg",
                 isOrg = false,
                 type = "people",
                 url = "",
                 urlToken = "",
                 id = "",
-                headline = "个人介绍",
+                headline = "Bio",
                 avatarUrlTemplate = "",
                 isAdvertiser = false,
                 gender = 0,
@@ -1281,18 +1281,18 @@ fun CommentAuthorTagPreview() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "作者名",
+            text = "Author",
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
             modifier = Modifier.clickable { },
         )
 
         Spacer(modifier = Modifier.width(4.dp))
-        AuthorTag("作者")
+        AuthorTag("Author")
 
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            "回复",
+            "Reply",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

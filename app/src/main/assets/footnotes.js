@@ -1,6 +1,9 @@
 // noinspection ES6ConvertVarToLetConst
 
 (function() {
+    var footnotesTitleText = window.zhihuPlusFootnotesTitle || 'References';
+    var openLinkText = window.zhihuPlusOpenLinkText || 'Open link';
+
     function scrollToElement(element, back) {
         if (typeof AndroidInterface !== 'undefined' && AndroidInterface.scrollToHeight) {
             AndroidInterface.scrollToHeight(Math.round(element.getBoundingClientRect().top + (back ? 0 : 60)), Math.round(document.body.scrollHeight));
@@ -22,7 +25,7 @@
 
     // 添加脚注标题
     var footnotesTitle = document.createElement('h4');
-    footnotesTitle.textContent = '参考资料';
+    footnotesTitle.textContent = footnotesTitleText;
     footnotesContainer.appendChild(footnotesTitle);
 
     // 创建脚注列表
@@ -76,7 +79,7 @@
         // 添加脚注文本
         if (url) {
             var link = document.createElement('a');
-            link.textContent = text || '打开链接';
+            link.textContent = text || openLinkText;
             link.href = url;
             link.target = '_blank';
             link.className = 'footnote-url';
