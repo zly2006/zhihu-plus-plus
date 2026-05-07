@@ -1,5 +1,8 @@
 name: Build Check
 on:
+  push:
+    branches-ignore:
+      - master
   workflow_dispatch:
 
 jobs:

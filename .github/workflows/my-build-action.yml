@@ -113,23 +113,13 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
           CI_BUILD_MINIFY: ${{ inputs.minify }}
-      - name: List APK outputs
-        run: find app/build/outputs/apk -name "*.apk" -type f
       - name: Move files
         run: |
           mkdir -p app/build/upload
-          mv app/build/outputs/apk/full/release/app-full-release*.apk app/build/upload/zhihu++-full.apk
-          mv app/build/outputs/apk/lite/release/app-lite-release*.apk app/build/upload/zhihu++-lite.apk
-      - name: Check signing key
-        id: check_signing
-        run: |
-          if [ -f app/zhihu.jks ] && [ -n "${{ secrets.ANDROID_SIGNING_KEY }}" ]; then
-            echo "has_signing=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_signing=false" >> "$GITHUB_OUTPUT"
-          fi
+          mv app/build/outputs/apk/full/release/app-full-release.apk app/build/upload/zhihu++-full.apk
+          mv app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite.apk
       - name: Recompress APK
-        if: ${{ inputs.minify && steps.check_signing.outputs.has_signing == 'true' }}
+        if: ${{ inputs.minify }}
         env:
           KEYSTORE_PATH: ../app/zhihu.jks
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

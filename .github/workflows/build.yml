@@ -2,6 +2,8 @@ name: Nightly Builds
 
 on:
   push:
+    branches:
+      - master
     tags:
       - '*'
   workflow_dispatch:
