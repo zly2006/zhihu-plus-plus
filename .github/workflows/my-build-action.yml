@@ -113,6 +113,8 @@ jobs:
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
           CI_BUILD_MINIFY: ${{ inputs.minify }}
+      - name: List APK outputs
+        run: find app/build/outputs/apk -name "*.apk" -type f
       - name: Move files
         run: |
           mkdir -p app/build/upload
