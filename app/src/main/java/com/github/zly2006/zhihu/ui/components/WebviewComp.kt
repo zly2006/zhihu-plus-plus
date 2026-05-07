@@ -392,10 +392,10 @@ class CustomWebView : WebView {
     fun injectFootnoteScript() {
         val jsCode = loadJavaScriptFromAssets("footnotes.js")
         if (jsCode.isNotEmpty()) {
-            val localizedJs = """
-                window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};
-                window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};
-            """.trimIndent()
+            val localizedJs = listOf(
+                "window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};",
+                "window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};",
+            ).joinToString("\n")
             evaluateJavascript("$localizedJs\n$jsCode", null)
         }
     }

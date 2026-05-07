@@ -379,10 +379,12 @@ object ContentFilterExtensions {
         blockZhihuAdPlatform: Boolean,
         blockZhihuSchool: Boolean,
         blockWeChatOfficialAccount: Boolean,
-    ): Boolean =
-        blockZhihuAdPlatform && "xg.zhihu.com" in content ||
-            blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content) ||
-            blockWeChatOfficialAccount && "mp.weixin.qq.com" in content
+    ): Boolean {
+        val isZhihuAdPlatform = blockZhihuAdPlatform && "xg.zhihu.com" in content
+        val isZhihuSchool = blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content)
+        val isWeChatOfficialAccount = blockWeChatOfficialAccount && "mp.weixin.qq.com" in content
+        return isZhihuAdPlatform || isZhihuSchool || isWeChatOfficialAccount
+    }
 
     private fun getLinkBasedAdReason(
         context: Context,
@@ -464,11 +466,9 @@ object ContentFilterExtensions {
             if (blockedThisRound.isNotEmpty()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.nlp_blocked_toast, blockedThisRound.first().title.take(10), blockedThisRound.size),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        val titlePreview = blockedThisRound.first().title.take(10)
+                        val message = context.getString(R.string.nlp_blocked_toast, titlePreview, blockedThisRound.size)
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
             }

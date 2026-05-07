@@ -519,11 +519,10 @@ class ArticleViewModel(
 
                 if (response.status.isSuccess()) {
                     loadCollections(context)
-                    Toast.makeText(
-                        context,
-                        if (remove) context.getString(R.string.unfavorite_success) else context.getString(R.string.favorite_success),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    val message = context.getString(
+                        if (remove) R.string.unfavorite_success else R.string.favorite_success,
+                    )
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(context, context.getString(R.string.favorite_operation_failed), Toast.LENGTH_SHORT).show()
                 }
@@ -1023,10 +1022,10 @@ class ArticleViewModel(
         }
 
         runCatching {
-            val localizedJs = """
-                window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};
-                window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};
-            """.trimIndent()
+            val localizedJs = listOf(
+                "window.zhihuPlusFootnotesTitle = ${JSONObject.quote(context.getString(R.string.footnotes_title))};",
+                "window.zhihuPlusOpenLinkText = ${JSONObject.quote(context.getString(R.string.open_link))};",
+            ).joinToString("\n")
             webView.evaluateJavascript("$localizedJs\n$jsCode") {
                 onInjected()
             }

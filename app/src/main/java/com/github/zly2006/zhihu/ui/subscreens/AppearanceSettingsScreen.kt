@@ -336,13 +336,11 @@ fun AppearanceSettingsScreen(
                                 OutlinedButton(
                                     onClick = {
                                         ThemeManager.setThemeMode(context, mode)
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.switched_to, label),
-                                                Toast.LENGTH_SHORT,
-                                            )
-                                            .show()
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.switched_to, label),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         containerColor = if (isSelected) {
@@ -376,9 +374,7 @@ fun AppearanceSettingsScreen(
                         } else {
                             R.string.dynamic_color_disabled
                         }
-                        Toast
-                            .makeText(context, context.getString(messageResId), Toast.LENGTH_SHORT)
-                            .show()
+                        Toast.makeText(context, context.getString(messageResId), Toast.LENGTH_SHORT).show()
                     },
                     settingKey = "dynamicColor",
                     highlightedKey = setting,
@@ -411,13 +407,11 @@ fun AppearanceSettingsScreen(
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
                             ThemeManager.setCustomColor(context, color)
-                            Toast
-                                .makeText(
-                                    context,
-                                    context.getString(R.string.theme_color_saved),
-                                    Toast.LENGTH_SHORT,
-                                )
-                                .show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.theme_color_saved),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                             showColorPicker = false
                         },
                     )
@@ -464,13 +458,11 @@ fun AppearanceSettingsScreen(
                                 (color.blue * 255).toInt(),
                             )
                             preferences.edit { putInt("luotianyi_color", argbColor) }
-                            Toast
-                                .makeText(
-                                    context,
-                                    context.getString(R.string.browser_color_saved),
-                                    Toast.LENGTH_SHORT,
-                                )
-                                .show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.browser_color_saved),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                             showLuotianYiColorPicker = false
                         },
                     )
@@ -513,13 +505,11 @@ fun AppearanceSettingsScreen(
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
                             ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
-                            Toast
-                                .makeText(
-                                    context,
-                                    context.getString(R.string.bg_color_saved),
-                                    Toast.LENGTH_SHORT,
-                                )
-                                .show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.bg_color_saved),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                             showBackgroundColorPicker = false
                         },
                     )
@@ -567,15 +557,14 @@ fun AppearanceSettingsScreen(
                                         onClick = {
                                             currentLanguageCode.value = code
                                             languageExpanded = false
-                                            val toast = Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(
-                                                        R.string.language_changed,
-                                                        label,
-                                                    ),
-                                                    Toast.LENGTH_SHORT,
-                                                )
+                                            val toast = Toast.makeText(
+                                                context,
+                                                context.getString(
+                                                    R.string.language_changed,
+                                                    label,
+                                                ),
+                                                Toast.LENGTH_SHORT,
+                                            )
                                             toast.show()
                                             LocaleManager.applyAndRecreate(context, code)
                                         },
@@ -697,13 +686,11 @@ fun AppearanceSettingsScreen(
                                             feedCardStyle.value = mode
                                             preferences.edit { putString("feedCardStyle", mode) }
                                             feedCardStyleExpanded = false
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(R.string.set_to, label),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.set_to, label),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }
@@ -752,13 +739,11 @@ fun AppearanceSettingsScreen(
                             putString("webviewCustomFontName", name)
                         }
                         customFontName = name
-                        Toast
-                            .makeText(
-                                context,
-                                context.getString(R.string.font_applied_on_reload),
-                                Toast.LENGTH_SHORT,
-                            )
-                            .show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.font_applied_on_reload),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
                     Column(
                         modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
@@ -793,13 +778,11 @@ fun AppearanceSettingsScreen(
                                                 java.io.File(context.filesDir, "custom_font").delete()
                                                 preferences.edit { remove("webviewCustomFontName") }
                                                 customFontName = null
-                                                Toast
-                                                    .makeText(
-                                                        context,
-                                                        context.getString(R.string.font_cleared),
-                                                        Toast.LENGTH_SHORT,
-                                                    )
-                                                    .show()
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.font_cleared),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             },
                                             modifier = Modifier.weight(1f),
                                         ) {
@@ -923,13 +906,11 @@ fun AppearanceSettingsScreen(
                                             answerSwitchMode.value = mode
                                             preferences.edit { putString("answerSwitchMode", mode) }
                                             answerSwitchExpanded = false
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(R.string.set_to, label),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.set_to, label),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }
@@ -949,12 +930,14 @@ fun AppearanceSettingsScreen(
                         ),
                     )
                 }
+
                 fun answerDoubleTapLabel(action: AnswerDoubleTapAction): String = when (action) {
                     AnswerDoubleTapAction.None -> context.getString(R.string.double_tap_none)
                     AnswerDoubleTapAction.Ask -> context.getString(R.string.double_tap_ask)
                     AnswerDoubleTapAction.VoteUp -> context.getString(R.string.double_tap_vote_up)
                     AnswerDoubleTapAction.OpenComments -> context.getString(R.string.double_tap_open_comments)
                 }
+
                 SettingItem(
                     title = { Text(context.getString(R.string.answer_double_tap)) },
                     description = { Text(context.getString(R.string.answer_double_tap_desc)) },
@@ -994,13 +977,11 @@ fun AppearanceSettingsScreen(
                                                 )
                                             }
                                             answerDoubleTapExpanded = false
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(R.string.set_to, actionLabel),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.set_to, actionLabel),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }
@@ -1095,13 +1076,11 @@ fun AppearanceSettingsScreen(
                                             startDestinationKey = key
                                             preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, key) }
                                             startDestinationExpanded = false
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(R.string.start_page_restart_hint, label),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.start_page_restart_hint, label),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }
@@ -1137,23 +1116,19 @@ fun AppearanceSettingsScreen(
                                         .clickable(enabled = isEnabled) {
                                             when {
                                                 candidateSet.size < 3 -> {
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            context.getString(R.string.at_least_3_items),
-                                                            Toast.LENGTH_SHORT,
-                                                        )
-                                                        .show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        context.getString(R.string.at_least_3_items),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
                                                 }
 
                                                 candidateSet.size > 5 -> {
-                                                    Toast
-                                                        .makeText(
-                                                            context,
-                                                            context.getString(R.string.at_most_5_items),
-                                                            Toast.LENGTH_SHORT,
-                                                        )
-                                                        .show()
+                                                    Toast.makeText(
+                                                        context,
+                                                        context.getString(R.string.at_most_5_items),
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
                                                 }
 
                                                 else -> persistBottomBarSelection(candidateSet)
@@ -1249,13 +1224,11 @@ fun AppearanceSettingsScreen(
                                             shareActionMode.value = mode
                                             preferences.edit { putString("shareActionMode", mode) }
                                             shareActionExpanded = false
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    context.getString(R.string.set_to, label),
-                                                    Toast.LENGTH_SHORT,
-                                                )
-                                                .show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.set_to, label),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
                                         },
                                     )
                                 }
@@ -1296,9 +1269,7 @@ fun AppearanceSettingsScreen(
                     onCheckedChange = {
                         useCustomNavHost.value = it
                         preferences.edit { putBoolean("use_custom_nav_host", it) }
-                        Toast
-                            .makeText(context, context.getString(R.string.restart_required), Toast.LENGTH_SHORT)
-                            .show()
+                        Toast.makeText(context, context.getString(R.string.restart_required), Toast.LENGTH_SHORT).show()
                     },
                 )
 

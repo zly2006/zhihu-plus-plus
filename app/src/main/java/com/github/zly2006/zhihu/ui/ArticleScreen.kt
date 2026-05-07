@@ -1865,11 +1865,11 @@ fun ArticleScreen(
                     onClick = {
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.None)),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        val message = context.getString(
+                            R.string.answer_double_tap_set_to,
+                            answerDoubleTapLabel(AnswerDoubleTapAction.None),
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1880,11 +1880,11 @@ fun ArticleScreen(
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
                         upVoteFromDoubleTap()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.VoteUp)),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        val message = context.getString(
+                            R.string.answer_double_tap_set_to,
+                            answerDoubleTapLabel(AnswerDoubleTapAction.VoteUp),
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -1895,11 +1895,11 @@ fun ArticleScreen(
                         showDoubleTapActionDialog = false
                         saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
                         showComments = true
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.answer_double_tap_set_to, answerDoubleTapLabel(AnswerDoubleTapAction.OpenComments)),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        val message = context.getString(
+                            R.string.answer_double_tap_set_to,
+                            answerDoubleTapLabel(AnswerDoubleTapAction.OpenComments),
+                        )
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
