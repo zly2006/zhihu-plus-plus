@@ -30,6 +30,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+private const val ONE_MINUTE_MS = 60_000L
+
 class ContinuousUsageReminderManager(
     private val activity: ComponentActivity,
 ) {
@@ -216,8 +218,6 @@ class ContinuousUsageReminderPolicy(
     }
 
     companion object {
-        private const val ONE_MINUTE_MS = 60_000L
-
         val SUPPORTED_INTERVALS_MINUTES = setOf(15, 30, 60)
 
         fun normalizeIntervalMinutes(intervalMinutes: Int): Int = if (intervalMinutes in SUPPORTED_INTERVALS_MINUTES) {

@@ -462,6 +462,7 @@ private fun FeedCardContent(
     duo3CardLargeTitle: Boolean,
 ) {
     val navigator = LocalNavigator.current
+    val context = LocalContext.current
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
         if (!item.title.isEmpty()) {

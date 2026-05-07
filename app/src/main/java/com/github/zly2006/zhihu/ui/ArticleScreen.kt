@@ -539,6 +539,7 @@ private fun ArticleSummarySheet(
     onRetryRequest: () -> Unit,
 ) {
     if (!showDialog) return
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     MyModalBottomSheet(
