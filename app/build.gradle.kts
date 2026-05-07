@@ -77,7 +77,7 @@ android {
     }
 
     signingConfigs {
-        if (System.getenv("signingKey") != null) {
+        if (!System.getenv("signingKey").isNullOrEmpty()) {
             register("env") {
                 storeFile =
                     file("zhihu.jks").apply {
@@ -100,7 +100,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
-            if (System.getenv("signingKey") != null) {
+            if (!System.getenv("signingKey").isNullOrEmpty()) {
                 signingConfig = signingConfigs["env"]
             }
         }
