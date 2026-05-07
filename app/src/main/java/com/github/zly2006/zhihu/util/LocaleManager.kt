@@ -60,17 +60,17 @@ object LocaleManager {
             @Suppress("DEPRECATION")
             android.content.res.Resources.getSystem().configuration.locale
         }
+        val language = sysLocale.language
+        val country = sysLocale.country
         return when {
-            sysLocale.language == "zh" && sysLocale.country == "TW" -> "zh-TW"
-            sysLocale.language == "zh" && sysLocale.country == "HK" -> "zh-TW"
-            sysLocale.language == "zh" -> "zh-CN"
+            language == "zh" && country == "TW" -> "zh-TW"
+            language == "zh" && country == "HK" -> "zh-TW"
+            language == "zh" -> "zh-CN"
             else -> "en"
         }
     }
 
-    fun getSelectedLocale(context: Context): Locale {
-        return codeToLocale(getLanguageCode(context))
-    }
+    fun getSelectedLocale(context: Context): Locale = codeToLocale(getLanguageCode(context))
 
     fun setLanguage(context: Context, languageCode: String) {
         prefs(context).edit {
@@ -79,9 +79,8 @@ object LocaleManager {
         }
     }
 
-    fun isLanguageManuallySet(context: Context): Boolean {
-        return prefs(context).getBoolean(PREF_LANGUAGE_MANUALLY_SET, false)
-    }
+    fun isLanguageManuallySet(context: Context): Boolean =
+        prefs(context).getBoolean(PREF_LANGUAGE_MANUALLY_SET, false)
 
     /**
      * 用于 Activity.attachBaseContext() 中，确保 Activity 使用正确的 locale。
@@ -119,7 +118,6 @@ object LocaleManager {
         return context
     }
 
-    private fun codeToLocale(code: String): Locale {
-        return SUPPORTED_LANGUAGES.find { it.code == code }?.locale ?: Locale.ENGLISH
-    }
+    private fun codeToLocale(code: String): Locale =
+        SUPPORTED_LANGUAGES.find { it.code == code }?.locale ?: Locale.ENGLISH
 }

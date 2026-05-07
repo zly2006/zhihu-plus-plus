@@ -66,8 +66,8 @@ import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
-import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.LocaleManager
+import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
