@@ -97,6 +97,8 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.util.LocaleManager
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -483,6 +485,66 @@ fun AppearanceSettingsScreen(
                     )
                 }
             }
+            // ── 语言 ────────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = context.getString(R.string.language),
+            ) {
+                var languageExpanded by remember { mutableStateOf(false) }
+                val currentLanguageCode = remember { mutableStateOf(LocaleManager.getLanguageCode(context)) }
+                val languageOptions = listOf(
+                    Triple("en", "English", context.getString(R.string.language_en)),
+                    Triple("zh-CN", "简体中文", context.getString(R.string.language_zh_cn)),
+                    Triple("zh-TW", "繁體中文", context.getString(R.string.language_zh_tw)),
+                )
+                SettingItem(
+                    title = { Text(context.getString(R.string.language)) },
+                    description = { Text(context.getString(R.string.language_desc)) },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = languageExpanded,
+                            onExpandedChange = { languageExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = languageOptions.find { it.first == currentLanguageCode.value }?.third ?: "English",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = languageExpanded,
+                                onDismissRequest = { languageExpanded = false },
+                            ) {
+                                languageOptions.forEach { (code, _name, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            currentLanguageCode.value = code
+                                            languageExpanded = false
+                                            val activity = context as? android.app.Activity
+                                            if (activity != null) {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(
+                                                        R.string.language_changed,
+                                                        label,
+                                                    ),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                                LocaleManager.applyAndRecreate(activity, code)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
             // ── 阅读 ────────────────────────────────────────────────────────────
             SettingItemGroup(
                 title = "阅读",

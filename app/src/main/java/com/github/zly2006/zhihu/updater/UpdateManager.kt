@@ -43,6 +43,51 @@ object UpdateManager {
     private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
     private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
 
+    const val PREF_CUSTOM_LATEST_URL = "customLatestUrl"
+    const val PREF_CUSTOM_REDEN_API_URL = "customRedenApiUrl"
+    const val PREF_CUSTOM_NIGHTLY_URL = "customNightlyUrl"
+
+    private fun getLatestUrl(context: Context): String =
+        getCustomUrl(context, PREF_CUSTOM_LATEST_URL, GITHUB_API_LATEST)
+
+    private fun getRedenApiUrl(context: Context): String =
+        getCustomUrl(context, PREF_CUSTOM_REDEN_API_URL, REDEN_API_LATEST)
+
+    private fun getNightlyUrl(context: Context): String =
+        getCustomUrl(context, PREF_CUSTOM_NIGHTLY_URL, GITHUB_API_NIGHTLY)
+
+    private fun getCustomUrl(context: Context, key: String, default: String): String {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return preferences.getString(key, null)?.takeIf { it.isNotBlank() } ?: default
+    }
+
+    fun getCustomLatestUrl(context: Context): String =
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_CUSTOM_LATEST_URL, null)?.takeIf { it.isNotBlank() } ?: GITHUB_API_LATEST
+
+    fun getCustomRedenApiUrl(context: Context): String =
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_CUSTOM_REDEN_API_URL, null)?.takeIf { it.isNotBlank() } ?: REDEN_API_LATEST
+
+    fun getCustomNightlyUrl(context: Context): String =
+        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_CUSTOM_NIGHTLY_URL, null)?.takeIf { it.isNotBlank() } ?: GITHUB_API_NIGHTLY
+
+    fun setCustomUrl(context: Context, key: String, url: String) {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val default = when (key) {
+            PREF_CUSTOM_LATEST_URL -> GITHUB_API_LATEST
+            PREF_CUSTOM_REDEN_API_URL -> REDEN_API_LATEST
+            PREF_CUSTOM_NIGHTLY_URL -> GITHUB_API_NIGHTLY
+            else -> return
+        }
+        if (url.isBlank() || url == default) {
+            preferences.edit { remove(key) }
+        } else {
+            preferences.edit { putString(key, url) }
+        }
+    }
+
     /**
      * 自动检查更新要跳过的版本
      */
@@ -157,11 +202,13 @@ object UpdateManager {
 
     suspend fun getLatestVersion(context: Context): GithubRelease {
         val client = AccountData.httpClient(context)
+        val redenUrl = getRedenApiUrl(context)
+        val latestUrl = getLatestUrl(context)
         return runCatching {
-            client.get(REDEN_API_LATEST).raiseForStatus().body<GithubRelease>()
+            client.get(redenUrl).raiseForStatus().body<GithubRelease>()
         }.getOrNull() ?: run {
             client
-                .get(GITHUB_API_LATEST) {
+                .get(latestUrl) {
                     getGitHubToken(context)?.let { token ->
                         headers {
                             append(HttpHeaders.Authorization, "Bearer $token")
@@ -243,7 +290,7 @@ object UpdateManager {
             if (checkNightly) {
                 try {
                     val nightlyResponse = client
-                        .get(GITHUB_API_NIGHTLY) {
+                        .get(getNightlyUrl(context)) {
                             getGitHubToken(context)?.let { token ->
                                 headers {
                                     append(HttpHeaders.Authorization, "Bearer $token")

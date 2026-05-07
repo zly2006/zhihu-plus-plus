@@ -356,6 +356,57 @@ fun SystemAndUpdateSettingsScreen(
                     },
                 )
 
+                var customLatestUrl by remember { mutableStateOf(UpdateManager.getCustomLatestUrl(context)) }
+                SettingItem(
+                    title = { Text(context.getString(R.string.update_latest_url)) },
+                    description = { Text(context.getString(R.string.update_latest_url_desc)) },
+                    bottomAction = {
+                        OutlinedTextField(
+                            value = customLatestUrl,
+                            onValueChange = {
+                                customLatestUrl = it
+                                UpdateManager.setCustomUrl(context, UpdateManager.PREF_CUSTOM_LATEST_URL, it)
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            singleLine = true,
+                        )
+                    },
+                )
+
+                var customRedenApiUrl by remember { mutableStateOf(UpdateManager.getCustomRedenApiUrl(context)) }
+                SettingItem(
+                    title = { Text(context.getString(R.string.update_reden_api_url)) },
+                    description = { Text(context.getString(R.string.update_reden_api_url_desc)) },
+                    bottomAction = {
+                        OutlinedTextField(
+                            value = customRedenApiUrl,
+                            onValueChange = {
+                                customRedenApiUrl = it
+                                UpdateManager.setCustomUrl(context, UpdateManager.PREF_CUSTOM_REDEN_API_URL, it)
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            singleLine = true,
+                        )
+                    },
+                )
+
+                var customNightlyUrl by remember { mutableStateOf(UpdateManager.getCustomNightlyUrl(context)) }
+                SettingItem(
+                    title = { Text(context.getString(R.string.update_nightly_url)) },
+                    description = { Text(context.getString(R.string.update_nightly_url_desc)) },
+                    bottomAction = {
+                        OutlinedTextField(
+                            value = customNightlyUrl,
+                            onValueChange = {
+                                customNightlyUrl = it
+                                UpdateManager.setCustomUrl(context, UpdateManager.PREF_CUSTOM_NIGHTLY_URL, it)
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            singleLine = true,
+                        )
+                    },
+                )
+
                 var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
                 SettingItemWithSwitch(
                     title = { Text("允许发送遥测统计数据") },

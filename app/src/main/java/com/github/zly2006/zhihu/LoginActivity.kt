@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.LocaleManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
@@ -104,6 +105,10 @@ private const val DESKTOP_SEC_CH_UA_MOBILE = "?0"
 private const val DESKTOP_SEC_CH_UA_PLATFORM = "\"Windows\""
 
 class LoginActivity : ComponentActivity() {
+    override fun attachBaseContext(base: android.content.Context?) {
+        super.attachBaseContext(base?.let { LocaleManager.wrapContext(it) })
+    }
+
     private var isCompletingLogin = false
 
     override fun onCreate(savedInstanceState: Bundle?) {

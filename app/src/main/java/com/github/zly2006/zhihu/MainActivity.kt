@@ -67,6 +67,7 @@ import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
+import com.github.zly2006.zhihu.util.LocaleManager
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.clearShareImageCache
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -85,6 +86,10 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(base: android.content.Context?) {
+        super.attachBaseContext(base?.let { LocaleManager.wrapContext(it) })
+    }
+
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }

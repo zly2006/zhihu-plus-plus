@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.QRCodeScanActivity.Companion.LOGIN_PREFIX
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.util.LocaleManager
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.journeyapps.barcodescanner.ScanContract
@@ -72,6 +73,10 @@ import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
 
 class QRCodeScanActivity : ComponentActivity() {
+    override fun attachBaseContext(base: android.content.Context?) {
+        super.attachBaseContext(base?.let { LocaleManager.wrapContext(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdgeCompat()

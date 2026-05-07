@@ -36,11 +36,16 @@ import androidx.webkit.WebViewClientCompat
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.util.LocaleManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import io.ktor.http.Url
 
 class WebviewActivity : ComponentActivity() {
+    override fun attachBaseContext(base: android.content.Context?) {
+        super.attachBaseContext(base?.let { LocaleManager.wrapContext(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
