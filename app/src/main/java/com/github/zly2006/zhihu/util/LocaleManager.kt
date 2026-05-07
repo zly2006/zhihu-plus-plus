@@ -21,6 +21,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
+import android.os.LocaleList
 import androidx.core.content.edit
 import java.util.Locale
 
@@ -79,6 +80,7 @@ object LocaleManager {
     fun getSelectedLocale(context: Context): Locale = codeToLocale(getLanguageCode(context))
 
     fun setLanguage(context: Context, languageCode: String) {
+        applyProcessLocale(codeToLocale(languageCode))
         prefs(context).edit {
             putString(PREF_KEY_LANGUAGE, languageCode)
             putBoolean(PREF_LANGUAGE_MANUALLY_SET, true)
@@ -110,18 +112,28 @@ object LocaleManager {
     }
 
     private fun updateResources(context: Context, locale: Locale): Context {
+        applyProcessLocale(locale)
         val config = Configuration(context.resources.configuration)
         config.setLocale(locale)
+        config.setLocales(LocaleList(locale))
         return context.createConfigurationContext(config)
     }
 
     @Suppress("DEPRECATION")
     private fun updateResourcesLegacy(context: Context, locale: Locale): Context {
+        applyProcessLocale(locale)
         val resources = context.resources
         val config = Configuration(resources.configuration)
         config.locale = locale
         resources.updateConfiguration(config, resources.displayMetrics)
         return context
+    }
+
+    private fun applyProcessLocale(locale: Locale) {
+        Locale.setDefault(locale)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            LocaleList.setDefault(LocaleList(locale))
+        }
     }
 
     private fun codeToLocale(code: String): Locale =

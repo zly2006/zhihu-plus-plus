@@ -932,12 +932,12 @@ fun AppearanceSettingsScreen(
 
             // ── 底部导航栏 ──────────────────────────────────────────────────────
             val allBottomBarItems = listOf(
-                Home.name to "主页",
-                Follow.name to "关注",
-                HotList.name to "热榜",
-                Daily.name to "日报",
-                OnlineHistory.name to "历史",
-                Account.name to "账号设置",
+                Home.name to context.getString(R.string.nav_home),
+                Follow.name to context.getString(R.string.nav_follow),
+                HotList.name to context.getString(R.string.nav_hot_list),
+                Daily.name to context.getString(R.string.nav_daily),
+                OnlineHistory.name to context.getString(R.string.nav_online_history),
+                Account.name to context.getString(R.string.nav_account),
             )
             var startDestinationExpanded by remember { mutableStateOf(false) }
             var startDestinationKey by remember {
@@ -969,7 +969,7 @@ fun AppearanceSettingsScreen(
             }
 
             SettingItemGroup(
-                title = "底部导航栏",
+                title = context.getString(R.string.bottom_nav),
                 settingKey = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
                 highlightedKey = setting,
                 bringIntoViewRequester = requesterFor(APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY),
@@ -977,8 +977,8 @@ fun AppearanceSettingsScreen(
                 val startDestinationItems = allBottomBarItems.filter { it.first in selectedBottomBarItemKeys.value }
 
                 SettingItem(
-                    title = { Text("应用启动默认页面") },
-                    description = { Text("仅可选择已在底部导航栏中显示的页面。") },
+                    title = { Text(context.getString(R.string.default_start_page)) },
+                    description = { Text(context.getString(R.string.default_start_page_desc)) },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = startDestinationExpanded,
@@ -989,7 +989,10 @@ fun AppearanceSettingsScreen(
                             },
                         ) {
                             OutlinedTextField(
-                                value = startDestinationItems.find { it.first == startDestinationKey }?.second ?: "主页",
+                                value = startDestinationItems
+                                    .find { it.first == startDestinationKey }
+                                    ?.second
+                                    ?: context.getString(R.string.nav_home),
                                 onValueChange = {},
                                 readOnly = true,
                                 enabled = startDestinationItems.isNotEmpty(),
@@ -1022,9 +1025,9 @@ fun AppearanceSettingsScreen(
                 )
 
                 SettingItem(
-                    title = { Text("选择要在底部栏显示的页面") },
+                    title = { Text(context.getString(R.string.select_bottom_bar_items)) },
                     description = {
-                        Text("建议选择 3-5 项。")
+                        Text(context.getString(R.string.select_bottom_bar_items_desc))
                     },
                     bottomAction = {
                         Column(

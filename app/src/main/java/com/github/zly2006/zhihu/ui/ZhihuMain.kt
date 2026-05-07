@@ -67,6 +67,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextStyle
@@ -84,6 +85,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -188,13 +190,14 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
+    val followIcon = if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1
     val allBottomBarItems = listOf(
-        Triple(Home, "主页", Icons.Filled.Home),
-        Triple(Follow, "关注", if (duo3NavStyle) Icons.Filled.Group else Icons.Filled.PersonAddAlt1),
-        Triple(HotList, "热榜", Icons.Filled.Whatshot),
-        Triple(Daily, "日报", Icons.Filled.Newspaper),
-        Triple(OnlineHistory, "历史", Icons.Filled.History),
-        Triple(Account, "账号", Icons.Filled.ManageAccounts),
+        Triple(Home, stringResource(R.string.nav_home), Icons.Filled.Home),
+        Triple(Follow, stringResource(R.string.nav_follow), followIcon),
+        Triple(HotList, stringResource(R.string.nav_hot_list), Icons.Filled.Whatshot),
+        Triple(Daily, stringResource(R.string.nav_daily), Icons.Filled.Newspaper),
+        Triple(OnlineHistory, stringResource(R.string.nav_online_history), Icons.Filled.History),
+        Triple(Account, stringResource(R.string.nav_account), Icons.Filled.ManageAccounts),
     )
     val bottomBarItems = allBottomBarItems.filter { it.first.name in selectedBottomBarItemKeys }
 
