@@ -602,15 +602,15 @@ fun NLPPhraseManagementTab(
                     supportingContent = {
                         Column {
                             val keywords = keyword.getNLPKeywords()
+                            val addedAt = java.text.SimpleDateFormat(
+                                "yyyy-MM-dd HH:mm",
+                                java.util.Locale.getDefault(),
+                            ).format(java.util.Date(keyword.createdTime))
                             Text(stringResource(R.string.contains_keyword_count, keywords.size))
                             Text(
                                 stringResource(
                                     R.string.added_at,
-                                    java.text.SimpleDateFormat(
-                                        "yyyy-MM-dd HH:mm",
-                                        java.util.Locale.getDefault(),
-                                    )
-                                        .format(java.util.Date(keyword.createdTime)),
+                                    addedAt,
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
                             )
