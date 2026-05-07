@@ -84,6 +84,9 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * NLP关键词管理界面
@@ -602,10 +605,10 @@ fun NLPPhraseManagementTab(
                     supportingContent = {
                         Column {
                             val keywords = keyword.getNLPKeywords()
-                            val addedAt = java.text.SimpleDateFormat(
+                            val addedAt = SimpleDateFormat(
                                 "yyyy-MM-dd HH:mm",
-                                java.util.Locale.getDefault(),
-                            ).format(java.util.Date(keyword.createdTime))
+                                Locale.getDefault(),
+                            ).format(Date(keyword.createdTime))
                             Text(stringResource(R.string.contains_keyword_count, keywords.size))
                             Text(
                                 stringResource(
