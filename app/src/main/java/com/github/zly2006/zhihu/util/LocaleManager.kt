@@ -55,10 +55,16 @@ object LocaleManager {
 
     private fun resolveSystemLanguage(): String {
         val sysLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            android.content.res.Resources.getSystem().configuration.locales[0]
+            android.content.res.Resources
+                .getSystem()
+                .configuration
+                .locales[0]
         } else {
             @Suppress("DEPRECATION")
-            android.content.res.Resources.getSystem().configuration.locale
+            android.content.res.Resources
+                .getSystem()
+                .configuration
+                .locale
         }
         val language = sysLocale.language
         val country = sysLocale.country

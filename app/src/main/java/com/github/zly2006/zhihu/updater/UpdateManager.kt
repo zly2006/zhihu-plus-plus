@@ -62,19 +62,22 @@ object UpdateManager {
     }
 
     fun getCustomLatestUrl(context: Context): String =
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        context
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .getString(PREF_CUSTOM_LATEST_URL, null)
             ?.takeIf { it.isNotBlank() }
             ?: GITHUB_API_LATEST
 
     fun getCustomRedenApiUrl(context: Context): String =
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        context
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .getString(PREF_CUSTOM_REDEN_API_URL, null)
             ?.takeIf { it.isNotBlank() }
             ?: REDEN_API_LATEST
 
     fun getCustomNightlyUrl(context: Context): String =
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        context
+            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             .getString(PREF_CUSTOM_NIGHTLY_URL, null)
             ?.takeIf { it.isNotBlank() }
             ?: GITHUB_API_NIGHTLY
