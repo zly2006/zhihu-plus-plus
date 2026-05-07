@@ -190,11 +190,12 @@ fun AccountSettingScreen(
                         )
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.fetch_profile_failed),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        Toast
+                            .makeText(
+                                context,
+                                context.getString(R.string.fetch_profile_failed),
+                                Toast.LENGTH_SHORT,
+                            ).show()
                     }
                 }
             }
@@ -237,18 +238,20 @@ fun AccountSettingScreen(
                             val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
                             val url = Url(scanResult)
                             if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.qr_invalid_content),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                Toast
+                                    .makeText(
+                                        context,
+                                        context.getString(R.string.qr_invalid_content),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
                                 return@scan
                             }
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.qr_scan_success),
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.qr_scan_success),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             Intent(context, WebviewActivity::class.java).let {
                                 it.data = scanResult.toUri()
                                 context.startActivity(it)
@@ -451,21 +454,23 @@ fun AccountSettingScreen(
                     val versionType = context.getString(
                         if (state.isNightly) R.string.nightly_version else R.string.standard_version,
                     )
-                    Toast.makeText(
-                        context,
-                        context.getString(R.string.new_version_found, versionType, state.version),
-                        Toast.LENGTH_SHORT,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(R.string.new_version_found, versionType, state.version),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                 }
                 if (updateState is UpdateState.Error) {
-                    Toast.makeText(
-                        context,
-                        context.getString(
-                            R.string.update_check_failed,
-                            (updateState as UpdateState.Error).message,
-                        ),
-                        Toast.LENGTH_LONG,
-                    ).show()
+                    Toast
+                        .makeText(
+                            context,
+                            context.getString(
+                                R.string.update_check_failed,
+                                (updateState as UpdateState.Error).message,
+                            ),
+                            Toast.LENGTH_LONG,
+                        ).show()
                 }
             }
 
@@ -508,11 +513,12 @@ fun AccountSettingScreen(
                             val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
                             val clip = android.content.ClipData.newPlainText("version", versionInfo)
                             context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.version_copied),
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            Toast
+                                .makeText(
+                                    context,
+                                    context.getString(R.string.version_copied),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                         },
                     ),
                 )
