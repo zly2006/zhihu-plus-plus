@@ -118,8 +118,8 @@ jobs:
       - name: Move files
         run: |
           mkdir -p app/build/upload
-          mv app/build/outputs/apk/full/release/app-full-release.apk app/build/upload/zhihu++-full.apk
-          mv app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite.apk
+          mv app/build/outputs/apk/full/release/app-full-release*.apk app/build/upload/zhihu++-full.apk
+          mv app/build/outputs/apk/lite/release/app-lite-release*.apk app/build/upload/zhihu++-lite.apk
       - name: Recompress APK
         if: ${{ inputs.minify }}
         env:
