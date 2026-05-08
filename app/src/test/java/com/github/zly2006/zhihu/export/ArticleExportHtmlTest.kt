@@ -44,12 +44,15 @@ class ArticleExportHtmlTest {
         assertTrue(template.contains("{{voteCount}}"))
         assertTrue(template.contains("{{commentCount}}"))
         assertTrue(template.contains("{{bodyHtml}}"))
+        assertTrue(template.contains("{{extraSections}}"))
         assertTrue(template.contains("{{exportedDate}}"))
         assertTrue(template.contains("{{publishedDate}}"))
         assertTrue(template.contains("{{editedDate}}"))
         assertTrue(template.contains("{{editedDateClass}}"))
         assertTrue(template.contains("{{appAttributionClass}}"))
-        assertTrue(template.contains("{{githubUrl}}"))
+        assertTrue(template.contains("{{appName}}"))
+        assertTrue(template.contains("{{appAttributionPrefix}}"))
+        assertTrue(template.contains("{{appAttributionSuffix}}"))
     }
 
     @Test

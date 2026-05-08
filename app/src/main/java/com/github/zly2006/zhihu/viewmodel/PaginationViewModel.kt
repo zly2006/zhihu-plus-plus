@@ -207,7 +207,7 @@ abstract class PaginationViewModel<T : Any>(
                     if (context.canSafelyShowDialog()) {
                         AlertDialog
                             .Builder(context)
-                            .setTitle(context.getString(R.string.http_error_title, e.status))
+                            .setTitle(context.getString(R.string.http_error_title, e.status.value))
                             .setMessage(e.bodyText)
                             .setNeutralButton(context.getString(R.string.copy_curl)) { _, _ ->
                                 val curl = e.dumpedCurlRequest
