@@ -717,6 +717,7 @@ fun BlockedRecordItem(
     val matchedKeywords = remember(record.matchedKeywords) {
         repository.parseMatchedKeywords(record.matchedKeywords)
     }
+    val blockReason = localizedBlockedContentReason(record.blockReason)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -750,6 +751,11 @@ fun BlockedRecordItem(
                             .format(java.util.Date(record.blockedTime)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        blockReason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 IconButton(onClick = { expanded = !expanded }) {
@@ -822,6 +828,15 @@ fun BlockedRecordItem(
             }
         }
     }
+}
+
+@Composable
+private fun localizedBlockedContentReason(reason: String): String = when (reason) {
+    BlockedContentRecord.REASON_NLP_MATCHED,
+    "NLP semantic match",
+    "NLP语义匹配",
+    "NLP語義匹配" -> stringResource(R.string.filter_reason_nlp_matched)
+    else -> reason
 }
 
 @Composable

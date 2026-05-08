@@ -23,7 +23,9 @@ import android.content.ContextWrapper
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
+import androidx.annotation.StringRes
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.R
 import java.util.Locale
 
 object LocaleManager {
@@ -32,14 +34,15 @@ object LocaleManager {
 
     data class LanguageOption(
         val code: String,
+        @StringRes
         val displayNameResId: Int,
         val locale: Locale,
     )
 
     val SUPPORTED_LANGUAGES: List<LanguageOption> = listOf(
-        LanguageOption("en", android.R.string.no, Locale.ENGLISH),
-        LanguageOption("zh-CN", android.R.string.no, Locale.forLanguageTag("zh-CN")),
-        LanguageOption("zh-TW", android.R.string.no, Locale.forLanguageTag("zh-TW")),
+        LanguageOption("en", R.string.language_en, Locale.ENGLISH),
+        LanguageOption("zh-CN", R.string.language_zh_cn, Locale.forLanguageTag("zh-CN")),
+        LanguageOption("zh-TW", R.string.language_zh_tw, Locale.forLanguageTag("zh-TW")),
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(

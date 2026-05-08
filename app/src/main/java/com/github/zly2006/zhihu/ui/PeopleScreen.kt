@@ -403,10 +403,12 @@ suspend fun HttpResponse.raiseForStatus() = apply {
     }
 }
 
+const val PEOPLE_SCREEN_ACTIVITIES_TAB_KEY = "activities"
+
 private val PEOPLE_SCREEN_TAB_KEYS = listOf(
     "answers",
     "articles",
-    "activities",
+    PEOPLE_SCREEN_ACTIVITIES_TAB_KEY,
     "collections",
     "questions",
     "pins",

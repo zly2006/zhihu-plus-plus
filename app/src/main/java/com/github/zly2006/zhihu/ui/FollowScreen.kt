@@ -221,7 +221,7 @@ fun FollowingUsersRow() {
                                         id = user.actor.id,
                                         urlToken = user.actor.urlToken,
                                         name = user.actor.name,
-                                        jumpTo = "activities",
+                                        jumpTo = PEOPLE_SCREEN_ACTIVITIES_TAB_KEY,
                                     ),
                                 )
                             }.padding(vertical = 4.dp),

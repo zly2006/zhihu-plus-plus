@@ -49,6 +49,7 @@ import com.github.zly2006.zhihu.ui.FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.FOLLOW_SCREEN_PAGER_TAG
 import com.github.zly2006.zhihu.ui.FollowScreen
 import com.github.zly2006.zhihu.ui.FollowScreenData
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_TAB_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
@@ -146,7 +147,7 @@ class FollowScreenInstrumentedTest {
          *    seeded local state without triggering the real refresh path.
          * 2. Clicking the refresh affordance must route through the injected test seam so the test can
          *    prove stable interaction without clearing the seeded list.
-         * 3. A following-user chip must navigate to Person(..., jumpTo = "动态") with the seeded identity.
+         * 3. A following-user chip must navigate to the activities tab with the seeded identity.
          * 4. A seeded recommendation feed row must remain clickable and navigate to its deterministic
          *    offline destination exactly once.
          */
@@ -175,7 +176,7 @@ class FollowScreenInstrumentedTest {
                     id = "follow-user-1",
                     urlToken = "follow-user-token-1",
                     name = "关注用户 1",
-                    jumpTo = "动态",
+                    jumpTo = PEOPLE_SCREEN_ACTIVITIES_TAB_KEY,
                 ),
                 Search(query = "follow-recommend-1"),
             ),

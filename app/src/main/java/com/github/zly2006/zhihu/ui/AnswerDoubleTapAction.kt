@@ -17,22 +17,30 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.annotation.StringRes
+import com.github.zly2006.zhihu.R
+
 const val ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY = "answerDoubleTapAction"
 
 enum class AnswerDoubleTapAction(
     val preferenceValue: String,
+    @StringRes val labelResId: Int,
 ) {
     None(
         preferenceValue = "none",
+        labelResId = R.string.double_tap_none,
     ),
     Ask(
         preferenceValue = "ask",
+        labelResId = R.string.double_tap_ask,
     ),
     VoteUp(
         preferenceValue = "voteUp",
+        labelResId = R.string.double_tap_vote_up,
     ),
     OpenComments(
         preferenceValue = "openComments",
+        labelResId = R.string.double_tap_open_comments,
     ),
     ;
 

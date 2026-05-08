@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.nlp
 
 import android.content.Context
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
@@ -35,7 +34,6 @@ import kotlinx.serialization.json.Json
 class BlockedKeywordRepository(
     context: Context,
 ) {
-    private val appContext = context.applicationContext
     private val database = ContentFilterDatabase.getDatabase(context)
     private val keywordDao = database.blockedKeywordDao()
     private val recordDao = database.blockedContentRecordDao()
@@ -214,7 +212,7 @@ class BlockedKeywordRepository(
                 authorName = authorName,
                 authorId = authorId,
                 blockedTime = System.currentTimeMillis(),
-                blockReason = appContext.getString(R.string.filter_reason_nlp_matched),
+                blockReason = BlockedContentRecord.REASON_NLP_MATCHED,
                 matchedKeywords = Json.encodeToString(
                     kotlinx.serialization.builtins.ListSerializer(MatchedKeywordInfo.serializer()),
                     top3Matches,

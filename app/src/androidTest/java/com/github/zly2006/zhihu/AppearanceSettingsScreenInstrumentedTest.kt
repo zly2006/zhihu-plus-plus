@@ -103,14 +103,16 @@ class AppearanceSettingsScreenInstrumentedTest {
         // to the control, opening the anchored menu, and picking a different option, the visible label
         // and the stored preference must both change to the same deterministic value.
         setUpScreen(setting = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY)
+        val askLabel = composeRule.activity.getString(AnswerDoubleTapAction.Ask.labelResId)
+        val voteUpLabel = composeRule.activity.getString(AnswerDoubleTapAction.VoteUp.labelResId)
 
         scrollUntilTagDisplayed(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
         composeRule
             .onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
-            .assertTextContains(AnswerDoubleTapAction.Ask.label)
+            .assertTextContains(askLabel)
 
         composeRule.onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG).performClick()
-        composeRule.onNode(hasText(AnswerDoubleTapAction.VoteUp.label), useUnmergedTree = true).performClick()
+        composeRule.onNode(hasText(voteUpLabel), useUnmergedTree = true).performClick()
 
         waitUntilStringPreference(
             ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
@@ -118,7 +120,7 @@ class AppearanceSettingsScreenInstrumentedTest {
         )
         composeRule
             .onNodeWithTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG)
-            .assertTextContains(AnswerDoubleTapAction.VoteUp.label)
+            .assertTextContains(voteUpLabel)
     }
 
     @Test

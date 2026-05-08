@@ -34,12 +34,13 @@ data class BlockedContentRecord(
     val authorName: String?, // 作者名称
     val authorId: String?, // 作者ID
     val blockedTime: Long = System.currentTimeMillis(), // 屏蔽时间
-    val blockReason: String, // 屏蔽原因JSON（包含匹配的关键词和相似度）
+    val blockReason: String, // 稳定屏蔽原因代码；旧记录可能是本地化文本
     val matchedKeywords: String, // 匹配的关键词列表JSON格式：[{"keyword":"xxx","similarity":0.8}]
 ) {
     companion object {
         const val TABLE_NAME = "blocked_content_records"
         const val MAX_RECORDS = 100 // 最多保留100条记录
+        const val REASON_NLP_MATCHED = "nlp_matched"
     }
 }
 
