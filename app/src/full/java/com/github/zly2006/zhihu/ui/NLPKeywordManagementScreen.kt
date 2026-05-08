@@ -835,7 +835,8 @@ private fun localizedBlockedContentReason(reason: String): String = when (reason
     BlockedContentRecord.REASON_NLP_MATCHED,
     "NLP semantic match",
     "NLP语义匹配",
-    "NLP語義匹配" -> stringResource(R.string.filter_reason_nlp_matched)
+    "NLP語義匹配",
+    -> stringResource(R.string.filter_reason_nlp_matched)
     else -> reason
 }
 
