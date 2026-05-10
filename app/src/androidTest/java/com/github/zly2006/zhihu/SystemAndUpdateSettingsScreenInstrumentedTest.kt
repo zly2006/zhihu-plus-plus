@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.subscreens.SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.updater.SchematicVersion
@@ -104,12 +105,16 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
             preferences.getString(SKIPPED_VERSION_PREFERENCE_KEY, null) == seededVersion.toString()
         }
         waitUntil(timeoutMillis = 5_000) { UpdateManager.updateState.value == UpdateState.Latest }
+        composeRule.waitForIdle()
+        scrollContainer().performScrollToNode(hasText("已是最新版本"))
         composeRule.onNodeWithText("已是最新版本").assertIsDisplayed()
 
         // Tapping the "already latest" button must only clear the locally-seeded Latest state back
         // to NoUpdate. The test intentionally does not tap the real network-backed check button.
         composeRule.onNodeWithText("已是最新版本").performClick()
         waitUntil(timeoutMillis = 5_000) { UpdateManager.updateState.value == UpdateState.NoUpdate }
+        composeRule.waitForIdle()
+        scrollContainer().performScrollToNode(hasText("检查更新"))
         composeRule.onNodeWithText("检查更新").assertIsDisplayed()
 
         // Back navigation is part of the same screen contract, so one final click proves the shared
@@ -131,7 +136,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
 
         scrollContainer.performScrollToNode(hasText("防沉迷提醒"))
         composeRule.onNodeWithText("防沉迷提醒").assertIsDisplayed()
-        composeRule.onNode(hasText("关闭") and hasClickAction()).performClick()
+        composeRule.onNodeWithTag(SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG).performClick()
         composeRule.onNode(hasText("每 30 分钟"), useUnmergedTree = true).performClick()
 
         waitUntilIntPreference(
@@ -200,6 +205,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
 
     private fun clickSettingRow(title: String) {
         val rowMatcher = hasAnyDescendant(hasText(title)) and hasClickAction()
+        scrollContainer().performScrollToNode(hasText(title))
         waitUntilDisplayed(rowMatcher)
         composeRule.onNode(rowMatcher, useUnmergedTree = true).performClick()
     }
