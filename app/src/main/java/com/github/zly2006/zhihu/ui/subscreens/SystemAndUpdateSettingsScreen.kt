@@ -94,8 +94,6 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
 
 const val SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG = "system_and_update_settings_scroll"
-const val SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG = "system_and_update_reminder_dropdown"
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SystemAndUpdateSettingsScreen(
@@ -485,6 +483,7 @@ fun SystemAndUpdateSettingsScreen(
                 SettingItem(
                     title = { Text(context.getString(R.string.anti_addiction_reminder)) },
                     description = { Text(context.getString(R.string.anti_addiction_reminder_desc, 0, 0)) },
+                    onClick = { reminderExpanded = true },
                     endAction = {
                         ExposedDropdownMenuBox(
                             expanded = reminderExpanded,
@@ -501,7 +500,6 @@ fun SystemAndUpdateSettingsScreen(
                                 },
                                 modifier = Modifier
                                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                    .testTag(SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG)
                                     .width(160.dp),
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                             )

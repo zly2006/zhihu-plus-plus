@@ -37,7 +37,6 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.subscreens.SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.updater.SchematicVersion
@@ -136,7 +135,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
 
         scrollContainer.performScrollToNode(hasText("防沉迷提醒"))
         composeRule.onNodeWithText("防沉迷提醒").assertIsDisplayed()
-        composeRule.onNodeWithTag(SYSTEM_AND_UPDATE_REMINDER_DROPDOWN_TAG).performClick()
+        clickSettingRow("防沉迷提醒")
         composeRule.onNode(hasText("每 30 分钟"), useUnmergedTree = true).performClick()
 
         waitUntilIntPreference(
@@ -145,8 +144,8 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         )
         composeRule.onNodeWithText("每 30 分钟").assertIsDisplayed()
 
-        scrollContainer.performScrollToNode(hasText("Github issue"))
-        composeRule.onNodeWithText("Github issue").assertIsDisplayed()
+        scrollContainer.performScrollToNode(hasText("GitHub Issues"))
+        composeRule.onNodeWithText("GitHub Issues").assertIsDisplayed()
         scrollContainer.performScrollToNode(hasText("防沉迷提醒"))
         composeRule.onNodeWithText("每 30 分钟").assertIsDisplayed()
         assertEquals(
@@ -187,8 +186,8 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         waitUntilBooleanPreference(ALLOW_TELEMETRY_PREFERENCE_KEY, expected = false)
 
         scrollContainer.performVerticalSwipeCycle()
-        scrollContainer.performScrollToNode(hasText("Github issue"))
-        composeRule.onNodeWithText("Github issue").assertIsDisplayed()
+        scrollContainer.performScrollToNode(hasText("GitHub Issues"))
+        composeRule.onNodeWithText("GitHub Issues").assertIsDisplayed()
 
         scrollContainer.performScrollToNode(hasText("允许遥测"))
         composeRule.onNodeWithText("允许遥测").assertIsDisplayed()
