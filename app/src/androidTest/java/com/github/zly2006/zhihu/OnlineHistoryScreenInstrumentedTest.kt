@@ -25,7 +25,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
@@ -146,7 +145,9 @@ class OnlineHistoryScreenInstrumentedTest {
         composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("清除历史记录").performClick()
         composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
-        pressBack()
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
         composeRule.onNodeWithText("确认清除历史记录").assertDoesNotExist()
         composeRule.onNodeWithTag(LIST_TAG).assertExists()
 

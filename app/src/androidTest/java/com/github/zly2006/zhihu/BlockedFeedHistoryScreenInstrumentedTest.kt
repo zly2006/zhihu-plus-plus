@@ -96,6 +96,9 @@ class BlockedFeedHistoryScreenInstrumentedTest {
         // The newest record intentionally has a blank title and no navigation target. The screen
         // should render the fallback title, allow tapping the row, and still avoid emitting any
         // navigation event because default/empty record data cannot be opened anywhere.
+        composeRule
+            .onNodeWithTag(LIST_TAG)
+            .performScrollToNode(hasTestTag(itemTag(seededHistory.placeholderRecordId)))
         composeRule.onNodeWithText("（无标题）").assertIsDisplayed()
         composeRule.onNodeWithTag(itemTag(seededHistory.placeholderRecordId)).performClick()
         composeRule.runOnIdle {

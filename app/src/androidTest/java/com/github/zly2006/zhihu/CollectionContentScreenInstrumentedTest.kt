@@ -28,7 +28,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.navigation.Question
@@ -105,7 +104,9 @@ class CollectionContentScreenInstrumentedTest {
         composeRule.onNodeWithTag(EXPORT_ACTION_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("全部导出HTML").assertIsDisplayed()
 
-        pressBack()
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
         composeRule.waitForIdle()
 
         composeRule.onAllNodesWithTag(EXPORT_ACTION_TAG).assertCountEquals(0)

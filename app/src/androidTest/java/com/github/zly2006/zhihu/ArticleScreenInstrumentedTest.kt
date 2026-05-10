@@ -36,7 +36,6 @@ import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -74,11 +73,13 @@ class ArticleScreenInstrumentedTest {
         composeRule.onNodeWithText("IP属地：上海").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
-        val clipboardText = composeRule.activity.clipboardManager.primaryClip
-            ?.getItemAt(0)
-            ?.coerceToText(composeRule.activity)
-            ?.toString()
-        assertTrue(clipboardText?.contains("https://zhuanlan.zhihu.com/p/777") == true)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.activity.clipboardManager.primaryClip
+                ?.getItemAt(0)
+                ?.coerceToText(composeRule.activity)
+                ?.toString()
+                ?.contains("https://zhuanlan.zhihu.com/p/777") == true
+        }
     }
 
     @Test
