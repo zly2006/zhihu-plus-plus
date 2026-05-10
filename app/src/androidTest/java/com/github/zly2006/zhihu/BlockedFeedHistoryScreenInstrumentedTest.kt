@@ -129,7 +129,7 @@ class BlockedFeedHistoryScreenInstrumentedTest {
         composeRule.onNodeWithText(seededHistory.survivingTitle).assertExists()
 
         composeRule.onNodeWithContentDescription("清空记录").performClick()
-        composeRule.onNodeWithText("清空").performClick()
+        composeRule.onNodeWithText("清除").performClick()
         composeRule.onNodeWithText("暂无屏蔽记录").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("清空记录").assertDoesNotExist()
     }

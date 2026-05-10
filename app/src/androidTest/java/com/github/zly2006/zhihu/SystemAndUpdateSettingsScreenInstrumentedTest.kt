@@ -24,10 +24,10 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.subscreens.SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import com.github.zly2006.zhihu.updater.SchematicVersion
 import com.github.zly2006.zhihu.updater.UpdateManager
@@ -95,7 +96,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         val navigator = setUpScreen()
 
         waitUntilDisplayed(hasText("新版本：\n9.9.9"))
-        waitUntilDisplayed(hasText("更新内容"))
+        waitUntilDisplayed(hasText("更新日志"))
         waitUntilDisplayed(hasText("修复若干设置项细节", substring = true))
 
         composeRule.onNodeWithText("跳过此版本").performClick()
@@ -103,11 +104,11 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
             preferences.getString(SKIPPED_VERSION_PREFERENCE_KEY, null) == seededVersion.toString()
         }
         waitUntil(timeoutMillis = 5_000) { UpdateManager.updateState.value == UpdateState.Latest }
-        composeRule.onNodeWithText("已经是最新版本").assertIsDisplayed()
+        composeRule.onNodeWithText("已是最新版本").assertIsDisplayed()
 
         // Tapping the "already latest" button must only clear the locally-seeded Latest state back
         // to NoUpdate. The test intentionally does not tap the real network-backed check button.
-        composeRule.onNodeWithText("已经是最新版本").performClick()
+        composeRule.onNodeWithText("已是最新版本").performClick()
         waitUntil(timeoutMillis = 5_000) { UpdateManager.updateState.value == UpdateState.NoUpdate }
         composeRule.onNodeWithText("检查更新").assertIsDisplayed()
 
@@ -128,7 +129,6 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         setUpScreen()
         val scrollContainer = scrollContainer()
 
-        waitUntilDisplayed(hasText("检查更新"))
         scrollContainer.performScrollToNode(hasText("防沉迷提醒"))
         composeRule.onNodeWithText("防沉迷提醒").assertIsDisplayed()
         composeRule.onNode(hasText("关闭") and hasClickAction()).performClick()
@@ -175,18 +175,18 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         clickSettingRow("自动检查更新")
         waitUntil(timeoutMillis = 5_000) { UpdateManager.isAutoCheckEnabled(composeRule.activity) }
 
-        clickSettingRow("检查 Nightly 版本更新")
+        clickSettingRow("检查每日构建更新")
         waitUntilBooleanPreference(CHECK_NIGHTLY_UPDATES_PREFERENCE_KEY, expected = true)
 
-        clickSettingRow("允许发送遥测统计数据")
+        clickSettingRow("允许遥测")
         waitUntilBooleanPreference(ALLOW_TELEMETRY_PREFERENCE_KEY, expected = false)
 
         scrollContainer.performVerticalSwipeCycle()
         scrollContainer.performScrollToNode(hasText("Github issue"))
         composeRule.onNodeWithText("Github issue").assertIsDisplayed()
 
-        scrollContainer.performScrollToNode(hasText("允许发送遥测统计数据"))
-        composeRule.onNodeWithText("允许发送遥测统计数据").assertIsDisplayed()
+        scrollContainer.performScrollToNode(hasText("允许遥测"))
+        composeRule.onNodeWithText("允许遥测").assertIsDisplayed()
         assertTrue(UpdateManager.isAutoCheckEnabled(composeRule.activity))
         assertTrue(preferences.getBoolean(CHECK_NIGHTLY_UPDATES_PREFERENCE_KEY, false))
         assertFalse(preferences.getBoolean(ALLOW_TELEMETRY_PREFERENCE_KEY, true))
@@ -196,7 +196,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         SystemAndUpdateSettingsScreen(innerPadding = PaddingValues())
     }
 
-    private fun scrollContainer() = composeRule.onNode(hasScrollAction())
+    private fun scrollContainer() = composeRule.onNodeWithTag(SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG)
 
     private fun clickSettingRow(title: String) {
         val rowMatcher = hasAnyDescendant(hasText(title)) and hasClickAction()

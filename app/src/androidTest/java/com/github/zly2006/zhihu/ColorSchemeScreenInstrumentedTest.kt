@@ -85,7 +85,7 @@ class ColorSchemeScreenInstrumentedTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             observedBackgroundArgb.get() == TestLightBackground.toArgb()
         }
-        composeRule.onNodeWithText("Color Scheme").assertIsDisplayed()
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.color_scheme)).assertIsDisplayed()
         composeRule.onNodeWithText("Primary").assertIsDisplayed()
         composeRule.onNodeWithText("Scrim").assertIsNotDisplayed()
 

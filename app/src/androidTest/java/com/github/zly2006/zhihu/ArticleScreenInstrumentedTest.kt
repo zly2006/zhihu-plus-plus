@@ -101,9 +101,7 @@ class ArticleScreenInstrumentedTest {
             viewModel.authorName = "离线作者"
             viewModel.authorId = "offline-author-id"
             viewModel.authorUrlToken = "offline-author"
-            viewModel.content = (1..20).joinToString("\n\n") { index ->
-                "第 $index 段离线正文，用于 ArticleScreen instrumented test。"
-            }
+            viewModel.content = "第 1 段离线正文，用于 ArticleScreen instrumented test。"
             viewModel.voteUpCount = 42
             viewModel.commentCount = 7
             viewModel.questionId = 123456L

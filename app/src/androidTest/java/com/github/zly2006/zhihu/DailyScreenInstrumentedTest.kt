@@ -99,7 +99,7 @@ class DailyScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithTag(ERROR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("离线错误：日报接口不可用").assertIsDisplayed()
+        composeRule.onNodeWithText("加载失败：离线错误：日报接口不可用").assertIsDisplayed()
 
         composeRule.setScreenContent {
             DailyScreen(
@@ -135,7 +135,7 @@ class DailyScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithTag(LIST_TAG).assertIsDisplayed()
-        composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年04月18日")
+        composeRule.onNodeWithTag(CURRENT_DATE_TAG).assertTextEquals("2026年4月18日")
         composeRule.onNodeWithText("固定日报问题 1").assertIsDisplayed()
         composeRule.onNodeWithTag(SECTION_TAG_PREFIX + "20260418").assertIsDisplayed()
 

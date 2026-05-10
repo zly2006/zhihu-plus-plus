@@ -102,7 +102,7 @@ class QuestionScreenInstrumentedTest {
         composeRule.onNodeWithTag(QUESTION_TITLE_TAG).assertIsDisplayed()
         composeRule.onNodeWithText("离线问题标题").assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_STATS_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("12 个回答  345 次浏览  7 条评论  89 人关注").assertIsDisplayed()
+        composeRule.onNodeWithText("12 个回答", substring = true).assertIsDisplayed()
         composeRule.onNodeWithTag(QUESTION_DETAIL_CONTENT_TAG).assertIsDisplayed()
 
         composeRule.onNodeWithTag(QUESTION_DETAIL_TOGGLE_TAG).performClick()

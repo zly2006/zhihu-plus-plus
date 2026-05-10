@@ -69,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
@@ -91,6 +92,8 @@ import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
+
+const val SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG = "system_and_update_settings_scroll"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -141,6 +144,7 @@ fun SystemAndUpdateSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
+                .testTag(SYSTEM_AND_UPDATE_SETTINGS_SCROLL_TAG)
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {

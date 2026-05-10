@@ -97,7 +97,7 @@ class PinScreenInstrumentedTest {
             )
         }
         composeRule.onNodeWithTag(PIN_SCREEN_ERROR_TAG).assertIsDisplayed()
-        composeRule.onNodeWithText("加载失败: 离线错误").assertIsDisplayed()
+        composeRule.onNodeWithText("加载失败：离线错误").assertIsDisplayed()
     }
 
     @Test

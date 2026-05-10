@@ -71,7 +71,7 @@ class OnlineHistoryScreenInstrumentedTest {
         // assertions independent from login state, network reachability, and remote history data.
         val navigator = setOnlineHistoryScreen()
 
-        composeRule.onNodeWithText("历史记录").assertIsDisplayed()
+        composeRule.onNodeWithText("浏览历史").assertIsDisplayed()
         composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
 
         // The overflow menu is the only stable toolbar entry point on this screen, so it must
@@ -142,7 +142,7 @@ class OnlineHistoryScreenInstrumentedTest {
         // After both gesture cycles, the toolbar should remain interactive, the overflow menu
         // should still open normally, and dismissing the confirmation dialog with system back
         // should restore the untouched list state instead of navigating away or corrupting UI.
-        composeRule.onNodeWithText("历史记录").assertIsDisplayed()
+        composeRule.onNodeWithText("浏览历史").assertIsDisplayed()
         composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("清除历史记录").performClick()
         composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
