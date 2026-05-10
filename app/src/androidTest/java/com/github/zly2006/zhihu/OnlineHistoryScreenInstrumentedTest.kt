@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -26,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -145,10 +147,10 @@ class OnlineHistoryScreenInstrumentedTest {
         composeRule.onNodeWithTag(ONLINE_HISTORY_OVERFLOW_TAG).performClick()
         composeRule.onNodeWithText("清除历史记录").performClick()
         composeRule.onNodeWithText("确认清除历史记录").assertIsDisplayed()
-        composeRule.activity.runOnUiThread {
-            composeRule.activity.onBackPressedDispatcher.onBackPressed()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("确认清除历史记录").fetchSemanticsNodes().isEmpty()
         }
-        composeRule.onNodeWithText("确认清除历史记录").assertDoesNotExist()
         composeRule.onNodeWithTag(LIST_TAG).assertExists()
 
         composeRule.runOnIdle {

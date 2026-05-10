@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu
 
+import android.content.ClipData
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -31,6 +32,7 @@ import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.HistoryScreen
+import com.github.zly2006.zhihu.util.clipboardManager
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -107,6 +109,8 @@ class HistoryScreenInstrumentedTest {
         val historyFile = File(activity.filesDir, "history.json")
 
         activity.runOnUiThread {
+            activity.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", ""))
+            activity.sharedData.clipboardDestination = null
             historyFile.delete()
             activity.history = HistoryStorage(activity)
         }
