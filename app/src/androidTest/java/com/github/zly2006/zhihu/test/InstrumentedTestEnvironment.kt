@@ -23,6 +23,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.util.LocaleManager
 
 object InstrumentedTestEnvironment {
     const val DATA_MODE_ARG = "zhpp_data_mode"
@@ -51,6 +52,7 @@ object InstrumentedTestEnvironment {
             .edit()
             .clear()
             .putBoolean("allowTelemetry", false)
+            .putString(LocaleManager.PREF_KEY_LANGUAGE, "zh-CN")
             .putLong("last_main_launch_timestamp", System.currentTimeMillis())
             .commit()
 
