@@ -61,12 +61,12 @@ class ContentFilterSettingsScreenInstrumentedTest {
 
         composeRule
             .onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true)
-            .assertTextContains(RecommendationMode.MIXED.displayName)
+            .assertTextContains(recommendationModeText(RecommendationMode.MIXED))
         assertEquals(true, preferences().getBoolean("loginForRecommendation", true))
         assertEquals(false, preferences().getBoolean("filterFollowedUserContent", false))
 
         composeRule.onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true).performClick()
-        composeRule.onNodeWithText(RecommendationMode.LOCAL.displayName).performClick()
+        composeRule.onNodeWithText(recommendationModeText(RecommendationMode.LOCAL)).performClick()
         assertEquals(RecommendationMode.LOCAL.key, preferences().getString("recommendationMode", null))
 
         composeRule.onNodeWithTag(LOGIN_FOR_RECOMMENDATION_TAG).performClick()
@@ -89,7 +89,7 @@ class ContentFilterSettingsScreenInstrumentedTest {
 
         composeRule
             .onNodeWithTag(RECOMMENDATION_MODE_FIELD_TAG, useUnmergedTree = true)
-            .assertTextContains(RecommendationMode.LOCAL.displayName)
+            .assertTextContains(recommendationModeText(RecommendationMode.LOCAL))
         assertEquals(false, preferences().getBoolean("loginForRecommendation", true))
         assertEquals(true, preferences().getBoolean("enableContentFilter", false))
         assertEquals(true, preferences().getBoolean("filterFollowedUserContent", false))
@@ -130,6 +130,9 @@ class ContentFilterSettingsScreenInstrumentedTest {
 
     private fun preferences() =
         composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
+    private fun recommendationModeText(mode: RecommendationMode): String =
+        composeRule.activity.getString(mode.displayNameResId)
 
     private fun scrollTo(tag: String) {
         composeRule.onNodeWithTag(SCROLL_TAG).performScrollToNode(hasTestTag(tag))

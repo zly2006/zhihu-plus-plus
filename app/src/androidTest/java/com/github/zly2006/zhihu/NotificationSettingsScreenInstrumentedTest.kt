@@ -165,7 +165,7 @@ class NotificationSettingsScreenInstrumentedTest {
         NotificationType.entries.forEach { type ->
             add(
                 ToggleCase(
-                    title = type.displayName,
+                    title = notificationTypeText(type),
                     group = ToggleGroup.SystemNotification,
                     type = type,
                     defaultValue = false,
@@ -178,7 +178,7 @@ class NotificationSettingsScreenInstrumentedTest {
         NotificationType.entries.forEach { type ->
             add(
                 ToggleCase(
-                    title = type.displayName,
+                    title = notificationTypeText(type),
                     group = ToggleGroup.DisplayInApp,
                     type = type,
                     defaultValue = type.defaultValue,
@@ -188,6 +188,9 @@ class NotificationSettingsScreenInstrumentedTest {
             )
         }
     }
+
+    private fun notificationTypeText(type: NotificationType): String =
+        composeRule.activity.getString(type.displayNameResId)
 
     private data class ToggleCase(
         val title: String,

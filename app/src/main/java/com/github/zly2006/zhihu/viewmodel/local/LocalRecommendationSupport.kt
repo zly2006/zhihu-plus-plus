@@ -146,23 +146,59 @@ fun scoreFeedTarget(target: Feed.Target): Double {
     return score.coerceIn(0.1, 10.0)
 }
 
-fun buildReasonPreference(context: Context, stats: LocalReasonStats): LocalReasonPreference {
+fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference =
+    buildReasonPreference(
+        stats = stats,
+        preferSourceExplanation = "你最近更偏好这类来源",
+        oftenOpenSourceExplanation = "你经常点开这类来源",
+    )
+
+fun buildReasonPreference(context: Context, stats: LocalReasonStats): LocalReasonPreference =
+    buildReasonPreference(
+        stats = stats,
+        preferSourceExplanation = context.getString(R.string.local_reason_prefer_source),
+        oftenOpenSourceExplanation = context.getString(R.string.local_reason_often_open_source),
+    )
+
+private fun buildReasonPreference(
+    stats: LocalReasonStats,
+    preferSourceExplanation: String,
+    oftenOpenSourceExplanation: String,
+): LocalReasonPreference {
     val signal = (stats.clicks * 0.12) + (stats.likes * 0.35) - (stats.dislikes * 0.45)
     val multiplier = (1.0 + signal).coerceIn(0.55, 1.6)
     val explanation = when {
-        stats.likes > 0 -> context.getString(R.string.local_reason_prefer_source)
-        stats.clicks >= 2 -> context.getString(R.string.local_reason_often_open_source)
+        stats.likes > 0 -> preferSourceExplanation
+        stats.clicks >= 2 -> oftenOpenSourceExplanation
         else -> null
     }
     return LocalReasonPreference(multiplier = multiplier, explanation = explanation)
 }
 
-fun buildContentAffinity(context: Context, stats: LocalContentStats): LocalContentAffinity {
+fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity =
+    buildContentAffinity(
+        stats = stats,
+        preferSimilarExplanation = "你明确喜欢过类似内容",
+        recentlyOpenedSimilarExplanation = "你最近点开过类似内容",
+    )
+
+fun buildContentAffinity(context: Context, stats: LocalContentStats): LocalContentAffinity =
+    buildContentAffinity(
+        stats = stats,
+        preferSimilarExplanation = context.getString(R.string.local_content_prefer_similar),
+        recentlyOpenedSimilarExplanation = context.getString(R.string.local_content_recently_opened_similar),
+    )
+
+private fun buildContentAffinity(
+    stats: LocalContentStats,
+    preferSimilarExplanation: String,
+    recentlyOpenedSimilarExplanation: String,
+): LocalContentAffinity {
     val signal = (stats.clicks * 0.08) + (stats.likes * 0.40) - (stats.dislikes * 0.70)
     val multiplier = (1.0 + signal).coerceIn(0.15, 1.8)
     val explanation = when {
-        stats.likes > 0 -> context.getString(R.string.local_content_prefer_similar)
-        stats.clicks >= 2 -> context.getString(R.string.local_content_recently_opened_similar)
+        stats.likes > 0 -> preferSimilarExplanation
+        stats.clicks >= 2 -> recentlyOpenedSimilarExplanation
         else -> null
     }
     return LocalContentAffinity(multiplier = multiplier, explanation = explanation)
