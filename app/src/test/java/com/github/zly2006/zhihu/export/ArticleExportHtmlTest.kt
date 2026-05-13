@@ -50,9 +50,7 @@ class ArticleExportHtmlTest {
         assertTrue(template.contains("{{editedDate}}"))
         assertTrue(template.contains("{{editedDateClass}}"))
         assertTrue(template.contains("{{appAttributionClass}}"))
-        assertTrue(template.contains("{{appName}}"))
-        assertTrue(template.contains("{{appAttributionPrefix}}"))
-        assertTrue(template.contains("{{appAttributionSuffix}}"))
+        assertTrue(template.contains("{{appAttribution}}"))
     }
 
     @Test

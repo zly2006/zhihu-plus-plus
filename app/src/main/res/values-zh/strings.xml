@@ -537,7 +537,7 @@
     <string name="refresh_login_failed">登录刷新失败。如持续出现，请重新登录。</string>
     <string name="new_version_found">发现新%1$s：%2$s</string>
     <string name="standard_version">正式版</string>
-    <string name="nightly_version">每日构建</string>
+    <string name="nightly_version">Nightly</string>
     <string name="update_check_failed">更新检查失败：%1$s</string>
 
     <!-- Appearance Settings -->
@@ -670,8 +670,8 @@
     <string name="github_token_desc">用于访问 GitHub API 避免限流。留空则为匿名访问，更新检查可能失败。</string>
     <string name="auto_check_updates">自动检查更新</string>
     <string name="auto_check_updates_desc">应用启动后后台检查新版本，并在主页显示更新提醒。</string>
-    <string name="check_nightly_updates">检查每日构建更新</string>
-    <string name="check_nightly_updates_desc">同时检查每日构建版本（可能不稳定）。</string>
+    <string name="check_nightly_updates">检查 Nightly 版本更新</string>
+    <string name="check_nightly_updates_desc">同时检查 Nightly 版本（可能不稳定）。</string>
     <string name="allow_telemetry">允许遥测</string>
     <string name="allow_telemetry_desc">仅用于使用量统计，不包含任何个人信息。</string>
     <string name="anti_addiction">防沉迷</string>
@@ -855,8 +855,7 @@
     <string name="article_export_file_untitled">无标题</string>
     <string name="article_export_file_anonymous_author">匿名作者</string>
     <string name="article_export_file_name_format">zhihu++_%1$s_%2$s的%3$s_%4$s_%5$d_%6$s.%7$s</string>
-    <string name="article_export_app_attribution_prefix">本回答使用</string>
-    <string name="article_export_app_attribution_suffix">导出，这是一个完全开源的去广告免费知乎第三方客户端，请点个 star 吧！（GitHub 地址：%1$s）</string>
+    <string name="article_export_app_attribution"><![CDATA[本回答使用 <span class="export-credit-brand">知乎++</span>导出，这是一个完全开源的去广告免费知乎第三方客户端，请点个 star 吧！（GitHub 地址：%1$s）]]></string>
     <string name="article_export_image_download_failed">下载图片失败：%1$d</string>
     <string name="article_export_image_empty">图片内容为空</string>
     <string name="markdown_author_label">作者</string>
@@ -905,5 +904,5 @@
     <string name="update_reden_api_url">CDN 镜像地址</string>
     <string name="update_reden_api_url_desc">GitHub API 的 CDN 代理（优先尝试）。留空使用默认。</string>
     <string name="update_nightly_url">Nightly 更新地址</string>
-    <string name="update_nightly_url_desc">检查每日构建版本的地址。留空使用默认。</string>
+    <string name="update_nightly_url_desc">检查 Nightly 版本的地址。留空使用默认。</string>
 </resources>

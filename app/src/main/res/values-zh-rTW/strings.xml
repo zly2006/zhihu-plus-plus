@@ -537,7 +537,7 @@
     <string name="refresh_login_failed">登入重新整理失敗。如持續出現，請重新登入。</string>
     <string name="new_version_found">發現新%1$s：%2$s</string>
     <string name="standard_version">正式版</string>
-    <string name="nightly_version">每日構建</string>
+    <string name="nightly_version">Nightly</string>
     <string name="update_check_failed">更新檢查失敗：%1$s</string>
 
     <!-- Appearance Settings -->
@@ -670,8 +670,8 @@
     <string name="github_token_desc">用於存取 GitHub API 避免限流。留空則為匿名存取，更新檢查可能失敗。</string>
     <string name="auto_check_updates">自動檢查更新</string>
     <string name="auto_check_updates_desc">應用啟動後背景檢查新版本，並在首頁顯示更新提醒。</string>
-    <string name="check_nightly_updates">檢查每日構建更新</string>
-    <string name="check_nightly_updates_desc">同時檢查每日構建版本（可能不穩定）。</string>
+    <string name="check_nightly_updates">檢查 Nightly 版本更新</string>
+    <string name="check_nightly_updates_desc">同時檢查 Nightly 版本（可能不穩定）。</string>
     <string name="allow_telemetry">允許遙測</string>
     <string name="allow_telemetry_desc">僅用於使用量統計，不包含任何個人資訊。</string>
     <string name="anti_addiction">防沉迷</string>
@@ -855,8 +855,7 @@
     <string name="article_export_file_untitled">無標題</string>
     <string name="article_export_file_anonymous_author">匿名作者</string>
     <string name="article_export_file_name_format">zhihu++_%1$s_%2$s的%3$s_%4$s_%5$d_%6$s.%7$s</string>
-    <string name="article_export_app_attribution_prefix">本回答使用</string>
-    <string name="article_export_app_attribution_suffix">匯出，這是一個完全開源、去廣告、免費的知乎第三方用戶端，請點個 star 吧！（GitHub 位址：%1$s）</string>
+    <string name="article_export_app_attribution"><![CDATA[本回答使用 <span class="export-credit-brand">知乎++</span>匯出，這是一個完全開源、去廣告、免費的知乎第三方用戶端，請點個 star 吧！（GitHub 位址：%1$s）]]></string>
     <string name="article_export_image_download_failed">下載圖片失敗：%1$d</string>
     <string name="article_export_image_empty">圖片內容為空</string>
     <string name="markdown_author_label">作者</string>
@@ -905,5 +904,5 @@
     <string name="update_reden_api_url">CDN 鏡像位址</string>
     <string name="update_reden_api_url_desc">GitHub API 的 CDN 代理（優先嘗試）。留空使用預設。</string>
     <string name="update_nightly_url">Nightly 更新位址</string>
-    <string name="update_nightly_url_desc">檢查每日構建版本的位址。留空使用預設。</string>
+    <string name="update_nightly_url_desc">檢查 Nightly 版本的位址。留空使用預設。</string>
 </resources>

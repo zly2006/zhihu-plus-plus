@@ -26,6 +26,7 @@ import android.os.LocaleList
 import androidx.annotation.StringRes
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import java.util.Locale
 
 object LocaleManager {
@@ -46,7 +47,7 @@ object LocaleManager {
     )
 
     private fun prefs(context: Context) = context.getSharedPreferences(
-        "com.github.zly2006.zhihu_preferences",
+        PREFERENCE_NAME,
         Context.MODE_PRIVATE,
     )
 
@@ -55,21 +56,16 @@ object LocaleManager {
         val saved = p.getString(PREF_KEY_LANGUAGE, null)
         if (saved != null) return saved
         // 首次启动：根据系统语言自动选择
-        return resolveSystemLanguage()
+        return resolveSystemLanguage(context)
     }
 
-    private fun resolveSystemLanguage(): String {
+    private fun resolveSystemLanguage(context: Context): String {
+        val configuration = context.resources.configuration
         val sysLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            android.content.res.Resources
-                .getSystem()
-                .configuration
-                .locales[0]
+            configuration.locales[0]
         } else {
             @Suppress("DEPRECATION")
-            android.content.res.Resources
-                .getSystem()
-                .configuration
-                .locale
+            configuration.locale
         }
         val language = sysLocale.language
         val country = sysLocale.country

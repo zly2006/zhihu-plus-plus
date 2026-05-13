@@ -146,7 +146,8 @@ fun scoreFeedTarget(target: Feed.Target): Double {
     return score.coerceIn(0.1, 10.0)
 }
 
-fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference =
+@Deprecated("Use buildReasonPreference(context, stats) so explanations come from string resources.")
+internal fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference =
     buildReasonPreference(
         stats = stats,
         preferSourceExplanation = "你最近更偏好这类来源",
@@ -175,7 +176,8 @@ private fun buildReasonPreference(
     return LocalReasonPreference(multiplier = multiplier, explanation = explanation)
 }
 
-fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity =
+@Deprecated("Use buildContentAffinity(context, stats) so explanations come from string resources.")
+internal fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity =
     buildContentAffinity(
         stats = stats,
         preferSimilarExplanation = "你明确喜欢过类似内容",

@@ -203,10 +203,7 @@ private fun renderArticleExportHtml(
             "{{editedDate}}" to footerPlaceholders.editedDate,
             "{{editedDateClass}}" to footerPlaceholders.editedDateClass,
             "{{appAttributionClass}}" to footerPlaceholders.appAttributionClass,
-            "{{appName}}" to escapeHtml(text.appName),
-            "{{appAttributionPrefix}}" to escapeHtml(text.appAttributionPrefix),
-            "{{appAttributionSuffix}}" to escapeHtml(text.appAttributionSuffix(footerPlaceholders.githubUrl)),
-            "{{githubUrl}}" to escapeHtml(footerPlaceholders.githubUrl),
+            "{{appAttribution}}" to text.appAttribution(escapeHtml(footerPlaceholders.githubUrl)),
         ),
     )
 }
@@ -324,7 +321,6 @@ private data class ArticleExportFooterPlaceholders(
 )
 
 private data class ArticleExportText(
-    val appName: String,
     val authorAvatarAlt: String,
     val commentImageAlt: String,
     val publishedDate: (String) -> String,
@@ -336,13 +332,11 @@ private data class ArticleExportText(
     val typeArticle: String,
     val fileUntitled: String,
     val fileAnonymousAuthor: String,
-    val appAttributionPrefix: String,
-    val appAttributionSuffix: (String) -> String,
+    val appAttribution: (String) -> String,
     val fileName: (String, String, String, String, Long, String, String) -> String,
 )
 
 private val defaultArticleExportText = ArticleExportText(
-    appName = "Zhihu++",
     authorAvatarAlt = "Author avatar",
     commentImageAlt = "Comment image",
     publishedDate = { "Published: $it" },
@@ -354,15 +348,13 @@ private val defaultArticleExportText = ArticleExportText(
     typeArticle = "article",
     fileUntitled = "untitled",
     fileAnonymousAuthor = "anonymous",
-    appAttributionPrefix = "Exported with",
-    appAttributionSuffix = { ", a free, open-source, ad-free third-party Zhihu client. Please star it. (GitHub: $it)" },
+    appAttribution = { "Exported with <span class=\"export-credit-brand\">Zhihu++</span>, a free, open-source, ad-free third-party Zhihu client. Please star it. (GitHub: $it)" },
     fileName = { safeTitle, safeAuthorName, typeLabel, typeKey, articleId, timestamp, extension ->
         "zhihu++_${safeTitle}_${safeAuthorName}_${typeLabel}_${typeKey}_${articleId}_$timestamp.$extension"
     },
 )
 
 private fun articleExportText(context: Context): ArticleExportText = ArticleExportText(
-    appName = context.getString(R.string.app_name),
     authorAvatarAlt = context.getString(R.string.article_export_author_avatar_alt),
     commentImageAlt = context.getString(R.string.article_export_comment_image_alt),
     publishedDate = { context.getString(R.string.article_export_published_date, it) },
@@ -374,8 +366,7 @@ private fun articleExportText(context: Context): ArticleExportText = ArticleExpo
     typeArticle = context.getString(R.string.article_export_type_article),
     fileUntitled = context.getString(R.string.article_export_file_untitled),
     fileAnonymousAuthor = context.getString(R.string.article_export_file_anonymous_author),
-    appAttributionPrefix = context.getString(R.string.article_export_app_attribution_prefix),
-    appAttributionSuffix = { context.getString(R.string.article_export_app_attribution_suffix, it) },
+    appAttribution = { context.getString(R.string.article_export_app_attribution, it) },
     fileName = { safeTitle, safeAuthorName, typeLabel, typeKey, articleId, timestamp, extension ->
         context.getString(
             R.string.article_export_file_name_format,

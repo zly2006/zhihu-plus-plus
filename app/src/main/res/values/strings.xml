@@ -855,8 +855,7 @@
     <string name="article_export_file_untitled">untitled</string>
     <string name="article_export_file_anonymous_author">anonymous</string>
     <string name="article_export_file_name_format">zhihu++_%1$s_%2$s_%3$s_%4$s_%5$d_%6$s.%7$s</string>
-    <string name="article_export_app_attribution_prefix">Exported with</string>
-    <string name="article_export_app_attribution_suffix">, a free, open-source, ad-free third-party Zhihu client. Please star it. (GitHub: %1$s)</string>
+    <string name="article_export_app_attribution"><![CDATA[Exported with <span class="export-credit-brand">Zhihu++</span>, a free, open-source, ad-free third-party Zhihu client. Please star it. (GitHub: %1$s)]]></string>
     <string name="article_export_image_download_failed">Failed to download image: %1$d</string>
     <string name="article_export_image_empty">Image content is empty</string>
     <string name="markdown_author_label">Author</string>

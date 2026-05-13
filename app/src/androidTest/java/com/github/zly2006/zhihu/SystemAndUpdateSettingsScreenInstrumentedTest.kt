@@ -179,7 +179,7 @@ class SystemAndUpdateSettingsScreenInstrumentedTest {
         clickSettingRow("自动检查更新")
         waitUntil(timeoutMillis = 5_000) { UpdateManager.isAutoCheckEnabled(composeRule.activity) }
 
-        clickSettingRow("检查每日构建更新")
+        clickSettingRow("检查 Nightly 版本更新")
         waitUntilBooleanPreference(CHECK_NIGHTLY_UPDATES_PREFERENCE_KEY, expected = true)
 
         clickSettingRow("允许遥测")

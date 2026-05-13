@@ -344,26 +344,13 @@ fun Feed.Target.localizedDetailsText(context: Context): String = when (this) {
     is Feed.QuestionTarget -> context.getString(R.string.feed_question_details, followerCount, answerCount)
 }
 
-fun Feed.Target.localizedFilterReason(context: Context): String? = when (this) {
-    is Feed.AnswerTarget -> if (voteupCount < 10 && author?.isFollowing == false) {
-        context.getString(R.string.feed_filter_low_vote_answer)
-    } else {
-        null
-    }
-    is Feed.VideoTarget -> if (author.followersCount < 50 && voteCount < 20 && !author.isFollowing) {
-        context.getString(R.string.feed_filter_video)
-    } else {
-        null
-    }
-    is Feed.ArticleTarget -> if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
-        context.getString(R.string.feed_filter_low_article)
-    } else {
-        null
-    }
-    is Feed.PinTarget -> null
-    is Feed.QuestionTarget -> if (answerCount < 5 && followerCount < 50) {
-        context.getString(R.string.feed_filter_low_question)
-    } else {
-        null
+fun Feed.Target.localizedFilterReason(context: Context): String? {
+    filterReason() ?: return null
+    return when (this) {
+        is Feed.AnswerTarget -> context.getString(R.string.feed_filter_low_vote_answer)
+        is Feed.VideoTarget -> context.getString(R.string.feed_filter_video)
+        is Feed.ArticleTarget -> context.getString(R.string.feed_filter_low_article)
+        is Feed.PinTarget -> null
+        is Feed.QuestionTarget -> context.getString(R.string.feed_filter_low_question)
     }
 }
