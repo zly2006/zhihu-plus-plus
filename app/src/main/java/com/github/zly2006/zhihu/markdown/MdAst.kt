@@ -103,6 +103,13 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
             }
 
             is Element -> {
+                if (node.tagName().equals("img", ignoreCase = true) && node.attr("eeimg") != "2") {
+                    extractEquationTex(node)?.let { formula ->
+                        paragraph().appendChild(InlineMath(formula))
+                        continue
+                    }
+                }
+
                 val blockNode = convertElementToBlock(node)
                 if (blockNode.isNotEmpty()) {
                     blocks.addAll(blockNode)
