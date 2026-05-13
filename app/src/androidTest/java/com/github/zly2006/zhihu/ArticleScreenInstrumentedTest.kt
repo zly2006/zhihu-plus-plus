@@ -67,12 +67,16 @@ class ArticleScreenInstrumentedTest {
     @Test
     fun topBarActionsDialogsClipboardAndBackHandlerRemainDeterministicOffline() {
         setArticleScreen()
+        val context = composeRule.activity
+        val ipLocationText = context.getString(R.string.article_ip_location, "上海")
+        val moreOptionsText = context.getString(R.string.article_more_options)
+        val copyLinkText = context.getString(R.string.article_copy_link)
 
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("复制链接").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText(ipLocationText).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription(moreOptionsText).assertIsDisplayed().performClick()
+        composeRule.onNodeWithText(copyLinkText).assertIsDisplayed().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.activity.clipboardManager.primaryClip
                 ?.getItemAt(0)
@@ -85,9 +89,10 @@ class ArticleScreenInstrumentedTest {
     @Test
     fun contentBodyAndMetadataRenderOffline() {
         setArticleScreen()
+        val ipLocationText = composeRule.activity.getString(R.string.article_ip_location, "上海")
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText("IP属地：上海").assertIsDisplayed()
+        composeRule.onNodeWithText(ipLocationText).assertIsDisplayed()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
     }
 
