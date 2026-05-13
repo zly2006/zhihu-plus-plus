@@ -202,8 +202,8 @@ dependencies {
     //noinspection GradleDependency
     implementation("androidx.browser:browser:1.8.0")
 
-    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.4")
-    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.4")
+    implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.5")
+    implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.5")
 
     implementation("io.coil-kt.coil3:coil-compose:$coil")
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
