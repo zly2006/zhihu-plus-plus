@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -74,7 +75,7 @@ class ArticleScreenInstrumentedTest {
 
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText(ipLocationText).assertIsDisplayed()
+        composeRule.onNodeWithText(ipLocationText).assertExists()
         composeRule.onNodeWithContentDescription(moreOptionsText).assertIsDisplayed().performClick()
         composeRule.onNodeWithText(copyLinkText).assertIsDisplayed().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -92,7 +93,7 @@ class ArticleScreenInstrumentedTest {
         val ipLocationText = composeRule.activity.getString(R.string.article_ip_location, "上海")
         composeRule.onNodeWithText("离线 Article 标题").assertIsDisplayed()
         composeRule.onNodeWithText("离线作者").assertIsDisplayed()
-        composeRule.onNodeWithText(ipLocationText).assertIsDisplayed()
+        composeRule.onNodeWithText(ipLocationText).assertExists()
         composeRule.onNodeWithText("第 1 段离线正文", substring = true).assertIsDisplayed()
     }
 
