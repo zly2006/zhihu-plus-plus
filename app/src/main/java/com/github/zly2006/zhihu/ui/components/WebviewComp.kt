@@ -22,7 +22,6 @@ package com.github.zly2006.zhihu.ui.components
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Rect
 import android.os.Bundle
@@ -45,15 +44,24 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.activity.ComponentDialog
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -65,7 +73,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
-import com.github.chrisbanes.photoview.PhotoView
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -87,22 +94,20 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.Url
 import io.ktor.http.contentType
-import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -508,26 +513,71 @@ class OpenImageDislog(
 ) : ComponentDialog(context) {
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
-        val photoView = PhotoView(context).apply {
-            setBackgroundColor(Color.BLACK)
-            setOnClickListener { dismiss() }
-        }
-        setContentView(photoView)
-        window?.setBackgroundDrawable(Color.BLACK.toDrawable())
         setCanceledOnTouchOutside(true)
-        lifecycleScope.launch {
-            httpClient
-                .get(url)
-                .bodyAsChannel()
-                .toInputStream()
-                .buffered()
-                .use {
-                    val bitmap = BitmapFactory.decodeStream(it)
-                    withContext(Dispatchers.Main) {
-                        photoView.setImageBitmap(bitmap)
+        setContentView(
+            ComposeView(context).apply {
+                setContent {
+                    val scope = rememberCoroutineScope()
+                    var showMenu by remember { mutableStateOf(false) }
+                    var menuOffset by remember { mutableStateOf(Offset.Zero) }
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.ui.graphics.Color.Black),
+                    ) {
+                        ZoomableAsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            onClick = { dismiss() },
+                            onLongClick = { offset ->
+                                menuOffset = offset
+                                showMenu = true
+                            },
+                        )
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            offset = with(density) {
+                                androidx.compose.ui.unit.DpOffset(
+                                    menuOffset.x.toDp(),
+                                    menuOffset.y.toDp(),
+                                )
+                            },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("保存图片") },
+                                onClick = {
+                                    showMenu = false
+                                    scope.launch {
+                                        saveImageToGallery(context, httpClient, url)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("分享图片") },
+                                onClick = {
+                                    showMenu = false
+                                    scope.launch {
+                                        shareImage(context, httpClient, url)
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("在浏览器中打开") },
+                                onClick = {
+                                    showMenu = false
+                                    luoTianYiUrlLauncher(context, url.toUri())
+                                },
+                            )
+                        }
                     }
                 }
-        }
+            },
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -536,6 +586,7 @@ class OpenImageDislog(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
+        window?.setBackgroundDrawable(Color.BLACK.toDrawable())
     }
 }
 

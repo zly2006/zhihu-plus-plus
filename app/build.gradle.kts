@@ -209,6 +209,7 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
     implementation("io.coil-kt.coil3:coil-gif:$coil")
     implementation("io.coil-kt.coil3:coil-svg:$coil")
+    implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
 
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.materialkolor:material-kolor:4.1.1")
@@ -251,10 +252,6 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2025.12.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-
-    implementation("com.github.chrisbanes:PhotoView:2.0.0") {
-        exclude(group = "com.android.support")
-    }
 
     // HanLP for Chinese NLP
     "fullImplementation"("com.hankcs:hanlp:portable-1.8.4")
