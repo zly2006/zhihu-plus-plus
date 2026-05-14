@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.util.Log
+import com.github.zly2006.zhihu.R
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
