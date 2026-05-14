@@ -46,8 +46,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowCircleUp
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.CopyAll
+import androidx.compose.material.icons.filled.MarkUnreadChatAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -76,6 +76,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
@@ -102,6 +103,7 @@ import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
@@ -118,8 +120,7 @@ import kotlinx.serialization.json.buildJsonArray
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
-const val ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY =
-    "articleWebviewChangeAnnouncementDismissed"
+const val QQ_GROUP_DISMISSED_PREFERENCE_KEY = "dismissQQGroup"
 const val HOME_TOP_ACTIONS_TAG = "home_top_actions"
 const val HOME_SEARCH_BUTTON_TAG = "home_search_button"
 const val HOME_NOTIFICATION_BUTTON_TAG = "home_notification_button"
@@ -238,10 +239,10 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     var showFilterExplainDialog by remember {
         mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
     }
-    var showArticleRenderChangeAnnouncement by remember {
+    var showQQGroup by remember {
         mutableStateOf(
             !preferences.getBoolean(
-                ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
+                QQ_GROUP_DISMISSED_PREFERENCE_KEY,
                 false,
             ),
         )
@@ -523,24 +524,14 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                             content = context.getString(R.string.article_render_announcement_content),
                             accept = { Text(context.getString(R.string.go_to_settings)) },
                             onAccept = {
-                                preferences.edit {
-                                    putBoolean(
-                                        ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
-                                        true,
-                                    )
-                                }
-                                showArticleRenderChangeAnnouncement = false
-                                context.navigate(Account.AppearanceSettings(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
+                                luoTianYiUrlLauncher(context, "https://qm.qq.com/q/A95uVsTTWM".toUri())
                             },
                             dismiss = { Text(context.getString(R.string.got_it)) },
                             onDismiss = {
                                 preferences.edit {
-                                    putBoolean(
-                                        ARTICLE_WEBVIEW_CHANGE_ANNOUNCEMENT_DISMISSED_PREFERENCE_KEY,
-                                        true,
-                                    )
+                                    putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
                                 }
-                                showArticleRenderChangeAnnouncement = false
+                                showQQGroup = false
                             },
                             colors = AnnouncementCardDefaults.colorsVariant(),
                         )

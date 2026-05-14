@@ -104,8 +104,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            val dialog = OpenImageDislog(context, httpClient, data.url)
-                            dialog.show()
+                            OpenImageDislog(context, httpClient, data.url).show()
                         },
                         onLongPress = { offset ->
                             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -127,8 +126,7 @@ fun RenderImage(
                 text = { Text(context.getString(R.string.view_image)) },
                 onClick = {
                     expanded = false
-                    val dialog = OpenImageDislog(context, httpClient, data.url)
-                    dialog.show()
+                    OpenImageDislog(context, httpClient, data.url).show()
                 },
             )
             DropdownMenuItem(
