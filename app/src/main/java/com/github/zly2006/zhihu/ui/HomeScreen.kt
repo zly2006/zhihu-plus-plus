@@ -22,7 +22,6 @@ import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.util.Log
-import com.github.zly2006.zhihu.R
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
@@ -81,6 +80,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
