@@ -141,6 +141,8 @@ Original version: (insert original version e.g. 1.x.x)
 Fork version: (insert fork version e.g. 0.0.1-alpha.N)
 ```
 
+DO NOT PUSH!
+
 ## Failure handling
 
 ### Sonatype upload hangs without returning deployment ID
