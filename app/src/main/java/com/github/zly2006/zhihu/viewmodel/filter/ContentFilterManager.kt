@@ -29,8 +29,7 @@ import java.util.concurrent.TimeUnit
 class ContentFilterManager private constructor(
     context: Context,
 ) {
-    private val database = ContentFilterDatabase.getDatabase(context)
-    private val dao = database.contentFilterDao()
+    private val dao = ContentFilterDatabase.getDatabase(context).contentFilterDao()
 
     companion object {
         @Volatile
@@ -83,7 +82,7 @@ class ContentFilterManager private constructor(
     }
 
     /**
-     * 批量检查内容是否已被查看过
+     * 批量检查 feed 内容是否已被展示过。
      */
     suspend fun getAlreadyViewedContentIds(content: List<Pair<String, String>>): Set<String> = withContext(Dispatchers.IO) {
         val idsToCheck = content.map { (targetType, targetId) ->

@@ -28,4 +28,13 @@ interface ContentOpenEventDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM ${ContentOpenEvent.TABLE_NAME} WHERE contentType = :contentType AND contentId = :contentId)")
     suspend fun hasOpenedContent(contentType: String, contentId: String): Boolean
+
+    @Query(
+        """
+        SELECT contentType || ':' || contentId
+        FROM ${ContentOpenEvent.TABLE_NAME}
+        WHERE (contentType || ':' || contentId) IN (:keys)
+        """,
+    )
+    suspend fun getOpenedContentKeysByKeys(keys: List<String>): List<String>
 }
