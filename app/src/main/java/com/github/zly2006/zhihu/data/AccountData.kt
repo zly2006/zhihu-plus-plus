@@ -283,8 +283,9 @@ object AccountData {
         if (response.status == HttpStatusCode.NoContent) {
             return null
         }
-        val body = response.raiseForStatus().body<JsonElement>()
+        val body = response.body<JsonElement>()
         if (response.status != HttpStatusCode.Unauthorized) return body as? JsonObject
+
         if (System.currentTimeMillis() - lastRefreshCookie < 10_000) {
             // 10s 内只刷新一次，避免死循环
             return body as? JsonObject
