@@ -27,7 +27,6 @@ import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
@@ -490,15 +489,9 @@ object ContentFilterExtensions {
     )
 
     private fun FeedDisplayItem.resolveContentIdentity(): ContentIdentity = when (val dest = navDestination) {
-        is Article -> {
-            val type = when (dest.type) {
-                ArticleType.Answer -> ContentType.ANSWER
-                ArticleType.Article -> ContentType.ARTICLE
-            }
-            ContentIdentity(type, dest.id.toString())
-        }
-        is Question -> {
-            ContentIdentity(ContentType.QUESTION, dest.questionId.toString())
+        is Article, is Question, is Pin -> {
+            val identity = ContentOpenEventSupport.toTrackedContentIdentity(dest)
+            ContentIdentity(identity!!.type, identity.id)
         }
         else -> {
             ContentIdentity("unknown", navDestination.hashCode().toString())

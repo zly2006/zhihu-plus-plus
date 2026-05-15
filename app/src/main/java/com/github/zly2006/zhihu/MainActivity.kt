@@ -52,8 +52,13 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Notification
+import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
@@ -74,6 +79,9 @@ import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.viewmodel.filter.TrackedContentIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -135,6 +143,8 @@ class MainActivity : ComponentActivity() {
 
     lateinit var navController: NavHostController
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
+    private var pendingContentOpenIdentity: TrackedContentIdentity? = null
+    private var pendingContentOpenFrom: String? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -435,6 +445,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun navigate(route: NavDestination, popup: Boolean = false) {
+        preparePendingContentOpen(route)
         history.add(route)
         if (route is Video) {
             val current = runCatching {
@@ -482,6 +493,46 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    fun consumePendingContentOpenFrom(target: NavDestination): String {
+        val identity = ContentOpenEventSupport.toTrackedContentIdentity(target) ?: return ContentOpenFrom.UNKNOWN
+        if (identity != pendingContentOpenIdentity) {
+            return ContentOpenFrom.UNKNOWN
+        }
+        val openFrom = pendingContentOpenFrom ?: ContentOpenFrom.UNKNOWN
+        pendingContentOpenIdentity = null
+        pendingContentOpenFrom = null
+        return openFrom
+    }
+
+    private fun preparePendingContentOpen(target: NavDestination) {
+        val identity = ContentOpenEventSupport.toTrackedContentIdentity(target)
+        if (identity == null) {
+            pendingContentOpenIdentity = null
+            pendingContentOpenFrom = null
+            return
+        }
+        pendingContentOpenIdentity = identity
+        pendingContentOpenFrom = ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+    }
+
+    private fun currentContentOpenSource(): NavDestination? = runCatching {
+        navController.currentBackStackEntry?.toRoute<Article>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<Question>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<Pin>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<CollectionContent>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<Home>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<History>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<OnlineHistory>()
+    }.getOrNull() ?: runCatching {
+        navController.currentBackStackEntry?.toRoute<Notification>()
+    }.getOrNull()
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)

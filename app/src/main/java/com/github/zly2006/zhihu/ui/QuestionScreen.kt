@@ -96,6 +96,8 @@ import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -221,6 +223,12 @@ fun QuestionScreen(
                             question.questionId,
                             title,
                         ),
+                    )
+                    ContentOpenEventSupport.recordOpenEvent(
+                        context = context,
+                        destination = question,
+                        questionId = question.questionId,
+                        openFrom = activity?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
                     )
                 } else {
                     context.mainExecutor.execute {

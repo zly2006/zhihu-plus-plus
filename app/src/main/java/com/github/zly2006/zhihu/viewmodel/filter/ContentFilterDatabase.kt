@@ -25,12 +25,14 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class, BlockedFeedRecord::class],
-    version = 5,
+    entities = [ContentViewRecord::class, BlockedKeyword::class, BlockedUser::class, BlockedContentRecord::class, BlockedTopic::class, BlockedFeedRecord::class, ContentOpenEvent::class],
+    version = 6,
     exportSchema = false,
 )
 abstract class ContentFilterDatabase : RoomDatabase() {
     abstract fun contentFilterDao(): ContentFilterDao
+
+    abstract fun contentOpenEventDao(): ContentOpenEventDao
 
     abstract fun blockedKeywordDao(): BlockedKeywordDao
 
@@ -132,6 +134,35 @@ abstract class ContentFilterDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `${ContentOpenEvent.TABLE_NAME}` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `contentType` TEXT NOT NULL,
+                        `contentId` TEXT NOT NULL,
+                        `questionId` INTEGER,
+                        `openFrom` TEXT NOT NULL,
+                        `openedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_${ContentOpenEvent.TABLE_NAME}_contentType_contentId`
+                    ON `${ContentOpenEvent.TABLE_NAME}` (`contentType`, `contentId`)
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_${ContentOpenEvent.TABLE_NAME}_openedAt`
+                    ON `${ContentOpenEvent.TABLE_NAME}` (`openedAt`)
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ContentFilterDatabase = INSTANCE ?: synchronized(this) {
             val instance =
                 Room
@@ -139,7 +170,7 @@ abstract class ContentFilterDatabase : RoomDatabase() {
                         context.applicationContext,
                         ContentFilterDatabase::class.java,
                         "content_filter_database",
-                    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    ).addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration(true)
                     .build()
             INSTANCE = instance
