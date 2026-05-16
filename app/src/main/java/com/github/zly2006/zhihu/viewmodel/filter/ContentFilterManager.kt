@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
- * 内容过滤管理器
- * 负责记录内容展示次数、用户交互，并提供过滤逻辑
+ * 内容过滤管理器，负责过滤feed。
+ * 负责记录feed展示次数、用户交互信息，并提供过滤逻辑
  */
 class ContentFilterManager private constructor(
     context: Context,
