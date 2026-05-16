@@ -167,7 +167,7 @@ class QuestionAnswerNavigator(
         if (destinations.isNotEmpty()) return
         val historyIds = answerHistory.map { it.article.id }.toSet()
         while (destinations.isEmpty()) {
-            val url = nextUrl.ifEmpty { "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2" }
+            val url = nextUrl.ifEmpty { "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=6" }
             val jojo = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return
             val data = AccountData.decodeJson<List<Feed>>(jojo["data"] ?: return)
             nextUrl = jojo["paging"]
