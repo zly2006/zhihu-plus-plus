@@ -101,4 +101,21 @@ class ContentOpenEventSupportTest {
             ),
         )
     }
+
+    @Test
+    fun filterUnopenedAnswerArticles_excludesCurrentHistoryAndOpenedAnswers() {
+        val filtered = ContentOpenEventSupport.filterUnopenedAnswerArticles(
+            candidates = listOf(
+                Article(type = ArticleType.Answer, id = 10L),
+                Article(type = ArticleType.Answer, id = 11L),
+                Article(type = ArticleType.Answer, id = 12L),
+                Article(type = ArticleType.Article, id = 13L),
+            ),
+            openedContentKeys = setOf(ContentOpenEventSupport.buildContentKey(ContentType.ANSWER, "12")),
+            currentArticleId = 10L,
+            historyIds = setOf(11L),
+        )
+
+        assertEquals(emptyList<Article>(), filtered)
+    }
 }

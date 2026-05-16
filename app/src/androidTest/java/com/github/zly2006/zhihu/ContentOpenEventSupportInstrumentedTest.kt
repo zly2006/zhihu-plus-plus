@@ -20,23 +20,21 @@ package com.github.zly2006.zhihu
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEvent
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
-import com.github.zly2006.zhihu.viewmodel.filter.ContentViewRecord
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class ContentFilterManagerInstrumentedTest {
+class ContentOpenEventSupportInstrumentedTest {
     @Test
-    fun getAlreadyViewedContentIds_recognizesOpenedContentEvents() = runBlocking {
+    fun getAlreadyOpenedContentIds_recognizesOpenedContentEvents() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val database = ContentFilterDatabase.getDatabase(context)
-        val manager = ContentFilterManager.getInstance(context)
         val contentId = "opened-${System.currentTimeMillis()}"
 
         database.contentOpenEventDao().insert(
@@ -48,10 +46,13 @@ class ContentFilterManagerInstrumentedTest {
             ),
         )
 
-        val viewedIds = manager.getAlreadyViewedContentIds(listOf(ContentType.ANSWER to contentId))
+        val viewedIds = ContentOpenEventSupport.getAlreadyOpenedContentIds(
+            context = context,
+            content = listOf(ContentType.ANSWER to contentId),
+        )
 
         assertTrue(
-            viewedIds.contains(ContentViewRecord.generateId(ContentType.ANSWER, contentId)),
+            viewedIds.contains(ContentOpenEventSupport.buildContentKey(ContentType.ANSWER, contentId)),
         )
     }
 }

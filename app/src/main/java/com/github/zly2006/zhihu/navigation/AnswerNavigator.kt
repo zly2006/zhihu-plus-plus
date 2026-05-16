@@ -32,6 +32,8 @@ import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -158,25 +160,40 @@ abstract class AnswerNavigator(
 class QuestionAnswerNavigator(
     val questionId: Long,
 ) : AnswerNavigator("此问题") {
-    private val destinations = ArrayDeque<Feed>()
+    private val destinations = ArrayDeque<Article>()
     private var nextUrl: String = ""
 
     private suspend fun ensureDestinations(context: Context, currentArticleId: Long) {
         if (destinations.isNotEmpty()) return
-        val url = nextUrl.ifEmpty { "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2" }
-        val jojo = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return
-        val data = AccountData.decodeJson<List<Feed>>(jojo["data"] ?: return)
-        nextUrl = jojo["paging"]
-            ?.jsonObject
-            ?.get("next")
-            ?.jsonPrimitive
-            ?.content ?: ""
-        destinations.addAll(
-            data.filter { feed ->
-                val dest = feed.target?.navDestination
-                dest is Article && dest.id != currentArticleId
-            },
-        )
+        val historyIds = answerHistory.map { it.article.id }.toSet()
+        while (destinations.isEmpty()) {
+            val url = nextUrl.ifEmpty { "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=2" }
+            val jojo = AccountData.fetchGet(context, url) { signFetchRequest() } ?: return
+            val data = AccountData.decodeJson<List<Feed>>(jojo["data"] ?: return)
+            nextUrl = jojo["paging"]
+                ?.jsonObject
+                ?.get("next")
+                ?.jsonPrimitive
+                ?.content ?: ""
+            val candidates = data.mapNotNull { feed ->
+                feed.target?.navDestination as? Article
+            }
+            val openedContentIds = ContentOpenEventSupport.getAlreadyOpenedContentIds(
+                context = context,
+                content = candidates
+                    .filter { it.type == ArticleType.Answer }
+                    .map { ContentType.ANSWER to it.id.toString() },
+            )
+            destinations.addAll(
+                ContentOpenEventSupport.filterUnopenedAnswerArticles(
+                    candidates = candidates,
+                    openedContentKeys = openedContentIds,
+                    currentArticleId = currentArticleId,
+                    historyIds = historyIds,
+                ),
+            )
+            if (nextUrl.isEmpty()) return
+        }
     }
 
     override suspend fun loadNext(context: Context): Article? {
@@ -187,14 +204,13 @@ class QuestionAnswerNavigator(
             return article
         }
         ensureDestinations(context, -1L)
-        return (destinations.removeFirstOrNull()?.target?.navDestination as? Article)
+        return destinations.removeFirstOrNull()
     }
 
     override suspend fun prefetchNext(context: Context, currentArticleId: Long) {
         if (nextAnswerContent != null) return
         ensureDestinations(context, currentArticleId)
-        val nextFeed = destinations.firstOrNull() ?: return
-        val nextDest = nextFeed.target?.navDestination as? Article ?: return
+        val nextDest = destinations.firstOrNull() ?: return
         if (nextDest.type != ArticleType.Answer) return
         try {
             val detail = ContentDetailCache.getOrFetch(context, nextDest) as? DataHolder.Answer ?: return
