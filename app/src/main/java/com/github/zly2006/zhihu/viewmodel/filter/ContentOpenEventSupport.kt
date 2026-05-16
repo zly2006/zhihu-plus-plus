@@ -36,6 +36,11 @@ data class TrackedContentIdentity(
     val id: String,
 )
 
+data class QuestionAnswerCandidatePartition(
+    val previousCandidates: List<Article>,
+    val nextCandidates: List<Article>,
+)
+
 object ContentOpenFrom {
     const val ANSWER_SWITCH = "answer_switch"
     const val COLLECTION = "collection"
@@ -124,5 +129,36 @@ object ContentOpenEventSupport {
             article.id != currentArticleId &&
             article.id !in historyIds &&
             buildContentKey(ContentType.ANSWER, article.id.toString()) !in openedContentKeys
+    }
+
+    fun partitionQuestionAnswerCandidates(
+        candidates: List<Article>,
+        openedAnswerIds: Set<Long>,
+        currentArticleId: Long,
+        historyIds: Set<Long> = emptySet(),
+        previousIds: Set<Long> = emptySet(),
+        nextIds: Set<Long> = emptySet(),
+    ): QuestionAnswerCandidatePartition {
+        val previousCandidates = mutableListOf<Article>()
+        val nextCandidates = mutableListOf<Article>()
+
+        candidates.forEach { article ->
+            if (article.type != ArticleType.Answer || article.id == currentArticleId || article.id in historyIds) {
+                return@forEach
+            }
+            if (article.id in previousIds || article.id in nextIds) {
+                return@forEach
+            }
+            if (article.id in openedAnswerIds) {
+                previousCandidates.add(article)
+            } else {
+                nextCandidates.add(article)
+            }
+        }
+
+        return QuestionAnswerCandidatePartition(
+            previousCandidates = previousCandidates,
+            nextCandidates = nextCandidates,
+        )
     }
 }

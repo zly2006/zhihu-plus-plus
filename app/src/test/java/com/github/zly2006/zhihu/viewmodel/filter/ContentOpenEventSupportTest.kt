@@ -118,4 +118,31 @@ class ContentOpenEventSupportTest {
 
         assertEquals(emptyList<Article>(), filtered)
     }
+
+    @Test
+    fun partitionQuestionAnswerCandidates_movesOpenedAnswersToPreviousAndKeepsFreshNext() {
+        val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
+            candidates = listOf(
+                Article(type = ArticleType.Answer, id = 10L),
+                Article(type = ArticleType.Answer, id = 11L),
+                Article(type = ArticleType.Answer, id = 12L),
+                Article(type = ArticleType.Answer, id = 13L),
+                Article(type = ArticleType.Article, id = 14L),
+            ),
+            openedAnswerIds = setOf(11L, 12L),
+            currentArticleId = 10L,
+        )
+
+        assertEquals(
+            listOf(
+                Article(type = ArticleType.Answer, id = 11L),
+                Article(type = ArticleType.Answer, id = 12L),
+            ),
+            partition.previousCandidates,
+        )
+        assertEquals(
+            listOf(Article(type = ArticleType.Answer, id = 13L)),
+            partition.nextCandidates,
+        )
+    }
 }
