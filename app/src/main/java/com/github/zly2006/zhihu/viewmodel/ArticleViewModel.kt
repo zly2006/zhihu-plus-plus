@@ -423,19 +423,8 @@ class ArticleViewModel(
                                     is PaginationInfoNavigator -> existingNav.questionId == questionId
                                     else -> false
                                 }
-                                if (isSameQuestion) {
-                                    // 同一问题内导航：更新队列，补充新回答的 prev/next ids
-                                    (existingNav as? PaginationInfoNavigator)
-                                        ?.let { nav -> answer.paginationInfo?.let { nav.updateFromPaginationInfo(it) } }
-                                } else {
-                                    sharedData.navigator = answer.paginationInfo?.let {
-                                        PaginationInfoNavigator(questionId, it)
-                                    } ?: run {
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, "【回答切换】无法获取分页信息，使用默认回答排序", Toast.LENGTH_SHORT).show()
-                                        }
-                                        QuestionAnswerNavigator(questionId)
-                                    }
+                                if (!isSameQuestion) {
+                                    sharedData.navigator = QuestionAnswerNavigator(questionId)
                                 }
                             }
                             sharedData.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
