@@ -22,7 +22,10 @@ import java.io.File
 
 private const val FONT_VERSION = "1"
 private const val KATEX_BASE = "https://registry.npmmirror.com/katex/0.16.11/files/dist/fonts"
-private const val LM_MATH_URL = "https://mirrors.tuna.tsinghua.edu.cn/CTAN/fonts/lm-math/opentype/latinmodern-math.otf"
+private val LM_MATH_URLS = listOf(
+    "https://mirrors.ustc.edu.cn/CTAN/fonts/lm-math/opentype/latinmodern-math.otf",
+    "https://mirrors.tuna.tsinghua.edu.cn/CTAN/fonts/lm-math/opentype/latinmodern-math.otf",
+)
 
 private val KATEX_FONTS = mapOf(
     "mainRegular" to "KaTeX_Main-Regular.ttf",
@@ -71,11 +74,28 @@ suspend fun downloadLatexFonts(context: Context, client: HttpClient): Downloaded
         }
     }
 
-    // Download Latin Modern Math
+    // Download Latin Modern Math (try multiple mirrors, validate content)
     val lmFile = File(dir, "latinmodern-math.otf")
     if (!lmFile.exists()) {
-        val bytes = client.get(LM_MATH_URL).bodyAsBytes()
-        lmFile.writeBytes(bytes)
+        var lastError: Exception? = null
+        for (url in LM_MATH_URLS) {
+            try {
+                val bytes = client.get(url).bodyAsBytes()
+                // Validate: OTF files start with "OTTO" magic bytes (0x4F54544F)
+                if (bytes.size > 4 &&
+                    bytes[0] == 0x4F.toByte() &&
+                    bytes[1] == 0x54.toByte() &&
+                    bytes[2] == 0x54.toByte() &&
+                    bytes[3] == 0x4F.toByte()
+                ) {
+                    lmFile.writeBytes(bytes)
+                    break
+                }
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+        if (!lmFile.exists()) throw lastError ?: RuntimeException("Failed to download Latin Modern Math from all mirrors")
     }
 
     // Build FontFamilies from downloaded bytes
