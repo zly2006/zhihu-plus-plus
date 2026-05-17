@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.latex.rememberLatexFonts
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
@@ -224,12 +225,17 @@ fun RenderMarkdown(
     val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
     val defaultTheme = MarkdownTheme.auto(ThemeManager.isDarkTheme())
+
+    val fontResult = rememberLatexFonts(context, AccountData.httpClient(context))
+    val mathFont = fontResult.downloaded?.mathFont ?: defaultTheme.mathFont
+
     val theme = defaultTheme.copy(
         bodyStyle = defaultTheme.bodyStyle.copy(
             fontSize = 16.sp * fontSize / 100,
             lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
         ),
         mathFontSize = 18f * fontSize / 100,
+        mathFont = mathFont,
     )
     Markdown(
         document = document,

@@ -25,11 +25,28 @@ Optional:
 ## Guardrails
 
 - Prefer preserving existing published coordinates. Do not switch the app to Android-only coordinates unless publishing KMP root coordinates is impossible.
-- Fork-specific behavior should be reduced to the minimum approved delta. Current approved delta: `NativeBlock` support.
+- Fork-specific behavior should be reduced to the minimum approved delta. Current approved deltas:
+  - `NativeBlock` support
+  - `mathFont: MathFont` field in `MarkdownTheme` (font CDN support)
+  - Switched latex dependency from `io.github.huarangmeng` to `io.github.zly2006`
 - Never use destructive git commands on a dirty tree.
 - For Zhihu after dependency changes, run:
   1. `./gradlew assembleLiteDebug`
   2. `./gradlew ktlintFormat`
+
+## Dependency order (CRITICAL)
+
+The Markdown fork depends on `io.github.zly2006:latex-*`. **Before publishing Markdown, always verify the latex version it depends on is already published to Maven Central:**
+
+```bash
+# Check what latex version Markdown expects
+grep 'latex =' gradle/libs.versions.toml
+
+# Check if that version is on Maven Central
+curl -s https://repo1.maven.org/maven2/io/github/zly2006/latex-renderer/maven-metadata.xml | grep '<release>'
+```
+
+If the expected version is NOT on Maven Central, run the `release-latex-fork` skill first.
 
 ## Workflow
 
