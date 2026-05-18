@@ -45,6 +45,19 @@ body:
       required: true
 
   - type: textarea
+    id: official-path
+    attributes:
+      label: 官方操作路径（如果官方有此功能）
+      description: 请描述如何在官方知乎网页端或 App 中找到并使用该功能，包括需要点击的按钮和操作步骤。
+      placeholder: |
+        例如：
+        1. 打开知乎 App → 进入任意一个回答
+        2. 点击右上角「...」按钮
+        3. 选择「xxx」即可看到该功能
+    validations:
+      required: false
+
+  - type: textarea
     id: alternatives
     attributes:
       label: 你尝试过的替代方案
