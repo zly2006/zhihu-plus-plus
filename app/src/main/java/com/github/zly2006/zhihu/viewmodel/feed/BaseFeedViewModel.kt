@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.data.GroupFeed
 import com.github.zly2006.zhihu.data.HotListFeed
 import com.github.zly2006.zhihu.data.MomentsFeed
 import com.github.zly2006.zhihu.data.QuestionFeedCard
+import com.github.zly2006.zhihu.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.data.actionText
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Article
@@ -66,6 +67,8 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val localContentId: String? = null,
         val localFeedId: String? = null,
         val localReason: String? = null,
+        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        val segmentSourceUrl: String? = null,
     ) {
         val stableKey: String
             get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
@@ -130,6 +133,16 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                                 avatarSrc = feed.target?.author?.avatarUrl,
                                 authorName = feed.target?.author?.name,
                                 feed = feed,
+                                segmentInfos = when (val target = feed.target) {
+                                    is Feed.AnswerTarget -> target.segmentInfos
+                                    is Feed.ArticleTarget -> target.segmentInfos
+                                    else -> emptyList()
+                                },
+                                segmentSourceUrl = when (val target = feed.target) {
+                                    is Feed.AnswerTarget -> "https://www.zhihu.com/question/${target.question.id}/answer/${target.id}"
+                                    is Feed.ArticleTarget -> "https://zhuanlan.zhihu.com/p/${target.id}"
+                                    else -> null
+                                },
                             )
                         }
 

@@ -103,6 +103,9 @@ sealed interface Feed {
         val thumbnails: List<String> = emptyList(),
         val favoriteCount: Int = 0,
         val answerType: String? = null,
+        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        @Serializable(with = BooleanCompatSerializer::class)
+        val allowSegmentInteraction: Boolean = false,
     ) : Target {
         override fun filterReason(): String? = if (voteupCount < 10 && author?.isFollowing == false) {
             "规则：回答；赞数 < 10，未关注作者"
@@ -178,6 +181,9 @@ sealed interface Feed {
         val isLabeled: Boolean = false,
         val visitedCount: Int = 0,
         val favoriteCount: Int = 0,
+        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        @Serializable(with = BooleanCompatSerializer::class)
+        val allowSegmentInteraction: Boolean = false,
     ) : Target {
         override fun filterReason(): String? = if ((author.followersCount < 50 || voteupCount < 20) && !author.isFollowing) {
             "规则：文章；作者粉丝数 < 50 或 文章赞数 < 20，未关注作者"
