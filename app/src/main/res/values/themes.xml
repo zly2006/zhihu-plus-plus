@@ -1,4 +1,4 @@
 <resources>
-    <style name="Theme.Zhihu" parent="Theme.Material3.DayNight.NoActionBar"
+    <style name="Theme.Zhihu" parent="Theme.AppCompat.DayNight.NoActionBar"
             />
 </resources>

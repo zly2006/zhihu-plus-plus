@@ -214,17 +214,14 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-svg:$coil")
     implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
 
-    implementation("com.google.android.material:material:1.13.0")
     implementation("com.materialkolor:material-kolor:4.1.1")
 
     implementation("org.jsoup:jsoup:1.22.1")
-    implementation("androidx.legacy:legacy-support-v4:1.0.0")
 
     // ZXing for QR code scanning
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     implementation("androidx.core:core-ktx:1.18.0")
-    implementation("com.google.android.material:material:1.14.0")
     // Lifecycle (JetBrains KMP versions)
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
     implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
