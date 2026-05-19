@@ -70,8 +70,11 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
+import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
+import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
@@ -242,8 +245,10 @@ fun RenderMarkdown(
         mathFont = mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
+    var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
         LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
+        LocalSegmentActionSheetHost provides { state -> segmentActionSheetState = state },
     ) {
         Markdown(
             document = document,
@@ -267,5 +272,8 @@ fun RenderMarkdown(
             onDismiss = { segmentCommentTarget = null },
             content = target,
         )
+    }
+    segmentActionSheetState?.let { state ->
+        SegmentActionSheet(state)
     }
 }

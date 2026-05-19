@@ -36,6 +36,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,17 +86,28 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
- * 在可选中的 Markdown 子树外承载划线评论弹窗。
+ * 在可选中的 Markdown 子树外承载划线交互弹窗。
  *
  * `SegmentedText` 作为 Markdown 的原生块渲染，通常处在 Markdown 级别的文本选择容器内。
- * 如果它直接从这个子树里打开评论弹窗，Compose 文本选择工具栏可能会跨弹窗窗口换算坐标，
+ * 如果它直接从这个子树里打开底部弹窗或评论弹窗，Compose 文本选择工具栏可能会跨弹窗窗口换算坐标，
  * 触发 `IllegalArgumentException: layouts are not part of the same hierarchy`。
  */
 internal val LocalSegmentCommentHost = staticCompositionLocalOf<(SegmentCommentHolder) -> Unit> {
     error("LocalSegmentCommentHost is not provided")
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+internal data class SegmentActionSheetState(
+    val highlight: SegmentHighlightSpan,
+    val onDismiss: () -> Unit,
+    val onLikeClick: () -> Unit,
+    val onCommentClick: () -> Unit,
+    val onCopyClick: () -> Unit,
+)
+
+internal val LocalSegmentActionSheetHost = staticCompositionLocalOf<(SegmentActionSheetState?) -> Unit> {
+    error("LocalSegmentActionSheetHost is not provided")
+}
+
 @Composable
 fun SegmentedText(
     parts: List<SegmentTextPart>,
@@ -108,6 +121,7 @@ fun SegmentedText(
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
     val openSegmentComments = LocalSegmentCommentHost.current
+    val showSegmentActionSheet = LocalSegmentActionSheetHost.current
 
     val onHighlightClick = remember(parts) { { highlight: SegmentHighlightSpan -> selectedHighlight = highlight } }
 
@@ -120,37 +134,65 @@ fun SegmentedText(
         onHighlightClick = onHighlightClick,
     )
 
-    selectedHighlight?.let { highlight ->
-        val key = highlightKey(highlight)
-        val currentMeta = metaStates[key] ?: highlight.meta
-        SegmentActionSheet(
-            highlight = highlight.copy(meta = currentMeta),
-            onDismiss = { selectedHighlight = null },
-            onLikeClick = {
-                coroutineScope.launch {
-                    val updatedMeta = runCatching {
-                        toggleSegmentLike(
-                            context = context,
-                            highlight = highlight.copy(meta = currentMeta),
-                        )
-                    }.getOrElse { currentMeta }
-                    metaStates[key] = updatedMeta
-                }
-            },
-            onCommentClick = {
-                selectedHighlight = null
-                highlight.copy(meta = currentMeta).toSegmentCommentHolder()?.let { target ->
-                    openSegmentComments(target)
-                }
-            },
-            onCopyClick = {
-                context.clipboardManager.setPrimaryClip(
-                    android.content.ClipData.newPlainText("segment_text", highlight.text),
-                )
-                selectedHighlight = null
-            },
+    val selected = selectedHighlight
+    val selectedKey = selected?.let(::highlightKey)
+    val selectedMeta = selectedKey?.let { metaStates[it] } ?: selected?.meta
+    LaunchedEffect(selected, selectedMeta) {
+        if (selected == null || selectedKey == null || selectedMeta == null) {
+            showSegmentActionSheet(null)
+            return@LaunchedEffect
+        }
+        showSegmentActionSheet(
+            SegmentActionSheetState(
+                highlight = selected.copy(meta = selectedMeta),
+                onDismiss = {
+                    selectedHighlight = null
+                    showSegmentActionSheet(null)
+                },
+                onLikeClick = {
+                    coroutineScope.launch {
+                        val updatedMeta = runCatching {
+                            toggleSegmentLike(
+                                context = context,
+                                highlight = selected.copy(meta = selectedMeta),
+                            )
+                        }.getOrElse { selectedMeta }
+                        metaStates[selectedKey] = updatedMeta
+                    }
+                },
+                onCommentClick = {
+                    selectedHighlight = null
+                    showSegmentActionSheet(null)
+                    selected.copy(meta = selectedMeta).toSegmentCommentHolder()?.let { target ->
+                        openSegmentComments(target)
+                    }
+                },
+                onCopyClick = {
+                    context.clipboardManager.setPrimaryClip(
+                        android.content.ClipData.newPlainText("segment_text", selected.text),
+                    )
+                    selectedHighlight = null
+                    showSegmentActionSheet(null)
+                },
+            ),
         )
     }
+    DisposableEffect(Unit) {
+        onDispose {
+            showSegmentActionSheet(null)
+        }
+    }
+}
+
+@Composable
+internal fun SegmentActionSheet(state: SegmentActionSheetState) {
+    SegmentActionSheet(
+        highlight = state.highlight,
+        onDismiss = state.onDismiss,
+        onLikeClick = state.onLikeClick,
+        onCommentClick = state.onCommentClick,
+        onCopyClick = state.onCopyClick,
+    )
 }
 
 @Composable

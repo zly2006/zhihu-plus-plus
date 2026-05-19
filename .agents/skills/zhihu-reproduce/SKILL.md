@@ -1,20 +1,24 @@
 ---
 name: zhihu-reproduce
-description: 当用户要求你模仿知乎官方网站的某个功能时，使用此技能来进行爬虫、API清洗、数据分析、验证，并直接产出高质量UI设计代码。
+description: 当用户要求复刻知乎网页版的功能、交互、接口行为或视觉细节时，使用此技能采集真实网页证据、分析 API 与 UI 结构，并落地到 Zhihu++ Android 代码。
 license: CC BY-NC-SA 4.0
 ---
 
 ## Overview
 
-本技能的原理：通过chrome devtools的mcp功能，远程控制浏览器，模仿用户操作，爬取数据，分析数据，并直接产出高质量UI设计代码。
+本技能用于把知乎网页版上的真实功能复刻到 Zhihu++ Android 客户端。核心原则是：先用已登录浏览器观察真实页面和接口，再根据证据设计数据模型、UI、交互与验证方案，不凭印象猜字段或样式。
 
-必须接入有登陆状态的浏览器，才能访问知乎的用户专属功能。
+适用范围包括但不限于：
 
-### 1. 确保mcp正常
+- feed 卡片、详情页、评论区、个人页、搜索页等页面结构
+- 点赞、收藏、关注、评论、分享、折叠、展开等交互行为
+- Web API 字段、请求参数、分页、状态位、权限位和异常返回
+- 原版视觉样式、布局节奏、弹层、菜单、空状态和加载状态
+- Android 端 Compose / WebView / Markdown 渲染链路适配
 
-首先，检查是否已经安装了chrome-devtools-mcp
+必须使用有知乎登录状态的浏览器。未登录时只能观察公开页面，不能据此推断用户专属功能。
 
-然后，检查9222端口是否被占用，是否是CDP协议。如果没有占用，或者不是合法的CDP协议：
+## 1. 环境与 MCP 检查
 
 1. 询问用户使用的是msedge还是chrome浏览器。
 2. 根据用户的浏览器，给出启动命令，要求用户在本地执行，启动一个带有远程调试功能的浏览器实例。
@@ -23,137 +27,201 @@ license: CC BY-NC-SA 4.0
 
 假如你是codex，执行以下命令添加MCP server，然后请用户重启对话：
 
+先确认当前 Codex 会话是否已经可用 `chrome-devtools`。如果工具不可用，按下面顺序检查，而不是只看仓库里的 `.mcp.json`：
+
+```bash
+codex mcp list
+codex mcp get chrome-devtools
+curl -s http://127.0.0.1:9222/json/version
+```
+
+`127.0.0.1:9222/json/version` 必须返回合法 CDP 信息。Edge 和 Chrome 都可以，只要 CDP 端点有效并且是用户实际登录知乎的浏览器实例。
+
+如果还没有注册 DevTools MCP，在 Codex 中使用：
+
 ```bash
 codex mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222
 ```
 
-### 2. 检查该浏览器的知乎登录状态
+注册后通常需要重启或重新进入对话，当前会话不一定会热加载新 MCP。重启后再确认工具真的可用。
 
-用CDP请求 https://www.zhihu.com/api/v4/me ，看看能否正常打开。
+如果 9222 没有可用浏览器实例，询问用户使用 Edge 还是 Chrome，再给出对应的远程调试启动命令。不要擅自假设浏览器类型或登录状态。
 
-### 3. 根据用户的需求，模仿用户操作，爬取数据，产出ViewModel以及API代码，并编写API文档
+## 2. 登录状态检查
 
-推荐先按下面的顺序做：
+用已连接浏览器访问或请求：
 
-1. 用 CDP 抓真实数据，不要猜字段。
-2. 先确认字段在 feed、详情接口里的具体位置，再落数据模型。
-3. 只在用户指定的渲染链路里改 UI；不要默认 WebView、Markdown、feed 卡片一起改。
+```text
+https://www.zhihu.com/api/v4/me
+```
 
-#### segment_infos 实战经验
+确认返回的是已登录用户信息，而不是登录页、错误页或匿名状态。只有登录状态确认后，才继续采集需要账号权限的功能。
 
-- 推荐流里可先抓：
-  - `https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20`
-- 回答详情里可先抓：
-  - `https://www.zhihu.com/api/v4/answers/{answerId}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting`
-- 真实样本里，`segment_infos` 常见在：
-  - `data[i].target.segment_infos`
-  - `answer.segment_infos`
-- `allow_segment_interaction` 不是稳定 boolean；实测可能返回 `0/1`，落 Kotlin Serialization 时要做兼容 serializer，不能直接用裸 `Boolean`。
-- `segment_infos` 的核心结构是：
-  - `pid`: 对应正文里的 `p[data-pid]`
-  - `text`: 该段原文
-  - `marks[*].start_index/end_index`: 高亮范围
-  - `marks[*].seg_info`: `seg_ids / is_like / like_count / comment_count / my_comment_count / is_span`
-- Web 端实际 DOM 会把正文片段包成：
-  - `span.highlight-wrap.other`
-  - 若有评论再带 `has-comments`
-  - 常见属性包括 `data-highlight-id`、`data-highlight-split-type`
+## 3. 需求定界
 
-#### API 文档最低要求
+在动代码前先把用户要复刻的范围说清楚。至少确认这些边界：
 
-- 写清字段来源接口、字段路径、示例值。
-- 说明该字段是否只在部分内容类型返回。
-- 标记兼容点：
-  - `allow_segment_interaction` 可能是 `0/1`
-  - `segment_infos` 可能为空数组
-  - 同一段里可能有多个 `seg_ids`
+- 目标页面：feed、回答详情、文章详情、评论区、搜索页、个人页或其他页面
+- 目标对象：卡片、正文、工具栏、弹层、菜单、状态按钮、列表项等
+- 目标行为：只显示数据、支持点击、支持状态切换、支持分页、支持离线缓存等
+- Android 落点：Compose 原生 UI、Markdown 渲染、WebView、Repository/API、Room 缓存或导航逻辑
+- 非目标范围：明确哪些相邻页面或渲染链路本次不改
 
-### 4. 分析知乎原版的UI是如何设计的，并进行安卓适配，产出UI代码
+如果用户只要求分析，先产出分析结论，不要直接写代码。如果用户要求实现，按项目既有架构落地，避免把相邻概念合并。
 
-做 UI 之前，先确认用户要你模仿的是哪一层：
+## 4. 采集真实网页证据
 
-- feed 卡片摘要
-- 回答/文章详情正文
-- WebView 渲染
-- Markdown/Compose 原生渲染
+用 DevTools 模仿真实用户操作，采集三类证据：
 
-#### 正文划线功能的安卓适配建议
+1. 页面证据：截图、DOM 结构、可见文案、布局关系、交互前后状态
+2. 网络证据：请求 URL、方法、参数、响应字段、分页参数、权限字段、错误返回
+3. 行为证据：点击、长按、展开、收起、弹层、跳转、滚动加载、空状态和失败状态
 
-- 如果只改 Markdown 渲染，不要顺手把 feed 卡片或 WebView 一起改掉。
-- 推荐做法：
-  1. 先把 `segment_infos` 注入正文 HTML，按 `pid + start/end` 生成 `span.highlight-wrap`
-  2. 在 Markdown 解析层识别带 `highlight-wrap` 的段落
-  3. 对这类段落走原生 Compose 组件，而不是普通 Markdown `Text`
-- 交互上，先做最小可用动作：
-  - 点赞
-  - 评论 / 打开评论区
-  - 复制
-- 不要默认塞太多动作；先抄清楚原版，再按用户要求裁剪。
+采集时遵守这些规则：
 
-#### 原版样式观察
+- 不要只抓一个接口就下结论；关键字段要看列表接口和详情接口是否一致。
+- 不要只看字段名；记录字段路径、示例值、缺省值、空数组、null、数字/布尔混用等兼容点。
+- 不要把 Web DOM 结构直接等同于 Android 实现；先理解它表达的产品语义。
+- 对用户专属状态，如是否点赞、是否关注、是否收藏，必须采集状态切换前后的返回。
 
-- Web 端高亮不是整段底色，而是按 mark 范围切片。
-- 常见视觉特征：
-  - 轻底色
-  - 明确的下划线/边界
-  - 点击后弹 bottom sheet / popover
-- 同一段里可能出现多块高亮，必须保留分块，不要把整段合并成一坨可点击区域。
+常见入口示例：
 
-### 5. 使用真实数据，产出测试代码
+```text
+https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20
+https://www.zhihu.com/api/v4/answers/{answerId}
+https://www.zhihu.com/api/v4/questions/{questionId}/answers
+https://www.zhihu.com/api/v4/articles/{articleId}
+https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
+```
 
-你需要从浏览器里面获取一个数据较多，便于测试的真实的内容ID，然后只把这个ID作为测试输入，产出测试代码。测试你写的API调用代码，看看能不能正确获取到数据，并正确渲染UI。
+具体接口以 DevTools 实际捕获为准，不要把上面的示例当成固定答案。
 
-实战里可以直接用一个高密度样本回答做回归，例如：
+## 5. API 与数据模型设计
 
-- `questionId = 507920275`
-- `answerId = 2025269343450080224`
+落数据模型前，先写清楚字段来源：
 
-它有这些好处：
+- 来源接口、请求参数和认证要求
+- 字段路径、类型、示例值
+- 该字段是否只在某些内容类型或登录状态下返回
+- 字段缺失、null、空数组、数字/字符串/布尔混用时的兼容策略
+- 与项目现有 data class、Repository、ViewModel 的关系
 
-- 正文里有多处高亮
-- 某些高亮带评论数
-- 至少有一处高亮聚合了很多 `seg_ids`
+实现时遵守项目约定：
 
-#### 建议测试项
+- 知乎 API 原始字段通常是 `snake_case`，DataHolder 和 Kotlin data class 使用 `camelCase`。
+- `AccountData.fetch*()` 和 `decodeJson()` 已经处理 `snake_case2camelCase()`，不要手写重复转换。
+- Web API 使用 `signFetchRequest(context)`；Android API 使用 `AccountData.ANDROID_HEADERS` 和 `ANDROID_USER_AGENT`。
+- 新增模型优先复用现有结构；只有语义不同或生命周期不同才新增类型。
 
-1. `segment_infos` 能正确解码。
-2. `allow_segment_interaction = 1` 不会导致反序列化失败。
-3. HTML 注入后，目标 `p[data-pid]` 内能生成 `span.highlight-wrap`。
-4. 点击高亮后，动作面板能显示正确的点赞数/评论数。
-5. 如果用户要求只在正文生效，feed 卡片就不应该解析高亮。
+如果发现网页字段和现有存储模型不匹配，先说明差异和迁移影响，再决定是否改 Room、Repository 或只做内存态展示。
 
-### Troubleshooting
+## 6. UI 与交互复刻
 
-#### 1. 看得到字段，但 App 一进详情就炸
+做 UI 前先判断原版设计服务的产品语义，而不是机械照搬像素：
+
+- 信息层级：哪些内容是主信息、辅助信息、状态信息
+- 交互优先级：哪些操作常驻，哪些放在菜单或弹层
+- 状态表达：未登录、无权限、已操作、加载中、失败、空数据
+- Android 适配：触控面积、Material 3 组件、深色模式、无障碍文本、窄屏布局
+
+修改范围要精确：
+
+- 只改用户指定的渲染链路，不顺手扩散到 feed、详情、WebView、Markdown 等相邻链路。
+- Compose 中用 `LaunchedEffect` 处理副作用，并设置正确 key。
+- 用 `collectAsState()` 观察 Flow/StateFlow。
+- 导航相关改动前必须先检查 `NavDestination.kt`。
+
+如果原版依赖 hover、复杂 DOM 或桌面布局，应转换成 Android 上自然的交互，例如 bottom sheet、菜单、长按、可点击行或显式按钮。
+
+## 7. 测试与验证
+
+优先用真实采集到的内容 ID 做回归测试。测试输入只保留必要 ID，不把整份真实响应硬编码进测试，除非测试目标就是解析兼容性。
+
+最低验证要求：
+
+- API 请求能成功获取真实数据。
+- 新增字段能正确解码，包括缺失、null、空数组和类型兼容情况。
+- ViewModel 状态流能覆盖加载、成功、失败和空状态。
+- UI 能在真实样本上正确显示，并且交互前后状态符合网页证据。
+- 如果用户要求只影响某一页面或链路，必须验证相邻链路没有被误改。
+
+如果改动涉及用户可见 UI，按项目 AGENTS.md 的 UI 调试与双代理复检流程执行。
+
+## 8. 文档输出
+
+实现复杂功能时，同步补一份简短 API / 设计记录，至少包含：
+
+- 功能目标和非目标范围
+- 采集到的关键接口和字段路径
+- 与原版 UI / 交互的差异和 Android 适配原因
+- 已知兼容点和测试样本 ID
+- 后续可扩展点
+
+文档面向后续维护者，不要写成泛泛教程。
+
+## Troubleshooting
+
+### DevTools MCP 已注册但本轮不可用
+
+当前会话可能没有热加载新 MCP。先确认：
+
+```bash
+codex mcp list
+curl -s http://127.0.0.1:9222/json/version
+```
+
+如果两者都正常但工具仍不可用，要求重启对话后再继续。
+
+### 能看到字段，但 App 一进页面就崩溃
 
 先查 `logcat`，重点看：
 
 - `JsonDecodingException`
-- `allowSegmentInteraction`
-- `getContentDetail`
+- 新增字段名
+- 对应 Repository / ViewModel / UI 渲染调用栈
 
-如果是 `Failed to parse literal '1' as a boolean value`，优先修 serializer。
+常见原因是网页返回了 `0/1`、字符串数字、null 或空数组，而模型写成了过窄类型。
 
-#### 2. 页面里有高亮，但 Compose 里整段都变成一块
+### 网页行为和 Android 行为不一致
 
-说明你把 `segment_infos` 当整段处理了。应回到 `start/end` 切片，而不是只用 `text` 整段包裹。
+回到 DevTools 复现原版操作，记录操作前后：
 
-#### 3. 想验证点击弹层，但 dump 看不到高亮节点
+- DOM 变化
+- 请求和响应
+- URL / history 变化
+- 可见状态和错误提示
 
-`ui-test` / `uiautomator` 不一定能把高亮文本暴露成独立可点击节点。
+不要只根据最终视觉状态补 Android 逻辑。
 
-处理顺序：
+### UI 自动化 dump 看不到目标节点
 
-1. 先 `dump` 确认正文在目标页。
-2. 再用截图验证高亮视觉是否出现。
-3. 必要时用 `adb shell input tap x y` 点击高亮区域，再 `dump` 弹层内容。
+`ui-test` / `uiautomator` 不一定能暴露所有富文本或 WebView 内部节点。处理顺序：
 
-#### 4. 并行跑两个 Gradle 任务后出现大面积假错
+1. 先用 `dump` 确认页面和主要文本存在。
+2. 再用截图确认视觉状态。
+3. 必要时用手势或坐标点击目标区域，再用 `dump` 或截图验证结果。
 
-不要并行跑 `assemble` 和 `test`。Kotlin 增量缓存可能互相踩坏，表现成一串和当前改动无关的 `Unresolved reference`。处理方式：
+### 并行 Gradle 任务后出现大量无关错误
+
+不要并行跑 `assemble` 和 `test`。Kotlin 增量缓存可能互相影响，表现成一串与当前改动无关的 `Unresolved reference`。处理方式：
 
 ```bash
 ./gradlew --stop
 ./gradlew assembleLiteDebug
 ./gradlew testLiteDebugUnitTest --tests your.test.Name
 ```
+
+## References
+
+### segment_infos 正文划线案例
+
+这是正文划线功能的历史案例，不是本技能的通用流程。主要特点是字段同时出现在 feed 和回答详情，Web DOM 与 API 字段需要按 `pid + start/end` 对齐后才能复刻到 Android。
+
+主要踩坑：
+
+- `allow_segment_interaction` 可能返回 `0/1`，不能直接建模为裸 `Boolean`。
+- `segment_infos` 可能为空数组，同一段内也可能有多个 `seg_ids`。
+- `marks[*].start_index/end_index` 是范围切片，不能把整段文本合并成一个点击区域。
+- 如果用户只要求正文 Markdown 渲染，不要顺手扩散到 feed 卡片或 WebView。
+
+完整采集接口、字段结构、DOM 特征和回归样本见 [references/segment_infos.md](references/segment_infos.md)。
