@@ -1176,7 +1176,6 @@ fun ArticleScreen(
                                             AuthorBadge(
                                                 badge = viewModel.authorBadge,
                                                 compact = !expanded,
-                                                expandGenericCertification = expanded,
                                             )
                                         }
                                     }
@@ -2005,7 +2004,6 @@ private fun CachedAnswerPreview(
                             Spacer(modifier = Modifier.width(4.dp))
                             AuthorBadge(
                                 badge = cached.authorBadge,
-                                expandGenericCertification = true,
                             )
                         }
                     }

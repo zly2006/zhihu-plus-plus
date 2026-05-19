@@ -34,12 +34,6 @@ data class OfficialBadge(
 
     val isUsefulInList: Boolean
         get() = !isGenericCertification
-
-    fun displayTitle(expandGenericCertification: Boolean = false): String = if (expandGenericCertification && isGenericCertification) {
-        description
-    } else {
-        title
-    }
 }
 
 fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {
@@ -47,23 +41,13 @@ fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {
     val details = officialBadgeDetails()
     val primary = details.firstOrNull { it.type != "identity" && it.iconUrl.isNotBlank() }
         ?: details.firstOrNull { it.iconUrl.isNotBlank() }
-        ?: listOfNotNull(mergedBadges)
-            .flatten()
-            .firstNotNullOfOrNull(DataHolder.BadgeV2.Badge::asOfficialBadge)
+        ?: return null
 
     return primary
-        ?.copy(
+        .copy(
             iconUrl = icon.ifBlank { primary.iconUrl },
             nightIconUrl = nightIcon.ifBlank { primary.nightIconUrl },
         )
-        ?: title.takeIf { it.isNotBlank() }?.let {
-            OfficialBadge(
-                title = it,
-                description = it,
-                iconUrl = icon,
-                nightIconUrl = nightIcon,
-            )
-        }
 }
 
 fun DataHolder.BadgeV2?.officialBadgeDetails(): List<OfficialBadge> {

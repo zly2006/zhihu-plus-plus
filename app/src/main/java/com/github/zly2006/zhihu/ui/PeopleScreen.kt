@@ -1734,7 +1734,6 @@ private fun UserInfoHeader(
                     if (profile.officialBadge != null) {
                         AuthorBadge(
                             badge = profile.officialBadge,
-                            expandGenericCertification = true,
                             modifier = Modifier.padding(start = 6.dp),
                         )
                     }
