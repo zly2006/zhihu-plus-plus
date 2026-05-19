@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
@@ -151,11 +152,15 @@ fun SegmentedText(
     }
 
     commentTarget?.let { target ->
+        // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
+        // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
+        DisableSelection {
         CommentScreenComponent(
             showComments = true,
             onDismiss = { commentTarget = null },
             content = target,
         )
+            }
     }
 }
 
@@ -222,57 +227,61 @@ private fun SegmentActionSheet(
     onCommentClick: () -> Unit,
     onCopyClick: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "划线片段",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "“${highlight.text}”",
-                style = MaterialTheme.typography.bodyLarge,
-                lineHeight = 24.sp,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+    // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
+    // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
+    DisableSelection {
+        ModalBottomSheet(onDismissRequest = onDismiss) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                FilledTonalButton(
-                    onClick = onLikeClick,
-                    modifier = Modifier.weight(1f),
+                Text(
+                    text = "划线片段",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = "“${highlight.text}”",
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 24.sp,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(
-                        imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = highlight.meta.likeCount.toString(),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                FilledTonalButton(
-                    onClick = onCommentClick,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Comment,
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = highlight.meta.commentCount.toString(),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                IconButton(onClick = onCopyClick) {
-                    Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
-                        contentDescription = "复制内容",
-                    )
+                    FilledTonalButton(
+                        onClick = onLikeClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = highlight.meta.likeCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = onCommentClick,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Comment,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = highlight.meta.commentCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    IconButton(onClick = onCopyClick) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "复制内容",
+                        )
+                    }
                 }
             }
         }
