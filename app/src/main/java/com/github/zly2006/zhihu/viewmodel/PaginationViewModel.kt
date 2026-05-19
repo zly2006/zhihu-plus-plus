@@ -138,7 +138,9 @@ abstract class PaginationViewModel<T : Any>(
             @Suppress("HttpUrlsUsage")
             val json = AccountData.fetchGet(context, url.replace("http://", "https://")) {
                 url {
-                    parameters["include"] = include
+                    if (include.isNotEmpty()) {
+                        parameters["include"] = include
+                    }
                 }
                 signFetchRequest()
             }!!

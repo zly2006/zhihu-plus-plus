@@ -767,6 +767,7 @@ object DataHolder {
         val avatarUrl: String = "",
         val articlesCount: Int = 0,
         val followerCount: Int = 0,
+        val followers: Int = 0,
         val isFollowing: Boolean = false,
         val created: Long = 0L,
         val updated: Long = 0L,

@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -115,6 +116,7 @@ internal const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
 internal const val ACCOUNT_SETTINGS_PROFILE_HEADER_TAG = "accountSettings.profileHeader"
 internal const val ACCOUNT_SETTINGS_PROFILE_NAME_TAG = "accountSettings.profileName"
 internal const val ACCOUNT_SETTINGS_SHORTCUT_COLLECTIONS_TAG = "accountSettings.shortcutCollections"
+internal const val ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG = "accountSettings.shortcutSubscriptions"
 internal const val ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG = "accountSettings.shortcutNotification"
 internal const val ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG = "accountSettings.shortcutHistory"
 internal const val ACCOUNT_SETTINGS_APPEARANCE_TAG = "accountSettings.appearance"
@@ -321,6 +323,37 @@ fun AccountSettingScreen(
                         }
                         Column(
                             Modifier
+                                .testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG)
+                                .weight(1f)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .clickable {
+                                    navigator.onNavigate(
+                                        Person(
+                                            id = data.self?.id ?: "",
+                                            urlToken = data.self?.urlToken ?: "",
+                                            name = data.username,
+                                            jumpTo = "关注订阅",
+                                        ),
+                                    )
+                                }.padding(8.dp, 16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                Icons.Default.Groups,
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "关注订阅",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
+                        Column(
+                            Modifier
                                 .testTag(ACCOUNT_SETTINGS_SHORTCUT_NOTIFICATION_TAG)
                                 .weight(1f)
                                 .clip(RoundedCornerShape(4.dp))
@@ -390,6 +423,22 @@ fun AccountSettingScreen(
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
                             onClick = {
                                 data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                            },
+                        )
+                        SettingItem(
+                            title = { Text("查看关注订阅") },
+                            description = { Text("话题、问题、专栏和收藏夹") },
+                            icon = { Icon(Icons.Default.Groups, null) },
+                            modifier = Modifier.testTag(ACCOUNT_SETTINGS_SHORTCUT_SUBSCRIPTIONS_TAG),
+                            onClick = {
+                                navigator.onNavigate(
+                                    Person(
+                                        id = data.self?.id ?: "",
+                                        urlToken = data.self?.urlToken ?: "",
+                                        name = data.username,
+                                        jumpTo = "关注订阅",
+                                    ),
+                                )
                             },
                         )
                     }
