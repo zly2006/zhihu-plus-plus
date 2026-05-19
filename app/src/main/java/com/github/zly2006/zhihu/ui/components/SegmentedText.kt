@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -264,7 +265,7 @@ fun SegmentedText(
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.ThumbUp,
+                            imageVector = if (currentLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                             contentDescription = null,
                         )
                         Text(
