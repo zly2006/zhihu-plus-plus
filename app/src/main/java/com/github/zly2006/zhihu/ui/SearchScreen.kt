@@ -23,7 +23,6 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -95,7 +94,6 @@ private data class HotSearchItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    innerPadding: PaddingValues,
     search: Search,
     testHotSearchQueries: List<String>? = null,
     onTestHotSearchRefresh: (() -> Unit)? = null,
@@ -146,7 +144,7 @@ fun SearchScreen(
     }
 
     Scaffold(
-        modifier = Modifier.padding(innerPadding),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
