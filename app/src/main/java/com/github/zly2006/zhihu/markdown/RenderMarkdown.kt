@@ -67,7 +67,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
@@ -231,7 +230,7 @@ fun RenderMarkdown(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
-    val defaultTheme = MarkdownTheme.auto(ThemeManager.isDarkTheme())
+    val defaultTheme = MarkdownTheme.fromMaterialTheme()
 
     val fontResult = rememberLatexFonts(context, AccountData.httpClient(context))
     val mathFont = fontResult.downloaded?.mathFont ?: defaultTheme.mathFont
