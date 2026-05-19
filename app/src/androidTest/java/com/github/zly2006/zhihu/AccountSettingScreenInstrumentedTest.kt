@@ -157,8 +157,8 @@ class AccountSettingScreenInstrumentedTest {
         // 2. The favorites shortcut should navigate to the seeded Collections destination and must
         //    not close the surrounding account surface.
         // 3. The notification and history shortcuts represent overlay-style exits from the account
-        //    surface, so each one must call onDismissRequest exactly once before recording the
-        //    navigation event.
+        //    surface, so each one must call onDismissRequest exactly once. History selects the
+        //    OnlineHistory main tab directly instead of going through the local Navigator.
         preferences
             .edit()
             .putBoolean("duo3_home_account", true)
@@ -215,14 +215,13 @@ class AccountSettingScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(ACCOUNT_SETTINGS_SHORTCUT_HISTORY_TAG).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            navigator.destinations.size == 3 && dismissCount.get() == 2
+            dismissCount.get() == 2 && composeRule.activity.mainTabNavigationTarget == OnlineHistory
         }
 
         assertEquals(
             listOf(
                 Collections(SEEDED_ACCOUNT_URL_TOKEN),
                 Notification,
-                OnlineHistory,
             ),
             navigator.destinations,
         )
