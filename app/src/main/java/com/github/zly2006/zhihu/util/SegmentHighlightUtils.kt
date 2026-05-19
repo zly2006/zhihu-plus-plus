@@ -98,26 +98,6 @@ fun buildSegmentTextParts(
     return parts.filter { it.text.isNotEmpty() }
 }
 
-fun buildSegmentTextParagraphs(
-    paragraphs: List<SegmentInfoParagraph>,
-    sourceUrl: String? = null,
-    contentId: String? = null,
-    contentType: String? = null,
-): List<SegmentTextParagraph> = paragraphs.map { paragraph ->
-    SegmentTextParagraph(
-        pid = paragraph.pid,
-        text = paragraph.text,
-        parts = buildSegmentTextParts(
-            text = paragraph.text,
-            marks = paragraph.marks,
-            sourceUrl = sourceUrl,
-            contentId = contentId,
-            contentType = contentType,
-            paragraphId = paragraph.pid,
-        ),
-    )
-}
-
 fun applySegmentInfosToHtml(
     content: String,
     segmentInfos: List<SegmentInfoParagraph>,
@@ -133,7 +113,14 @@ fun applySegmentInfosToHtml(
         if (target.text() != paragraph.text) return@forEach
 
         target.empty()
-        buildSegmentTextParts(paragraph.text, paragraph.marks, sourceUrl).forEach { part ->
+        buildSegmentTextParts(
+            text = paragraph.text,
+            marks = paragraph.marks,
+            sourceUrl = sourceUrl,
+            contentId = contentId,
+            contentType = contentType,
+            paragraphId = paragraph.pid,
+        ).forEach { part ->
             val highlight = part.highlight
             if (highlight == null) {
                 target.appendChild(TextNode(part.text))
