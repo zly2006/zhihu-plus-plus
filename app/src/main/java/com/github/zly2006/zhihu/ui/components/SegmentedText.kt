@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
@@ -43,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
@@ -83,6 +83,17 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
+/**
+ * 在可选中的 Markdown 子树外承载划线评论弹窗。
+ *
+ * `SegmentedText` 作为 Markdown 的原生块渲染，通常处在 Markdown 级别的文本选择容器内。
+ * 如果它直接从这个子树里打开评论弹窗，Compose 文本选择工具栏可能会跨弹窗窗口换算坐标，
+ * 触发 `IllegalArgumentException: layouts are not part of the same hierarchy`。
+ */
+internal val LocalSegmentCommentHost = staticCompositionLocalOf<(SegmentCommentHolder) -> Unit> {
+    error("LocalSegmentCommentHost is not provided")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SegmentedText(
@@ -96,7 +107,7 @@ fun SegmentedText(
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
-    var commentTarget by remember(parts) { mutableStateOf<SegmentCommentHolder?>(null) }
+    val openSegmentComments = LocalSegmentCommentHost.current
 
     val onHighlightClick = remember(parts) { { highlight: SegmentHighlightSpan -> selectedHighlight = highlight } }
 
@@ -128,7 +139,9 @@ fun SegmentedText(
             },
             onCommentClick = {
                 selectedHighlight = null
-                commentTarget = highlight.copy(meta = currentMeta).toSegmentCommentHolder()
+                highlight.copy(meta = currentMeta).toSegmentCommentHolder()?.let { target ->
+                    openSegmentComments(target)
+                }
             },
             onCopyClick = {
                 context.clipboardManager.setPrimaryClip(
@@ -137,18 +150,6 @@ fun SegmentedText(
                 selectedHighlight = null
             },
         )
-    }
-
-    commentTarget?.let { target ->
-        // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
-        // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
-        DisableSelection {
-            CommentScreenComponent(
-                showComments = true,
-                onDismiss = { commentTarget = null },
-                content = target,
-            )
-        }
     }
 }
 
@@ -215,61 +216,57 @@ private fun SegmentActionSheet(
     onCommentClick: () -> Unit,
     onCopyClick: () -> Unit,
 ) {
-    // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
-    // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
-    DisableSelection {
-        ModalBottomSheet(onDismissRequest = onDismiss) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "划线片段",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "“${highlight.text}”",
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 24.sp,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = "划线片段",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = "“${highlight.text}”",
-                    style = MaterialTheme.typography.bodyLarge,
-                    lineHeight = 24.sp,
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                FilledTonalButton(
+                    onClick = onLikeClick,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    FilledTonalButton(
-                        onClick = onLikeClick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                            contentDescription = null,
-                        )
-                        Text(
-                            text = highlight.meta.likeCount.toString(),
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                    FilledTonalButton(
-                        onClick = onCommentClick,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Comment,
-                            contentDescription = null,
-                        )
-                        Text(
-                            text = highlight.meta.commentCount.toString(),
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                    IconButton(onClick = onCopyClick) {
-                        Icon(
-                            imageVector = Icons.Outlined.ContentCopy,
-                            contentDescription = "复制内容",
-                        )
-                    }
+                    Icon(
+                        imageVector = if (highlight.meta.isLike) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = highlight.meta.likeCount.toString(),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                FilledTonalButton(
+                    onClick = onCommentClick,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Comment,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = highlight.meta.commentCount.toString(),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                IconButton(onClick = onCopyClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = "复制内容",
+                    )
                 }
             }
         }
