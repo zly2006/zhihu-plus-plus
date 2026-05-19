@@ -24,29 +24,31 @@ import org.junit.Test
 
 class OfficialBadgeTest {
     @Test
-    fun extractsPassedMergedBadge() {
-        val badge = DataHolder
-            .BadgeV2(
-                title = "英语等 5 个话题下的优秀答主",
-                mergedBadges = listOf(
-                    DataHolder.BadgeV2.Badge(
-                        type = "best",
-                        detailType = "best",
-                        title = "优秀答主",
-                        description = "英语等 5 个话题下的优秀答主",
-                        badgeStatus = "passed",
-                    ),
+    fun ignoresTextOnlyMergedBadgeAsPrimaryBadge() {
+        val badgeV2 = DataHolder.BadgeV2(
+            title = "英语等 5 个话题下的优秀答主",
+            mergedBadges = listOf(
+                DataHolder.BadgeV2.Badge(
+                    type = "best",
+                    detailType = "best",
+                    title = "优秀答主",
+                    description = "英语等 5 个话题下的优秀答主",
+                    badgeStatus = "passed",
                 ),
-            ).officialBadge()
-
-        assertEquals(
-            OfficialBadge(
-                title = "优秀答主",
-                description = "英语等 5 个话题下的优秀答主",
-                type = "best",
-                detailType = "best",
             ),
-            badge,
+        )
+
+        assertNull(badgeV2.officialBadge())
+        assertEquals(
+            listOf(
+                OfficialBadge(
+                    title = "优秀答主",
+                    description = "英语等 5 个话题下的优秀答主",
+                    type = "best",
+                    detailType = "best",
+                ),
+            ),
+            badgeV2.officialBadgeDetails(),
         )
     }
 
