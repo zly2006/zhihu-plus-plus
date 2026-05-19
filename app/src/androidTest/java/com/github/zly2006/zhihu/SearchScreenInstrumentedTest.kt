@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu
 
 import android.content.Context
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -74,7 +73,6 @@ class SearchScreenInstrumentedTest {
 
         val recordingNavigator = composeRule.setScreenContent {
             SearchScreen(
-                innerPadding = PaddingValues(),
                 search = Search(),
             )
         }
@@ -133,7 +131,6 @@ class SearchScreenInstrumentedTest {
         )
         val recordingNavigator = composeRule.setScreenContent {
             SearchScreen(
-                innerPadding = PaddingValues(),
                 search = Search(),
             )
         }

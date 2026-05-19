@@ -447,7 +447,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 }
                 composable<Search> { navEntry ->
                     val search: Search = navEntry.toRoute()
-                    SearchScreen(innerPadding, search)
+                    SearchScreen(search)
                 }
                 composable<Collections> {
                     val data: Collections = it.toRoute()
