@@ -21,10 +21,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -131,6 +133,8 @@ class PeopleScreenInstrumentedTest {
 
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ROOT_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_HEADER_TAG).assertIsDisplayed()
+        composeRule.onNodeWithText("优秀答主").assertIsDisplayed()
+        composeRule.onNodeWithText("社区成就: 英语等 5 个话题下的优秀答主").assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_AVATAR_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ANSWER_COUNT_TAG).assertIsDisplayed()
         composeRule.onNodeWithTag(PEOPLE_SCREEN_ARTICLE_COUNT_TAG).assertIsDisplayed()
@@ -357,6 +361,10 @@ class PeopleScreenInstrumentedTest {
             avatar = "https://example.invalid/avatar/root.png",
             name = "离线用户",
             headline = "离线个人简介",
+            officialBadge = OfficialBadge("优秀答主", "英语等 5 个话题下的优秀答主"),
+            officialBadgeDetails = listOf(
+                OfficialBadge("社区成就", "英语等 5 个话题下的优秀答主"),
+            ),
             followerCount = 120,
             followingCount = 45,
             answerCount = itemCount,

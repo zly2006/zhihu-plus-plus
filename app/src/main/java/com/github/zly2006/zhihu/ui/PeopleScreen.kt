@@ -74,6 +74,9 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.officialBadge
+import com.github.zly2006.zhihu.data.officialBadgeDetails
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -81,10 +84,12 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.officialBadgeIconModel
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -118,7 +123,7 @@ class PeopleAnswersViewModel(
         get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sortBy"
 
     override val include: String
-        get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp"
+        get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp,author.badge_v2"
 
     fun changeSortBy(newSort: String, context: Context) {
         if (sortBy != newSort) {
@@ -140,7 +145,7 @@ class PeopleArticlesViewModel(
         get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sortBy"
 
     override val include: String
-        get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
+        get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info,author.badge_v2;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
 
     fun changeSortBy(newSort: String, context: Context) {
         if (sortBy != newSort) {
@@ -169,7 +174,7 @@ class PeopleFollowersViewModel(
         get() = "https://api.zhihu.com/people/${person.id}/followers"
 
     override val include: String
-        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
+        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge_v2,badge[?(type=best_answerer)].topics"
 }
 
 class PeopleFollowingViewModel(
@@ -181,7 +186,7 @@ class PeopleFollowingViewModel(
         get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followees"
 
     override val include: String
-        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics"
+        get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge_v2,badge[?(type=best_answerer)].topics"
 }
 
 class PeopleCollectionsViewModel(
@@ -312,6 +317,8 @@ class PersonViewModel(
     var avatar by mutableStateOf("")
     var name by mutableStateOf(person.name)
     var headline by mutableStateOf("")
+    var officialBadge by mutableStateOf<OfficialBadge?>(null)
+    var officialBadgeDetails by mutableStateOf<List<OfficialBadge>>(emptyList())
     var followerCount by mutableIntStateOf(0)
     var followingCount by mutableIntStateOf(0)
     var answerCount by mutableIntStateOf(0)
@@ -410,10 +417,10 @@ class PersonViewModel(
 
     suspend fun load(context: Context) {
         context as MainActivity
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/members/${person.id}") {
+        val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
             url {
                 // todo question_count pins_count
-                parameters["include"] = "allow_message,is_followed,is_following,is_org,is_blocking,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
+                parameters["include"] = "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
             }
             signFetchRequest()
         }!!
@@ -421,6 +428,8 @@ class PersonViewModel(
         this.avatar = person.avatarUrl
         this.name = person.name
         this.headline = person.headline
+        this.officialBadge = person.badgeV2.officialBadge()
+        this.officialBadgeDetails = person.badgeV2.officialBadgeDetails()
         this.followerCount = person.followerCount
         this.followingCount = person.followingCount
         this.answerCount = person.answerCount
@@ -569,10 +578,17 @@ private fun peopleScreenInitialPage(person: Person): Int {
     return if (jumpToIndex >= 0) jumpToIndex else 0
 }
 
+internal fun peopleProfileUrl(person: Person): String {
+    val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
+    return "https://api.zhihu.com/people/$identifier"
+}
+
 data class PeopleProfileUiState(
     val avatar: String = "",
     val name: String = "",
     val headline: String = "",
+    val officialBadge: OfficialBadge? = null,
+    val officialBadgeDetails: List<OfficialBadge> = emptyList(),
     val followerCount: Int = 0,
     val followingCount: Int = 0,
     val answerCount: Int = 0,
@@ -642,6 +658,8 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
         avatar = avatar,
         name = name,
         headline = headline,
+        officialBadge = officialBadge,
+        officialBadgeDetails = officialBadgeDetails,
         followerCount = followerCount,
         followingCount = followingCount,
         answerCount = answerCount,
@@ -1500,10 +1518,23 @@ private fun PeopleListItem(
                 .clip(CircleShape),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = people.name,
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = people.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                val officialBadge = people.badgeV2.officialBadge()
+                if (officialBadge?.isUsefulInList == true) {
+                    AuthorBadge(
+                        badge = officialBadge,
+                        compact = true,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+            }
             if (people.headline.isNotEmpty()) {
                 Text(
                     text = people.headline,
@@ -1565,6 +1596,45 @@ private fun StatItem(label: String, value: Int, onClick: () -> Unit = {}, tag: S
         Text(text = label, style = MaterialTheme.typography.labelMedium)
     }
 }
+
+@Composable
+private fun OfficialBadgeDetails(
+    badges: List<OfficialBadge>,
+    modifier: Modifier = Modifier,
+) {
+    if (badges.isEmpty()) return
+    Column(modifier = modifier) {
+        badges.forEach { badge ->
+            Row(
+                modifier = Modifier.padding(top = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (badge.iconUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = officialBadgeIconModel(badge.iconUrl),
+                        contentDescription = badge.description,
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(18.dp),
+                    )
+                }
+                Text(
+                    text = "${badge.peopleDetailTitle}: ${badge.description}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+private val OfficialBadge.peopleDetailTitle: String
+    get() = when {
+        title == "认证" || title == "已认证的个人" -> "认证信息"
+        else -> title
+    }
 
 @Composable
 private fun SortBar(
@@ -1653,12 +1723,31 @@ private fun UserInfoHeader(
                     },
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(profile.name, style = MaterialTheme.typography.titleLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        profile.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (profile.officialBadge != null) {
+                        AuthorBadge(
+                            badge = profile.officialBadge,
+                            expandGenericCertification = true,
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
+                }
                 Text(
                     profile.headline,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
+                )
+                OfficialBadgeDetails(
+                    badges = profile.officialBadgeDetails,
+                    modifier = Modifier.padding(top = 6.dp),
                 )
             }
         }

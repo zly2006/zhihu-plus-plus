@@ -144,6 +144,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
+import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -1161,11 +1162,24 @@ fun ArticleScreen(
                                 Column(
                                     modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(
-                                        text = viewModel.authorName,
-                                        style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                                        color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = viewModel.authorName,
+                                            style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                                            color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false),
+                                        )
+                                        if (viewModel.authorBadge != null) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            AuthorBadge(
+                                                badge = viewModel.authorBadge,
+                                                compact = !expanded,
+                                                expandGenericCertification = expanded,
+                                            )
+                                        }
+                                    }
                                     if (viewModel.authorBio.isNotEmpty() && expanded) {
                                         Text(
                                             text = viewModel.authorBio,
@@ -1977,12 +1991,24 @@ private fun CachedAnswerPreview(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = cached.authorName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                    )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = cached.authorName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (cached.authorBadge != null) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AuthorBadge(
+                                badge = cached.authorBadge,
+                                expandGenericCertification = true,
+                            )
+                        }
+                    }
                     if (cached.authorBio.isNotEmpty()) {
                         Text(
                             text = cached.authorBio,

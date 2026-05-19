@@ -88,6 +88,7 @@ import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.QRCodeScanActivity
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.WebviewActivity
@@ -394,7 +395,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        navigator.onNavigate(OnlineHistory)
+                                        (context as? MainActivity)?.navigateMainTab(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,

@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
@@ -512,7 +513,9 @@ private fun FeedCardContent(
                     if (item.avatarSrc != null && item.authorName != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable {},
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .clickable {},
                         ) {
                             item.avatarSrc.let {
                                 AsyncImage(
@@ -530,7 +533,13 @@ private fun FeedCardContent(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
                             )
+                            val authorBadge = item.authorBadgeV2.officialBadge()
+                            if (authorBadge?.isUsefulInList == true) {
+                                Spacer(Modifier.width(4.dp))
+                                AuthorBadge(authorBadge, compact = true)
+                            }
                         }
                         Spacer(Modifier.width(6.dp))
                     }
@@ -583,7 +592,13 @@ private fun FeedCardContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
+                val authorBadge = item.authorBadgeV2.officialBadge()
+                if (authorBadge?.isUsefulInList == true) {
+                    Spacer(Modifier.width(4.dp))
+                    AuthorBadge(authorBadge, compact = true)
+                }
             }
         }
         Row {

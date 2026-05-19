@@ -133,6 +133,17 @@ https://www.zhihu.com/api/v4/comment_v5/{contentType}/{contentId}/root_comment
 
 如果原版依赖 hover、复杂 DOM 或桌面布局，应转换成 Android 上自然的交互，例如 bottom sheet、菜单、长按、可点击行或显式按钮。
 
+### 官方认证 / 徽章复刻注意事项
+
+复刻知乎官方认证、优秀答主、社区成就等 badge 时，不能只从 `badge_v2.title` / `description` 推断成文字 chip。必须先在 Web 端同时采集：
+
+- 用户名旁的 DOM：知乎 Web 通常用 `badge_v2.icon` 渲染一个约 `18px × 18px` 的图片 icon，`aria-label` / `data-tooltip` 承载具体说明。
+- 页面侧栏或个人主页的明细区：People/Profile 里会把 `detailBadges` 展开成“认证与成就”，例如“社区成就：知势榜教育校园领域影响力榜答主”“认证信息：华东师范大学 理学硕士”。
+- `#js-initialData` 或接口响应里的 `badgeV2`：区分顶层 `icon/nightIcon`、`mergedBadges` 和 `detailBadges`。用户名旁的主 icon 可能来自顶层 `badgeV2.icon`，而明细列表应优先使用 `detailBadges[*].icon/nightIcon`。
+- 空值兼容：`mergedBadges[*].icon` 可能为空，但 `detailBadges[*].icon` 或顶层 `badgeV2.icon` 有值；`badgeStatus` / `badge_status` 需要兼容，只展示 `passed` 或无状态的 badge。
+
+本技能的失败经验：如果只实现 title/description 的 Compose 文字胶囊，会明显偏离官方样式；正确方向是“列表/详情用户名旁用官方 icon，PeopleScreen 展开具体认证/成就信息”。做完后应增加解析测试覆盖顶层 icon、detail badge icon、identity 与 reward/community badge 的优先级。
+
 ## 7. 测试与验证
 
 优先用真实采集到的内容 ID 做回归测试。测试输入只保留必要 ID，不把整份真实响应硬编码进测试，除非测试目标就是解析兼容性。
@@ -200,6 +211,10 @@ curl -s http://127.0.0.1:9222/json/version
 1. 先用 `dump` 确认页面和主要文本存在。
 2. 再用截图确认视觉状态。
 3. 必要时用手势或坐标点击目标区域，再用 `dump` 或截图验证结果。
+
+### PeopleScreen 个人徽章在 web members 接口缺失
+
+个人主页徽章不要只看 `https://www.zhihu.com/api/v4/members/{id}`。实测同一作者在这个接口里可能返回 `badge_v2: null`，但 `https://api.zhihu.com/people/{urlToken}?include=badge_v2,...` 会返回网页展示所需的 `badge_v2.detail_badges` 和官方图标。遇到 PeopleScreen 徽章缺失时，先用当前登录态分别请求两个接口对比字段，再决定 Android 数据源。
 
 ### 并行 Gradle 任务后出现大量无关错误
 
