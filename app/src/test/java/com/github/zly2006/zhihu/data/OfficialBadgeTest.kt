@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.data
 
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -30,18 +29,13 @@ class OfficialBadgeTest {
             .BadgeV2(
                 title = "英语等 5 个话题下的优秀答主",
                 mergedBadges = listOf(
-                    Json
-                        .parseToJsonElement(
-                            """
-                            {
-                              "type": "best",
-                              "detail_type": "best",
-                              "title": "优秀答主",
-                              "description": "英语等 5 个话题下的优秀答主",
-                              "badge_status": "passed"
-                            }
-                            """.trimIndent(),
-                        ).jsonObject,
+                    DataHolder.BadgeV2.Badge(
+                        type = "best",
+                        detailType = "best",
+                        title = "优秀答主",
+                        description = "英语等 5 个话题下的优秀答主",
+                        badgeStatus = "passed",
+                    ),
                 ),
             ).officialBadge()
 
@@ -62,16 +56,11 @@ class OfficialBadgeTest {
             .BadgeV2(
                 title = "",
                 mergedBadges = listOf(
-                    Json
-                        .parseToJsonElement(
-                            """
-                            {
-                              "title": "优秀答主",
-                              "description": "英语话题下的优秀答主",
-                              "badge_status": "failed"
-                            }
-                            """.trimIndent(),
-                        ).jsonObject,
+                    DataHolder.BadgeV2.Badge(
+                        title = "优秀答主",
+                        description = "英语话题下的优秀答主",
+                        badgeStatus = "failed",
+                    ),
                 ),
             ).officialBadge()
 
@@ -85,47 +74,32 @@ class OfficialBadgeTest {
             icon = "https://picx.zhimg.com/profile_primary_icon.png",
             nightIcon = "https://picx.zhimg.com/profile_primary_icon_night.png",
             mergedBadges = listOf(
-                Json
-                    .parseToJsonElement(
-                        """
-                        {
-                          "type": "identity",
-                          "detail_type": "identity_people",
-                          "title": "认证",
-                          "description": "华东师范大学 理学硕士",
-                          "badge_status": "passed"
-                        }
-                        """.trimIndent(),
-                    ).jsonObject,
+                DataHolder.BadgeV2.Badge(
+                    type = "identity",
+                    detailType = "identity_people",
+                    title = "认证",
+                    description = "华东师范大学 理学硕士",
+                    badgeStatus = "passed",
+                ),
             ),
             detailBadges = listOf(
-                Json
-                    .parseToJsonElement(
-                        """
-                        {
-                          "type": "reward",
-                          "detail_type": "super_activity",
-                          "title": "社区成就",
-                          "description": "知势榜教育校园领域影响力榜答主",
-                          "icon": "https://picx.zhimg.com/detail_reward.png",
-                          "night_icon": "https://picx.zhimg.com/detail_reward_night.png",
-                          "badge_status": "passed"
-                        }
-                        """.trimIndent(),
-                    ).jsonObject,
-                Json
-                    .parseToJsonElement(
-                        """
-                        {
-                          "type": "identity",
-                          "detail_type": "identity_people",
-                          "title": "已认证的个人",
-                          "description": "华东师范大学 理学硕士",
-                          "icon": "https://picx.zhimg.com/detail_identity.png",
-                          "badge_status": "passed"
-                        }
-                        """.trimIndent(),
-                    ).jsonObject,
+                DataHolder.BadgeV2.Badge(
+                    type = "reward",
+                    detailType = "super_activity",
+                    title = "社区成就",
+                    description = "知势榜教育校园领域影响力榜答主",
+                    icon = "https://picx.zhimg.com/detail_reward.png",
+                    nightIcon = "https://picx.zhimg.com/detail_reward_night.png",
+                    badgeStatus = "passed",
+                ),
+                DataHolder.BadgeV2.Badge(
+                    type = "identity",
+                    detailType = "identity_people",
+                    title = "已认证的个人",
+                    description = "华东师范大学 理学硕士",
+                    icon = "https://picx.zhimg.com/detail_identity.png",
+                    badgeStatus = "passed",
+                ),
             ),
         )
 
@@ -154,6 +128,149 @@ class OfficialBadgeTest {
                     title = "已认证的个人",
                     description = "华东师范大学 理学硕士",
                     iconUrl = "https://picx.zhimg.com/detail_identity.png",
+                    type = "identity",
+                    detailType = "identity_people",
+                ),
+            ),
+            badgeV2.officialBadgeDetails(),
+        )
+    }
+
+    @Test
+    fun decodesSnakeCaseBadgeV2WithTypedSerializer() {
+        val badgeV2 = AccountData.decodeJson<DataHolder.BadgeV2>(
+            Json.parseToJsonElement(
+                """
+                {
+                  "title": "笔记本电脑话题下的优秀答主",
+                  "merged_badges": [
+                    {
+                      "type": "best",
+                      "detail_type": "best",
+                      "title": "优秀答主",
+                      "description": "笔记本电脑话题下的优秀答主",
+                      "url": "https://www.zhihu.com/question/48509984",
+                      "sources": null,
+                      "icon": "",
+                      "night_icon": "",
+                      "badge_status": "passed"
+                    }
+                  ],
+                  "detail_badges": [
+                    {
+                      "type": "best",
+                      "detail_type": "best_answerer",
+                      "title": "优秀答主",
+                      "description": "笔记本电脑话题下的优秀答主",
+                      "url": "https://www.zhihu.com/question/48509984",
+                      "sources": [
+                        {
+                          "id": "19559604",
+                          "token": "19559604",
+                          "type": "topic",
+                          "url": "https://www.zhihu.com/topic/19559604",
+                          "name": "笔记本电脑",
+                          "avatar_path": "v2-topic",
+                          "avatar_url": "https://pic1.zhimg.com/topic.jpg",
+                          "description": "",
+                          "priority": 0
+                        }
+                      ],
+                      "icon": "https://picx.zhimg.com/detail_best.png",
+                      "night_icon": "https://picx.zhimg.com/detail_best_night.png",
+                      "badge_status": "passed"
+                    }
+                  ],
+                  "icon": "https://picx.zhimg.com/profile_primary_icon.png",
+                  "night_icon": "https://pica.zhimg.com/profile_primary_icon_night.png"
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("best_answerer", badgeV2.detailBadges?.single()?.detailType)
+        assertEquals(
+            "19559604",
+            badgeV2.detailBadges
+                ?.single()
+                ?.sources
+                ?.single()
+                ?.id,
+        )
+        assertEquals(
+            OfficialBadge(
+                title = "优秀答主",
+                description = "笔记本电脑话题下的优秀答主",
+                iconUrl = "https://picx.zhimg.com/profile_primary_icon.png",
+                nightIconUrl = "https://pica.zhimg.com/profile_primary_icon_night.png",
+                url = "https://www.zhihu.com/question/48509984",
+                type = "best",
+                detailType = "best_answerer",
+            ),
+            badgeV2.officialBadge(),
+        )
+    }
+
+    @Test
+    fun decodesZhihuAdminOfficialAccountCertification() {
+        val badgeV2 = AccountData.decodeJson<DataHolder.BadgeV2>(
+            Json.parseToJsonElement(
+                """
+                {
+                  "title": "知乎 官方账号",
+                  "merged_badges": [
+                    {
+                      "type": "identity",
+                      "detail_type": "identity_people",
+                      "title": "认证",
+                      "description": "知乎 官方账号",
+                      "url": "https://zhuanlan.zhihu.com/p/96956163",
+                      "sources": [],
+                      "icon": "",
+                      "night_icon": "",
+                      "badge_status": "passed"
+                    }
+                  ],
+                  "detail_badges": [
+                    {
+                      "type": "identity",
+                      "detail_type": "identity_people",
+                      "title": "已认证的个人",
+                      "description": "知乎 官方账号",
+                      "url": "https://zhuanlan.zhihu.com/p/96956163",
+                      "sources": [],
+                      "icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                      "night_icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                      "badge_status": "passed"
+                    }
+                  ],
+                  "icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                  "night_icon": "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c"
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals(
+            OfficialBadge(
+                title = "已认证的个人",
+                description = "知乎 官方账号",
+                iconUrl = "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                nightIconUrl = "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                url = "https://zhuanlan.zhihu.com/p/96956163",
+                type = "identity",
+                detailType = "identity_people",
+            ),
+            badgeV2.officialBadge(),
+        )
+        assertEquals(
+            listOf(
+                OfficialBadge(
+                    title = "已认证的个人",
+                    description = "知乎 官方账号",
+                    iconUrl = "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                    nightIconUrl = "https://picx.zhimg.com/v2-2ddc5cc683982648f6f123616fb4ec09_l.png?source=32738c0c",
+                    url = "https://zhuanlan.zhihu.com/p/96956163",
                     type = "identity",
                     detailType = "identity_people",
                 ),

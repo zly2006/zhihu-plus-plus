@@ -18,10 +18,6 @@
 package com.github.zly2006.zhihu.data
 
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 data class OfficialBadge(
@@ -53,8 +49,7 @@ fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {
         ?: details.firstOrNull { it.iconUrl.isNotBlank() }
         ?: listOfNotNull(mergedBadges)
             .flatten()
-            .mapNotNull(JsonElement::asOfficialBadge)
-            .firstOrNull()
+            .firstNotNullOfOrNull(DataHolder.BadgeV2.Badge::asOfficialBadge)
 
     return primary
         ?.copy(
@@ -74,31 +69,25 @@ fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {
 fun DataHolder.BadgeV2?.officialBadgeDetails(): List<OfficialBadge> {
     this ?: return emptyList()
     val details = detailBadges
-        ?.mapNotNull(JsonElement::asOfficialBadge)
+        ?.mapNotNull(DataHolder.BadgeV2.Badge::asOfficialBadge)
         .orEmpty()
     if (details.isNotEmpty()) return details
     return mergedBadges
-        ?.mapNotNull(JsonElement::asOfficialBadge)
+        ?.mapNotNull(DataHolder.BadgeV2.Badge::asOfficialBadge)
         .orEmpty()
 }
 
-private fun JsonElement.asOfficialBadge(): OfficialBadge? {
-    val badge = this as? JsonObject ?: return null
-    val status = badge.stringValue("badgeStatus") ?: badge.stringValue("badge_status")
-    if (status != null && status != "passed") return null
-    val title = badge.stringValue("title")?.takeIf { it.isNotBlank() } ?: return null
-    val description = badge.stringValue("description")?.takeIf { it.isNotBlank() } ?: title
+private fun DataHolder.BadgeV2.Badge.asOfficialBadge(): OfficialBadge? {
+    if (badgeStatus != null && badgeStatus != "passed") return null
+    val title = title.takeIf { it.isNotBlank() } ?: return null
+    val description = description.takeIf { it.isNotBlank() } ?: title
     return OfficialBadge(
         title = title,
         description = description,
-        iconUrl = badge.stringValue("icon").orEmpty(),
-        nightIconUrl = badge.stringValue("nightIcon")?.takeIf { it.isNotBlank() }
-            ?: badge.stringValue("night_icon").orEmpty(),
-        url = badge.stringValue("url").orEmpty(),
-        type = badge.stringValue("type").orEmpty(),
-        detailType = badge.stringValue("detailType")?.takeIf { it.isNotBlank() }
-            ?: badge.stringValue("detail_type").orEmpty(),
+        iconUrl = icon,
+        nightIconUrl = nightIcon,
+        url = url,
+        type = type,
+        detailType = detailType,
     )
 }
-
-private fun JsonObject.stringValue(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull

@@ -461,12 +461,38 @@ object DataHolder {
     @Serializable
     data class BadgeV2(
         val title: String,
-        val mergedBadges: List<JsonElement>? = null,
-        val detailBadges: List<JsonElement>? = null,
+        val mergedBadges: List<Badge>? = null,
+        val detailBadges: List<Badge>? = null,
         val icon: String = "",
         val nightIcon: String = "",
         val canClick: Boolean = false,
-    )
+    ) {
+        @Serializable
+        data class Badge(
+            val type: String = "",
+            val detailType: String = "",
+            val title: String = "",
+            val description: String = "",
+            val url: String = "",
+            val sources: List<Source>? = null,
+            val icon: String = "",
+            val nightIcon: String = "",
+            val badgeStatus: String? = null,
+        )
+
+        @Serializable
+        data class Source(
+            val id: String = "",
+            val token: String = "",
+            val type: String = "",
+            val url: String = "",
+            val name: String = "",
+            val avatarPath: String = "",
+            val avatarUrl: String = "",
+            val description: String = "",
+            val priority: Int = 0,
+        )
+    }
 
     @Serializable
     data class CanComment(
@@ -608,7 +634,7 @@ object DataHolder {
             val headline: String,
             val gender: Int,
             val isAdvertiser: Boolean,
-            val badgeV2: JsonElement? = null,
+            val badgeV2: BadgeV2? = null,
             val exposedMedal: JsonElement? = null,
             val vipInfo: JsonElement? = null,
             val levelInfo: JsonElement? = null,
