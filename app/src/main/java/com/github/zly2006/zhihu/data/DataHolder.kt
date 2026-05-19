@@ -44,8 +44,8 @@ object DataHolder {
         dest: com.github.zly2006.zhihu.navigation.Article,
     ): Content? {
         val apiUrl = when (dest.type) {
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote"
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${dest.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${dest.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
             // ^ question.topics 后面的字段可能有点bug。
         }
 
@@ -653,6 +653,7 @@ object DataHolder {
         val ipInfo: String? = null,
         val vipInfo: VipInfo? = null,
         val kvipInfo: JsonElement? = null,
+        val badgeV2: BadgeV2? = null,
         val allowMessage: Boolean = true,
         val isFollowing: Boolean = false,
         val isFollowed: Boolean = false,

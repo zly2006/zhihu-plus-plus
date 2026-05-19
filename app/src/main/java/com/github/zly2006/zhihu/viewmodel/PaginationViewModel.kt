@@ -81,7 +81,7 @@ abstract class PaginationViewModel<T : Any>(
      * Generally used fields to include in the API request.
      * This can be overridden in subclasses to include more specific fields.
      */
-    open val include = "data[*].content,excerpt,headline"
+    open val include = "data[*].content,excerpt,headline,target.author.badge_v2"
 
     @Serializable
     data class Paging(

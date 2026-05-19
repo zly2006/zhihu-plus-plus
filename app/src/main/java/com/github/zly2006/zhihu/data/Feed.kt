@@ -484,6 +484,7 @@ data class Person(
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
     val badge: List<Badge>? = null,
+    val badgeV2: DataHolder.BadgeV2? = null,
 )
 
 @Serializable
