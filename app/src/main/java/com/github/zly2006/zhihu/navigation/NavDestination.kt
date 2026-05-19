@@ -30,6 +30,9 @@ interface TopLevelDestination {
 }
 
 @Serializable
+data object MainTabs : NavDestination
+
+@Serializable
 data object Home : NavDestination, TopLevelDestination {
     override val name: String
         get() = "Home"

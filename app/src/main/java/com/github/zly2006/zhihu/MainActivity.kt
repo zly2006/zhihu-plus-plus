@@ -55,6 +55,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
@@ -145,6 +146,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
+    private var currentMainTabOpenSource: NavDestination? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -486,7 +488,7 @@ class MainActivity : ComponentActivity() {
         navController.navigate(route) {
             if (popup) {
                 launchSingleTop = true
-                popUpTo(Home) {
+                popUpTo(MainTabs) {
                     // clear the back stack and viewModels
                     saveState = true
                 }
@@ -516,23 +518,34 @@ class MainActivity : ComponentActivity() {
         pendingContentOpenFrom = ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
     }
 
-    private fun currentContentOpenSource(): NavDestination? = runCatching {
-        navController.currentBackStackEntry?.toRoute<Article>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Question>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Pin>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<CollectionContent>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Home>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<History>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<OnlineHistory>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Notification>()
-    }.getOrNull()
+    fun setCurrentMainTabOpenSource(source: NavDestination?) {
+        currentMainTabOpenSource = source
+    }
+
+    private fun currentContentOpenSource(): NavDestination? {
+        val currentEntry = navController.currentBackStackEntry
+        return runCatching {
+            currentEntry?.toRoute<Article>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Question>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Pin>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<CollectionContent>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Home>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<History>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<OnlineHistory>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Notification>()
+        }.getOrNull() ?: if (runCatching { currentEntry?.toRoute<MainTabs>() }.getOrNull() != null) {
+            currentMainTabOpenSource
+        } else {
+            null
+        }
+    }
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
