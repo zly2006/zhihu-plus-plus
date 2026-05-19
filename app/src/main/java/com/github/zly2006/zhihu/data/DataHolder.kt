@@ -324,6 +324,9 @@ object DataHolder {
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
         val paginationInfo: PaginationInfo? = null,
+        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        @Serializable(with = BooleanCompatSerializer::class)
+        val allowSegmentInteraction: Boolean = false,
     ) : Content {
         @Serializable
         data class PaginationInfo(
@@ -382,6 +385,9 @@ object DataHolder {
         val attachedInfo: JsonElement? = null,
         val paidInfo: JsonObject? = null,
         val topics: List<Topic>? = null,
+        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
+        @Serializable(with = BooleanCompatSerializer::class)
+        val allowSegmentInteraction: Boolean = false,
     ) : Content
 
     @Serializable

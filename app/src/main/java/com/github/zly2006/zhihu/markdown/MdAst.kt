@@ -20,7 +20,10 @@ package com.github.zly2006.zhihu.markdown
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.ui.components.SegmentedText
+import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
 import com.github.zly2006.zhihu.util.extractImageUrl
+import com.github.zly2006.zhihu.util.parseSegmentTextParagraph
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Document
@@ -151,6 +154,18 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
             // single <br> as paragraph, treat it as empty to avoid extra spacing
             emptyList()
         } else {
+            if (element.selectFirst("span.highlight-wrap") != null) {
+                parseSegmentTextParagraph(element)?.let { paragraph ->
+                    return listOf(
+                        NativeBlock {
+                            SegmentedText(
+                                parts = paragraph.parts,
+                                style = segmentedTextStyle(),
+                            )
+                        },
+                    )
+                }
+            }
             // 特殊处理<p>里面包含的MathBlock
             val list = mutableListOf<MarkdownNode>()
 

@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,10 +64,13 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.latex.rememberLatexFonts
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -237,19 +241,31 @@ fun RenderMarkdown(
         mathFontSize = 18f * fontSize / 100,
         mathFont = mathFont,
     )
-    Markdown(
-        document = document,
-        modifier = modifier,
-        imageContent = ::RenderImage,
-        scrollState = scrollState,
-        enableScroll = enableScroll,
-        enableSelection = selectable,
-        onLinkClick = { url ->
-            resolveContent(url)?.let { navigator.onNavigate(it) }
-                ?: luoTianYiUrlLauncher(context, url.toUri())
-        },
-        header = header,
-        footer = footer,
-        theme = theme,
-    )
+    var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
+    CompositionLocalProvider(
+        LocalSegmentCommentHost provides { target -> segmentCommentTarget = target },
+    ) {
+        Markdown(
+            document = document,
+            modifier = modifier,
+            imageContent = ::RenderImage,
+            scrollState = scrollState,
+            enableScroll = enableScroll,
+            enableSelection = selectable,
+            onLinkClick = { url ->
+                resolveContent(url)?.let { navigator.onNavigate(it) }
+                    ?: luoTianYiUrlLauncher(context, url.toUri())
+            },
+            header = header,
+            footer = footer,
+            theme = theme,
+        )
+    }
+    segmentCommentTarget?.let { target ->
+        CommentScreenComponent(
+            showComments = true,
+            onDismiss = { segmentCommentTarget = null },
+            content = target,
+        )
+    }
 }

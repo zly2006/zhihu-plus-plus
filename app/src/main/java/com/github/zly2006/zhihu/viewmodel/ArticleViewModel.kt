@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.ZhidaSummarySsePayload
+import com.github.zly2006.zhihu.util.applySegmentInfosToHtml
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -380,7 +381,13 @@ class ArticleViewModel(
                             authorName = answer.author.name
                             authorId = answer.author.id
                             authorUrlToken = answer.author.urlToken
-                            content = answer.content
+                            content = applySegmentInfosToHtml(
+                                content = answer.content,
+                                segmentInfos = answer.segmentInfos,
+                                sourceUrl = "https://www.zhihu.com/question/${answer.question.id}/answer/${answer.id}",
+                                contentId = answer.id.toString(),
+                                contentType = "answer",
+                            )
                             attachment = answer.attachment
                             authorBio = answer.author.headline
                             authorAvatarSrc = answer.author.avatarUrl
@@ -444,7 +451,13 @@ class ArticleViewModel(
                         if (article != null) {
                             exportSourceContent = article
                             title = article.title
-                            content = article.content
+                            content = applySegmentInfosToHtml(
+                                content = article.content,
+                                segmentInfos = article.segmentInfos,
+                                sourceUrl = "https://zhuanlan.zhihu.com/p/${article.id}",
+                                contentId = article.id.toString(),
+                                contentType = "article",
+                            )
                             voteUpCount = article.voteupCount
                             commentCount = article.commentCount
                             authorId = article.author.id

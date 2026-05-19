@@ -158,6 +158,13 @@ data class CommentHolder(
 ) : NavDestination
 
 @Serializable
+data class SegmentCommentHolder(
+    val contentId: String,
+    val contentType: String,
+    val segmentId: String,
+) : NavDestination
+
+@Serializable
 data class Question(
     val questionId: Long,
     val title: String = "loading...",
