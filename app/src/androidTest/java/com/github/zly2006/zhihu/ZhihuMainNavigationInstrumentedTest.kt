@@ -219,7 +219,7 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
 
         composeRule.activity.runOnUiThread {
-            composeRule.activity.navigate(Follow, popup = true)
+            composeRule.activity.navigateMainTab(Follow)
         }
 
         composeRule.waitUntilTabSelected("nav_tab_follow")

@@ -289,9 +289,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val mainTabNavigationTarget = activity.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
-            // MainActivity maps legacy top-level routes onto MainTabs. Consume that request here so
-            // callers such as deeplinks can still select Home/Follow/etc. without adding those old
-            // routes back to the NavHost graph.
+            // MainActivity maps legacy top-level route requests onto MainTabs. Consume that request
+            // here so callers such as deeplinks can still select Home/Follow/etc. without pushing
+            // those old routes onto the back stack.
             mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
             activity.consumeMainTabNavigationTarget(destination)
         }
@@ -401,17 +401,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
-                    val isMainTabDestination = destination is TopLevelDestination &&
-                        mainTabPages.any { it.bottomDestination::class == destination::class }
-                    if (isMainTabDestination && navEntry.hasRoute(MainTabs::class)) {
-                        navigateTopLevel(destination)
-                    } else if (isMainTabDestination) {
-                        // When a detail page asks for a main tab, pop back to the MainTabs shell
-                        // first. Only switching the pager would leave the detail route in front.
-                        activity.navigate(destination as NavDestination, popup = true)
-                    } else {
-                        activity.navigate(destination)
-                    }
+                    activity.navigate(destination)
                 },
                 onNavigateBack = navController::popBackStack,
             ),

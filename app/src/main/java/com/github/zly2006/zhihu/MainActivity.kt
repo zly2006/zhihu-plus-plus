@@ -52,19 +52,14 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
-import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
-import com.github.zly2006.zhihu.navigation.Daily
-import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
-import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
@@ -499,14 +494,6 @@ class MainActivity : ComponentActivity() {
             navigateToMainTabs()
             return
         }
-        route.asMainTabDestination()?.let { destination ->
-            // Top-level destinations are legacy route values used by deeplinks and settings. The
-            // main shell is a single MainTabs route backed by a pager, so keep these out of the
-            // NavHost back stack and let ZhihuMain consume the pending tab target.
-            mainTabNavigationTarget = destination
-            navigateToMainTabs()
-            return
-        }
         navController.navigate(route) {
             if (popup) {
                 launchSingleTop = true
@@ -551,6 +538,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun navigateMainTab(destination: TopLevelDestination) {
+        mainTabNavigationTarget = destination
+        navigateToMainTabs()
+    }
+
     fun setCurrentMainTabOpenFrom(openFrom: String?) {
         currentMainTabOpenFrom = openFrom
     }
@@ -581,8 +573,6 @@ class MainActivity : ComponentActivity() {
             currentEntry?.toRoute<CollectionContent>()
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<History>()
-        }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<OnlineHistory>()
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<Notification>()
         }.getOrNull()
@@ -729,16 +719,4 @@ class MainActivity : ComponentActivity() {
         const val ZSE93 = "101_3_3.0"
         const val TAG = "MainActivity"
     }
-}
-
-// These destinations no longer have standalone NavHost pages in the main shell. Keep recognizing
-// them here so older entry points can still request a main tab without knowing about MainTabs.
-private fun NavDestination.asMainTabDestination(): TopLevelDestination? = when (this) {
-    Follow,
-    HotList,
-    Daily,
-    OnlineHistory,
-    Account,
-    -> this as TopLevelDestination
-    else -> null
 }

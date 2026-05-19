@@ -24,7 +24,6 @@ import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import kotlinx.coroutines.Dispatchers
@@ -76,7 +75,7 @@ object ContentOpenEventSupport {
             target.type == ArticleType.Answer -> ContentOpenFrom.ANSWER_SWITCH
         source is Question -> ContentOpenFrom.QUESTION_FEED
         source is CollectionContent -> ContentOpenFrom.COLLECTION
-        source is History || source is OnlineHistory -> ContentOpenFrom.HISTORY
+        source is History -> ContentOpenFrom.HISTORY
         source is Notification -> ContentOpenFrom.NOTIFICATION
         else -> ContentOpenFrom.UNKNOWN
     }

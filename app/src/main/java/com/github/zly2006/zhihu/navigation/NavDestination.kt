@@ -28,8 +28,8 @@ sealed interface NavDestination
 /**
  * Bottom-bar and main-pager tab target.
  *
- * Some tab targets are also historical [NavDestination] values for compatibility, but [Home] is not
- * navigable anymore. Code that needs to navigate to the main shell should use [MainTabs].
+ * Tab targets can still be historical [NavDestination] values for compatibility. Code that needs to
+ * navigate to the main shell should use [MainTabs].
  */
 interface TopLevelDestination {
     val name: String
@@ -38,9 +38,9 @@ interface TopLevelDestination {
 /**
  * Real navigation destination for the main shell.
  *
- * Older top-level destinations such as [Follow] and [Daily] are still kept as serializable
- * destination values because deeplinks, clipboard parsing, settings and older call sites may resolve
- * to them. [Home] is only a tab target now. Top-level targets should be treated as tab-selection
+ * Older top-level destinations such as [Home], [Follow] and [Daily] are still kept as
+ * serializable destination values because deeplinks, clipboard parsing, settings, persisted history
+ * and older call sites may resolve to them. Top-level targets should be treated as tab-selection
  * targets, not as routes that are pushed into the main NavHost.
  */
 @Serializable
@@ -66,7 +66,7 @@ data object Home : TopLevelDestination {
  * by ZhihuMain.
  */
 @Serializable
-data object Follow : NavDestination, TopLevelDestination {
+data object Follow : TopLevelDestination {
     override val name: String
         get() = "Follow"
 }
@@ -75,7 +75,7 @@ data object Follow : NavDestination, TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
-data object HotList : NavDestination, TopLevelDestination {
+data object HotList : TopLevelDestination {
     override val name: String
         get() = "HotList"
 }
@@ -96,7 +96,7 @@ data object History : NavDestination, TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
-data object OnlineHistory : NavDestination, TopLevelDestination {
+data object OnlineHistory : TopLevelDestination {
     override val name: String
         get() = "OnlineHistory"
 }
@@ -105,7 +105,7 @@ data object OnlineHistory : NavDestination, TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
-data object Account : NavDestination, TopLevelDestination {
+data object Account : TopLevelDestination {
     override val name: String
         get() = "Account"
 
@@ -142,7 +142,7 @@ data object Account : NavDestination, TopLevelDestination {
  * Legacy top-level tab target for the main pager.
  */
 @Serializable
-data object Daily : NavDestination, TopLevelDestination {
+data object Daily : TopLevelDestination {
     override val name: String
         get() = "Daily"
 }
