@@ -22,7 +22,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
-import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
@@ -75,7 +74,6 @@ object ContentOpenEventSupport {
             source.type == ArticleType.Answer &&
             target is Article &&
             target.type == ArticleType.Answer -> ContentOpenFrom.ANSWER_SWITCH
-        source is Home -> ContentOpenFrom.HOME_FEED
         source is Question -> ContentOpenFrom.QUESTION_FEED
         source is CollectionContent -> ContentOpenFrom.COLLECTION
         source is History || source is OnlineHistory -> ContentOpenFrom.HISTORY

@@ -91,8 +91,8 @@ import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
@@ -126,7 +126,7 @@ internal fun appearanceSettingsStartDestinationOptionTag(key: String): String =
 internal fun appearanceSettingsBottomBarItemTag(key: String): String =
     "appearanceSettings.bottomBarItem.$key"
 
-private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = listOf(
+private val topLevelDestinationsInOrder: List<Pair<String, TopLevelDestination>> = listOf(
     Home.name to Home,
     Follow.name to Follow,
     HotList.name to HotList,
@@ -135,7 +135,7 @@ private val topLevelDestinationsInOrder: List<Pair<String, NavDestination>> = li
     Account.name to Account,
 )
 
-internal fun navDestinationFromName(name: String): NavDestination = topLevelDestinationsInOrder
+internal fun navDestinationFromName(name: String): TopLevelDestination = topLevelDestinationsInOrder
     .firstOrNull { it.first == name }
     ?.second
     ?: Home

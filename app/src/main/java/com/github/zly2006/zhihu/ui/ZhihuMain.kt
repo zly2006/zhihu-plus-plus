@@ -128,6 +128,7 @@ import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
 import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
 import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
@@ -135,7 +136,7 @@ import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
 private sealed class MainTabPage(
-    val bottomDestination: NavDestination,
+    val bottomDestination: TopLevelDestination,
     val key: String,
 ) {
     data object HomePage : MainTabPage(Home, "home")
@@ -241,9 +242,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
     }
 
-    fun pageIndexForDestination(destination: NavDestination): Int = mainTabPages
+    fun pageIndexForDestination(destination: TopLevelDestination): Int = mainTabPages
         .indexOfFirst {
             it.bottomDestination::class == destination::class
+        }.takeIf { it >= 0 } ?: mainTabPages
+        .indexOfFirst {
+            it.bottomDestination::class == startDestination::class
         }.takeIf { it >= 0 } ?: 0
 
     var lastFollowPageKey by rememberSaveable { mutableStateOf(MainTabPage.FollowRecommendPage.key) }
@@ -254,8 +258,9 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val coroutineScope = rememberCoroutineScope()
 
     fun currentMainTabPage(): MainTabPage? = mainTabPages.getOrNull(mainPagerState.currentPage)
+    var currentMainTabDestination by remember { mutableStateOf(startDestination) }
 
-    fun pageIndexForBottomDestination(destination: NavDestination): Int {
+    fun pageIndexForBottomDestination(destination: TopLevelDestination): Int {
         if (destination == Follow) {
             val rememberedFollowPage = mainTabPages.indexOfFirst { it.key == lastFollowPageKey }
             if (rememberedFollowPage >= 0) return rememberedFollowPage
@@ -263,7 +268,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         return pageIndexForDestination(destination)
     }
 
-    fun navigateTopLevel(destination: NavDestination) {
+    fun navigateTopLevel(destination: TopLevelDestination) {
         val targetPage = pageIndexForBottomDestination(destination)
         coroutineScope.launch {
             mainPagerState.animateScrollToPage(targetPage)
@@ -275,56 +280,37 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
             MainTabPage.FollowRecommendPage, MainTabPage.FollowDynamicPage -> lastFollowPageKey = page.key
             else -> {}
         }
-        activity.setCurrentMainTabOpenSource(currentMainTabPage()?.bottomDestination)
-    }
-
-    LaunchedEffect(mainTabPages, startDestination) {
-        if (mainTabPages.isNotEmpty() && mainPagerState.currentPage !in mainTabPages.indices) {
-            mainPagerState.scrollToPage(pageIndexForDestination(startDestination))
+        currentMainTabPage()?.bottomDestination?.let { destination ->
+            currentMainTabDestination = destination
+            activity.setCurrentMainTabOpenFrom(destination.openFrom)
         }
     }
 
-    // 通用动画创建函数
-    @Suppress("KotlinConstantConditions")
-    fun createSlideAnimation(
-        isEnter: Boolean,
-        isPop: Boolean,
-        fromIndex: Int,
-        toIndex: Int,
-    ): Any {
-        // 如果不是一级页面之间的切换，使用默认动画
-        if (fromIndex == -1 || toIndex == -1) {
-            when {
-                isPop && isEnter -> {
-                    return EnterTransition.None
-                }
+    val mainTabNavigationTarget = activity.mainTabNavigationTarget
+    LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
+        mainTabNavigationTarget?.let { destination ->
+            // MainActivity maps legacy top-level routes onto MainTabs. Consume that request here so
+            // callers such as deeplinks can still select Home/Follow/etc. without adding those old
+            // routes back to the NavHost graph.
+            mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
+            activity.consumeMainTabNavigationTarget(destination)
+        }
+    }
 
-                isPop && !isEnter -> {
-                    return slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                }
-
-                !isPop && isEnter -> {
-                    return slideInHorizontally(tween(300)) { it }
-                }
-
-                !isPop && !isEnter -> {
-                    return ExitTransition.None
-                }
+    LaunchedEffect(mainTabPages) {
+        if (mainTabPages.isNotEmpty()) {
+            val currentDestinationStillVisible = mainTabPages.any {
+                it.bottomDestination::class == currentMainTabDestination::class
             }
-        }
-        // 一级页面之间的切换
-        val offset = when {
-            // 向右滑动
-            toIndex > fromIndex -> if (isEnter) 1 else -1
-            // 向左滑动
-            toIndex < fromIndex -> if (isEnter) -1 else 1
-            // 同一页面
-            else -> return if (isEnter) EnterTransition.None else ExitTransition.None
-        }
-        return if (isEnter) {
-            slideInHorizontally(tween(300)) { it * offset } + fadeIn(tween(300))
-        } else {
-            slideOutHorizontally(tween(300)) { it * offset } + fadeOut(tween(300))
+            val targetDestination = if (currentDestinationStillVisible) {
+                currentMainTabDestination
+            } else {
+                startDestination
+            }
+            val targetPage = pageIndexForDestination(targetDestination)
+            if (mainPagerState.currentPage != targetPage || mainPagerState.currentPage !in mainTabPages.indices) {
+                mainPagerState.scrollToPage(targetPage)
+            }
         }
     }
 
@@ -352,11 +338,11 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                     ) {
                         @Composable
                         fun Item(
-                            destination: NavDestination,
+                            destination: TopLevelDestination,
                             label: String,
                             icon: ImageVector,
                         ) {
-                            val tag = "nav_tab_${(destination as? TopLevelDestination)?.name?.lowercase() ?: label.lowercase()}"
+                            val tag = "nav_tab_${destination.name.lowercase()}"
                             NavigationBarItem(
                                 currentBottomDestination?.let { it::class == destination::class } == true,
                                 onClick = {
@@ -415,11 +401,14 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
-                    if (
-                        destination is TopLevelDestination &&
+                    val isMainTabDestination = destination is TopLevelDestination &&
                         mainTabPages.any { it.bottomDestination::class == destination::class }
-                    ) {
+                    if (isMainTabDestination && navEntry.hasRoute(MainTabs::class)) {
                         navigateTopLevel(destination)
+                    } else if (isMainTabDestination) {
+                        // When a detail page asks for a main tab, pop back to the MainTabs shell
+                        // first. Only switching the pager would leave the detail route in front.
+                        activity.navigate(destination as NavDestination, popup = true)
                     } else {
                         activity.navigate(destination)
                     }
@@ -432,16 +421,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                 modifier = Modifier,
                 startDestination = MainTabs,
                 enterTransition = {
-                    createSlideAnimation(isEnter = true, isPop = false, -1, -1) as EnterTransition
+                    slideInHorizontally(tween(300)) { it }
                 },
                 exitTransition = {
-                    createSlideAnimation(isEnter = false, isPop = false, -1, -1) as ExitTransition
+                    ExitTransition.None
                 },
                 popEnterTransition = {
-                    createSlideAnimation(isEnter = true, isPop = true, -1, -1) as EnterTransition
+                    EnterTransition.None
                 },
                 popExitTransition = {
-                    createSlideAnimation(isEnter = false, isPop = true, -1, -1) as ExitTransition
+                    slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
                 },
             ) {
                 composable<MainTabs> {
@@ -640,6 +629,13 @@ private fun MainTabsPager(
 }
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
+
+private val TopLevelDestination.openFrom: String?
+    get() = when (this) {
+        Home -> ContentOpenFrom.HOME_FEED
+        OnlineHistory -> ContentOpenFrom.HISTORY
+        else -> null
+    }
 
 internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false

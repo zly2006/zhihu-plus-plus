@@ -31,7 +31,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -50,17 +52,22 @@ import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.Daily
+import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
@@ -146,7 +153,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
-    private var currentMainTabOpenSource: NavDestination? = null
+    private var currentMainTabOpenFrom: String? = null
+    var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
+        private set
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -485,6 +494,19 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
+        if (route == MainTabs) {
+            mainTabNavigationTarget = Home
+            navigateToMainTabs()
+            return
+        }
+        route.asMainTabDestination()?.let { destination ->
+            // Top-level destinations are legacy route values used by deeplinks and settings. The
+            // main shell is a single MainTabs route backed by a pager, so keep these out of the
+            // NavHost back stack and let ZhihuMain consume the pending tab target.
+            mainTabNavigationTarget = destination
+            navigateToMainTabs()
+            return
+        }
         navController.navigate(route) {
             if (popup) {
                 launchSingleTop = true
@@ -515,11 +537,36 @@ class MainActivity : ComponentActivity() {
             return
         }
         pendingContentOpenIdentity = identity
-        pendingContentOpenFrom = ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+        pendingContentOpenFrom = currentMainTabOpenFrom()
+            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
     }
 
-    fun setCurrentMainTabOpenSource(source: NavDestination?) {
-        currentMainTabOpenSource = source
+    private fun navigateToMainTabs() {
+        navController.navigate(MainTabs) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MainTabs) {
+                saveState = true
+            }
+        }
+    }
+
+    fun setCurrentMainTabOpenFrom(openFrom: String?) {
+        currentMainTabOpenFrom = openFrom
+    }
+
+    fun consumeMainTabNavigationTarget(destination: TopLevelDestination) {
+        if (mainTabNavigationTarget == destination) {
+            mainTabNavigationTarget = null
+        }
+    }
+
+    private fun currentMainTabOpenFrom(): String? = if (
+        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+    ) {
+        currentMainTabOpenFrom
+    } else {
+        null
     }
 
     private fun currentContentOpenSource(): NavDestination? {
@@ -533,18 +580,12 @@ class MainActivity : ComponentActivity() {
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<CollectionContent>()
         }.getOrNull() ?: runCatching {
-            currentEntry?.toRoute<Home>()
-        }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<History>()
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<OnlineHistory>()
         }.getOrNull() ?: runCatching {
             currentEntry?.toRoute<Notification>()
-        }.getOrNull() ?: if (runCatching { currentEntry?.toRoute<MainTabs>() }.getOrNull() != null) {
-            currentMainTabOpenSource
-        } else {
-            null
-        }
+        }.getOrNull()
     }
 
     fun postHistory(dest: NavDestination) {
@@ -688,4 +729,16 @@ class MainActivity : ComponentActivity() {
         const val ZSE93 = "101_3_3.0"
         const val TAG = "MainActivity"
     }
+}
+
+// These destinations no longer have standalone NavHost pages in the main shell. Keep recognizing
+// them here so older entry points can still request a main tab without knowing about MainTabs.
+private fun NavDestination.asMainTabDestination(): TopLevelDestination? = when (this) {
+    Follow,
+    HotList,
+    Daily,
+    OnlineHistory,
+    Account,
+    -> this as TopLevelDestination
+    else -> null
 }

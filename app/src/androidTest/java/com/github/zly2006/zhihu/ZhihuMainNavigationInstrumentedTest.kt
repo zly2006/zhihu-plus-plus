@@ -38,6 +38,7 @@ import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
@@ -177,6 +178,52 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.onNodeWithText("动态").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
+    }
+
+    @Test
+    fun startDestinationAndHiddenBottomTabsRemainCompatibleWithFlattenedPager() {
+        // The main shell now stores all configured bottom tabs inside one pager. This keeps the
+        // preference contract intact: startup opens the configured visible tab, hidden tabs stay
+        // hidden, and legacy top-level NavDestination requests cannot navigate to missing routes.
+        composeRule.launchZhihuMain(
+            startDestination = Daily.name,
+            bottomBarItems = linkedSetOf(Follow.name, Daily.name, Account.name),
+        )
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_account").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
+        composeRule.onNodeWithTag("nav_tab_hotlist").assertDoesNotExist()
+        composeRule.onNodeWithTag("nav_tab_onlinehistory").assertDoesNotExist()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
+
+        composeRule.waitUntilTextSelected("动态")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("动态").assertIsSelected()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
+
+        composeRule.waitUntilTextSelected("推荐")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsSelected()
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigate(MainTabs, popup = true)
+        }
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigate(Follow, popup = true)
+        }
+
+        composeRule.waitUntilTabSelected("nav_tab_follow")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
     }
 
     private fun MainActivityComposeRule.launchZhihuMain(
