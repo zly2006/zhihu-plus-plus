@@ -148,9 +148,7 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
-import com.github.zly2006.zhihu.ui.components.LocalSegmentHighlightActions
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
-import com.github.zly2006.zhihu.ui.components.SegmentHighlightActions
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -1576,69 +1574,63 @@ fun ArticleScreen(
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
-                                CompositionLocalProvider(
-                                    LocalSegmentHighlightActions provides SegmentHighlightActions(
-                                        onCommentClick = { showComments = true },
-                                    ),
-                                ) {
-                                    RenderMarkdown(
-                                        html = viewModel.content,
-                                        modifier = answerDoubleTapModifier.fuckHonorService(),
-                                        selectable = true,
-                                        enableScroll = false,
-                                        header = {
-                                            if (pinAnswerDate) {
-                                                Column(
-                                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                                    horizontalAlignment = Alignment.Start,
-                                                ) {
-                                                    DateTexts()
-                                                }
-                                            }
-                                        },
-                                        footer = {
-                                            if (viewModel.attachment
-                                                    ?.jsonObject
-                                                    ?.get("type")
-                                                    ?.jsonPrimitive
-                                                    ?.content == "video"
-                                            ) {
-                                                val videoId = viewModel.attachment!!
-                                                    .jsonObject["attachmentId"]
-                                                    ?.jsonPrimitive
-                                                    ?.content
-                                                    ?.toLongOrNull()
-                                                if (videoId != null) {
-                                                    val thumbnail = viewModel.attachment!!
-                                                        .jsonObject["video"]!!
-                                                        .jsonObject["videoInfo"]!!
-                                                        .jsonObject["thumbnail"]!!
-                                                        .jsonPrimitive.content
-                                                    RenderVideoBox(
-                                                        videoId = videoId,
-                                                        thumbnailUrl = thumbnail,
-                                                    )
-                                                }
-                                            }
+                                RenderMarkdown(
+                                    html = viewModel.content,
+                                    modifier = answerDoubleTapModifier.fuckHonorService(),
+                                    selectable = true,
+                                    enableScroll = false,
+                                    header = {
+                                        if (pinAnswerDate) {
                                             Column(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalAlignment = Alignment.End,
+                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                                horizontalAlignment = Alignment.Start,
                                             ) {
-                                                if (!pinAnswerDate) {
-                                                    DateTexts()
-                                                }
-                                                if (viewModel.ipInfo != null) {
-                                                    Text(
-                                                        "IP属地：${viewModel.ipInfo}",
-                                                        color = Color.Gray,
-                                                        fontSize = 11.sp,
-                                                    )
-                                                }
+                                                DateTexts()
                                             }
-                                            Spacer(modifier = Modifier.height((16 + 36).dp))
-                                        },
-                                    )
-                                }
+                                        }
+                                    },
+                                    footer = {
+                                        if (viewModel.attachment
+                                                ?.jsonObject
+                                                ?.get("type")
+                                                ?.jsonPrimitive
+                                                ?.content == "video"
+                                        ) {
+                                            val videoId = viewModel.attachment!!
+                                                .jsonObject["attachmentId"]
+                                                ?.jsonPrimitive
+                                                ?.content
+                                                ?.toLongOrNull()
+                                            if (videoId != null) {
+                                                val thumbnail = viewModel.attachment!!
+                                                    .jsonObject["video"]!!
+                                                    .jsonObject["videoInfo"]!!
+                                                    .jsonObject["thumbnail"]!!
+                                                    .jsonPrimitive.content
+                                                RenderVideoBox(
+                                                    videoId = videoId,
+                                                    thumbnailUrl = thumbnail,
+                                                )
+                                            }
+                                        }
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.End,
+                                        ) {
+                                            if (!pinAnswerDate) {
+                                                DateTexts()
+                                            }
+                                            if (viewModel.ipInfo != null) {
+                                                Text(
+                                                    "IP属地：${viewModel.ipInfo}",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height((16 + 36).dp))
+                                    },
+                                )
                             }
                         }
                     }

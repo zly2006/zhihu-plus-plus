@@ -17,16 +17,21 @@
 
 package com.github.zly2006.zhihu.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -39,18 +44,27 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -58,8 +72,36 @@ import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.SegmentTextParagraph
 import com.github.zly2006.zhihu.util.SegmentTextPart
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.signFetchRequest
+import io.ktor.client.request.delete
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import org.jsoup.Jsoup
 
 private const val SEGMENT_TAG = "segment-highlight"
+
+private sealed interface SegmentCommentsState {
+    data object Loading : SegmentCommentsState
+
+    data class Ready(
+        val highlight: SegmentHighlightSpan,
+        val totalCount: Int,
+        val placeholder: String,
+        val comments: List<DataHolder.Comment>,
+    ) : SegmentCommentsState
+
+    data class Error(
+        val message: String,
+    ) : SegmentCommentsState
+}
 
 data class SegmentHighlightActions(
     val onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
@@ -102,10 +144,13 @@ fun SegmentedText(
 ) {
     val context = LocalContext.current
     val actions = LocalSegmentHighlightActions.current
+    val coroutineScope = rememberCoroutineScope()
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
-    val likedStates = remember(parts) { mutableStateMapOf<String, Pair<Boolean, Int>>() }
-    val highlightBackground = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+    var commentsState by remember(parts) { mutableStateOf<SegmentCommentsState?>(null) }
+    var textLayoutResult by remember(parts) { mutableStateOf<TextLayoutResult?>(null) }
+    val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     val highlightTextColor = MaterialTheme.colorScheme.onSurface
+    val highlightUnderlineColor = MaterialTheme.colorScheme.outlineVariant
 
     val annotatedText = buildAnnotatedString {
         parts.forEach { part ->
@@ -122,10 +167,7 @@ fun SegmentedText(
             )
             addStyle(
                 SpanStyle(
-                    background = highlightBackground,
                     color = highlightTextColor,
-                    textDecoration = TextDecoration.Underline,
-                    fontWeight = FontWeight.Medium,
                 ),
                 start = start,
                 end = end,
@@ -142,10 +184,34 @@ fun SegmentedText(
 
     ClickableText(
         text = annotatedText,
-        modifier = modifier,
+        modifier = modifier.drawBehind {
+            val layout = textLayoutResult ?: return@drawBehind
+            val strokeWidth = 1.dp.toPx()
+            val dashWidth = 6.dp.toPx()
+            val gapWidth = 4.dp.toPx()
+            annotatedText.getStringAnnotations(SEGMENT_TAG, 0, annotatedText.length).forEach { annotation ->
+                highlightedLineRects(layout, annotation.start, annotation.end).forEach { rect ->
+                    val y = rect.bottom - 2.dp.toPx()
+                    val path = Path().apply {
+                        moveTo(rect.left, y)
+                        lineTo(rect.right, y)
+                    }
+                    drawPath(
+                        path = path,
+                        color = highlightUnderlineColor,
+                        style = Stroke(
+                            width = strokeWidth,
+                            cap = StrokeCap.Round,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashWidth, gapWidth)),
+                        ),
+                    )
+                }
+            }
+        },
         style = style,
         maxLines = maxLines,
         overflow = overflow,
+        onTextLayout = { textLayoutResult = it },
         onClick = { offset ->
             annotatedText
                 .getStringAnnotations(SEGMENT_TAG, offset, offset)
@@ -159,8 +225,9 @@ fun SegmentedText(
     val currentHighlight = selectedHighlight
     if (currentHighlight != null) {
         val key = highlightKey(currentHighlight)
-        val currentLike = likedStates[key]?.first ?: currentHighlight.meta.isLike
-        val currentLikeCount = likedStates[key]?.second ?: currentHighlight.meta.likeCount
+        val currentMeta = metaStates[key] ?: currentHighlight.meta
+        val currentLike = currentMeta.isLike
+        val currentLikeCount = currentMeta.likeCount
         ModalBottomSheet(
             onDismissRequest = { selectedHighlight = null },
         ) {
@@ -185,7 +252,15 @@ fun SegmentedText(
                 ) {
                     FilledTonalButton(
                         onClick = {
-                            likedStates[key] = (!currentLike) to (currentLikeCount + if (currentLike) -1 else 1)
+                            coroutineScope.launch {
+                                val updatedMeta = runCatching {
+                                    toggleSegmentLike(
+                                        context = context,
+                                        highlight = currentHighlight.copy(meta = currentMeta),
+                                    )
+                                }.getOrElse { currentMeta }
+                                metaStates[key] = updatedMeta
+                            }
                         },
                         modifier = Modifier.weight(1f),
                     ) {
@@ -201,9 +276,23 @@ fun SegmentedText(
                     FilledTonalButton(
                         onClick = {
                             selectedHighlight = null
-                            actions.onCommentClick?.invoke(currentHighlight)
+                            if (actions.onCommentClick != null) {
+                                actions.onCommentClick.invoke(currentHighlight)
+                            } else {
+                                commentsState = SegmentCommentsState.Loading
+                                coroutineScope.launch {
+                                    commentsState = runCatching {
+                                        loadSegmentComments(
+                                            context = context,
+                                            highlight = currentHighlight.copy(meta = currentMeta),
+                                        )
+                                    }.fold(
+                                        onSuccess = { state -> state },
+                                        onFailure = { SegmentCommentsState.Error(it.message ?: "评论加载失败") },
+                                    )
+                                }
+                            }
                         },
-                        enabled = actions.onCommentClick != null,
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(
@@ -226,6 +315,85 @@ fun SegmentedText(
                         Icon(
                             imageVector = Icons.Outlined.ContentCopy,
                             contentDescription = "复制内容",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    val currentCommentsState = commentsState
+    if (currentCommentsState != null) {
+        ModalBottomSheet(
+            onDismissRequest = { commentsState = null },
+        ) {
+            when (currentCommentsState) {
+                SegmentCommentsState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+                    }
+                }
+
+                is SegmentCommentsState.Error -> {
+                    Text(
+                        text = currentCommentsState.message,
+                        modifier = Modifier.padding(20.dp),
+                    )
+                }
+
+                is SegmentCommentsState.Ready -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = "${currentCommentsState.totalCount} 条评论",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = currentCommentsState.highlight.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        currentCommentsState.comments.forEach { comment ->
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = comment.author.name,
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                Text(
+                                    text = Jsoup.parse(comment.content).text(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                                Text(
+                                    text = buildString {
+                                        append(comment.commentTag.firstOrNull()?.text ?: "")
+                                        if (comment.likeCount > 0) {
+                                            if (isNotEmpty()) append(" · ")
+                                            append("赞 ")
+                                            append(comment.likeCount)
+                                        }
+                                        if (comment.childCommentCount > 0) {
+                                            if (isNotEmpty()) append(" · ")
+                                            append("回复 ")
+                                            append(comment.childCommentCount)
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        Text(
+                            text = currentCommentsState.placeholder,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -255,3 +423,149 @@ private fun highlightKey(highlight: SegmentHighlightSpan): String =
         append('|')
         append(highlight.text)
     }
+
+private fun highlightedLineRects(
+    layout: TextLayoutResult,
+    start: Int,
+    end: Int,
+): List<Rect> {
+    if (start >= end) return emptyList()
+
+    val result = mutableListOf<Rect>()
+    var current: Rect? = null
+    for (offset in start until end) {
+        val box = layout.getBoundingBox(offset)
+        current = if (current == null) {
+            box
+        } else if (
+            kotlin.math.abs(box.top - current.top) < 0.5f &&
+            kotlin.math.abs(box.bottom - current.bottom) < 0.5f &&
+            box.left <= current.right + 1f
+        ) {
+            Rect(
+                left = current.left,
+                top = current.top,
+                right = box.right,
+                bottom = current.bottom,
+            )
+        } else {
+            result += current
+            box
+        }
+    }
+    current?.let(result::add)
+    return result
+}
+
+private suspend fun toggleSegmentLike(
+    context: android.content.Context,
+    highlight: SegmentHighlightSpan,
+): SegmentInfoMeta {
+    val contentId = highlight.contentId ?: return highlight.meta
+    val targetType = highlight.contentType ?: return highlight.meta
+    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
+
+    return if (highlight.meta.isLike) {
+        AccountData.httpClient(context).delete(url) {
+            signFetchRequest()
+            contentType(ContentType.Application.Json)
+            setBody(
+                buildJsonObject {
+                    put("seg_ids", highlight.meta.segIds.joinToString(","))
+                }.toString(),
+            )
+        }
+        highlight.meta.copy(
+            isLike = false,
+            likeCount = (highlight.meta.likeCount - 1).coerceAtLeast(0),
+        )
+    } else {
+        val response = AccountData.fetchPost(context, url) {
+            signFetchRequest()
+            contentType(ContentType.Application.Json)
+            setBody(
+                buildJsonObject {
+                    if (highlight.meta.segIds.isNotEmpty()) {
+                        put("seg_id", highlight.meta.segIds.joinToString(","))
+                    }
+                    put("content", highlight.text)
+                    put(
+                        "position",
+                        buildJsonObject {
+                            put(
+                                "start",
+                                buildJsonObject {
+                                    put("paragraph_id", highlight.paragraphId.orEmpty())
+                                    put("offset", highlight.startOffset ?: 0)
+                                },
+                            )
+                            put(
+                                "end",
+                                buildJsonObject {
+                                    put("paragraph_id", highlight.paragraphId.orEmpty())
+                                    put("offset", highlight.endOffset ?: 0)
+                                },
+                            )
+                        },
+                    )
+                }.toString(),
+            )
+        }
+        val segId = response
+            ?.get("payload")
+            ?.jsonObject
+            ?.get("segId")
+            ?.jsonPrimitive
+            ?.content
+            ?.split(',')
+            ?.filter(String::isNotEmpty)
+            ?: highlight.meta.segIds
+        highlight.meta.copy(
+            segIds = segId,
+            isLike = true,
+            likeCount = highlight.meta.likeCount + 1,
+        )
+    }
+}
+
+private suspend fun loadSegmentComments(
+    context: android.content.Context,
+    highlight: SegmentHighlightSpan,
+): SegmentCommentsState.Ready {
+    val contentId = highlight.contentId ?: error("missing contentId")
+    val targetType = highlight.contentType ?: error("missing contentType")
+    val segmentId = highlight.meta.segIds.joinToString(",")
+    val rootComments = AccountData.fetchGet(
+        context,
+        "https://www.zhihu.com/api/v4/comment_v5/${targetType}s/$contentId/segment/root_comment?segment_id=$segmentId&order_by=score&limit=20&offset=",
+    ) {
+        signFetchRequest()
+    } ?: error("root comments missing")
+    val config = AccountData.fetchGet(
+        context,
+        "https://www.zhihu.com/api/v4/comment_v5/${targetType}s/$contentId/segment/config?show_ai_comment=&segment_id=$segmentId",
+    ) {
+        signFetchRequest()
+    }
+    val comments = rootComments["data"]
+        ?.jsonArray
+        ?.map { AccountData.decodeJson<DataHolder.Comment>(it) }
+        .orEmpty()
+    val totalCount = rootComments["counts"]
+        ?.jsonObject
+        ?.get("total_counts")
+        ?.jsonPrimitive
+        ?.int
+        ?: comments.size
+    val placeholder = config
+        ?.get("place_holder")
+        ?.jsonPrimitive
+        ?.content
+        ?: "理性发言，友善互动"
+    return SegmentCommentsState.Ready(
+        highlight = highlight,
+        totalCount = totalCount,
+        placeholder = placeholder,
+        comments = comments,
+    )
+}

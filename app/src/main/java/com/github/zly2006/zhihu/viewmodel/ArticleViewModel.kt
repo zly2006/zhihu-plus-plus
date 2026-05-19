@@ -385,6 +385,8 @@ class ArticleViewModel(
                                 content = answer.content,
                                 segmentInfos = answer.segmentInfos,
                                 sourceUrl = "https://www.zhihu.com/question/${answer.question.id}/answer/${answer.id}",
+                                contentId = answer.id.toString(),
+                                contentType = "answer",
                             )
                             attachment = answer.attachment
                             authorBio = answer.author.headline
@@ -453,6 +455,8 @@ class ArticleViewModel(
                                 content = article.content,
                                 segmentInfos = article.segmentInfos,
                                 sourceUrl = "https://zhuanlan.zhihu.com/p/${article.id}",
+                                contentId = article.id.toString(),
+                                contentType = "article",
                             )
                             voteUpCount = article.voteupCount
                             commentCount = article.commentCount

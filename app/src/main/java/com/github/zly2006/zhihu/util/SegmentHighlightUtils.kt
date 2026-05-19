@@ -29,6 +29,11 @@ data class SegmentHighlightSpan(
     val text: String,
     val meta: SegmentInfoMeta,
     val sourceUrl: String? = null,
+    val contentId: String? = null,
+    val contentType: String? = null,
+    val paragraphId: String? = null,
+    val startOffset: Int? = null,
+    val endOffset: Int? = null,
 )
 
 data class SegmentTextPart(
@@ -46,6 +51,9 @@ fun buildSegmentTextParts(
     text: String,
     marks: List<SegmentInfoMark>,
     sourceUrl: String? = null,
+    contentId: String? = null,
+    contentType: String? = null,
+    paragraphId: String? = null,
 ): List<SegmentTextPart> {
     if (text.isEmpty()) return emptyList()
     if (marks.isEmpty()) return listOf(SegmentTextPart(text))
@@ -75,6 +83,11 @@ fun buildSegmentTextParts(
                 text = text.substring(mark.startIndex, mark.endIndex),
                 meta = mark.segInfo,
                 sourceUrl = sourceUrl,
+                contentId = contentId,
+                contentType = contentType,
+                paragraphId = paragraphId,
+                startOffset = mark.startIndex,
+                endOffset = mark.endIndex,
             ),
         )
         cursor = mark.endIndex
@@ -88,6 +101,8 @@ fun buildSegmentTextParts(
 fun buildSegmentTextParagraphs(
     paragraphs: List<SegmentInfoParagraph>,
     sourceUrl: String? = null,
+    contentId: String? = null,
+    contentType: String? = null,
 ): List<SegmentTextParagraph> = paragraphs.map { paragraph ->
     SegmentTextParagraph(
         pid = paragraph.pid,
@@ -96,6 +111,9 @@ fun buildSegmentTextParagraphs(
             text = paragraph.text,
             marks = paragraph.marks,
             sourceUrl = sourceUrl,
+            contentId = contentId,
+            contentType = contentType,
+            paragraphId = paragraph.pid,
         ),
     )
 }
@@ -104,6 +122,8 @@ fun applySegmentInfosToHtml(
     content: String,
     segmentInfos: List<SegmentInfoParagraph>,
     sourceUrl: String? = null,
+    contentId: String? = null,
+    contentType: String? = null,
 ): String {
     if (content.isBlank() || segmentInfos.isEmpty()) return content
 
@@ -142,6 +162,11 @@ fun applySegmentInfosToHtml(
                         )
                         attr("data-highlight-id-extra", "")
                         highlight.sourceUrl?.let { attr("data-highlight-source-url", it) }
+                        contentId?.let { attr("data-highlight-content-id", it) }
+                        contentType?.let { attr("data-highlight-content-type", it) }
+                        highlight.paragraphId?.let { attr("data-highlight-pid", it) }
+                        highlight.startOffset?.let { attr("data-highlight-start-offset", it.toString()) }
+                        highlight.endOffset?.let { attr("data-highlight-end-offset", it.toString()) }
                         text(part.text)
                     },
                 )
@@ -185,6 +210,11 @@ private fun parseSegmentNode(node: Node): SegmentTextPart? = when (node) {
                     isSpan = node.attr("data-highlight-is-span").toBoolean(),
                 ),
                 sourceUrl = node.attr("data-highlight-source-url").ifBlank { null },
+                contentId = node.attr("data-highlight-content-id").ifBlank { null },
+                contentType = node.attr("data-highlight-content-type").ifBlank { null },
+                paragraphId = node.attr("data-highlight-pid").ifBlank { null },
+                startOffset = node.attr("data-highlight-start-offset").toIntOrNull(),
+                endOffset = node.attr("data-highlight-end-offset").toIntOrNull(),
             ),
         )
     }
