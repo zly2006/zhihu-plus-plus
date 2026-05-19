@@ -35,6 +35,8 @@ import androidx.compose.ui.test.swipeRight
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
@@ -46,6 +48,8 @@ import com.github.zly2006.zhihu.test.setZhihuMainContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -224,6 +228,22 @@ class ZhihuMainNavigationInstrumentedTest {
 
         composeRule.waitUntilTabSelected("nav_tab_follow")
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+    }
+
+    @Test
+    fun homeTabOpenContent_recordsHomeFeedOpenFrom() {
+        composeRule.launchZhihuMain(startDestination = Home.name)
+
+        composeRule.waitUntilTabSelected("nav_tab_home")
+
+        val article = Article(type = ArticleType.Answer, id = 318L)
+        var openFrom: String? = null
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigate(article)
+            openFrom = composeRule.activity.consumePendingContentOpenFrom(article)
+        }
+
+        assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
     }
 
     private fun MainActivityComposeRule.launchZhihuMain(
