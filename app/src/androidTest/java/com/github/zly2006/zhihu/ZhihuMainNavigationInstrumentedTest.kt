@@ -238,7 +238,7 @@ class ZhihuMainNavigationInstrumentedTest {
 
         val article = Article(type = ArticleType.Answer, id = 318L)
         var openFrom: String? = null
-        composeRule.activity.runOnUiThread {
+        composeRule.runOnIdle {
             composeRule.activity.navigate(article)
             openFrom = composeRule.activity.consumePendingContentOpenFrom(article)
         }
