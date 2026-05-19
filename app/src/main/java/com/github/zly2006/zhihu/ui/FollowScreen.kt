@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,7 +119,6 @@ fun FollowScreen(
     val pagerState = rememberPagerState(pageCount = { titles.size })
     val coroutineScope = rememberCoroutineScope()
 
-    // 同步PagerState和ViewModel的selectedTabIndex
     LaunchedEffect(pagerState.currentPage) {
         viewModel.selectedTabIndex = pagerState.currentPage
     }
@@ -130,27 +130,19 @@ fun FollowScreen(
     }
 
     Column(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())) {
-        PrimaryTabRow(
+        FollowTabRow(
             selectedTabIndex = viewModel.selectedTabIndex,
+            onTabSelected = { index ->
+                viewModel.selectedTabIndex = index
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(index)
+                }
+            },
             modifier = Modifier
                 .padding(
                     top = innerPadding.calculateTopPadding(),
-                ).testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
-        ) {
-            titles.forEachIndexed { index, title ->
-                Tab(
-                    modifier = Modifier.testTag(followScreenTabTag(index)),
-                    selected = viewModel.selectedTabIndex == index,
-                    onClick = {
-                        viewModel.selectedTabIndex = index
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                )
-            }
-        }
+                ),
+        )
 
         HorizontalPager(
             state = pagerState,
@@ -173,6 +165,59 @@ fun FollowScreen(
                     onTestLoadMore = onTestDynamicLoadMore,
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun FollowTopLevelPage(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    isActive: Boolean = true,
+) {
+    Column(
+        modifier = Modifier
+            .padding(bottom = innerPadding.calculateBottomPadding())
+            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
+    ) {
+        FollowTabRow(
+            selectedTabIndex = selectedTabIndex,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+        )
+        when (selectedTabIndex) {
+            0 -> FollowRecommendScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = isActive,
+            )
+            1 -> FollowDynamicScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                isActive = isActive,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FollowTabRow(
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val titles = listOf("推荐", "动态")
+    PrimaryTabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = modifier.testTag(FOLLOW_SCREEN_TAB_ROW_TAG),
+    ) {
+        titles.forEachIndexed { index, title ->
+            Tab(
+                modifier = Modifier.testTag(followScreenTabTag(index)),
+                selected = selectedTabIndex == index,
+                onClick = { onTabSelected(index) },
+                text = { Text(text = title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            )
         }
     }
 }

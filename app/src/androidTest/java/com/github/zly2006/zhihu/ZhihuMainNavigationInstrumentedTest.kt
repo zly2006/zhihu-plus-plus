@@ -31,20 +31,25 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.core.content.edit
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
-import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -131,12 +136,10 @@ class ZhihuMainNavigationInstrumentedTest {
     }
 
     @Test
-    fun followScreen_swipesChangeInnerPageWithoutLosingBottomTabSelection() {
-        // This test enters the Follow top-level destination from a deterministic start state and
-        // verifies two shell-level guarantees. First, a horizontal swipe inside the Follow content
-        // must advance the inner pager from "推荐" to "动态". Second, even after those swipes,
-        // the bottom navigation shell must remain on the Follow tab instead of drifting back home
-        // or selecting another tab because of gesture side effects.
+    fun flattenedMainPager_swipesThroughFollowPagesWithoutLosingBottomTabSelection() {
+        // Follow is represented by two adjacent main-pager pages but a single bottom-bar item.
+        // Swiping between "推荐" and "动态" must keep the Follow item selected; swiping past the
+        // second Follow page should move to the next configured bottom destination.
         composeRule.launchZhihuMain(startDestination = Home.name)
         composeRule.onNodeWithTag("nav_tab_follow").performClick()
 
@@ -159,13 +162,88 @@ class ZhihuMainNavigationInstrumentedTest {
         composeRule.onNodeWithText("推荐").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
 
-        composeRule.onRoot().performHorizontalSwipeCycle()
+        composeRule.onRoot().performTouchInput { swipeLeft() }
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
+
+        composeRule.waitUntilTextSelected("动态")
+        composeRule.onNodeWithText("动态").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
 
         composeRule.waitUntilTextSelected("推荐")
         composeRule.onNodeWithText("推荐").assertIsSelected()
         composeRule.onNodeWithText("动态").assertIsNotSelected()
         composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
         composeRule.onNodeWithTag("nav_tab_home").assertIsNotSelected()
+    }
+
+    @Test
+    fun startDestinationAndHiddenBottomTabsRemainCompatibleWithFlattenedPager() {
+        // The main shell now stores all configured bottom tabs inside one pager. This keeps the
+        // preference contract intact: startup opens the configured visible tab, hidden tabs stay
+        // hidden, and legacy top-level NavDestination requests cannot navigate to missing routes.
+        composeRule.launchZhihuMain(
+            startDestination = Daily.name,
+            bottomBarItems = linkedSetOf(Follow.name, Daily.name, Account.name),
+        )
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_account").assertIsNotSelected()
+        composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
+        composeRule.onNodeWithTag("nav_tab_hotlist").assertDoesNotExist()
+        composeRule.onNodeWithTag("nav_tab_onlinehistory").assertDoesNotExist()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
+
+        composeRule.waitUntilTextSelected("动态")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("动态").assertIsSelected()
+
+        composeRule.onRoot().performTouchInput { swipeRight() }
+
+        composeRule.waitUntilTextSelected("推荐")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+        composeRule.onNodeWithText("推荐").assertIsSelected()
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigate(MainTabs, popup = true)
+        }
+
+        composeRule.waitUntilTabSelected("nav_tab_daily")
+        composeRule.onNodeWithTag("nav_tab_daily").assertIsSelected()
+        composeRule.onNodeWithTag("nav_tab_home").assertDoesNotExist()
+
+        composeRule.activity.runOnUiThread {
+            composeRule.activity.navigateMainTab(Follow)
+        }
+
+        composeRule.waitUntilTabSelected("nav_tab_follow")
+        composeRule.onNodeWithTag("nav_tab_follow").assertIsSelected()
+    }
+
+    @Test
+    fun homeTabOpenContent_recordsHomeFeedOpenFrom() {
+        composeRule.launchZhihuMain(startDestination = Home.name)
+
+        composeRule.waitUntilTabSelected("nav_tab_home")
+
+        val article = Article(type = ArticleType.Answer, id = 318L)
+        var openFrom: String? = null
+        composeRule.runOnIdle {
+            composeRule.activity.navigate(article)
+            openFrom = composeRule.activity.consumePendingContentOpenFrom(article)
+        }
+
+        assertEquals(ContentOpenFrom.HOME_FEED, openFrom)
     }
 
     private fun MainActivityComposeRule.launchZhihuMain(

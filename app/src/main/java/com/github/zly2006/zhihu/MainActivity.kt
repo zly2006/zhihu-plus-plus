@@ -31,7 +31,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -55,11 +57,12 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
-import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
@@ -145,6 +148,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var continuousUsageReminderManager: ContinuousUsageReminderManager
     private var pendingContentOpenIdentity: TrackedContentIdentity? = null
     private var pendingContentOpenFrom: String? = null
+    private var currentMainTabOpenFrom: String? = null
+    var mainTabNavigationTarget by mutableStateOf<TopLevelDestination?>(null)
+        private set
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -483,10 +489,15 @@ class MainActivity : ComponentActivity() {
             }
             return
         }
+        if (route == MainTabs) {
+            mainTabNavigationTarget = Home
+            navigateToMainTabs()
+            return
+        }
         navController.navigate(route) {
             if (popup) {
                 launchSingleTop = true
-                popUpTo(Home) {
+                popUpTo(MainTabs) {
                     // clear the back stack and viewModels
                     saveState = true
                 }
@@ -513,26 +524,59 @@ class MainActivity : ComponentActivity() {
             return
         }
         pendingContentOpenIdentity = identity
-        pendingContentOpenFrom = ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
+        pendingContentOpenFrom = currentMainTabOpenFrom()
+            ?: ContentOpenEventSupport.inferOpenFrom(currentContentOpenSource(), target)
     }
 
-    private fun currentContentOpenSource(): NavDestination? = runCatching {
-        navController.currentBackStackEntry?.toRoute<Article>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Question>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Pin>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<CollectionContent>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Home>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<History>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<OnlineHistory>()
-    }.getOrNull() ?: runCatching {
-        navController.currentBackStackEntry?.toRoute<Notification>()
-    }.getOrNull()
+    private fun navigateToMainTabs() {
+        navController.navigate(MainTabs) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(MainTabs) {
+                saveState = true
+            }
+        }
+    }
+
+    fun navigateMainTab(destination: TopLevelDestination) {
+        mainTabNavigationTarget = destination
+        navigateToMainTabs()
+    }
+
+    fun setCurrentMainTabOpenFrom(openFrom: String?) {
+        currentMainTabOpenFrom = openFrom
+    }
+
+    fun consumeMainTabNavigationTarget(destination: TopLevelDestination) {
+        if (mainTabNavigationTarget == destination) {
+            mainTabNavigationTarget = null
+        }
+    }
+
+    private fun currentMainTabOpenFrom(): String? = if (
+        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+    ) {
+        currentMainTabOpenFrom
+    } else {
+        null
+    }
+
+    private fun currentContentOpenSource(): NavDestination? {
+        val currentEntry = navController.currentBackStackEntry
+        return runCatching {
+            currentEntry?.toRoute<Article>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Question>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Pin>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<CollectionContent>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<History>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Notification>()
+        }.getOrNull()
+    }
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
