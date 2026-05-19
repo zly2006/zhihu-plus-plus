@@ -48,6 +48,13 @@ data class SegmentTextParagraph(
     val parts: List<SegmentTextPart>,
 )
 
+private data class NormalizedSegmentMark(
+    val startIndex: Int,
+    val endIndex: Int,
+    val meta: SegmentInfoMeta,
+    val isMaster: Boolean,
+)
+
 fun buildSegmentTextParts(
     text: String,
     marks: List<SegmentInfoMark>,
@@ -60,21 +67,30 @@ fun buildSegmentTextParts(
     if (marks.isEmpty()) return listOf(SegmentTextPart(text))
 
     val normalized = marks
-        .sortedBy { it.startIndex }
         .mapNotNull { mark ->
             val start = mark.startIndex.coerceIn(0, text.length)
             val end = mark.endIndex.coerceIn(start, text.length)
-            if (start >= end) {
+            val meta = mark.effectiveSegInfo
+            if (start >= end || meta == null) {
                 null
             } else {
-                mark.copy(startIndex = start, endIndex = end)
+                NormalizedSegmentMark(
+                    startIndex = start,
+                    endIndex = end,
+                    meta = meta,
+                    isMaster = mark.masterSegInfo != null,
+                )
             }
-        }
+        }.groupBy { it.startIndex to it.endIndex }
+        .map { (_, sameRangeMarks) ->
+            sameRangeMarks.firstOrNull { it.isMaster } ?: sameRangeMarks.first()
+        }.sortedWith(compareBy<NormalizedSegmentMark> { it.startIndex }.thenBy { it.endIndex })
     if (normalized.isEmpty()) return listOf(SegmentTextPart(text))
 
     val parts = mutableListOf<SegmentTextPart>()
     var cursor = 0
     normalized.forEach { mark ->
+        if (mark.startIndex < cursor) return@forEach
         if (mark.startIndex > cursor) {
             parts += SegmentTextPart(text.substring(cursor, mark.startIndex))
         }
@@ -82,7 +98,7 @@ fun buildSegmentTextParts(
             text = text.substring(mark.startIndex, mark.endIndex),
             highlight = SegmentHighlightSpan(
                 text = text.substring(mark.startIndex, mark.endIndex),
-                meta = mark.effectiveSegInfo ?: return@forEach,
+                meta = mark.meta,
                 sourceUrl = sourceUrl,
                 contentId = contentId,
                 contentType = contentType,

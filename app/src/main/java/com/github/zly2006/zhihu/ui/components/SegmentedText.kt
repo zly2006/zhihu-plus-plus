@@ -43,7 +43,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
@@ -84,12 +83,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-data class SegmentHighlightActions(
-    val onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
-)
-
-val LocalSegmentHighlightActions = staticCompositionLocalOf { SegmentHighlightActions() }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SegmentedText(
@@ -98,9 +91,9 @@ fun SegmentedText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     style: TextStyle = segmentedTextStyle(),
+    onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val actions = LocalSegmentHighlightActions.current
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
@@ -136,8 +129,8 @@ fun SegmentedText(
             },
             onCommentClick = {
                 selectedHighlight = null
-                if (actions.onCommentClick != null) {
-                    actions.onCommentClick.invoke(highlight.copy(meta = currentMeta))
+                if (onCommentClick != null) {
+                    onCommentClick(highlight.copy(meta = currentMeta))
                 } else {
                     commentTarget = highlight.copy(meta = currentMeta).toSegmentCommentHolder()
                 }
@@ -155,12 +148,12 @@ fun SegmentedText(
         // 当文本选择上下文菜单触发 isEntireContainerSelected → sort 时，
         // 跨窗口比较坐标会抛出 IllegalArgumentException: layouts are not part of the same hierarchy。
         DisableSelection {
-        CommentScreenComponent(
-            showComments = true,
-            onDismiss = { commentTarget = null },
-            content = target,
-        )
-            }
+            CommentScreenComponent(
+                showComments = true,
+                onDismiss = { commentTarget = null },
+                content = target,
+            )
+        }
     }
 }
 

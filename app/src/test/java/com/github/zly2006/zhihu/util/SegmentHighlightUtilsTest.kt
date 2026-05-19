@@ -103,4 +103,37 @@ class SegmentHighlightUtilsTest {
         assertEquals(listOf("2040007848717967788"), parts[0].highlight?.meta?.segIds)
         assertEquals(true, parts[0].highlight?.meta?.isLike)
     }
+
+    @Test
+    fun build_segment_text_parts_should_deduplicate_same_range_seg_info_and_master_seg_info() {
+        val text = "发现全是密码的见证梗图"
+        val parts = buildSegmentTextParts(
+            text = text,
+            marks = listOf(
+                SegmentInfoMark(
+                    startIndex = 0,
+                    endIndex = 11,
+                    segInfo = SegmentInfoMeta(
+                        segIds = listOf("1968601235792827980"),
+                        isLike = false,
+                        likeCount = 81,
+                    ),
+                ),
+                SegmentInfoMark(
+                    startIndex = 0,
+                    endIndex = 11,
+                    masterSegInfo = SegmentInfoMeta(
+                        segIds = listOf("2040007848717967788"),
+                        isLike = true,
+                        likeCount = 81,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(text, parts.joinToString(separator = "") { it.text })
+        assertEquals(1, parts.size)
+        assertEquals(listOf("2040007848717967788"), parts[0].highlight?.meta?.segIds)
+        assertEquals(true, parts[0].highlight?.meta?.isLike)
+    }
 }
