@@ -484,8 +484,12 @@ data class Person(
     val isFollowing: Boolean = false,
     val isFollowed: Boolean = false,
     val badge: List<Badge>? = null,
-    val badgeV2: DataHolder.BadgeV2? = null,
-)
+    @SerialName("badgeV2")
+    private val apiBadgeV2: DataHolder.BadgeV2? = null,
+) {
+    val badgeV2: DataHolder.BadgeV2?
+        get() = DataHolder.injectZhPlusAuthorBadge(id, apiBadgeV2)
+}
 
 @Serializable
 data class Relationship(

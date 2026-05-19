@@ -89,6 +89,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.officialBadgeIconModel
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -1610,7 +1611,7 @@ private fun OfficialBadgeDetails(
             ) {
                 if (badge.iconUrl.isNotBlank()) {
                     AsyncImage(
-                        model = badge.iconUrl,
+                        model = officialBadgeIconModel(badge.iconUrl),
                         contentDescription = badge.description,
                         modifier = Modifier
                             .padding(end = 6.dp)

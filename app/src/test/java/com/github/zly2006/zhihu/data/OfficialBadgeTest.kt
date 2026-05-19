@@ -278,4 +278,60 @@ class OfficialBadgeTest {
             badgeV2.officialBadgeDetails(),
         )
     }
+
+    @Test
+    fun injectsZhPlusAuthorBadgeForMaintainerPeopleDto() {
+        val people = AccountData.decodeJson<DataHolder.People>(
+            Json.parseToJsonElement(
+                """
+                {
+                  "id": "ea09b6c82124e0162caa10d658058c10",
+                  "url_token": "scanmenge",
+                  "name": "实名开导",
+                  "avatar_url": "https://pic1.zhimg.com/avatar.jpg",
+                  "url": "https://api.zhihu.com/people/scanmenge",
+                  "headline": "",
+                  "gender": 0,
+                  "badge_v2": null
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals(
+            OfficialBadge(
+                title = "知乎++",
+                description = "作者",
+                iconUrl = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+                nightIconUrl = DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON,
+                type = "zhihu_plus_author",
+                detailType = "zhihu_plus_author",
+            ),
+            people.badgeV2.officialBadge(),
+        )
+    }
+
+    @Test
+    fun injectsZhPlusAuthorBadgeForMaintainerFeedAuthorDto() {
+        val person = AccountData.decodeJson<Person>(
+            Json.parseToJsonElement(
+                """
+                {
+                  "id": "ea09b6c82124e0162caa10d658058c10",
+                  "url": "https://api.zhihu.com/people/scanmenge",
+                  "user_type": "people",
+                  "url_token": "scanmenge",
+                  "name": "实名开导",
+                  "headline": "",
+                  "avatar_url": "https://pic1.zhimg.com/avatar.jpg",
+                  "badge_v2": null
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertEquals("知乎++", person.badgeV2.officialBadge()?.title)
+        assertEquals("作者", person.badgeV2.officialBadge()?.description)
+        assertEquals(DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON, person.badgeV2.officialBadge()?.iconUrl)
+    }
 }

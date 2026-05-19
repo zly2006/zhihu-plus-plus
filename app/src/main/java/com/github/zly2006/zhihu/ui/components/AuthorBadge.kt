@@ -33,6 +33,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.github.zly2006.zhihu.R
+import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.OfficialBadge
 
 @Composable
@@ -46,7 +48,7 @@ fun AuthorBadge(
     if (badge == null) return
     if (badge.iconUrl.isNotBlank()) {
         AsyncImage(
-            model = badge.iconUrl,
+            model = officialBadgeIconModel(badge.iconUrl),
             contentDescription = badge.description,
             modifier = modifier
                 .size(if (compact) 16.dp else 18.dp)
@@ -80,4 +82,10 @@ fun AuthorBadge(
             ).semantics { contentDescription = badge.description }
             .padding(contentPadding),
     )
+}
+
+fun officialBadgeIconModel(iconUrl: String): Any = if (iconUrl == DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON) {
+    R.drawable.ic_zh_plus_author_badge
+} else {
+    iconUrl
 }
