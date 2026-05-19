@@ -52,6 +52,8 @@ import androidx.navigation.NavBackStackEntry
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.OfficialBadge
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -130,6 +132,7 @@ class ArticleViewModel(
     var authorName by mutableStateOf("")
     var authorBio by mutableStateOf("")
     var authorAvatarSrc by mutableStateOf("")
+    var authorBadge by mutableStateOf<OfficialBadge?>(null)
     var content by mutableStateOf("")
     var attachment by mutableStateOf<JsonElement?>(null)
     var voteUpCount by mutableIntStateOf(0)
@@ -159,6 +162,7 @@ class ArticleViewModel(
         authorName = authorName,
         authorBio = authorBio,
         authorAvatarUrl = authorAvatarSrc,
+        authorBadge = authorBadge,
         content = content,
         voteUpCount = voteUpCount,
         commentCount = commentCount,
@@ -220,6 +224,7 @@ class ArticleViewModel(
         val authorName: String,
         val authorBio: String,
         val authorAvatarUrl: String,
+        val authorBadge: OfficialBadge? = null,
         val content: String,
         val voteUpCount: Int,
         val commentCount: Int,
@@ -391,6 +396,7 @@ class ArticleViewModel(
                             attachment = answer.attachment
                             authorBio = answer.author.headline
                             authorAvatarSrc = answer.author.avatarUrl
+                            authorBadge = answer.author.badgeV2.officialBadge()
                             voteUpCount = answer.voteupCount
                             commentCount = answer.commentCount
                             questionId = answer.question.id
@@ -465,6 +471,7 @@ class ArticleViewModel(
                             authorName = article.author.name
                             authorBio = article.author.headline
                             authorAvatarSrc = article.author.avatarUrl
+                            authorBadge = article.author.badgeV2.officialBadge()
                             voteUpState = when (article.reaction?.relation?.vote) {
                                 "UP" -> VoteUpState.Up
                                 "DOWN" -> VoteUpState.Down

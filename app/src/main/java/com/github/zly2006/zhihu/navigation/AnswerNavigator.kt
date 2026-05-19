@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
@@ -191,6 +192,7 @@ class QuestionAnswerNavigator(
             authorName = detail.author.name,
             authorBio = detail.author.headline,
             authorAvatarUrl = detail.author.avatarUrl,
+            authorBadge = detail.author.badgeV2.officialBadge(),
             content = detail.content,
             voteUpCount = detail.voteupCount,
             commentCount = detail.commentCount,
@@ -311,6 +313,7 @@ class QuestionAnswerNavigator(
                 authorName = detail.author.name,
                 authorBio = detail.author.headline,
                 authorAvatarUrl = detail.author.avatarUrl,
+                authorBadge = detail.author.badgeV2.officialBadge(),
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
@@ -407,6 +410,7 @@ class CollectionAnswerNavigator(
                     authorName = detail.author.name,
                     authorBio = detail.author.headline,
                     authorAvatarUrl = detail.author.avatarUrl,
+                    authorBadge = detail.author.badgeV2.officialBadge(),
                     content = detail.content,
                     voteUpCount = detail.voteupCount,
                     commentCount = detail.commentCount,
@@ -441,6 +445,7 @@ class CollectionAnswerNavigator(
                 authorName = detail.author.name,
                 authorBio = detail.author.headline,
                 authorAvatarUrl = detail.author.avatarUrl,
+                authorBadge = detail.author.badgeV2.officialBadge(),
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
@@ -469,6 +474,7 @@ class CollectionAnswerNavigator(
                 authorName = detail.author.name,
                 authorBio = detail.author.headline,
                 authorAvatarUrl = detail.author.avatarUrl,
+                authorBadge = detail.author.badgeV2.officialBadge(),
                 content = detail.content,
                 voteUpCount = detail.voteupCount,
                 commentCount = detail.commentCount,
@@ -592,6 +598,7 @@ class PaginationInfoNavigator(
             authorName = detail.author.name,
             authorBio = detail.author.headline,
             authorAvatarUrl = detail.author.avatarUrl,
+            authorBadge = detail.author.badgeV2.officialBadge(),
             content = detail.content,
             voteUpCount = detail.voteupCount,
             commentCount = detail.commentCount,

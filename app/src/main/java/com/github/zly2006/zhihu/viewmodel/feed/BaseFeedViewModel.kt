@@ -61,6 +61,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         val navDestination: NavDestination? = feed?.target?.navDestination,
         val avatarSrc: String? = null,
         val authorName: String? = null,
+        val authorBadgeV2: DataHolder.BadgeV2? = null,
         val isFiltered: Boolean = false,
         val content: String? = null,
         var raw: DataHolder.Content? = null,
@@ -132,6 +133,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                                     .joinToString(" · "),
                                 avatarSrc = feed.target?.author?.avatarUrl,
                                 authorName = feed.target?.author?.name,
+                                authorBadgeV2 = feed.target?.author?.badgeV2,
                                 feed = feed,
                                 segmentInfos = when (val target = feed.target) {
                                     is Feed.AnswerTarget -> target.segmentInfos
@@ -153,6 +155,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
                                 details = feed.target!!.detailsText,
                                 avatarSrc = feed.target?.author?.avatarUrl,
                                 authorName = feed.target?.author?.name,
+                                authorBadgeV2 = feed.target?.author?.badgeV2,
                                 feed = feed,
                             )
                         }
