@@ -21,7 +21,6 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.History
-import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
@@ -33,13 +32,6 @@ import org.junit.Test
 class ContentOpenEventSupportTest {
     @Test
     fun inferOpenFrom_mapsKnownSourceAndTargetPairs() {
-        assertEquals(
-            ContentOpenFrom.HOME_FEED,
-            ContentOpenEventSupport.inferOpenFrom(
-                source = Home,
-                target = Article(type = ArticleType.Answer, id = 1L),
-            ),
-        )
         assertEquals(
             ContentOpenFrom.QUESTION_FEED,
             ContentOpenEventSupport.inferOpenFrom(

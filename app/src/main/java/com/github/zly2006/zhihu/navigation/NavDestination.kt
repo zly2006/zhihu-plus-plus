@@ -25,42 +25,87 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface NavDestination
 
+/**
+ * Bottom-bar and main-pager tab target.
+ *
+ * Tab targets can still be historical [NavDestination] values for compatibility. Code that needs to
+ * navigate to the main shell should use [MainTabs].
+ */
 interface TopLevelDestination {
     val name: String
 }
 
+/**
+ * Real navigation destination for the main shell.
+ *
+ * Older top-level destinations such as [Home], [Follow] and [Daily] are still kept as
+ * serializable destination values because deeplinks, clipboard parsing, settings, persisted history
+ * and older call sites may resolve to them. Top-level targets should be treated as tab-selection
+ * targets, not as routes that are pushed into the main NavHost.
+ */
 @Serializable
-data object Home : NavDestination, TopLevelDestination {
+data object MainTabs : NavDestination
+
+/**
+ * Legacy top-level tab target for the main pager.
+ *
+ * Keep this value for deeplinks, settings, tests and old navigation call sites. Do not add it back
+ * to the main NavHost as a standalone page; navigate to [MainTabs] and select the matching pager
+ * page instead.
+ */
+@Serializable
+data object Home : TopLevelDestination {
     override val name: String
         get() = "Home"
 }
 
+/**
+ * Legacy top-level tab target for the main pager.
+ *
+ * [Follow] maps to two adjacent pager pages, "推荐" and "动态"; the last selected one is remembered
+ * by ZhihuMain.
+ */
 @Serializable
-data object Follow : NavDestination, TopLevelDestination {
+data object Follow : TopLevelDestination {
     override val name: String
         get() = "Follow"
 }
 
+/**
+ * Legacy top-level tab target for the main pager.
+ */
 @Serializable
-data object HotList : NavDestination, TopLevelDestination {
+data object HotList : TopLevelDestination {
     override val name: String
         get() = "HotList"
 }
 
+/**
+ * Legacy local-history route.
+ *
+ * This is still a standalone NavHost page because the current bottom tab uses [OnlineHistory]. Keep
+ * it separate from the main pager tab list unless local history is restored as a configured tab.
+ */
 @Serializable
 data object History : NavDestination, TopLevelDestination {
     override val name: String
         get() = "History"
 }
 
+/**
+ * Legacy top-level tab target for the main pager.
+ */
 @Serializable
-data object OnlineHistory : NavDestination, TopLevelDestination {
+data object OnlineHistory : TopLevelDestination {
     override val name: String
         get() = "OnlineHistory"
 }
 
+/**
+ * Legacy top-level tab target for the main pager.
+ */
 @Serializable
-data object Account : NavDestination, TopLevelDestination {
+data object Account : TopLevelDestination {
     override val name: String
         get() = "Account"
 
@@ -93,8 +138,11 @@ data object Account : NavDestination, TopLevelDestination {
     }
 }
 
+/**
+ * Legacy top-level tab target for the main pager.
+ */
 @Serializable
-data object Daily : NavDestination, TopLevelDestination {
+data object Daily : TopLevelDestination {
     override val name: String
         get() = "Daily"
 }
@@ -297,7 +345,7 @@ fun resolveContent(url: Url): NavDestination? {
             val questionId = segments[0].toLong()
             return Question(questionId)
         } else if (url.host == "feed") {
-            return Home
+            return MainTabs
         } else if (url.host == "articles") {
             val articleId = segments[0].toLong()
             return Article(type = ArticleType.Article, id = articleId)
