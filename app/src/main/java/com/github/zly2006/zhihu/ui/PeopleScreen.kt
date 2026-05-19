@@ -416,7 +416,7 @@ class PersonViewModel(
 
     suspend fun load(context: Context) {
         context as MainActivity
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/members/${person.id}") {
+        val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
             url {
                 // todo question_count pins_count
                 parameters["include"] = "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
@@ -575,6 +575,11 @@ fun peopleScreenFollowedTopicItemTag(id: String): String = "people_screen_follow
 private fun peopleScreenInitialPage(person: Person): Int {
     val jumpToIndex = PEOPLE_SCREEN_TITLES.indexOf(person.jumpTo)
     return if (jumpToIndex >= 0) jumpToIndex else 0
+}
+
+internal fun peopleProfileUrl(person: Person): String {
+    val identifier = person.urlToken.takeIf { it.isNotBlank() } ?: person.id
+    return "https://api.zhihu.com/people/$identifier"
 }
 
 data class PeopleProfileUiState(

@@ -212,6 +212,10 @@ curl -s http://127.0.0.1:9222/json/version
 2. 再用截图确认视觉状态。
 3. 必要时用手势或坐标点击目标区域，再用 `dump` 或截图验证结果。
 
+### PeopleScreen 个人徽章在 web members 接口缺失
+
+个人主页徽章不要只看 `https://www.zhihu.com/api/v4/members/{id}`。实测同一作者在这个接口里可能返回 `badge_v2: null`，但 `https://api.zhihu.com/people/{urlToken}?include=badge_v2,...` 会返回网页展示所需的 `badge_v2.detail_badges` 和官方图标。遇到 PeopleScreen 徽章缺失时，先用当前登录态分别请求两个接口对比字段，再决定 Android 数据源。
+
 ### 并行 Gradle 任务后出现大量无关错误
 
 不要并行跑 `assemble` 和 `test`。Kotlin 增量缓存可能互相影响，表现成一串与当前改动无关的 `Unresolved reference`。处理方式：
