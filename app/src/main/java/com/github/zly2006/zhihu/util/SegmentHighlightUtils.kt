@@ -83,7 +83,7 @@ fun buildSegmentTextParts(
             }
         }.groupBy { it.startIndex to it.endIndex }
         .map { (_, sameRangeMarks) ->
-            sameRangeMarks.firstOrNull { it.isMaster } ?: sameRangeMarks.first()
+            sameRangeMarks.mergeSameRangeMarks()
         }.sortedWith(compareBy<NormalizedSegmentMark> { it.startIndex }.thenBy { it.endIndex })
     if (normalized.isEmpty()) return listOf(SegmentTextPart(text))
 
@@ -113,6 +113,26 @@ fun buildSegmentTextParts(
         parts += SegmentTextPart(text.substring(cursor))
     }
     return parts.filter { it.text.isNotEmpty() }
+}
+
+private fun List<NormalizedSegmentMark>.mergeSameRangeMarks(): NormalizedSegmentMark {
+    val masterMarks = filter { it.isMaster }
+    val ordered = masterMarks + filterNot { it.isMaster }
+    val mergedMeta = SegmentInfoMeta(
+        segIds = ordered
+            .flatMap { it.meta.segIds }
+            .distinct(),
+        isLike = any { it.meta.isLike },
+        likeCount = maxOf { it.meta.likeCount },
+        commentCount = maxOf { it.meta.commentCount },
+        myCommentCount = maxOf { it.meta.myCommentCount },
+        isSpan = any { it.meta.isSpan },
+    )
+    val first = first()
+    return first.copy(
+        meta = mergedMeta,
+        isMaster = masterMarks.isNotEmpty(),
+    )
 }
 
 fun applySegmentInfosToHtml(

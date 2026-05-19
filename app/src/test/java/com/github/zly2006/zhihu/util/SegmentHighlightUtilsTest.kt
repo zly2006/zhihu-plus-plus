@@ -133,7 +133,39 @@ class SegmentHighlightUtilsTest {
 
         assertEquals(text, parts.joinToString(separator = "") { it.text })
         assertEquals(1, parts.size)
-        assertEquals(listOf("2040007848717967788"), parts[0].highlight?.meta?.segIds)
+        assertEquals(listOf("2040007848717967788", "1968601235792827980"), parts[0].highlight?.meta?.segIds)
         assertEquals(true, parts[0].highlight?.meta?.isLike)
+    }
+
+    @Test
+    fun build_segment_text_parts_should_merge_sparse_same_range_segment_meta() {
+        val parts = buildSegmentTextParts(
+            text = "评论和点赞数据分散",
+            marks = listOf(
+                SegmentInfoMark(
+                    startIndex = 0,
+                    endIndex = 9,
+                    segInfo = SegmentInfoMeta(
+                        segIds = listOf("comment-seg"),
+                        commentCount = 6,
+                    ),
+                ),
+                SegmentInfoMark(
+                    startIndex = 0,
+                    endIndex = 9,
+                    masterSegInfo = SegmentInfoMeta(
+                        segIds = listOf("like-seg"),
+                        isLike = true,
+                        likeCount = 9,
+                    ),
+                ),
+            ),
+        )
+
+        val meta = parts.single().highlight?.meta
+        assertEquals(listOf("like-seg", "comment-seg"), meta?.segIds)
+        assertEquals(true, meta?.isLike)
+        assertEquals(9, meta?.likeCount)
+        assertEquals(6, meta?.commentCount)
     }
 }
