@@ -91,7 +91,6 @@ fun SegmentedText(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     style: TextStyle = segmentedTextStyle(),
-    onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -129,11 +128,7 @@ fun SegmentedText(
             },
             onCommentClick = {
                 selectedHighlight = null
-                if (onCommentClick != null) {
-                    onCommentClick(highlight.copy(meta = currentMeta))
-                } else {
-                    commentTarget = highlight.copy(meta = currentMeta).toSegmentCommentHolder()
-                }
+                commentTarget = highlight.copy(meta = currentMeta).toSegmentCommentHolder()
             },
             onCopyClick = {
                 context.clipboardManager.setPrimaryClip(
