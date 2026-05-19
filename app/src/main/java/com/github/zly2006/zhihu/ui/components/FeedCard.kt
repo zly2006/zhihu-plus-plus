@@ -84,7 +84,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
-import com.github.zly2006.zhihu.util.buildSegmentTextParagraphs
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
@@ -461,12 +460,6 @@ private fun FeedCardContent(
     duo3CardLargeTitle: Boolean,
 ) {
     val navigator = LocalNavigator.current
-    val segmentParagraphs = remember(item.segmentInfos, item.segmentSourceUrl) {
-        buildSegmentTextParagraphs(
-            paragraphs = item.segmentInfos,
-            sourceUrl = item.segmentSourceUrl,
-        )
-    }
     if (duo3CardLayout) {
         // ── 新排版（duo3）────────────────────────────────────────────────────
         if (!item.title.isEmpty()) {
@@ -488,27 +481,14 @@ private fun FeedCardContent(
 
         Column {
             Row {
-                if (segmentParagraphs.isNotEmpty()) {
-                    SegmentedTextParagraphs(
-                        paragraphs = segmentParagraphs,
-                        maxParagraphs = 2,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Text(
-                        text = parseHtmlTextWithTheme(item.summary ?: ""),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                Text(
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
                 if (!thumbnailUrl.isNullOrEmpty() && showFeedThumbnail && !item.isFiltered) {
                     Spacer(modifier = Modifier.width(8.dp))
                     AsyncImage(
@@ -608,24 +588,13 @@ private fun FeedCardContent(
         }
         Row {
             Column(modifier = Modifier.weight(2f)) {
-                if (segmentParagraphs.isNotEmpty()) {
-                    SegmentedTextParagraphs(
-                        paragraphs = segmentParagraphs,
-                        maxParagraphs = 2,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = segmentedTextStyle().copy(fontSize = 14.sp),
-                        modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
-                    )
-                } else {
-                    Text(
-                        text = parseHtmlTextWithTheme(item.summary ?: ""),
-                        fontSize = 14.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
-                    )
-                }
+                Text(
+                    text = parseHtmlTextWithTheme(item.summary ?: ""),
+                    fontSize = 14.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = if (item.isFiltered) 0.dp else 3.dp),
+                )
                 if (item.details.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

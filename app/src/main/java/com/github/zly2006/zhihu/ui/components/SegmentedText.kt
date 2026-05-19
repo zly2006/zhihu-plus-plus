@@ -23,17 +23,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -45,7 +51,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -53,9 +58,14 @@ import com.github.zly2006.zhihu.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.util.SegmentTextParagraph
 import com.github.zly2006.zhihu.util.SegmentTextPart
 import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 
 private const val SEGMENT_TAG = "segment-highlight"
+
+data class SegmentHighlightActions(
+    val onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
+)
+
+val LocalSegmentHighlightActions = staticCompositionLocalOf { SegmentHighlightActions() }
 
 @Composable
 fun SegmentedTextParagraphs(
@@ -91,6 +101,7 @@ fun SegmentedText(
     style: TextStyle = segmentedTextStyle(),
 ) {
     val context = LocalContext.current
+    val actions = LocalSegmentHighlightActions.current
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
     val likedStates = remember(parts) { mutableStateMapOf<String, Pair<Boolean, Int>>() }
     val highlightBackground = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
@@ -168,58 +179,54 @@ fun SegmentedText(
                     style = MaterialTheme.typography.bodyLarge,
                     lineHeight = 24.sp,
                 )
-                Text(
-                    text = buildString {
-                        append("赞 ")
-                        append(currentLikeCount)
-                        append(" · 评论 ")
-                        append(currentHighlight.meta.commentCount)
-                        if (currentHighlight.meta.myCommentCount > 0) {
-                            append(" · 我的评论 ")
-                            append(currentHighlight.meta.myCommentCount)
-                        }
-                        if (currentHighlight.meta.segIds.size > 1) {
-                            append(" · 聚合 ")
-                            append(currentHighlight.meta.segIds.size)
-                            append(" 条")
-                        }
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Button(
+                    FilledTonalButton(
                         onClick = {
                             likedStates[key] = (!currentLike) to (currentLikeCount + if (currentLike) -1 else 1)
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(if (currentLike) "取消赞同" else "赞同片段")
+                        Icon(
+                            imageVector = Icons.Outlined.ThumbUp,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = currentLikeCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
                     }
-                    OutlinedButton(
+                    FilledTonalButton(
+                        onClick = {
+                            selectedHighlight = null
+                            actions.onCommentClick?.invoke(currentHighlight)
+                        },
+                        enabled = actions.onCommentClick != null,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Comment,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = currentHighlight.meta.commentCount.toString(),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                    IconButton(
                         onClick = {
                             context.clipboardManager.setPrimaryClip(
                                 android.content.ClipData.newPlainText("segment_text", currentHighlight.text),
                             )
                             selectedHighlight = null
                         },
-                        modifier = Modifier.weight(1f),
                     ) {
-                        Text("复制内容")
-                    }
-                }
-                if (currentHighlight.sourceUrl != null) {
-                    OutlinedButton(
-                        onClick = {
-                            luoTianYiUrlLauncher(context, currentHighlight.sourceUrl.toUri())
-                            selectedHighlight = null
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("在浏览器中打开")
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = "复制内容",
+                        )
                     }
                 }
             }
