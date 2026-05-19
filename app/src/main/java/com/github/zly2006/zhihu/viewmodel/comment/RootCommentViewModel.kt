@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import io.ktor.client.HttpClient
@@ -63,6 +64,10 @@ class RootCommentViewModel(
                     "https://www.zhihu.com/api/v4/comment_v5/questions/$questionId/comment"
                 }
 
+                is SegmentCommentHolder -> {
+                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/comment?segment_id=$segmentId"
+                }
+
                 else -> ""
             }
 
@@ -83,8 +88,15 @@ class RootCommentViewModel(
                     "https://www.zhihu.com/api/v4/comment_v5/questions/$questionId/root_comment"
                 }
 
+                is SegmentCommentHolder -> {
+                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/root_comment?segment_id=$segmentId&limit=20&offset="
+                }
+
                 else -> ""
             }
+
+        private val SegmentCommentHolder.normalizedContentType: String
+            get() = contentType.removeSuffix("s")
     }
 
     override val initialUrl: String
@@ -95,7 +107,8 @@ class RootCommentViewModel(
                 CommentSortOrder.SCORE -> "score"
                 CommentSortOrder.TIME -> "ts"
             }
-            return "$baseUrl?order_by=$orderParam"
+            val separator = if ('?' in baseUrl) "&" else "?"
+            return "$baseUrl${separator}order_by=$orderParam"
         }
 
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {

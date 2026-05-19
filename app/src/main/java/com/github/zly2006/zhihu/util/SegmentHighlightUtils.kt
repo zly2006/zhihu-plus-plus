@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.util
 import com.github.zly2006.zhihu.data.SegmentInfoMark
 import com.github.zly2006.zhihu.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.data.SegmentInfoParagraph
+import com.github.zly2006.zhihu.data.effectiveSegInfo
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.Node
@@ -81,7 +82,7 @@ fun buildSegmentTextParts(
             text = text.substring(mark.startIndex, mark.endIndex),
             highlight = SegmentHighlightSpan(
                 text = text.substring(mark.startIndex, mark.endIndex),
-                meta = mark.segInfo,
+                meta = mark.effectiveSegInfo ?: return@forEach,
                 sourceUrl = sourceUrl,
                 contentId = contentId,
                 contentType = contentType,

@@ -62,8 +62,12 @@ data class SegmentInfoParagraph(
 data class SegmentInfoMark(
     val startIndex: Int,
     val endIndex: Int,
-    val segInfo: SegmentInfoMeta,
+    val segInfo: SegmentInfoMeta? = null,
+    val masterSegInfo: SegmentInfoMeta? = null,
 )
+
+val SegmentInfoMark.effectiveSegInfo: SegmentInfoMeta?
+    get() = segInfo ?: masterSegInfo
 
 @Serializable
 data class SegmentInfoMeta(

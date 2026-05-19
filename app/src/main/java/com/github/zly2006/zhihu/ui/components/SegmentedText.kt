@@ -18,20 +18,16 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Comment
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -47,7 +43,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
@@ -69,8 +64,8 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.SegmentInfoMeta
+import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
@@ -84,27 +79,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import org.jsoup.Jsoup
-
-private sealed interface SegmentCommentsState {
-    data object Loading : SegmentCommentsState
-
-    data class Ready(
-        val highlight: SegmentHighlightSpan,
-        val totalCount: Int,
-        val placeholder: String,
-        val comments: List<DataHolder.Comment>,
-    ) : SegmentCommentsState
-
-    data class Error(
-        val message: String,
-    ) : SegmentCommentsState
-}
 
 data class SegmentHighlightActions(
     val onCommentClick: ((SegmentHighlightSpan) -> Unit)? = null,
@@ -126,7 +103,7 @@ fun SegmentedText(
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
-    var commentsState by remember(parts) { mutableStateOf<SegmentCommentsState?>(null) }
+    var commentTarget by remember(parts) { mutableStateOf<SegmentCommentHolder?>(null) }
 
     val onHighlightClick = remember(parts) { { highlight: SegmentHighlightSpan -> selectedHighlight = highlight } }
 
@@ -161,18 +138,7 @@ fun SegmentedText(
                 if (actions.onCommentClick != null) {
                     actions.onCommentClick.invoke(highlight.copy(meta = currentMeta))
                 } else {
-                    commentsState = SegmentCommentsState.Loading
-                    coroutineScope.launch {
-                        commentsState = runCatching {
-                            loadSegmentComments(
-                                context = context,
-                                highlight = highlight.copy(meta = currentMeta),
-                            )
-                        }.fold(
-                            onSuccess = { state -> state },
-                            onFailure = { SegmentCommentsState.Error(it.message ?: "评论加载失败") },
-                        )
-                    }
+                    commentTarget = highlight.copy(meta = currentMeta).toSegmentCommentHolder()
                 }
             },
             onCopyClick = {
@@ -184,10 +150,11 @@ fun SegmentedText(
         )
     }
 
-    commentsState?.let { state ->
-        SegmentCommentsSheet(
-            state = state,
-            onDismiss = { commentsState = null },
+    commentTarget?.let { target ->
+        CommentScreenComponent(
+            showComments = true,
+            onDismiss = { commentTarget = null },
+            content = target,
         )
     }
 }
@@ -312,87 +279,6 @@ private fun SegmentActionSheet(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SegmentCommentsSheet(
-    state: SegmentCommentsState,
-    onDismiss: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        when (state) {
-            SegmentCommentsState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                ) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-            }
-
-            is SegmentCommentsState.Error -> {
-                Text(
-                    text = state.message,
-                    modifier = Modifier.padding(20.dp),
-                )
-            }
-
-            is SegmentCommentsState.Ready -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        text = "${state.totalCount} 条评论",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = state.highlight.text,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    state.comments.forEach { comment ->
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = comment.author.name,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                            Text(
-                                text = Jsoup.parse(comment.content).text(),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Text(
-                                text = buildString {
-                                    append(comment.commentTag.firstOrNull()?.text ?: "")
-                                    if (comment.likeCount > 0) {
-                                        if (isNotEmpty()) append(" · ")
-                                        append("赞 ")
-                                        append(comment.likeCount)
-                                    }
-                                    if (comment.childCommentCount > 0) {
-                                        if (isNotEmpty()) append(" · ")
-                                        append("回复 ")
-                                        append(comment.childCommentCount)
-                                    }
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Text(
-                        text = state.placeholder,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
 private fun buildSegmentAnnotatedText(
     parts: List<SegmentTextPart>,
     highlightTextColor: androidx.compose.ui.graphics.Color,
@@ -437,6 +323,17 @@ private fun highlightKey(highlight: SegmentHighlightSpan): String =
         append('|')
         append(highlight.text)
     }
+
+private fun SegmentHighlightSpan.toSegmentCommentHolder(): SegmentCommentHolder? {
+    val contentId = contentId ?: return null
+    val contentType = contentType ?: return null
+    val segmentId = meta.segIds.joinToString(",").takeIf { it.isNotBlank() } ?: return null
+    return SegmentCommentHolder(
+        contentId = contentId,
+        contentType = contentType,
+        segmentId = segmentId,
+    )
+}
 
 private fun highlightedLineRects(
     layout: TextLayoutResult,
@@ -540,46 +437,4 @@ private suspend fun toggleSegmentLike(
             likeCount = highlight.meta.likeCount + 1,
         )
     }
-}
-
-private suspend fun loadSegmentComments(
-    context: android.content.Context,
-    highlight: SegmentHighlightSpan,
-): SegmentCommentsState.Ready {
-    val contentId = highlight.contentId ?: error("missing contentId")
-    val targetType = highlight.contentType ?: error("missing contentType")
-    val segmentId = highlight.meta.segIds.joinToString(",")
-    val rootComments = AccountData.fetchGet(
-        context,
-        "https://www.zhihu.com/api/v4/comment_v5/${targetType}s/$contentId/segment/root_comment?segment_id=$segmentId&order_by=score&limit=20&offset=",
-    ) {
-        signFetchRequest()
-    } ?: error("root comments missing")
-    val config = AccountData.fetchGet(
-        context,
-        "https://www.zhihu.com/api/v4/comment_v5/${targetType}s/$contentId/segment/config?show_ai_comment=&segment_id=$segmentId",
-    ) {
-        signFetchRequest()
-    }
-    val comments = rootComments["data"]
-        ?.jsonArray
-        ?.map { AccountData.decodeJson<DataHolder.Comment>(it) }
-        .orEmpty()
-    val totalCount = rootComments["counts"]
-        ?.jsonObject
-        ?.get("total_counts")
-        ?.jsonPrimitive
-        ?.int
-        ?: comments.size
-    val placeholder = config
-        ?.get("place_holder")
-        ?.jsonPrimitive
-        ?.content
-        ?: "理性发言，友善互动"
-    return SegmentCommentsState.Ready(
-        highlight = highlight,
-        totalCount = totalCount,
-        placeholder = placeholder,
-        comments = comments,
-    )
 }

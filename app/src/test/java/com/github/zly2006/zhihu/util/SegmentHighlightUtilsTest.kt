@@ -80,4 +80,27 @@ class SegmentHighlightUtilsTest {
         assertTrue(result.contains("""data-highlight-source-url="https://www.zhihu.com/question/1/answer/2""""))
         assertTrue(result.contains("第二句保持原样。"))
     }
+
+    @Test
+    fun build_segment_text_parts_should_accept_master_segment_info() {
+        val parts = buildSegmentTextParts(
+            text = "发现全是密码的见证梗图",
+            marks = listOf(
+                SegmentInfoMark(
+                    startIndex = 0,
+                    endIndex = 11,
+                    masterSegInfo = SegmentInfoMeta(
+                        segIds = listOf("2040007848717967788"),
+                        isLike = true,
+                        likeCount = 81,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(1, parts.size)
+        assertEquals("发现全是密码的见证梗图", parts[0].text)
+        assertEquals(listOf("2040007848717967788"), parts[0].highlight?.meta?.segIds)
+        assertEquals(true, parts[0].highlight?.meta?.isLike)
+    }
 }
