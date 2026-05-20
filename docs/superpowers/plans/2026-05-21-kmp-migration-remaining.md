@@ -1,1105 +1,254 @@
-# KMP Migration Remaining Implementation Plan
+# KMP 剩余迁移计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> 本计划只记录迁移顺序、边界判断、验证门禁和已知错误教训。不要在计划里写死具体 Kotlin 实现代码、临时类名、伪代码模板或“照着抄”的实现片段；具体实现必须以当前代码为准，先审计、再 `git mv`/小幅修改、再编译验证。
 
-**Goal:** Finish the remaining migration from the Android-only Zhihu++ codebase to the current Kotlin Multiplatform shape while preserving Android behavior and making JVM/desktop run through shared logic.
+## 总目标
 
-**Architecture:** Keep `desktopApp` as a demo1-style shallow entry point and move reusable state machines, network clients, parsers, display models, navigation semantics, the main navigation shell, and Compose screens into `shared`. Desktop should reuse the same route model and Android-like UI semantics during this migration; only platform runtime effects (`Context`, `Intent`, WebView, APK variants, file provider, AVD-only validation, JVM file paths, terminal notifications, packaging) stay in platform source sets. Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime; if a specific call site does not compile on JVM/desktop, split only that platform-specific call site instead of inventing a separate route model.
+把当前 Android-only Zhihu++ 迁移为 `/Users/zhaoliyan/IdeaProjects/demo1` 风格的 KMP 项目：
 
-**Tech Stack:** Kotlin Multiplatform, Compose Multiplatform, Ktor 3.5, Kotlin Serialization, Room KMP, Ksoup, ZXing, Gradle 9.4, ktlint.
+- Android 保持现有 UI 和行为，lite 包名仍为 `com.github.zly2006.zhplus.lite`。
+- desktop/JVM 复用 shared UI、导航语义、QR 登录、账号持久化和核心业务逻辑。
+- `desktopApp` 保持浅入口，只启动 Compose/app 壳和注入平台能力。
+- iOS target 保留，但本次不运行 iOS build/test/debug。
+- 每个完成的大切片在验证后及时 commit。
 
----
+## 通用边界审查规则
 
-## Current State Audit
+在迁移任何未在本计划明确说明的新文件、新类、新模块或新依赖前，必须先开一个独立 subagent 做边界审查：
 
-### Completed And Verified Recently
+- subagent 配置：`gpt-5.5`，reasoning effort `xhigh`。
+- 输入必须包含：目标文件路径、当前 import、调用方、被调用方、预期迁移目标、相关 Gradle 依赖、source set、当前副作用、预期验证命令。
+- subagent 必须回答：
+  - 该文件/类的语义所有权是 shared、Android-only、JVM-only，还是需要拆分。
+  - 哪些依赖应迁到 shared，哪些必须留在平台 source set。
+  - 是否存在 KMP 变体或跨平台替代库；没有查证前不能按包名猜。
+  - 哪些函数只是平台副作用，应该拆成 adapter/接口/expect-actual。
+  - 是否涉及生命周期、线程调度、持久化、序列化、数据库、网络、导航或主题状态，哪些属于 shared 状态，哪些属于平台环境。
+  - 直接 `git mv` 是否可行；如果不可行，阻碍点是什么。
+  - 最小迁移步骤、测试迁移方式和必须运行的编译/grep 验证。
+- xhigh 审查完成后必须生成新的独立审查文档，默认放在 `docs/superpowers/reviews/` 或对应任务目录，记录输入、结论、证据、风险和验证命令。
+- 现有 plan、AGENTS、CLAUDE、status 文档只在发现错误、过期、冲突或遗漏会误导后续执行时，才做必要的最小修改；不要把每次审查结论都直接塞回长期规则文档。
+- 主 agent 不能把 subagent 结论当成免检结论；必须结合当前代码和编译结果复核。
+- 如果当前环境不能启动 subagent，必须在当前回复和相关文档中明确记录，并改为本地按同一清单审查。
 
-- KMP skeleton exists with `shared`, `desktopApp`, Android `app`, and Android-only `sentence_embeddings`.
-- `desktopApp/src/main/kotlin/com/github/zly2006/zhihu/desktop/Main.kt` is shallow and only opens a Compose `Window` with shared JVM UI.
-- Common/shared already contains:
-  - data models and clients under `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/data`
-  - QR login state machine and UI in `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/login`
-  - KMP Room databases for content filters and local content under `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel/filter` and `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel/local`
-  - pure formatting and policy utilities under `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/util`
-- Android login already reuses `SharedQrLoginPane` from `LoginActivity.kt`; Android risk-control WebView remains in app.
-- JVM QR login uses shared QR flow and backs up cookies via `DesktopAccountStore`.
-- `NavDestination` was temporarily moved back to Android app boundary in `fd313cd`; this corrected platform side-effect leakage but is not the final target. Navigation semantics should be moved back to `shared/commonMain`. `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` are also cross-platform migration targets, not Android-only adapters.
-- Current evidence for `org.jetbrains.androidx.navigation`: `app/build.gradle.kts` already uses `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; local Gradle metadata exposes desktop/JVM variants for `navigation-compose`, `navigation-runtime`, and `navigation-common`; JetBrains Compose Multiplatform navigation docs use the same artifact in `commonMain`.
-- Latest verified commands from the previous completed slice:
+这个规则的目的，是防止再次把“当前文件位置、调用方、import 包名”误当成平台所有权。
+
+## 所有权判断原则
+
+属于 shared 的通常是：
+
+- route/model/helper、导航语义、主导航 UI 壳。
+- Compose UI 结构、跨平台页面壳、主题状态、展示模型。
+- URL/JSON 映射、纯数据模型、序列化、分页状态、列表状态。
+- 过滤、去重、内容打开记录、推荐评分、排序、纯策略。
+- KMP 可用的数据库 entity/DAO/database 定义。
+- KMP 可用的网络 client、解析器、签名算法、QR 登录状态机。
+
+属于平台 adapter 的通常是：
+
+- Android `Context`、`Intent`、Activity、Toast/Dialog、clipboard、FileProvider。
+- WebView、APK/update/install、lite/full 发行语义。
+- SharedPreferences 文件路径、JVM 文件路径、系统通知、terminal-notifier。
+- Android dynamic color、系统深色模式探测、平台持久化。
+- 任何经编译/文档验证确实无 KMP 支持的库调用点。
+
+如果一个文件同时包含 shared 语义和平台副作用，默认先 `git mv` 保留主体，再只拆实际平台副作用。不要因为一个函数需要平台能力，就把整份文件判为平台独有。
+
+## 已知错误教训
+
+- `fd313cd refactor: 收紧 shared 平台边界` 的根本误解：把“代码当前放在 Android app、由 Android UI 调用、或 import 名字看起来像 androidx”误当成“代码所有权属于 Android”。已纠正的方向：`NavDestination`、`FeedNavigation`、`ArticleState`、`CommentRoutes`、`ContentOpenEventSupport`、`CommentItem` 等语义应在 shared。
+- `ZhihuPageLoader` 的根本错误：把“迁移分页 ViewModel”误解成“绕开现有 ViewModel 新建 loader”。正确方向是拆 Android 副作用，让 `PaginationViewModel` 本体迁入 shared。
+- `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
+- `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
+- `.codex/hooks.json` 在当前 worktree 中是有意删除，不要恢复。
+
+## 当前完成状态
+
+- KMP 骨架已存在：`shared`、`desktopApp`、Android `app`、Android-only `sentence_embeddings`。
+- `desktopApp` 已是浅入口，但 desktop 仍未复用完整 Android UI。
+- QR 登录核心和 QR UI 已在 shared；Android 风控 WebView 留在 app。
+- JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
+- KMP Room 已用于内容过滤和本地内容数据库。
+- `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 app adapter 留在平台侧。
+- `ZhihuMain.kt` 主导航壳已迁入 shared；Android 页面注册、偏好读取、`MainActivity` 和 ViewModel 创建留在 app adapter。
+- bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
+- 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
+- Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
+- 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel` 本体仍待迁移。
+
+## 剩余任务顺序
+
+### 任务 1：收敛文档和状态台账
+
+目标：
+
+- `AGENTS.md`、`CLAUDE.md`、`docs/kmp-migration-status.md`、本计划保持一致。
+- 文档只保留边界、流程、状态和验证要求，不写死实现代码。
+- 迁移前必须先读状态台账和本计划，避免重复做或把已纠正边界改回去。
+
+验证：
 
 ```bash
-./gradlew :shared:ktlintCommonMainSourceSetFormat :shared:ktlintCommonTestSourceSetFormat :app:ktlintMainSourceSetFormat
-./gradlew :shared:compileKotlinJvm :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
-rg -n "android\\.content|android\\.webkit|androidx\\.webkit|\\bIntent\\b|\\bContext\\b|FileProvider|APK|lite|full" shared/src/commonMain/kotlin shared/src/jvmMain/kotlin desktopApp/src -g '*.kt'
-rg -n "WebView|android\\.webkit|androidx\\.webkit" desktopApp/src shared/src
+rg -n "KMP|shared|ThemeManager|PaginationViewModel|subagent|gpt-5.5|ZhihuPageLoader" AGENTS.md CLAUDE.md docs/kmp-migration-status.md docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md
 git diff --check
 ```
 
-### Remaining Gaps
+### 任务 2：完成 shared 主导航壳
 
-- `app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt` still owns account file persistence, global account state, Android `Context`, shared Ktor config, and token refresh orchestration in one Android object.
-- `app/src/main/java/com/github/zly2006/zhihu/viewmodel/PaginationViewModel.kt` is still Android-only and mixes pagination, network fetch, JSON decode, login-expired dialogs, clipboard, Toast, and Android lifecycle.
-- Feed display creation is duplicated: shared has `Feed.toDisplayItem()` and Android `BaseFeedViewModel.createDisplayItem()` still reimplements similar logic.
-- Desktop/JVM currently proves QR login and hot-list fetch, but it does not yet run the same shared `ZhihuMain` navigation shell as Android.
-- Android feed/viewmodel classes still depend on `Context`, `Toast`, `AlertDialog`, and `MainActivity`; these need staged adapter seams. `NavDestination`, `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` should not be treated as Android-only merely because they currently live under `app/src/main`.
-- Local recommendation code has KMP Room entities/DAO, but orchestration classes (`LocalRecommendationEngine`, `CrawlingExecutor`, `TaskScheduler`, `UserBehaviorAnalyzer`, `FeedGenerator`, `LocalHomeFeedViewModel`) still live in Android and pass `Context` through business logic.
-- Jsoup remains in Android code (`ArticleScreen`, `DailyScreen`, markdown helpers); shared should use Ksoup only when moving pure HTML parsing.
-- Full end-state runtime validation is still missing: Android AVD login/cookie/core operations and JVM QR login/cookie/core operations must be executed before claiming completion.
+目标：
 
-## Parallelization Policy
+- `ZhihuMain.kt` 本体位于 `shared/commonMain`。
+- Android 具体页面注册、Activity、ViewModelProvider、WebView 相关页面、Toast/Dialog 等留在 app adapter。
+- shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 语义、导航动画语义。
+- 不引入独立 desktop route model。
+- 不用大而全 screen table 重写 Android UI。
 
-- Treat each top-level task below as an independent lane after Task 1 is complete.
-- If there are two or more independent lanes and the environment supports subagents, dispatch separate subagents for read-only exploration or disjoint file ownership implementation.
-- Do not dispatch overlapping write scopes. Example split:
-  - Worker A: account/session files
-  - Worker B: pagination/feed display files
-  - Worker C: local recommendation files
-  - Worker D: desktop shared shell files
-- If subagent spawning fails due tool configuration, continue inline and record that failure in the final handoff.
-
-## Task 1: Add A Migration Status Ledger
-
-**Files:**
-- Create: `docs/kmp-migration-status.md`
-- Modify: `AGENTS.md`
-
-- [ ] **Step 1: Create the status ledger**
-
-Create `docs/kmp-migration-status.md` with this content:
-
-```markdown
-# KMP Migration Status
-
-## Completed
-
-- Project has `shared`, `desktopApp`, Android `app`, and Android-only `sentence_embeddings`.
-- `desktopApp` is a shallow demo1-style launcher.
-- QR login core and QR UI are shared via `SharedQrLoginPane`.
-- Android login uses shared QR login; Android WebView stays in app.
-- JVM login uses shared QR login and stores cookies under `~/.zhihu-plus-plus/account.json`.
-- KMP Room is used for content filter and local content databases.
-- 共享导航语义应由 `shared/commonMain` 拥有；当前 `NavDestination` 暂在 Android app 侧是待修正状态，不是最终边界。
-- Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
-
-## Do Not Redo
-
-- Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
-- Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
-- Do not assume desktop needs a separate route model. Desktop should reuse the shared Android UI/navigation semantics for this migration; only introduce a thin runtime adapter if the current Navigation Compose dependency cannot compile for JVM/desktop.
-- Do not recreate `Time.android.kt` / `Time.jvm.kt`; use `Clock.System`.
-- Do not put APK/lite/full/update/install semantics into `shared`.
-- Do not make `desktopApp` contain QR login, cookie persistence, networking, or main UI state.
-
-## Remaining Work
-
-- Move shared navigation semantics / `NavDestination` and the main navigation shell (`ZhihuMain.kt`, `LocalNavigator.kt`, `AnswerNavigator.kt`) back to common code after separating Android-only runtime effects.
-- Split account/session persistence from Android `AccountData`.
-- Move pagination and feed loading state into shared with platform effect adapters.
-- Replace Android duplicate feed display mapping with shared `Feed.toDisplayItem`.
-- Add a shared hot-list/home shell that Android and desktop can both invoke.
-- Move local recommendation orchestration behind platform adapters.
-- Move pure HTML/text parsing only after replacing Jsoup with Ksoup-compatible shared code.
-- Run Android AVD and JVM QR login runtime validation before final completion.
-```
-
-- [ ] **Step 2: Update AGENTS.md to point to the ledger and plan**
-
-Add these bullets under `## KMP 迁移工作约束`:
-
-```markdown
-- 继续迁移前必须先查看 `docs/kmp-migration-status.md` 和 `docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md`，确认当前已完成/未完成边界，避免重复迁移同一模块或把已经纠正的平台边界改回去。
-- 对两个以上互不重叠的迁移 lane，默认优先并行推进：能用 subagent 时按文件所有权拆分给 subagent；不能用 subagent 时也要按 lane 批量审查、批量验证，避免串行地反复读同一批文件。
-```
-
-- [ ] **Step 3: Verify documentation**
-
-Run:
+迁移前审查：
 
 ```bash
-rg -n "KMP Migration Status|Do Not Redo|2026-05-21-kmp-migration-remaining|subagent|并行" AGENTS.md docs/kmp-migration-status.md docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md
-```
-
-Expected: all new anchors are found.
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add AGENTS.md docs/kmp-migration-status.md docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md
-git commit -m "docs: 记录 KMP 剩余迁移计划"
-```
-
-## Task 2: Restore Shared Navigation Semantics And Shell
-
-**Files:**
-- Move: `app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt` -> `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/NavDestination.kt`
-- Move target: `app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt` -> shared after platform side effects are split.
-- Move target: `app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt` -> shared after platform side effects are split.
-- Move target: `app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt` -> shared after platform side effects are split.
-- Modify: `shared/build.gradle.kts`
-- Modify: `app/build.gradle.kts`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/data/HistoryStorage.kt`
-- Modify: app files importing `com.github.zly2006.zhihu.navigation.*`
-- Test: add or update shared/common tests for route serialization.
-
-**Prior Mistakes To Avoid:**
-- Root misunderstanding in bad commit `fd313cd refactor: 收紧 shared 平台边界`: it confused current location/caller with ownership. Code being under `app/src/main`, being called by Android UI, or importing a package whose name starts with `androidx` does not prove Android ownership. Ownership is decided by semantics and side effects: route/model/helper, navigation semantics, state models, URL/JSON mapping, feed navigation mapping, filtering, and content-open algorithms belong in shared; `Context`, `Intent`, WebView, APK/update/install, Toast/Dialog/Activity, file paths, system notifications, and platform callbacks belong in platform adapters.
-- Root process failure in `fd313cd`: it expanded local platform dependencies into whole-file exile. If one function needs platform capability, split that function or inject a small platform interface; do not move the whole semantic model/helper out of `shared/commonMain`.
-- Root research failure in `fd313cd`: it judged APIs by names and assumptions before checking KMP variants or compiling. `org.jetbrains.androidx.navigation:navigation-compose` has KMP variants, so Navigation Compose APIs must be tested in `shared/commonMain` before inventing a desktop-only route model or Android-only adapter.
-- Concrete files already corrected from that bad boundary: `NavDestination`, `FeedNavigation`, `ArticleState`, `CommentRoutes`, `ContentOpenEventSupport`, and `CommentItem` were moved back to shared. Do not move them back to app unless a real platform side effect is introduced and cannot be isolated.
-
-- [x] **Step 1: Audit platform-only content in navigation files**
-
-Run:
-
-```bash
-rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog" app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt
-```
-
-Expected: `NavDestination.kt` contains only serializable route semantics. `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` may contain Android API call sites today; list those call sites and split them, but keep the navigation shell itself as shared-target code.
-
-- [x] **Step 2: Move Navigation Compose dependency to shared**
-
-In `shared/build.gradle.kts`, add to `commonMain.dependencies`:
-
-```kotlin
-implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
-```
-
-In `app/build.gradle.kts`, keep the dependency only if Android-only app source still directly imports navigation APIs during the transition. Once `ZhihuMain.kt` and route runtime imports are in shared, remove the duplicate app dependency if Gradle still resolves it transitively.
-
-Run:
-
-```bash
-./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin assembleLiteDebug
-```
-
-Expected: dependency resolves for JVM/desktop and Android.
-
-- [x] **Step 3: Move the route semantics file**
-
-Use `git mv`:
-
-```bash
-mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation
-git mv app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/NavDestination.kt
-```
-
-Do not move `Intent`, WebView, APK/update, or platform callback semantics with it. `NavHostController`, `NavBackStackEntry`, `composable<T>`, and `toRoute<T>()` are allowed in shared if they compile from `org.jetbrains.androidx.navigation`.
-
-- [x] **Step 4: Move LocalNavigator and AnswerNavigator toward shared**
-
-Use `git mv` after splitting any Android API call sites found in Step 1:
-
-```bash
-mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation
-git mv app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/LocalNavigator.kt
-git mv app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt
-```
-
-If a function needs Android `Context`, replace that parameter with a shared interface and implement the Android side in app.
-
-- [ ] **Step 5: Move ZhihuMain shell toward shared**
-
-Use `git mv` after replacing Android-only screen calls with temporary shared interfaces or expect/actual platform slots:
-
-```bash
-mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui
-git mv app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui/ZhihuMain.kt
-```
-
-Do not rewrite `ZhihuMain`; move first, then make minimal import/package/platform-slot edits.
-
-- [ ] **Step 6: Check whether remaining Navigation Compose runtime can be shared**
-
-Run dependency/compile checks before deciding:
-
-```bash
+rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog|ViewModelProvider|LocalActivity|LocalContext" shared/src/commonMain/kotlin app/src/main/java/com/github/zly2006/zhihu/ui -g '*.kt'
 rg -n "navigation-compose|androidx.navigation|org.jetbrains.androidx.navigation" build.gradle.kts app/build.gradle.kts shared/build.gradle.kts desktopApp/build.gradle.kts
-./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin
 ```
 
-Expected: current navigation runtime supports JVM/desktop. If a specific API fails, isolate only that API; do not abandon shared navigation shell.
-
-- [ ] **Step 7: Verify route boundary**
-
-Run:
+验证：
 
 ```bash
-rg -n "android\\.content|android\\.webkit|androidx\\.webkit|\\bIntent\\b|\\bContext\\b|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared -g '*.kt'
-./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
+./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin
+rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog|ViewModelProvider|LocalActivity|LocalContext" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation -g '*.kt'
 ```
 
-Expected: no platform runtime leak in shared navigation; builds/tests pass.
+### 任务 3：迁移 shared theme core
 
-- [ ] **Step 8: Commit**
+目标：
+
+- `ThemeManager` / `ZhihuTheme` 的跨平台状态和 Compose 主题壳进入 shared。
+- Android 只保留 SharedPreferences 持久化、system dark 探测、dynamic color adapter。
+- JVM/desktop 能使用同一主题状态模型和默认主题。
+- `ZhihuMain` 不通过 preference snapshot 临时携带主题状态。
+
+迁移前必须由 subagent 审查：
+
+- `app/src/main/java/com/github/zly2006/zhihu/theme/*`
+- `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/theme/*`
+- 所有 `ThemeManager`、`ZhihuTheme` 调用方。
+
+验证：
 
 ```bash
-git add app/src/main/java/com/github/zly2006/zhihu/navigation app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui app/src/main/java/com/github/zly2006/zhihu/data/HistoryStorage.kt shared/build.gradle.kts app/build.gradle.kts
-git commit -m "refactor: 共享导航语义和主导航壳"
+rg -n "ThemeManager|ZhihuTheme|dynamic|isSystemInDarkTheme|SharedPreferences|Context" app/src/main/java shared/src/commonMain/kotlin shared/src/androidMain/kotlin shared/src/jvmMain/kotlin -g '*.kt'
+./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-## Task 3: Extract Shared Account Session Core
+### 任务 4：迁移 PaginationViewModel 本体
 
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountSession.kt`
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountRepository.kt`
-- Create: `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountRepositoryTest.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt`
-- Modify: `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopAccountStore.kt`
+目标：
 
-- [ ] **Step 1: Write common repository tests**
+- `PaginationViewModel.kt` 本体进入 `shared/commonMain`。
+- 保留分页状态、刷新/加载更多流程、items/rawData、JSON decoding、processResponse 语义。
+- Android 副作用拆到小 adapter：signed fetch、login expired/risk control、Toast/Dialog/clipboard、Activity 导航、偏好读取。
+- 不创建 `ZhihuPageLoader` 或类似绕开 ViewModel 的临时 loader。
 
-Create `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountRepositoryTest.kt`:
+迁移前必须由 subagent 审查：
 
-```kotlin
-package com.github.zly2006.zhihu.shared.account
+- `PaginationViewModel.kt`
+- feed/list subclasses
+- `AccountData.fetchGet`、`signFetchRequest`、登录过期处理、clipboard/dialog 调用方。
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
-
-class ZhihuAccountRepositoryTest {
-    @Test
-    fun saveAndLoadRoundTripKeepsCookiesAndProfile() {
-        val store = InMemoryAccountStore()
-        val repository = ZhihuAccountRepository(store)
-        val session = ZhihuAccountSession(
-            login = true,
-            username = "Alice",
-            cookies = mutableMapOf("z_c0" to "token", "_xsrf" to "xsrf"),
-            userAgent = "ua",
-            profile = ZhihuAccountProfileSnapshot(id = "1", name = "Alice", urlToken = "alice"),
-        )
-
-        repository.save(session)
-
-        assertEquals(session, repository.load())
-        assertTrue(repository.current.login)
-        assertEquals("token", repository.current.cookies["z_c0"])
-    }
-
-    @Test
-    fun deleteResetsToLoggedOutSession() {
-        val repository = ZhihuAccountRepository(InMemoryAccountStore())
-        repository.save(ZhihuAccountSession(login = true, username = "Alice"))
-
-        repository.delete()
-
-        assertFalse(repository.current.login)
-        assertEquals("", repository.current.username)
-    }
-}
-
-private class InMemoryAccountStore : ZhihuAccountStore {
-    private var saved: String? = null
-
-    override fun readAccountJson(): String? = saved
-
-    override fun writeAccountJson(value: String) {
-        saved = value
-    }
-}
-```
-
-- [ ] **Step 2: Run the failing test**
-
-Run:
+验证：
 
 ```bash
-./gradlew :shared:jvmTest --tests '*ZhihuAccountRepositoryTest*'
+rg -n "android\\.|Context|MainActivity|LoginActivity|Toast|AlertDialog|clipboard|SharedPreferences|PREFERENCE_NAME|signFetchRequest|AccountData" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared -g '*.kt'
+rg -n "ZhihuPageLoader" .
+./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin :app:testLiteDebugUnitTest
 ```
 
-Expected: FAIL because `ZhihuAccountRepository` and related types do not exist.
+### 任务 5：继续拆 AccountData
 
-- [ ] **Step 3: Implement common account session types**
+目标：
 
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountSession.kt`:
+- shared 拥有账号 session、cookie、用户基础信息、JSON 持久化结构。
+- Android `AccountData` 逐步变成 Android client/provider adapter。
+- token refresh、签名、HTTP client 配置能被 shared/JVM 复用，平台只注入必要能力。
 
-```kotlin
-package com.github.zly2006.zhihu.shared.account
+迁移前必须由 subagent 审查：
 
-import kotlinx.serialization.Serializable
+- `AccountData.kt`
+- `ZhihuCredentialRefresher`
+- shared account/session/client 文件
+- desktop account store
 
-const val DEFAULT_ZHIHU_USER_AGENT =
-    "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0"
-
-@Serializable
-data class ZhihuAccountProfileSnapshot(
-    val id: String = "",
-    val name: String = "",
-    val urlToken: String? = null,
-)
-
-@Serializable
-data class ZhihuAccountSession(
-    val login: Boolean = false,
-    val username: String = "",
-    val cookies: MutableMap<String, String> = mutableMapOf(),
-    val userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
-    val profile: ZhihuAccountProfileSnapshot? = null,
-)
-```
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account/ZhihuAccountRepository.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.account
-
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-
-interface ZhihuAccountStore {
-    fun readAccountJson(): String?
-    fun writeAccountJson(value: String)
-}
-
-class ZhihuAccountRepository(
-    private val store: ZhihuAccountStore,
-) {
-    private val state = MutableStateFlow(readStoredSession())
-    val session: StateFlow<ZhihuAccountSession> = state
-    val current: ZhihuAccountSession get() = state.value
-
-    fun load(): ZhihuAccountSession {
-        val loaded = readStoredSession()
-        state.value = loaded
-        return loaded
-    }
-
-    fun save(session: ZhihuAccountSession) {
-        state.value = session
-        store.writeAccountJson(ZhihuJson.json.encodeToString(session))
-    }
-
-    fun delete() {
-        save(ZhihuAccountSession())
-    }
-
-    private fun readStoredSession(): ZhihuAccountSession {
-        val raw = store.readAccountJson() ?: return ZhihuAccountSession()
-        return runCatching {
-            ZhihuJson.json.decodeFromString<ZhihuAccountSession>(raw)
-        }.getOrDefault(ZhihuAccountSession())
-    }
-}
-```
-
-- [ ] **Step 4: Run common test**
-
-Run:
+验证：
 
 ```bash
-./gradlew :shared:jvmTest --tests '*ZhihuAccountRepositoryTest*'
+rg -n "Context|SharedPreferences|File\\(|filesDir|android\\." shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/data -g '*.kt'
+./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-Expected: PASS.
+### 任务 6：把 desktop 接入 shared 主 UI
 
-- [ ] **Step 5: Adapt Android `AccountData` without changing public callers**
+目标：
 
-Modify `app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt` by adding an internal file-backed store and mapping helpers. Keep `AccountData.Data` temporarily so existing Android callers compile.
+- `desktopApp/src/main/kotlin/.../Main.kt` 仍保持浅入口。
+- QR 登录、cookie、网络、主 UI 状态在 shared/JVM shared adapter 中。
+- desktop 复用 Android route model 和 shared 主 UI 壳；不做本次范围外的独立桌面适配。
+- JVM/desktop 不引入 WebView。
 
-```kotlin
-private class AndroidAccountStore(
-    private val context: Context,
-) : ZhihuAccountStore {
-    private val file: File get() = File(context.filesDir, "account.json")
-
-    override fun readAccountJson(): String? =
-        file.takeIf { it.exists() }?.readText()
-
-    override fun writeAccountJson(value: String) {
-        file.writeText(value)
-    }
-}
-
-private fun Data.toSession(): ZhihuAccountSession = ZhihuAccountSession(
-    login = login,
-    username = username,
-    cookies = cookies,
-    userAgent = userAgent,
-    profile = self?.let {
-        ZhihuAccountProfileSnapshot(
-            id = it.id,
-            name = it.name,
-            urlToken = it.urlToken,
-        )
-    },
-)
-
-private fun ZhihuAccountSession.toAndroidData(): Data = Data(
-    login = login,
-    username = username,
-    cookies = cookies,
-    userAgent = userAgent,
-    self = profile?.let {
-        Person(
-            id = it.id,
-            name = it.name,
-            urlToken = it.urlToken.orEmpty(),
-        )
-    },
-)
-```
-
-If `Person` requires additional constructor parameters, do not fake them. Instead keep `self` in Android `Data` for this task and only use the shared repository for `login`, `username`, `cookies`, and `userAgent`; migrate `self` in a dedicated model-specific task.
-
-- [ ] **Step 6: Adapt JVM `DesktopAccountStore`**
-
-Modify `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopAccountStore.kt` so it stores `ZhihuAccountSession` through `ZhihuAccountRepository`. Keep `DesktopAccountData` as a typealias only if callers still need the old name:
-
-```kotlin
-typealias DesktopAccountData = ZhihuAccountSession
-```
-
-Implement a JVM store:
-
-```kotlin
-private class JvmFileAccountStore(
-    private val accountFile: Path,
-) : ZhihuAccountStore {
-    override fun readAccountJson(): String? =
-        if (accountFile.exists()) accountFile.readText() else null
-
-    override fun writeAccountJson(value: String) {
-        accountFile.parent.createDirectories()
-        accountFile.writeText(value)
-    }
-}
-```
-
-- [ ] **Step 7: Verify**
-
-Run:
-
-```bash
-./gradlew :shared:ktlintCommonMainSourceSetFormat :shared:ktlintCommonTestSourceSetFormat :shared:ktlintJvmMainSourceSetFormat
-./gradlew :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug
-```
-
-Expected: all pass.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/account shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/account app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopAccountStore.kt
-git commit -m "refactor: 抽取共享账号会话仓库"
-```
-
-## Task 4: Replace Android Feed Display Duplication With Shared Mapping
-
-**Files:**
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/BaseFeedViewModel.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/HotListViewModel.kt`
-- Test: existing `:app:testLiteDebugUnitTest` plus shared tests
-
-- [ ] **Step 1: Inspect current duplicate mapping**
-
-Run:
-
-```bash
-rg -n "fun Feed\\.toDisplayItem|open fun createDisplayItem|FeedDisplayItem\\(" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/data/FeedDisplayItem.kt app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/BaseFeedViewModel.kt
-```
-
-Expected: shared `Feed.toDisplayItem()` and Android `BaseFeedViewModel.createDisplayItem()` both construct `FeedDisplayItem`.
-
-- [ ] **Step 2: Replace Android implementation with shared helper**
-
-Modify `BaseFeedViewModel.createDisplayItem` to keep Android preferences only at the call boundary:
-
-```kotlin
-open fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    return feed.toDisplayItem(
-        enableQualityFilter = preferences.getBoolean("enableQualityFilter", true),
-        reverseBlock = preferences.getBoolean("reverseBlock", false),
-    )
-}
-```
-
-Remove now-unused imports for feed subclasses that were only needed by the duplicated `when`.
-
-- [ ] **Step 3: Keep HotList behavior**
-
-Keep `HotListViewModel` override:
-
-```kotlin
-override fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem =
-    super.createDisplayItem(context, feed).copy(
-        authorName = null,
-        avatarSrc = null,
-    )
-```
-
-- [ ] **Step 4: Verify duplicate removal**
-
-Run:
-
-```bash
-rg -n "is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed|QuestionFeedCard ->" app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/BaseFeedViewModel.kt
-```
-
-Expected: no output.
-
-- [ ] **Step 5: Build**
-
-Run:
-
-```bash
-./gradlew :app:ktlintMainSourceSetFormat
-./gradlew :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
-```
-
-Expected: all pass.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/BaseFeedViewModel.kt app/src/main/java/com/github/zly2006/zhihu/viewmodel/feed/HotListViewModel.kt
-git commit -m "refactor: 复用 shared Feed 展示映射"
-```
-
-## Task 5: Extract Shared Pagination Loader Core
-
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/paging/ZhihuPageLoader.kt`
-- Create: `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/paging/ZhihuPageLoaderTest.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/PaginationViewModel.kt`
-- Modify: feed subclasses only as needed.
-
-- [ ] **Step 1: Write loader tests with Ktor MockEngine**
-
-Create `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/paging/ZhihuPageLoaderTest.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.paging
-
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
-import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.Serializable
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-
-class ZhihuPageLoaderTest {
-    @Serializable
-    data class Item(val id: Int, val title: String)
-
-    @Test
-    fun loadNextDecodesDataAndPaging() = kotlinx.coroutines.test.runTest {
-        val client = HttpClient(
-            MockEngine {
-                respond(
-                    content = """{"data":[{"id":1,"title":"A"}],"paging":{"is_end":false,"next":"https://example.com/next"}}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
-                )
-            },
-        ) {
-            install(ContentNegotiation) {
-                json(com.github.zly2006.zhihu.shared.data.ZhihuJson.json)
-            }
-        }
-        val loader = ZhihuPageLoader(Item.serializer(), initialUrl = "https://example.com/start")
-
-        val page = loader.loadNext(client)
-
-        assertEquals(listOf(Item(1, "A")), page.items)
-        assertFalse(page.paging.isEnd)
-        assertEquals("https://example.com/next", page.paging.next)
-    }
-}
-```
-
-- [ ] **Step 2: Run failing test**
-
-```bash
-./gradlew :shared:jvmTest --tests '*ZhihuPageLoaderTest*'
-```
-
-Expected: FAIL because `ZhihuPageLoader` does not exist.
-
-- [ ] **Step 3: Implement common loader**
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/paging/ZhihuPageLoader.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.paging
-
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonArray
-
-@Serializable
-data class ZhihuPagingState(
-    val page: Int = -1,
-    val isEnd: Boolean = false,
-    val isStart: Boolean = false,
-    val previous: String? = null,
-    val totals: Int = 0,
-    val next: String,
-    val prev: String? = null,
-)
-
-data class ZhihuLoadedPage<T>(
-    val items: List<T>,
-    val rawData: JsonArray,
-    val paging: ZhihuPagingState,
-)
-
-class ZhihuPageLoader<T : Any>(
-    private val serializer: KSerializer<T>,
-    private val initialUrl: String,
-    private val include: String = "data[*].content,excerpt,headline,target.author.badge_v2",
-    private val shouldSkipRawItem: (JsonObject) -> Boolean = { false },
-) {
-    var lastPaging: ZhihuPagingState? = null
-        private set
-
-    val isEnd: Boolean get() = lastPaging?.isEnd == true
-
-    fun reset() {
-        lastPaging = null
-    }
-
-    suspend fun loadNext(client: HttpClient): ZhihuLoadedPage<T> {
-        val url = (lastPaging?.next ?: initialUrl).replace("http://", "https://")
-        val response = client.get(url) {
-            if (include.isNotEmpty()) {
-                parameter("include", include)
-            }
-        }.body<JsonObject>()
-        val data = response["data"]?.jsonArray ?: JsonArray(emptyList())
-        val items = data.mapNotNull { element ->
-            val obj = element as? JsonObject ?: return@mapNotNull null
-            if (shouldSkipRawItem(obj)) return@mapNotNull null
-            runCatching { ZhihuJson.decodeJson(serializer, obj) }.getOrNull()
-        }
-        val paging = response["paging"]?.let { ZhihuJson.decodeJson<ZhihuPagingState>(it) }
-            ?: ZhihuPagingState(isEnd = true, next = url)
-        lastPaging = paging
-        return ZhihuLoadedPage(items, data, paging)
-    }
-}
-```
-
-- [ ] **Step 4: Adapt Android PaginationViewModel**
-
-Modify `app/src/main/java/com/github/zly2006/zhihu/viewmodel/PaginationViewModel.kt` so Android still owns UI side effects, but data loading goes through `ZhihuPageLoader`.
-
-Keep Android-only error handling in this file. Do not move dialogs, Toasts, clipboard, `LoginActivity`, or `Context` into shared.
-
-- [ ] **Step 5: Verify**
-
-```bash
-./gradlew :shared:ktlintCommonMainSourceSetFormat :shared:ktlintCommonTestSourceSetFormat :app:ktlintMainSourceSetFormat
-./gradlew :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
-```
-
-Expected: all pass.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/paging shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/paging app/src/main/java/com/github/zly2006/zhihu/viewmodel/PaginationViewModel.kt
-git commit -m "refactor: 抽取共享分页加载器"
-```
-
-## Task 6: Create Shared Hot List Screen And Use It On Desktop
-
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/hotlist/SharedHotListScreen.kt`
-- Modify: `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopQrLogin.kt`
-- Optional follow-up in the same lane: `app/src/main/java/com/github/zly2006/zhihu/ui/HotListScreen.kt`
-
-- [ ] **Step 1: Create shared hot-list UI**
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/hotlist/SharedHotListScreen.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.hotlist
-
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-
-@Composable
-fun SharedHotListScreen(
-    username: String,
-    loadHotItems: suspend () -> List<FeedDisplayItem>,
-    modifier: Modifier = Modifier,
-) {
-    var refreshKey by remember { mutableIntStateOf(0) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorText by remember { mutableStateOf<String?>(null) }
-    var hotItems by remember { mutableStateOf<List<FeedDisplayItem>>(emptyList()) }
-
-    LaunchedEffect(refreshKey) {
-        isLoading = true
-        errorText = null
-        runCatching { loadHotItems() }
-            .onSuccess { hotItems = it }
-            .onFailure { errorText = it.message ?: "加载失败" }
-        isLoading = false
-    }
-
-    Column(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("知乎热榜", style = MaterialTheme.typography.headlineSmall)
-            Text("已登录：$username", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.size(12.dp))
-            Button(onClick = { refreshKey += 1 }) {
-                Text("刷新")
-            }
-        }
-
-        when {
-            isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-            errorText != null -> Text(
-                text = errorText.orEmpty(),
-                modifier = Modifier.padding(16.dp),
-                color = MaterialTheme.colorScheme.error,
-            )
-
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(hotItems, key = { it.stableKey }) { item ->
-                    SharedHotListItem(item)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SharedHotListItem(item: FeedDisplayItem) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(item.title, style = MaterialTheme.typography.titleMedium)
-            item.summary?.takeIf { it.isNotBlank() }?.let {
-                Spacer(modifier = Modifier.size(6.dp))
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
-            Spacer(modifier = Modifier.size(6.dp))
-            Text(item.details, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-```
-
-- [ ] **Step 2: Replace JVM-private hot-list composables**
-
-Modify `shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopQrLogin.kt`:
-
-```kotlin
-SharedHotListScreen(
-    username = store.load().username,
-    loadHotItems = {
-        val account = store.load()
-        store.createHttpClient(account.cookies).use { client ->
-            fetchHotListPage(client, account.cookies)
-                .data
-                .flattenFeeds()
-                .map { it.toDisplayItem(enableQualityFilter = false) }
-        }
-    },
-)
-```
-
-Remove `DesktopHotListScreen` and `HotListItem` from `DesktopQrLogin.kt`.
-
-- [ ] **Step 3: Verify desktop remains WebView-free**
-
-Run:
+验证：
 
 ```bash
 rg -n "WebView|android\\.webkit|androidx\\.webkit" desktopApp/src shared/src
-./gradlew :shared:ktlintCommonMainSourceSetFormat :shared:ktlintJvmMainSourceSetFormat :desktopApp:compileKotlin
+rg -n "DesktopQrLoginScreen|SharedQrLoginPane|ZhihuMain|NavDestination" desktopApp/src shared/src -g '*.kt'
+./gradlew :desktopApp:compileKotlin :shared:compileKotlinJvm
 ```
 
-Expected: grep has no output; compile passes.
+### 任务 7：本地推荐编排迁移
 
-- [ ] **Step 4: Commit**
+目标：
+
+- 排序、评分、去重、候选合并等纯逻辑进入 shared。
+- Android database/network/Context/Toast/Dialog 留在 adapter。
+- 每次移动纯 helper 前先加 shared test 或迁移现有测试。
+
+迁移前必须由 subagent 审查：
+
+- `LocalRecommendationEngine`
+- `CrawlingExecutor`
+- `TaskScheduler`
+- `UserBehaviorAnalyzer`
+- `FeedGenerator`
+- local Room database/DAO/entity
+
+验证：
 
 ```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/hotlist/SharedHotListScreen.kt shared/src/jvmMain/kotlin/com/github/zly2006/zhihu/shared/desktop/DesktopQrLogin.kt
-git commit -m "refactor: 共享热榜桌面页面"
+rg -n "android\\.|Context|ConnectivityManager|Toast|AlertDialog|AccountData" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/recommendation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel/local -g '*.kt'
+./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-## Task 7: Split Notification Preferences From Android ViewModel
+### 任务 8：HTML 解析迁移
 
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/notification/NotificationVisibilityPolicy.kt`
-- Create: `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/notification/NotificationVisibilityPolicyTest.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/NotificationViewModel.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/ui/NotificationSettingsScreen.kt` only if needed for adapter wiring.
+目标：
 
-- [ ] **Step 1: Write policy test**
+- shared 中只使用 Ksoup 或已验证 KMP 的替代库。
+- 先迁移纯文本/纯 HTML parsing。
+- WebView document manipulation 不得在未证明跨平台等价前迁入 shared。
 
-Create `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/notification/NotificationVisibilityPolicyTest.kt`:
+迁移前必须由 subagent 审查：
 
-```kotlin
-package com.github.zly2006.zhihu.shared.notification
+- 所有 `Jsoup` 调用点。
+- markdown HTML 解析/导出路径。
+- `ArticleScreen` 中 WebView 相关 HTML 操作。
 
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
-
-class NotificationVisibilityPolicyTest {
-    @Test
-    fun unknownVerbIsVisibleByDefault() {
-        assertTrue(shouldShowNotificationVerb("unknown_verb", emptySet()))
-    }
-
-    @Test
-    fun disabledVerbIsHidden() {
-        assertFalse(shouldShowNotificationVerb("MEMBER_VOTEUP_ARTICLE", setOf("MEMBER_VOTEUP_ARTICLE")))
-    }
-}
-```
-
-- [ ] **Step 2: Implement policy**
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/notification/NotificationVisibilityPolicy.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.notification
-
-fun shouldShowNotificationVerb(
-    verb: String,
-    disabledVerbs: Set<String>,
-): Boolean = verb !in disabledVerbs
-```
-
-- [ ] **Step 3: Adapt Android viewmodel**
-
-In `NotificationViewModel.shouldShowNotification`, keep reading Android preferences in app, but call the shared policy with an explicit disabled set. Do not move `SharedPreferences` into shared.
-
-- [ ] **Step 4: Verify**
+验证：
 
 ```bash
-./gradlew :shared:jvmTest --tests '*NotificationVisibilityPolicyTest*'
-./gradlew :app:ktlintMainSourceSetFormat :shared:ktlintCommonMainSourceSetFormat :shared:ktlintCommonTestSourceSetFormat
-./gradlew :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
-```
-
-Expected: all pass.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/notification shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/notification app/src/main/java/com/github/zly2006/zhihu/viewmodel/NotificationViewModel.kt
-git commit -m "refactor: 抽取通知显示策略"
-```
-
-## Task 8: Move Local Recommendation Orchestration Behind Adapters
-
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/recommendation/LocalRecommendationEngineCore.kt`
-- Create: `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/recommendation/LocalRecommendationEngineCoreTest.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/viewmodel/local/LocalRecommendationEngine.kt`
-- Modify in the same lane after engine core compiles: `CrawlingExecutor.kt`, `TaskScheduler.kt`, `UserBehaviorAnalyzer.kt`, `FeedGenerator.kt`.
-
-- [ ] **Step 1: Write pure ranking/diversity tests**
-
-Create `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/recommendation/LocalRecommendationEngineCoreTest.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.recommendation
-
-import kotlin.test.Test
-import kotlin.test.assertEquals
-
-class LocalRecommendationEngineCoreTest {
-    @Test
-    fun rankByScoreDescending() {
-        val ranked = rankLocalCandidates(
-            candidates = listOf(
-                LocalCandidateScore(id = "a", score = 1.0, reason = "Trending", createdAt = 100),
-                LocalCandidateScore(id = "b", score = 3.0, reason = "Follow", createdAt = 100),
-            ),
-            nowEpochMillis = 100,
-        )
-
-        assertEquals(listOf("b", "a"), ranked.map { it.id })
-    }
-}
-```
-
-- [ ] **Step 2: Implement pure engine core**
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/recommendation/LocalRecommendationEngineCore.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.recommendation
-
-data class LocalCandidateScore(
-    val id: String,
-    val score: Double,
-    val reason: String,
-    val createdAt: Long,
-)
-
-fun rankLocalCandidates(
-    candidates: List<LocalCandidateScore>,
-    nowEpochMillis: Long,
-): List<LocalCandidateScore> =
-    candidates.sortedWith(
-        compareByDescending<LocalCandidateScore> { it.score }
-            .thenByDescending { it.createdAt.coerceAtMost(nowEpochMillis) },
-    )
-```
-
-- [ ] **Step 3: Wire Android engine to the pure core**
-
-In `LocalRecommendationEngine.rankCandidate`, keep Android database/network code in app for now, but move the pure formula into common helpers one function at a time. Every moved helper must get a common test before the Android call site changes.
-
-- [ ] **Step 4: Do not move platform pieces**
-
-Keep these Android-only until explicit adapter tasks exist:
-
-```text
-android.net.ConnectivityManager
-android.content.Context
-AlertDialog / Toast
-AccountData.fetchGet(context, ...)
-```
-
-`NavDestination` is not listed here because it is shared route semantics. Only platform runtime adapters around it should remain Android-only.
-
-- [ ] **Step 5: Verify**
-
-```bash
-./gradlew :shared:jvmTest --tests '*LocalRecommendationEngineCoreTest*'
-./gradlew :shared:ktlintCommonMainSourceSetFormat :shared:ktlintCommonTestSourceSetFormat :app:ktlintMainSourceSetFormat
-./gradlew :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug
-```
-
-Expected: all pass.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/recommendation shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/recommendation app/src/main/java/com/github/zly2006/zhihu/viewmodel/local/LocalRecommendationEngine.kt
-git commit -m "refactor: 抽取本地推荐核心排序"
-```
-
-## Task 9: Replace Jsoup Candidates With Ksoup-Compatible Shared Parsers
-
-**Files:**
-- Create: `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/html/ZhihuHtmlText.kt`
-- Create: `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/html/ZhihuHtmlTextTest.kt`
-- Modify candidates only after tests pass:
-  - `app/src/main/java/com/github/zly2006/zhihu/ui/DailyScreen.kt`
-  - `app/src/main/java/com/github/zly2006/zhihu/ui/ArticleScreen.kt`
-  - `app/src/main/java/com/github/zly2006/zhihu/markdown/MdAst.kt`
-
-- [ ] **Step 1: Write parser test**
-
-Create `shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/html/ZhihuHtmlTextTest.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.html
-
-import kotlin.test.Test
-import kotlin.test.assertEquals
-
-class ZhihuHtmlTextTest {
-    @Test
-    fun extractsReadableTextFromParagraphs() {
-        assertEquals(
-            "第一段 第二段",
-            zhihuHtmlText("<p>第一段</p><p>第二段</p>"),
-        )
-    }
-}
-```
-
-- [ ] **Step 2: Implement with Ksoup**
-
-Create `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/html/ZhihuHtmlText.kt`:
-
-```kotlin
-package com.github.zly2006.zhihu.shared.html
-
-import com.fleeksoft.ksoup.Ksoup
-
-fun zhihuHtmlText(html: String): String =
-    Ksoup.parse(html)
-        .text()
-        .trim()
-```
-
-- [ ] **Step 3: Replace only pure text extraction first**
-
-In `DailyScreen.kt`, replace `Jsoup.parse(...).text()` style calls with `zhihuHtmlText(...)` only when the result is plain text. Do not move WebView document manipulation from `ArticleScreen` until a Ksoup equivalent is proven.
-
-- [ ] **Step 4: Verify**
-
-```bash
-./gradlew :shared:jvmTest --tests '*ZhihuHtmlTextTest*'
-./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin assembleLiteDebug
 rg -n "org\\.jsoup|Jsoup" shared/src/commonMain/kotlin
+./gradlew :shared:jvmTest :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-Expected: tests and builds pass; shared has no Jsoup.
+## 最终运行验证门禁
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/html shared/src/commonTest/kotlin/com/github/zly2006/zhihu/shared/html app/src/main/java/com/github/zly2006/zhihu/ui/DailyScreen.kt
-git commit -m "refactor: 使用 Ksoup 共享 HTML 文本解析"
-```
-
-## Task 10: Runtime Validation Gate
-
-**Files:**
-- Modify only if validation finds bugs.
-- Update: `docs/kmp-migration-status.md`
-
-- [ ] **Step 1: Run compile gate**
+编译与边界：
 
 ```bash
 ./gradlew :shared:compileKotlinJvm :shared:jvmTest :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
@@ -1108,11 +257,7 @@ rg -n "android\\.content|android\\.webkit|androidx\\.webkit|\\bIntent\\b|\\bCont
 git diff --check
 ```
 
-Expected: Gradle commands pass; boundary grep has no shared/desktop violations; diff check has no output.
-
-- [ ] **Step 2: Validate Android on AVD**
-
-Use AVD, not a physical device:
+Android AVD：
 
 ```bash
 grep "applicationId" app/build.gradle.kts
@@ -1123,51 +268,17 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 python3 .agents/skills/ui-test/llm_test_helper.py dump
 ```
 
-Expected: app launches; login/cookie-covered core operations still work; UI has no unexpected blank screen or obvious layout regression.
-
-- [ ] **Step 3: Validate JVM QR login**
-
-Run desktop app:
+JVM/desktop：
 
 ```bash
 ./gradlew :desktopApp:run
-```
-
-When QR appears, notify:
-
-```bash
 terminal-notifier -message "需要扫码登录 JVM 端" -sound default
 ```
 
-Expected after user scans: `~/.zhihu-plus-plus/account.json` contains backed-up cookies and subsequent app launches do not require repeated login.
+通过标准：
 
-- [ ] **Step 4: Update status ledger**
-
-Append results to `docs/kmp-migration-status.md`:
-
-```markdown
-## Runtime Validation
-
-- Android AVD: passed on YYYY-MM-DD with lite package `com.github.zly2006.zhplus.lite`.
-- JVM QR login: passed on YYYY-MM-DD; cookies persisted to `~/.zhihu-plus-plus/account.json`.
-- Desktop WebView boundary: `rg` check passed on YYYY-MM-DD.
-```
-
-- [ ] **Step 5: Commit validation notes**
-
-```bash
-git add docs/kmp-migration-status.md
-git commit -m "docs: 记录 KMP 运行验证结果"
-```
-
-## Final Completion Checklist
-
-- [ ] `desktopApp` remains shallow and contains no QR login/network/business state.
-- [ ] shared/commonMain contains shared navigation semantics, but no Android `Context`, WebView, intent/file-provider, APK/lite/full runtime side effects.
-- [ ] desktop/shared contains no WebView imports or implementation.
-- [ ] Room databases touched by migration use Room KMP with common entities/DAO/database and platform builders only.
-- [ ] Android lite builds and runs on AVD.
-- [ ] JVM desktop compiles and QR login persists cookies.
-- [ ] Android and JVM use shared QR login and shared core data/network logic where available.
-- [ ] iOS targets remain present but no iOS build/test/debug command was run for this migration.
-- [ ] Every completed lane has a focused commit.
+- Android AVD 可登录；覆盖 cookie 后核心操作可用，UI 无非预期变化。
+- JVM 可扫码登录；cookie 持久化到 `~/.zhihu-plus-plus/account.json`，后续不反复要求登录。
+- desktop/shared 无 WebView。
+- iOS target 存在，但本次没有运行 iOS 命令。
+- 每个完成 lane 都有聚焦 commit。

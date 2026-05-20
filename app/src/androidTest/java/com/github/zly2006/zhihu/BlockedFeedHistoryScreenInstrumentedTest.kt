@@ -34,7 +34,7 @@ import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecordDao
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -51,7 +51,7 @@ class BlockedFeedHistoryScreenInstrumentedTest {
     val composeRule: MainActivityComposeRule = createAndroidComposeRule<MainActivity>()
 
     private val blockedFeedRecordDao: BlockedFeedRecordDao
-        get() = ContentFilterDatabase.getDatabase(composeRule.activity).blockedFeedRecordDao()
+        get() = getContentFilterDatabase(composeRule.activity).blockedFeedRecordDao()
 
     @Before
     fun setUp() = runBlocking {

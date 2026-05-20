@@ -45,8 +45,8 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setZhihuMainContent
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import org.junit.Assert.assertEquals

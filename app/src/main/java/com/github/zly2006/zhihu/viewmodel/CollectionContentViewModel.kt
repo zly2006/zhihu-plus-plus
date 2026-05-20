@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
@@ -230,8 +231,8 @@ class CollectionContentViewModel(
     }
 
     private fun hasPagingProgress(
-        beforePaging: Paging?,
-        afterPaging: Paging?,
+        beforePaging: ZhihuPaging?,
+        afterPaging: ZhihuPaging?,
     ): Boolean {
         if (afterPaging == null) return false
         if (beforePaging == null) return true

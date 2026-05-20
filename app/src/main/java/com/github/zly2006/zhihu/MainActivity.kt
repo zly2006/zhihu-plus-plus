@@ -69,8 +69,8 @@ import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.ZhihuMain
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
@@ -244,7 +244,7 @@ class MainActivity : ComponentActivity() {
             navController = rememberNavController()
             ZhihuTheme {
                 Box(Modifier.semantics { testTagsAsResourceId = true }) {
-                    ZhihuMain(navController = navController)
+                    AndroidZhihuMain(navController = navController)
                 }
             }
         }

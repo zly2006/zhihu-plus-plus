@@ -48,9 +48,9 @@ fun rememberAndroidZhihuMainPreferenceState(): ZhihuMainPreferenceState {
 }
 
 @Composable
-fun rememberAndroidZhihuMainActivityState(): ZhihuMainActivityState {
+fun rememberAndroidZhihuMainNavigationState(): ZhihuMainNavigationState {
     val activity = LocalActivity.current as MainActivity
-    return ZhihuMainActivityState(
+    return ZhihuMainNavigationState(
         mainTabNavigationTarget = activity.mainTabNavigationTarget,
         navigate = activity::navigate,
         setCurrentMainTabOpenFrom = activity::setCurrentMainTabOpenFrom,

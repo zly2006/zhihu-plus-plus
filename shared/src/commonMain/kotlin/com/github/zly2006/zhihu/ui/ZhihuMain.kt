@@ -17,18 +17,17 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -72,57 +71,31 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.CollectionContent
-import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
-import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Navigator
-import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
-import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.Search
-import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.theme.ZhihuTheme
-import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
-import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
-import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
-import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
-import com.github.zly2006.zhihu.ui.NavHost as MyNavHost
 
 const val SURVEY_URL = "https://v.wjx.cn/vm/Ppfw2R4.aspx#"
 
@@ -145,14 +118,34 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
+data class ZhihuMainTabContentScope(
+    val destination: TopLevelDestination,
+    val followTabIndex: Int?,
+    val scrollToTopTrigger: Int,
+    val innerPadding: PaddingValues,
+    val isActive: Boolean,
+    val onFollowTabSelected: (Int) -> Unit,
+)
+
+data class ZhihuMainRouteContentScope(
+    val innerPadding: PaddingValues,
+    val scrollToTopTrigger: Int,
+    val reloadBottomBarPreferences: () -> Unit,
+)
+
 @OptIn(ExperimentalFoundationApi::class)
-@SuppressLint("RestrictedApi")
+@Suppress("RestrictedApi")
 @Composable
-fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
+fun ZhihuMain(
+    modifier: Modifier = Modifier,
+    navController: NavHostController,
+    navigationState: ZhihuMainNavigationState,
+    preferenceState: ZhihuMainPreferenceState,
+    isDarkTheme: Boolean,
+    mainTabContent: @Composable (ZhihuMainTabContentScope) -> Unit,
+    routeContent: NavGraphBuilder.(ZhihuMainRouteContentScope) -> Unit,
+) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
-    val activity = rememberAndroidZhihuMainActivity()
-    val activityState = rememberAndroidZhihuMainActivityState()
-    val preferenceState = rememberAndroidZhihuMainPreferenceState()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
     val duo3NavStyle = preferenceState.duo3NavStyle
     val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
@@ -242,18 +235,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
         currentMainTabPage()?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
-            activityState.setCurrentMainTabOpenFrom(destination.openFrom)
+            navigationState.setCurrentMainTabOpenFrom(destination.openFrom)
         }
     }
 
-    val mainTabNavigationTarget = activityState.mainTabNavigationTarget
+    val mainTabNavigationTarget = navigationState.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
-            // MainActivity maps legacy top-level route requests onto MainTabs. Consume that request
+            // Platform adapters map legacy top-level route requests onto MainTabs. Consume that request
             // here so callers such as deeplinks can still select Home/Follow/etc. without pushing
             // those old routes onto the back stack.
             mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
-            activityState.consumeMainTabNavigationTarget(destination)
+            navigationState.consumeMainTabNavigationTarget(destination)
         }
     }
 
@@ -276,8 +269,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
 
     Scaffold(
         modifier = modifier
-            .nestedScroll(bottomBarScrollConnection)
-            .semantics { testTagsAsResourceId = true },
+            .nestedScroll(bottomBarScrollConnection),
         bottomBar = {
             if (navEntry != null) {
                 // 页面切换时重置底部导航栏可见状态
@@ -327,7 +319,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 },
                                 alwaysShowLabel = duo3NavStyle,
                                 colors = if (duo3NavStyle) {
-                                    if (!ThemeManager.isDarkTheme()) {
+                                    if (!isDarkTheme) {
                                         NavigationBarItemDefaults.colors().copy(
                                             selectedIndicatorColor =
                                                 MaterialTheme.colorScheme.secondaryContainer
@@ -361,12 +353,12 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
-                    activityState.navigate(destination)
+                    navigationState.navigate(destination)
                 },
                 onNavigateBack = navController::popBackStack,
             ),
         ) {
-            MyNavHost(
+            NavHost(
                 navController,
                 modifier = Modifier,
                 startDestination = MainTabs,
@@ -402,136 +394,16 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
                                 }
                             }
                         },
+                        content = mainTabContent,
                     )
                 }
-                composable<Question> { navEntry ->
-                    val question: Question = navEntry.toRoute()
-                    QuestionScreen(question)
-                }
-                composable<Article>(
-                    enterTransition = {
-                        val sharedData = try {
-                            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
-                        } catch (_: Exception) {
-                            null
-                        }
-                        when (sharedData?.answerTransitionDirection) {
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
-                                slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                                slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
-                                slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                                slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
-                            else -> slideInHorizontally(tween(300)) { it }
-                        }
-                    },
-                    exitTransition = {
-                        val sharedData = try {
-                            (activity as? androidx.activity.ComponentActivity)
-                                ?.let { ViewModelProvider(it)[ArticleViewModel.ArticlesSharedData::class.java] }
-                        } catch (_: Exception) {
-                            null
-                        }
-                        when (sharedData?.answerTransitionDirection) {
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
-                                slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
-                                slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
-                                slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-                            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
-                                slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
-                            else -> ExitTransition.None
-                        }
-                    },
-                ) { navEntry ->
-                    val article: Article = navEntry.toRoute()
-                    val viewModel: ArticleViewModel = viewModel(navEntry) {
-                        ArticleViewModel(article, activity.httpClient, navEntry)
-                    }
-                    ArticleScreen(article, viewModel)
-                }
-                composable<HotList> {
-                    HotListScreen(innerPadding)
-                }
-                composable<Follow> {
-                    FollowScreen(
-                        scrollToTopTrigger = scrollToTopTrigger,
+                routeContent(
+                    ZhihuMainRouteContentScope(
                         innerPadding = innerPadding,
-                    )
-                }
-                composable<Daily> {
-                    DailyScreen()
-                }
-                composable<History> {
-                    LegacyLocalHistoryScreen(innerPadding)
-                }
-                composable<OnlineHistory> {
-                    OnlineHistoryScreen()
-                }
-                composable<Account> {
-                    AccountSettingScreen(innerPadding)
-                }
-                composable<Search> { navEntry ->
-                    val search: Search = navEntry.toRoute()
-                    SearchScreen(search)
-                }
-                composable<Collections> {
-                    val data: Collections = it.toRoute()
-                    CollectionScreen(data.userToken)
-                }
-                composable<CollectionContent> {
-                    val content: CollectionContent = it.toRoute()
-                    CollectionContentScreen(content.collectionId)
-                }
-                composable<Person> {
-                    val person: Person = it.toRoute()
-                    PeopleScreen(person)
-                }
-                composable<Pin> {
-                    val pin = it.toRoute<Pin>()
-                    PinScreen(pin)
-                }
-                composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen()
-                }
-                composable<Account.RecommendSettings.BlockedFeedHistory> {
-                    BlockedFeedHistoryScreen()
-                }
-                composable<Notification> {
-                    NotificationScreen()
-                }
-                composable<Notification.NotificationSettings> {
-                    NotificationSettingsScreen()
-                }
-                composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen()
-                }
-                composable<Account.AppearanceSettings> {
-                    val args = it.toRoute<Account.AppearanceSettings>()
-                    AppearanceSettingsScreen(
-                        setting = args.setting,
-                        onExit = reloadBottomBarPreferences,
-                    )
-                }
-                composable<Account.RecommendSettings> {
-                    val args = it.toRoute<Account.RecommendSettings>()
-                    ContentFilterSettingsScreen(args.setting)
-                }
-                composable<Account.SystemAndUpdateSettings> {
-                    SystemAndUpdateSettingsScreen()
-                }
-                composable<Account.OpenSourceLicenses> {
-                    OpenSourceLicensesScreen()
-                }
-                composable<Account.DeveloperSettings> {
-                    DeveloperSettingsScreen()
-                }
-                composable<Account.DeveloperSettings.ColorScheme> {
-                    ColorSchemeScreen()
-                }
+                        scrollToTopTrigger = scrollToTopTrigger,
+                        reloadBottomBarPreferences = reloadBottomBarPreferences,
+                    ),
+                )
             }
         }
     }
@@ -543,38 +415,29 @@ private fun MainTabsPager(
     pagerState: PagerState,
     pages: List<MainTabPage>,
     scrollToTopTrigger: Int,
-    innerPadding: androidx.compose.foundation.layout.PaddingValues,
+    innerPadding: PaddingValues,
     onFollowTabSelected: (Int) -> Unit,
+    content: @Composable (ZhihuMainTabContentScope) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
-        when (page) {
-            MainTabPage.HomePage -> HomeScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-            )
-            MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
-                selectedTabIndex = 0,
-                onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
-            )
-            MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
-                selectedTabIndex = 1,
-                onTabSelected = onFollowTabSelected,
+        content(
+            ZhihuMainTabContentScope(
+                destination = page.bottomDestination,
+                followTabIndex = when (page) {
+                    MainTabPage.FollowRecommendPage -> 0
+                    MainTabPage.FollowDynamicPage -> 1
+                    else -> null
+                },
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
                 isActive = pagerState.currentPage == pageIndex,
-            )
-            MainTabPage.HotListPage -> HotListScreen(innerPadding)
-            MainTabPage.DailyPage -> DailyScreen()
-            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
-            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
-        }
+                onFollowTabSelected = onFollowTabSelected,
+            ),
+        )
     }
 }
 
@@ -587,16 +450,7 @@ private val TopLevelDestination.openFrom: String?
         else -> null
     }
 
-internal fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
+fun NavBackStackEntry?.hasRoute(cls: KClass<out NavDestination>): Boolean {
     val dest = this?.destination ?: return false
     return dest.hierarchy.any { it.hasRoute(cls) }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GreetingPreview() {
-    val navController = rememberNavController()
-    ZhihuTheme {
-        ZhihuMain(navController = navController)
-    }
 }

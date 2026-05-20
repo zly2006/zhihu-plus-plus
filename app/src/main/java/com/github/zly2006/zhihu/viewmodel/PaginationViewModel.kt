@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.ui.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -52,7 +53,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.int
@@ -72,7 +72,7 @@ abstract class PaginationViewModel<T : Any>(
     var errorMessage: String? = null
         protected set
     var allowGuestAccess = false
-    protected var lastPaging: Paging? by mutableStateOf(null)
+    protected var lastPaging: ZhihuPaging? by mutableStateOf(null)
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
     private var currentJob: Job? = null
@@ -82,17 +82,6 @@ abstract class PaginationViewModel<T : Any>(
      * This can be overridden in subclasses to include more specific fields.
      */
     open val include = "data[*].content,excerpt,headline,target.author.badge_v2"
-
-    @Serializable
-    data class Paging(
-        val page: Int = -1,
-        val isEnd: Boolean = false,
-        val isStart: Boolean = false,
-        val previous: String? = null,
-        val totals: Int = 0,
-        val next: String,
-        val prev: String? = null,
-    )
 
     open fun refresh(context: Context) {
         currentJob?.cancel()

@@ -53,7 +53,7 @@ fun rememberZhihuMainPreferenceState(
     ZhihuMainPreferenceState(readSnapshot)
 }
 
-data class ZhihuMainActivityState(
+data class ZhihuMainNavigationState(
     val mainTabNavigationTarget: TopLevelDestination?,
     val navigate: (NavDestination) -> Unit,
     val setCurrentMainTabOpenFrom: (String?) -> Unit,
