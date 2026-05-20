@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.util
 
+import com.github.zly2006.zhihu.shared.util.ZseSigner
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body

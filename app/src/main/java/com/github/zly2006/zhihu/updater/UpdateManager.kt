@@ -24,6 +24,13 @@ import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.shared.updater.GithubAsset
+import com.github.zly2006.zhihu.shared.updater.GithubRelease
+import com.github.zly2006.zhihu.shared.updater.SchematicVersion
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading

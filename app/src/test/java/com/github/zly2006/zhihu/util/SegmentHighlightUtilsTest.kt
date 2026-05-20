@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.data.SegmentInfoMark
-import com.github.zly2006.zhihu.data.SegmentInfoMeta
-import com.github.zly2006.zhihu.data.SegmentInfoParagraph
+import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
+import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
+import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

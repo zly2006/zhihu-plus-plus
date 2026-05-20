@@ -25,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
@@ -37,6 +36,7 @@ import com.github.zly2006.zhihu.shared.data.GroupFeed
 import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.data.MomentsFeed
 import com.github.zly2006.zhihu.shared.data.QuestionFeedCard
+import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.shared.data.actionText
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target

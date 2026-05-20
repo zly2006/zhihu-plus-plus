@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.data.SegmentInfoMark
-import com.github.zly2006.zhihu.data.SegmentInfoParagraph
+import com.github.zly2006.zhihu.shared.data.SegmentInfoMark
+import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import org.jsoup.nodes.Element
 
 typealias SegmentHighlightSpan = com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
