@@ -1,8 +1,8 @@
 package com.github.zly2006.zhihu.shared.data
 
 import com.github.zly2006.zhihu.navigation.Search
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class FeedNavigationTest {
     @Test
