@@ -64,6 +64,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.shared.login.ZHIHU_DESKTOP_USER_AGENT
+import com.github.zly2006.zhihu.shared.login.ZHIHU_HOME_URL
+import com.github.zly2006.zhihu.shared.login.ZHIHU_RISK_CONTROL_URL
+import com.github.zly2006.zhihu.shared.login.ZHIHU_SIGNIN_URL
+import com.github.zly2006.zhihu.shared.login.normalizeDeadline
+import com.github.zly2006.zhihu.shared.login.parseCookieAssignments
+import com.github.zly2006.zhihu.shared.login.pollQrCodeLogin
+import com.github.zly2006.zhihu.shared.login.prefetchQrLoginContext
+import com.github.zly2006.zhihu.shared.login.requestQrCode
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -72,36 +81,11 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 
 private const val LOGIN_MODE_WEB = 0
 private const val LOGIN_MODE_QR = 1
-
-private const val HOME_URL = "https://www.zhihu.com/"
-private const val SIGNIN_URL = "https://www.zhihu.com/signin?next=%2F"
-private const val SIGNIN_REFERER_URL = "https://www.zhihu.com/signin"
-private const val UDID_URL = "https://www.zhihu.com/udid"
-private const val CAPTCHA_V2_URL = "https://www.zhihu.com/api/v3/oauth/captcha/v2?type=captcha_sign_in"
-private const val QRCODE_URL = "https://www.zhihu.com/api/v3/account/api/login/qrcode"
-private const val ME_URL = "https://www.zhihu.com/api/v4/me"
-private const val RISK_CONTROL_URL = "https://www.zhihu.com/account/risk_control/"
-
-private const val DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
-private const val DESKTOP_SEC_CH_UA = "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\""
-private const val DESKTOP_SEC_CH_UA_MOBILE = "?0"
-private const val DESKTOP_SEC_CH_UA_PLATFORM = "\"Windows\""
 
 class LoginActivity : ComponentActivity() {
     private var isCompletingLogin = false
@@ -188,7 +172,7 @@ class LoginActivity : ComponentActivity() {
                 view: WebView?,
                 request: WebResourceRequest,
             ): Boolean {
-                if (request.url.toString() == HOME_URL) {
+                if (request.url.toString() == ZHIHU_HOME_URL) {
                     webView.settings.userAgentString = AccountData.ANDROID_USER_AGENT
                 }
                 return request.url?.scheme == "zhihu"
@@ -196,9 +180,9 @@ class LoginActivity : ComponentActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                if (url == HOME_URL) {
+                if (url == ZHIHU_HOME_URL) {
                     val cookies = parseCookieAssignments(
-                        CookieManager.getInstance().getCookie(HOME_URL).orEmpty(),
+                        CookieManager.getInstance().getCookie(ZHIHU_HOME_URL).orEmpty(),
                     )
                     lifecycleScope.launch {
                         finalizeLoginFromCookies(cookies)
@@ -209,7 +193,7 @@ class LoginActivity : ComponentActivity() {
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         if (webView.url.isNullOrEmpty()) {
             CookieManager.getInstance().removeAllCookies { }
-            webView.loadUrl(SIGNIN_URL)
+            webView.loadUrl(ZHIHU_SIGNIN_URL)
         }
     }
 
@@ -222,11 +206,11 @@ class LoginActivity : ComponentActivity() {
     ) {
         webView.setupUpWebviewClient()
         webView.settings.javaScriptEnabled = true
-        webView.settings.userAgentString = DESKTOP_USER_AGENT
+        webView.settings.userAgentString = ZHIHU_DESKTOP_USER_AGENT
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptThirdPartyCookies(webView, true)
         cookies.forEach { (name, value) ->
-            cookieManager.setCookie(HOME_URL, "$name=$value; Domain=.zhihu.com; Path=/")
+            cookieManager.setCookie(ZHIHU_HOME_URL, "$name=$value; Domain=.zhihu.com; Path=/")
         }
         cookieManager.flush()
         webView.webViewClient = object : WebViewClient() {
@@ -400,7 +384,7 @@ private fun QrLoginPane(activity: LoginActivity) {
                 onRiskControl = { message, redirectUrl ->
                     sessionCookies = cookies.toMap()
                     riskControlMessage = message ?: "知乎需要验证当前网络环境"
-                    riskControlUrl = redirectUrl ?: RISK_CONTROL_URL
+                    riskControlUrl = redirectUrl ?: ZHIHU_RISK_CONTROL_URL
                     statusText = riskControlMessage ?: "知乎需要验证当前网络环境"
                 },
             )
@@ -598,262 +582,6 @@ private fun LoginNoticeScreen(
     }
 }
 
-@Serializable
-private data class ZhihuQrCodeResponse(
-    val expiresAt: Long? = null,
-    val link: String? = null,
-    val token: String? = null,
-    val qrcodeToken: String? = null,
-)
-
-@Serializable
-private data class ZhihuQrScanError(
-    val needLogin: Boolean? = null,
-    val redirect: String? = null,
-    val code: Int? = null,
-    val message: String? = null,
-)
-
-@Serializable
-private data class ZhihuQrScanInfo(
-    val status: Int? = null,
-    val cookie: String? = null,
-    val cookies: String? = null,
-    val zC0: String? = null,
-    val userId: String? = null,
-    val accessToken: String? = null,
-    val success: Boolean? = null,
-    val loggedIn: Boolean? = null,
-    val loginStatus: String? = null,
-    val error: ZhihuQrScanError? = null,
-)
-
-private suspend fun prefetchQrLoginContext(
-    client: HttpClient,
-    cookies: Map<String, String>,
-) {
-    client.get(SIGNIN_URL) {
-        createDesktopHeaders(HOME_URL).forEach { (key, value) ->
-            header(key, value)
-        }
-    }
-
-    runCatching {
-        client.post(UDID_URL) {
-            createZhihuLoginHeaders(cookies, SIGNIN_REFERER_URL).forEach { (key, value) ->
-                header(key, value)
-            }
-            setBody("{}")
-        }
-    }
-
-    runCatching {
-        client.get(CAPTCHA_V2_URL) {
-            createZhihuLoginHeaders(cookies, SIGNIN_REFERER_URL).forEach { (key, value) ->
-                header(key, value)
-            }
-        }
-    }
-}
-
-private suspend fun requestQrCode(
-    client: HttpClient,
-    cookies: Map<String, String>,
-): ZhihuQrCodeResponse {
-    val response = client.post(QRCODE_URL) {
-        createZhihuLoginHeaders(cookies, SIGNIN_REFERER_URL).forEach { (key, value) ->
-            header(key, value)
-        }
-        setBody("{}")
-    }
-    val body = response.bodyAsText()
-    val result = AccountData.decodeJson<ZhihuQrCodeResponse>(
-        AccountData.json.parseToJsonElement(body),
-    )
-    val token = result.token ?: result.qrcodeToken
-    if (response.status.value >= 400 || token.isNullOrBlank() || result.link.isNullOrBlank()) {
-        throw IllegalStateException("二维码获取失败：${response.status.value}")
-    }
-    return result.copy(token = token)
-}
-
-private suspend fun pollQrCodeLogin(
-    client: HttpClient,
-    cookies: MutableMap<String, String>,
-    token: String,
-    deadline: Long,
-    onScanned: () -> Unit,
-    onRiskControl: (String?, String?) -> Unit,
-): Boolean {
-    var hasPromptedConfirm = false
-    var hasPromptedRiskControl = false
-
-    while (System.currentTimeMillis() <= deadline) {
-        currentCoroutineContext().ensureActive()
-
-        try {
-            val response = client.get("$QRCODE_URL/$token/scan_info") {
-                createZhihuLoginHeaders(cookies, SIGNIN_URL, isPolling = true).forEach { (key, value) ->
-                    header(key, value)
-                }
-            }
-            if (response.status == HttpStatusCode.Forbidden) {
-                onRiskControl(
-                    "知乎限制了当前网络环境的登录请求，请先完成网络环境验证。",
-                    RISK_CONTROL_URL,
-                )
-                return false
-            }
-            val body = response.bodyAsText()
-            val scanInfo = runCatching {
-                AccountData.decodeJson<ZhihuQrScanInfo>(
-                    AccountData.json.parseToJsonElement(body),
-                )
-            }.getOrDefault(ZhihuQrScanInfo())
-
-            syncCookiesFromScanInfo(cookies, scanInfo)
-
-            if (isRiskControlResponse(response.status.value, scanInfo)) {
-                if (!hasPromptedRiskControl) {
-                    hasPromptedRiskControl = true
-                    onRiskControl(scanInfo.error?.message, scanInfo.error?.redirect)
-                }
-                return false
-            }
-
-            if (scanInfo.status == 1 && !hasPromptedConfirm) {
-                hasPromptedConfirm = true
-                onScanned()
-            }
-
-            val loginSucceeded = isQrLoginSuccessful(scanInfo)
-            if (loginSucceeded || cookies.containsKey("z_c0")) {
-                if (!cookies.containsKey("z_c0")) {
-                    runCatching {
-                        client.get(ME_URL) {
-                            createZhihuLoginHeaders(cookies, SIGNIN_URL, isPolling = true).forEach { (key, value) ->
-                                header(key, value)
-                            }
-                        }
-                    }
-                }
-                if (loginSucceeded || cookies.containsKey("z_c0")) {
-                    return true
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // 临时网络抖动时继续轮询
-        }
-
-        delay(500)
-    }
-
-    return false
-}
-
-private fun createDesktopHeaders(referer: String? = null): MutableMap<String, String> {
-    val headers = mutableMapOf(
-        "accept-encoding" to "gzip",
-        "Accept" to "application/json, text/plain, */*",
-        "Accept-Language" to "en-US,en;q=0.9",
-        "User-Agent" to DESKTOP_USER_AGENT,
-        "sec-ch-ua" to DESKTOP_SEC_CH_UA,
-        "sec-ch-ua-mobile" to DESKTOP_SEC_CH_UA_MOBILE,
-        "sec-ch-ua-platform" to DESKTOP_SEC_CH_UA_PLATFORM,
-    )
-    if (!referer.isNullOrBlank()) {
-        headers["Referer"] = referer
-    }
-    return headers
-}
-
-private fun createZhihuLoginHeaders(
-    cookies: Map<String, String>,
-    referer: String,
-    isPolling: Boolean = false,
-): Map<String, String> {
-    val headers = createDesktopHeaders(referer)
-    headers["Origin"] = HOME_URL.removeSuffix("/")
-    headers["x-requested-with"] = "fetch"
-    headers["content-type"] = "application/json;charset=UTF-8"
-    if (isPolling) {
-        headers["Accept"] = "*/*"
-        headers["sec-fetch-dest"] = "empty"
-        headers["sec-fetch-mode"] = "cors"
-        headers["sec-fetch-site"] = "same-origin"
-        headers["x-zse-93"] = "101_3_3.0"
-    }
-    getXsrf(cookies)?.let {
-        headers["x-xsrftoken"] = it
-    }
-    return headers
-}
-
-private fun syncCookiesFromScanInfo(
-    cookies: MutableMap<String, String>,
-    scanInfo: ZhihuQrScanInfo,
-) {
-    val rawCookie = listOf(scanInfo.cookie, scanInfo.cookies)
-        .filterIsInstance<String>()
-        .joinToString(";")
-    cookies.putAll(parseCookieAssignments(rawCookie))
-    scanInfo.zC0
-        ?.takeIf { it.isNotBlank() }
-        ?.let { cookies["z_c0"] = it }
-}
-
-private fun parseCookieAssignments(rawCookie: String): Map<String, String> {
-    val skipCookieAttributes = setOf("Domain", "Path", "Expires", "Max-Age", "HttpOnly", "Secure", "SameSite")
-    return rawCookie
-        .split(";")
-        .mapNotNull { item ->
-            val trimmed = item.trim()
-            if (!trimmed.contains("=")) {
-                return@mapNotNull null
-            }
-            val name = trimmed.substringBefore("=").trim()
-            if (name.isBlank() || skipCookieAttributes.contains(name)) {
-                return@mapNotNull null
-            }
-            val value = trimmed.substringAfter("=").trim()
-            if (value.isBlank()) {
-                return@mapNotNull null
-            }
-            name to value
-        }.toMap()
-}
-
-private fun isQrLoginSuccessful(scanInfo: ZhihuQrScanInfo): Boolean {
-    if (scanInfo.userId != null || !scanInfo.accessToken.isNullOrBlank() || scanInfo.success == true || scanInfo.loggedIn == true) {
-        return true
-    }
-    val loginStatus = scanInfo.loginStatus.orEmpty().uppercase()
-    return loginStatus in setOf("CONFIRMED", "LOGIN_SUCCESS", "SUCCESS", "OK", "LOGGED_IN")
-}
-
-private fun isRiskControlResponse(
-    statusCode: Int,
-    scanInfo: ZhihuQrScanInfo,
-): Boolean {
-    val errorBody = scanInfo.error ?: return false
-    return statusCode == 403 && (errorBody.code == 40352 || errorBody.needLogin == true)
-}
-
-private fun getXsrf(cookies: Map<String, String>): String? = cookies["_xsrf"]
-
-private fun normalizeDeadline(expiresAt: Long?): Long {
-    if (expiresAt == null || expiresAt <= 0) {
-        return System.currentTimeMillis() + 120_000
-    }
-    return if (expiresAt < 10_000_000_000L) {
-        expiresAt * 1000
-    } else {
-        expiresAt
-    }
-}
-
 private fun generateQrBitmap(content: String): Bitmap {
     val size = 960
     val bitMatrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
@@ -869,7 +597,7 @@ private fun generateQrBitmap(content: String): Bitmap {
 private fun readWebViewCookies(url: String?): Map<String, String> {
     val cookieManager = CookieManager.getInstance()
     val cookies = mutableMapOf<String, String>()
-    cookies.putAll(parseCookieAssignments(cookieManager.getCookie(HOME_URL).orEmpty()))
+    cookies.putAll(parseCookieAssignments(cookieManager.getCookie(ZHIHU_HOME_URL).orEmpty()))
     if (!url.isNullOrBlank()) {
         cookies.putAll(parseCookieAssignments(cookieManager.getCookie(url).orEmpty()))
     }
