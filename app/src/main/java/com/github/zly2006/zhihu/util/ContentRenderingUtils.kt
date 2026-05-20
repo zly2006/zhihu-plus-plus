@@ -52,14 +52,9 @@ import org.jsoup.nodes.TextNode
  * 从 img 元素提取最高质量的图片URL（无水印原图）
  * 按优先级尝试不同的属性
  */
-fun extractImageUrl(imgElement: Element): String? = imgElement.attr("data-original-token").takeIf { it.startsWith("v2-") }?.let {
-    "https://pic1.zhimg.com/$it"
-}
-    ?: imgElement.attr("data-original").takeIf { it.isNotBlank() }
-    ?: imgElement.attr("data-default-watermark-src").takeIf { it.isNotBlank() }
-    ?: imgElement.attr("data-actualsrc").takeIf { it.isNotBlank() }
-    ?: imgElement.attr("data-thumbnail").takeIf { it.isNotBlank() }
-    ?: imgElement.attr("src").takeIf { it.isNotBlank() }
+fun extractImageUrl(imgElement: Element): String? =
+    com.github.zly2006.zhihu.shared.util
+        .extractImageUrl(imgElement::attr)
 
 /**
  * 处理文本节点中的emoji，提取emoji占位符并添加到AnnotatedString
