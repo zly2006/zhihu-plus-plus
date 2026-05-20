@@ -19,12 +19,13 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Feed
-import kotlin.math.ceil
+import com.github.zly2006.zhihu.shared.recommendation.applyReasonDiversity as applySharedReasonDiversity
 import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity as buildSharedContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason as buildSharedLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.buildReasonPreference as buildSharedReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.normalizeLocalContentId as normalizeSharedLocalContentId
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity as parseSharedLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget as scoreSharedFeedTarget
 import com.github.zly2006.zhihu.shared.recommendation.stableLocalFeedId as stableSharedLocalFeedId
 import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity as toSharedLocalContentIdentity
 import com.github.zly2006.zhihu.shared.recommendation.toNavDestination as toSharedNavDestination
@@ -52,46 +53,7 @@ fun LocalContentIdentity.toNavDestination(title: String): NavDestination? = toSh
 
 fun Feed.Target.toLocalContentIdentity(): LocalContentIdentity = toSharedLocalContentIdentity()
 
-fun scoreFeedTarget(target: Feed.Target): Double {
-    var score = 1.0
-
-    when (target) {
-        is Feed.AnswerTarget -> {
-            score += (target.voteupCount / 100.0).coerceAtMost(5.0)
-            score += (target.commentCount / 50.0).coerceAtMost(2.0)
-        }
-
-        is Feed.ArticleTarget -> {
-            score += (target.voteupCount / 100.0).coerceAtMost(5.0)
-            score += (target.commentCount / 50.0).coerceAtMost(2.0)
-        }
-
-        is Feed.VideoTarget -> {
-            score += (target.voteCount / 100.0).coerceAtMost(5.0)
-            score += (target.commentCount / 50.0).coerceAtMost(2.0)
-        }
-
-        is Feed.PinTarget -> {
-            score += (target.favoriteCount / 50.0).coerceAtMost(3.0)
-            score += (target.commentCount / 20.0).coerceAtMost(1.0)
-        }
-
-        is Feed.QuestionTarget -> {
-            score += (target.answerCount / 10.0).coerceAtMost(2.0)
-            score += (target.followerCount / 100.0).coerceAtMost(3.0)
-            score += (target.commentCount / 20.0).coerceAtMost(1.0)
-        }
-    }
-
-    val contentLength = target.excerpt?.length ?: 0
-    score += when {
-        contentLength in 100..500 -> 1.0
-        contentLength in 50..99 || contentLength in 501..1000 -> 0.5
-        else -> 0.0
-    }
-
-    return score.coerceIn(0.1, 10.0)
-}
+fun scoreFeedTarget(target: Feed.Target): Double = scoreSharedFeedTarget(target)
 
 fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference = buildSharedReasonPreference(stats)
 
@@ -110,49 +72,10 @@ fun buildLocalRecommendationReason(
 fun applyReasonDiversity(
     rankedResults: List<RankedLocalResult>,
     limit: Int,
-): List<RankedLocalResult> {
-    if (limit <= 0 || rankedResults.isEmpty()) {
-        return emptyList()
-    }
-    if (rankedResults.size <= limit) {
-        return rankedResults
-    }
-
-    val selected = mutableListOf<RankedLocalResult>()
-    val reasonCounts = mutableMapOf<CrawlingReason, Int>()
-    val maxPerReason = ceil(limit * 0.5).toInt().coerceAtLeast(1)
-    val diversityTarget = rankedResults
-        .map { it.result.reason }
-        .distinct()
-        .size
-        .coerceAtMost(limit)
-        .coerceAtMost(3)
-
-    rankedResults.forEach { ranked ->
-        if (selected.size >= diversityTarget) return@forEach
-        if (selected.none { it.result.reason == ranked.result.reason }) {
-            selected.add(ranked)
-            reasonCounts[ranked.result.reason] = 1
-        }
-    }
-
-    rankedResults.forEach { ranked ->
-        if (selected.size >= limit || ranked in selected) return@forEach
-        val currentCount = reasonCounts[ranked.result.reason] ?: 0
-        if (currentCount < maxPerReason) {
-            selected.add(ranked)
-            reasonCounts[ranked.result.reason] = currentCount + 1
-        }
-    }
-
-    if (selected.size < limit) {
-        rankedResults.forEach { ranked ->
-            if (selected.size >= limit || ranked in selected) return@forEach
-            selected.add(ranked)
-        }
-    }
-
-    return selected.take(limit)
-}
+): List<RankedLocalResult> = applySharedReasonDiversity(
+    rankedResults = rankedResults,
+    limit = limit,
+    reasonOf = { it.result.reason },
+)
 
 fun stableLocalFeedId(contentId: String): String = stableSharedLocalFeedId(contentId)

@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.shared.recommendation
 
+import com.github.zly2006.zhihu.shared.data.Feed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -65,6 +66,43 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun scoreFeedTargetUsesEngagementAndContentLength() {
+        val target = Feed.AnswerTarget(
+            id = 42,
+            url = "https://www.zhihu.com/question/1/answer/42",
+            author = null,
+            question = Feed.QuestionTarget(
+                id = 1,
+                _title = "问题标题",
+                url = "https://www.zhihu.com/question/1",
+                type = "question",
+            ),
+            voteupCount = 250,
+            commentCount = 40,
+            excerpt = "a".repeat(120),
+        )
+
+        assertEquals(5.3, scoreFeedTarget(target))
+    }
+
+    @Test
+    fun applyReasonDiversityPreventsSingleReasonFromDominating() {
+        val ranked = listOf(
+            TestRankedResult("answer:1", reason = "trending", score = 9.0),
+            TestRankedResult("answer:2", reason = "trending", score = 8.8),
+            TestRankedResult("answer:3", reason = "trending", score = 8.6),
+            TestRankedResult("answer:4", reason = "following", score = 8.5),
+            TestRankedResult("answer:5", reason = "upvoted_question", score = 8.4),
+        )
+
+        val diverse = applyReasonDiversity(rankedResults = ranked, limit = 4) { it.reason }
+
+        assertEquals(4, diverse.size)
+        assertTrue(diverse.count { it.reason == "trending" } <= 2)
+        assertTrue(diverse.any { it.reason == "following" })
+    }
+
+    @Test
     fun buildLocalRecommendationReasonCombinesNonBlankReasons() {
         assertEquals(
             "基础理由 · 你明确喜欢过类似内容 · 你经常点开这类来源",
@@ -86,4 +124,10 @@ class LocalRecommendationSupportTest {
     fun stableLocalFeedIdReplacesTypedSeparator() {
         assertEquals("local_feed_answer_42", stableLocalFeedId("answer:42"))
     }
+
+    private data class TestRankedResult(
+        val contentId: String,
+        val reason: String,
+        val score: Double,
+    )
 }

@@ -6,6 +6,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.Feed
+import kotlin.math.ceil
 
 data class LocalContentIdentity(
     val type: String,
@@ -93,6 +94,98 @@ fun Feed.Target.toLocalContentIdentity(): LocalContentIdentity = when (this) {
         id.toString(),
     )
     is Feed.VideoTarget -> LocalContentIdentity("video", id.toString())
+}
+
+fun scoreFeedTarget(target: Feed.Target): Double {
+    var score = 1.0
+
+    when (target) {
+        is Feed.AnswerTarget -> {
+            score += (target.voteupCount / 100.0).coerceAtMost(5.0)
+            score += (target.commentCount / 50.0).coerceAtMost(2.0)
+        }
+
+        is Feed.ArticleTarget -> {
+            score += (target.voteupCount / 100.0).coerceAtMost(5.0)
+            score += (target.commentCount / 50.0).coerceAtMost(2.0)
+        }
+
+        is Feed.VideoTarget -> {
+            score += (target.voteCount / 100.0).coerceAtMost(5.0)
+            score += (target.commentCount / 50.0).coerceAtMost(2.0)
+        }
+
+        is Feed.PinTarget -> {
+            score += (target.favoriteCount / 50.0).coerceAtMost(3.0)
+            score += (target.commentCount / 20.0).coerceAtMost(1.0)
+        }
+
+        is Feed.QuestionTarget -> {
+            score += (target.answerCount / 10.0).coerceAtMost(2.0)
+            score += (target.followerCount / 100.0).coerceAtMost(3.0)
+            score += (target.commentCount / 20.0).coerceAtMost(1.0)
+        }
+    }
+
+    val contentLength = target.excerpt?.length ?: 0
+    score += when {
+        contentLength in 100..500 -> 1.0
+        contentLength in 50..99 || contentLength in 501..1000 -> 0.5
+        else -> 0.0
+    }
+
+    return score.coerceIn(0.1, 10.0)
+}
+
+fun <T, R> applyReasonDiversity(
+    rankedResults: List<T>,
+    limit: Int,
+    reasonOf: (T) -> R,
+): List<T> {
+    if (limit <= 0 || rankedResults.isEmpty()) {
+        return emptyList()
+    }
+    if (rankedResults.size <= limit) {
+        return rankedResults
+    }
+
+    val selected = mutableListOf<T>()
+    val reasonCounts = mutableMapOf<R, Int>()
+    val maxPerReason = ceil(limit * 0.5).toInt().coerceAtLeast(1)
+    val diversityTarget = rankedResults
+        .map(reasonOf)
+        .distinct()
+        .size
+        .coerceAtMost(limit)
+        .coerceAtMost(3)
+
+    rankedResults.forEach { ranked ->
+        if (selected.size >= diversityTarget) return@forEach
+        val reason = reasonOf(ranked)
+        if (selected.none { reasonOf(it) == reason }) {
+            selected.add(ranked)
+            reasonCounts[reason] = 1
+        }
+    }
+
+    rankedResults.forEach { ranked ->
+        if (selected.size >= limit || ranked in selected) return@forEach
+        val reason = reasonOf(ranked)
+        val currentCount = reasonCounts[reason] ?: 0
+        if (currentCount < maxPerReason) {
+            selected.add(ranked)
+            reasonCounts[reason] = currentCount + 1
+        }
+    }
+
+    if (selected.size < limit) {
+        rankedResults.forEach { ranked ->
+            if (selected.size >= limit || ranked in selected) return@forEach
+            selected.add(ranked)
+        }
+    }
+
+    return selected.take(limit)
 }
 
 fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference {
