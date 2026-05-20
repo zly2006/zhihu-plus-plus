@@ -37,7 +37,7 @@ class LocalRecommendationEngine(
         val navDestination: NavDestination?,
     )
 
-    private val database by lazy { LocalContentDatabase.getDatabase(context) }
+    private val database by lazy { getLocalContentDatabase(context) }
     private val dao by lazy { database.contentDao() }
     private val feedGenerator by lazy { FeedGenerator(context) }
     private val userBehaviorAnalyzer by lazy { UserBehaviorAnalyzer(context) }

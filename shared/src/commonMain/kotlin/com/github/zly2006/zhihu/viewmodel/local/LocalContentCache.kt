@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /*
 关于 本地推荐模式：
@@ -39,7 +40,7 @@ data class CrawlingTask(
     val reason: CrawlingReason,
     val status: CrawlingStatus = CrawlingStatus.NotStarted,
     val priority: Int = 0,
-    val createdAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = currentEpochMillis(),
     val executedAt: Long? = null,
     val errorMessage: String? = null,
 )
@@ -60,7 +61,7 @@ data class CrawlingResult(
     val url: String,
     val reason: CrawlingReason,
     val score: Double = 0.0,
-    val createdAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = currentEpochMillis(),
 )
 
 @Entity(tableName = "local_feeds")
@@ -73,7 +74,7 @@ data class LocalFeed(
     val reasonDisplay: String,
     val navDestination: String?,
     val userFeedback: Double = 0.0,
-    val createdAt: Long = System.currentTimeMillis(),
+    val createdAt: Long = currentEpochMillis(),
 )
 
 @Entity(tableName = "user_behaviors")
@@ -82,7 +83,7 @@ data class UserBehavior(
     val id: Long = 0,
     val contentId: String,
     val action: String, // "like", "dislike", "share", "comment", "view"
-    val timestamp: Long = System.currentTimeMillis(),
+    val timestamp: Long = currentEpochMillis(),
     val duration: Long? = null, // 阅读时长，毫秒
 )
 
@@ -127,3 +128,5 @@ interface ZhihuLocalFeedClient {
 
     suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult>
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

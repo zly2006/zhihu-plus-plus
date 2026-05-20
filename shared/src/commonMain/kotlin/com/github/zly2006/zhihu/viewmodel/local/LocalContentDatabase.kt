@@ -17,11 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
+import androidx.room.ConstructedBy
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabase.Builder
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.Dispatchers
 
 @Database(
     entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class],
@@ -29,23 +32,17 @@ import androidx.room.TypeConverters
     exportSchema = false,
 )
 @TypeConverters(LocalDatabaseConverters::class)
+@ConstructedBy(LocalContentDatabaseConstructor::class)
 abstract class LocalContentDatabase : RoomDatabase() {
     abstract fun contentDao(): LocalContentDao
-
-    companion object {
-        @Volatile
-        @Suppress("ktlint")
-        private var INSTANCE: LocalContentDatabase? = null
-
-        fun getDatabase(context: Context): LocalContentDatabase = INSTANCE ?: synchronized(this) {
-            val instance = Room
-                .databaseBuilder(
-                    context.applicationContext,
-                    LocalContentDatabase::class.java,
-                    "local_content_database",
-                ).build()
-            INSTANCE = instance
-            instance
-        }
-    }
 }
+
+@Suppress("NO_ACTUAL_FOR_EXPECT")
+expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalContentDatabase>
+
+fun buildLocalContentDatabase(
+    builder: Builder<LocalContentDatabase>,
+): LocalContentDatabase = builder
+    .setDriver(BundledSQLiteDriver())
+    .setQueryCoroutineContext(Dispatchers.Default)
+    .build()

@@ -24,7 +24,7 @@ import kotlinx.coroutines.withContext
 class LocalContentInitializer(
     private val context: Context,
 ) {
-    private val database by lazy { LocalContentDatabase.getDatabase(context) }
+    private val database by lazy { getLocalContentDatabase(context) }
     private val dao by lazy { database.contentDao() }
 
     suspend fun initializeIfNeeded() {

@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 class TaskScheduler(
     private val context: Context,
 ) {
-    private val database by lazy { LocalContentDatabase.getDatabase(context) }
+    private val database by lazy { getLocalContentDatabase(context) }
     private val dao by lazy { database.contentDao() }
     private val crawlingExecutor by lazy { CrawlingExecutor(context) }
 

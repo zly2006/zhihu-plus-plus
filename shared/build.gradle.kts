@@ -1,10 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jlleitschuh.gradle.ktlint.tasks.GenerateReportsTask
+import org.jlleitschuh.gradle.ktlint.tasks.KtLintFormatTask
 
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.compose")
     kotlin("plugin.serialization")
     id("com.android.kotlin.multiplatform.library")
+    id("com.google.devtools.ksp")
     id("org.jetbrains.compose")
     id("org.jlleitschuh.gradle.ktlint")
 }
@@ -16,7 +19,45 @@ ktlint {
     filter {
         exclude("**/generated/**")
         exclude("**/build/**")
+        exclude("build/generated/**")
+        exclude("**/build/generated/ksp/**")
+        exclude("**/ksp/**")
+        exclude { it.file.absolutePath.contains("/build/generated/") }
     }
+}
+
+tasks.withType<KtLintFormatTask>().configureEach {
+    exclude("**/generated/**")
+    exclude("build/generated/**")
+    exclude("**/build/generated/ksp/**")
+    exclude("**/ksp/**")
+    exclude { it.file.absolutePath.contains("/build/generated/") }
+}
+
+tasks
+    .withType<GenerateReportsTask>()
+    .matching { it.name in setOf("ktlintAndroidMainSourceSetFormat", "ktlintJvmMainSourceSetFormat") }
+    .configureEach {
+        enabled = false
+    }
+
+mapOf(
+    "runKtlintFormatOverAndroidMainSourceSet" to "src/androidMain/kotlin",
+    "runKtlintFormatOverJvmMainSourceSet" to "src/jvmMain/kotlin",
+    "runKtlintFormatOverCommonMainSourceSet" to "src/commonMain/kotlin",
+    "runKtlintFormatOverJvmTestSourceSet" to "src/jvmTest/kotlin",
+).forEach { (taskName, sourcePath) ->
+    tasks.withType<KtLintFormatTask>().matching { it.name == taskName }.configureEach {
+        setSource(
+            fileTree(sourcePath) {
+                include("**/*.kt")
+            },
+        )
+    }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 kotlin {
@@ -68,6 +109,8 @@ kotlin {
             implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+            implementation("androidx.room:room-runtime:2.8.4")
+            implementation("androidx.sqlite:sqlite-bundled:2.6.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -84,4 +127,9 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
         }
     }
+}
+
+dependencies {
+    add("kspAndroid", "androidx.room:room-compiler:2.8.4")
+    add("kspJvm", "androidx.room:room-compiler:2.8.4")
 }

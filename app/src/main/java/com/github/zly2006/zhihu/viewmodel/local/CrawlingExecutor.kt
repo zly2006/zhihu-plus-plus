@@ -33,7 +33,7 @@ import kotlinx.serialization.json.jsonArray
 class CrawlingExecutor(
     private val context: Context,
 ) {
-    private val database by lazy { LocalContentDatabase.getDatabase(context) }
+    private val database by lazy { getLocalContentDatabase(context) }
     private val dao by lazy { database.contentDao() }
 
     /**
