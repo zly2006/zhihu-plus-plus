@@ -142,9 +142,10 @@ git commit -m "docs: 记录 KMP 剩余迁移计划"
 - Test: add or update shared/common tests for route serialization.
 
 **Prior Mistakes To Avoid:**
-- Do not repeat the earlier mistake of treating `NavDestination` as Android-only because it was under `app/src/main`.
-- Do not repeat the earlier mistake of treating `ZhihuMain.kt`, `LocalNavigator.kt`, or `AnswerNavigator.kt` as Android runtime adapters. They are shared navigation/UI-shell targets; only their actual Android API call sites should be split.
-- Do not create a separate desktop route model before proving `org.jetbrains.androidx.navigation:navigation-compose` cannot compile the shared shell.
+- Root misunderstanding in bad commit `fd313cd refactor: 收紧 shared 平台边界`: it confused current location/caller with ownership. Code being under `app/src/main`, being called by Android UI, or importing a package whose name starts with `androidx` does not prove Android ownership. Ownership is decided by semantics and side effects: route/model/helper, navigation semantics, state models, URL/JSON mapping, feed navigation mapping, filtering, and content-open algorithms belong in shared; `Context`, `Intent`, WebView, APK/update/install, Toast/Dialog/Activity, file paths, system notifications, and platform callbacks belong in platform adapters.
+- Root process failure in `fd313cd`: it expanded local platform dependencies into whole-file exile. If one function needs platform capability, split that function or inject a small platform interface; do not move the whole semantic model/helper out of `shared/commonMain`.
+- Root research failure in `fd313cd`: it judged APIs by names and assumptions before checking KMP variants or compiling. `org.jetbrains.androidx.navigation:navigation-compose` has KMP variants, so Navigation Compose APIs must be tested in `shared/commonMain` before inventing a desktop-only route model or Android-only adapter.
+- Concrete files already corrected from that bad boundary: `NavDestination`, `FeedNavigation`, `ArticleState`, `CommentRoutes`, `ContentOpenEventSupport`, and `CommentItem` were moved back to shared. Do not move them back to app unless a real platform side effect is introduced and cannot be isolated.
 
 - [ ] **Step 1: Audit platform-only content in navigation files**
 
