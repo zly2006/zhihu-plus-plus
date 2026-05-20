@@ -2,12 +2,17 @@ package com.github.zly2006.zhihu.desktop
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +29,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.fetchHotListPage
+import com.github.zly2006.zhihu.shared.data.flattenFeeds
+import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.shared.login.ZHIHU_RISK_CONTROL_URL
 import com.github.zly2006.zhihu.shared.login.normalizeDeadline
 import com.github.zly2006.zhihu.shared.login.pollQrCodeLogin
@@ -43,6 +52,7 @@ fun DesktopQrLoginScreen(
     var qrBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var statusText by remember { mutableStateOf("正在获取二维码") }
     var isWorking by remember { mutableStateOf(true) }
+    var isLoggedIn by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshKey) {
         val savedData = store.load()
@@ -53,6 +63,7 @@ fun DesktopQrLoginScreen(
             if (store.verifyAndSave(cookies)) {
                 statusText = "已使用备份 cookie 登录：${store.load().username}"
                 isWorking = false
+                isLoggedIn = true
                 return@LaunchedEffect
             }
         }
@@ -87,6 +98,7 @@ fun DesktopQrLoginScreen(
 
                 if (success) {
                     statusText = if (store.verifyAndSave(cookies)) {
+                        isLoggedIn = true
                         "登录成功，cookie 已备份"
                     } else {
                         "登录结果验证失败，请重试"
@@ -106,6 +118,11 @@ fun DesktopQrLoginScreen(
     }
 
     MaterialTheme {
+        if (isLoggedIn) {
+            DesktopHotListScreen(store = store)
+            return@MaterialTheme
+        }
+
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -137,6 +154,103 @@ fun DesktopQrLoginScreen(
             Button(onClick = { refreshKey += 1 }) {
                 Text("刷新二维码")
             }
+        }
+    }
+}
+
+@Composable
+private fun DesktopHotListScreen(
+    store: DesktopAccountStore,
+) {
+    var refreshKey by remember { mutableIntStateOf(0) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+    var hotItems by remember { mutableStateOf<List<FeedDisplayItem>>(emptyList()) }
+
+    LaunchedEffect(refreshKey) {
+        isLoading = true
+        errorText = null
+        val account = store.load()
+        store.createHttpClient(account.cookies).use { client ->
+            runCatching {
+                fetchHotListPage(client, account.cookies)
+                    .data
+                    .flattenFeeds()
+                    .map { it.toDisplayItem(enableQualityFilter = false) }
+            }.onSuccess {
+                hotItems = it
+            }.onFailure {
+                errorText = it.message ?: "加载失败"
+            }
+        }
+        isLoading = false
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "知乎热榜",
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                text = "已登录：${store.load().username}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.size(12.dp))
+            Button(onClick = { refreshKey += 1 }) {
+                Text("刷新")
+            }
+        }
+
+        when {
+            isLoading -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+
+            errorText != null -> Text(
+                text = errorText.orEmpty(),
+                modifier = Modifier.padding(16.dp),
+                color = MaterialTheme.colorScheme.error,
+            )
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                items(hotItems, key = { it.stableKey }) { item ->
+                    HotListItem(item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HotListItem(item: FeedDisplayItem) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            item.summary?.takeIf { it.isNotBlank() }?.let {
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Spacer(modifier = Modifier.size(6.dp))
+            Text(
+                text = item.details,
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
     }
 }
