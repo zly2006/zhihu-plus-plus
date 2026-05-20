@@ -141,3 +141,18 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 当我要求你发 PR 的时候，PR 的title必须以feat: /fix: /refactor: 开头，标题和内容必须用中文写。
 提交PR前，先更新master与远程同步或领先，并确保当前分支基于master，而不包括其他feature branch的内容。
 如果一开始给你的提示词包括了issue链接，并且此PR解决了这个issue，应该写上Resolves #issue_number在PR描述里，这样GitHub会自动关联并在PR合并时关闭这个issue。
+
+## KMP 迁移工作约束
+
+当前 `codex/kmp-migration` worktree 用于把现有 Zhihu++ Android 项目迁移到 `/Users/zhaoliyan/IdeaProjects/demo1` 风格的 Kotlin Multiplatform 项目。
+
+- 迁移时必须保留现有 `skills`、`agents`/`AGENTS.md`/`.agents`、`.codex`、`.claude`、`.mcp.json`、文档、报告、脚本、Rust 配套服务、fastlane 等 AI/文档/配套服务文件；只能增量新增或移动到兼容位置，不能无故删减。
+- 不能无脑覆盖 demo1。复制或复用 demo1 内容前必须检查包名、namespace、applicationId、模块名、资源名和入口类，改成当前项目需要的 `com.github.zly2006.zhihu` / `com.github.zly2006.zhplus` 约定。
+- iOS 目标可以保留在工程结构中，但本次不执行任何 iOS 相关构建、测试、调试或发布任务。
+- Android 必须使用 AVD 验证，不使用真机；lite 包名仍为 `com.github.zly2006.zhplus.lite`。
+- JVM/desktop 端不能依赖或引入任何 WebView 相关实现。需要扫码登录时，先用 `terminal-notifier -message "需要扫码登录 JVM 端" -sound default` 提醒用户；登录成功后必须备份 cookie，避免重复要求登录。
+- Android 端可以在 AVD 正常登录；覆盖 cookie 后必须能执行现有操作，且 UI 不应发生非预期变化。
+- JVM 端必须可以扫码登录；覆盖 cookie 后必须能执行现有操作。桌面端 UI 自适配不属于本次范围，但核心 UI 应与 Android 保持一致。
+- `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。
+- 编译耗时较长时，尽量在完成一个大任务后再构建验证；每完成一个大任务，在本迁移分支里及时提交。
+- 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。

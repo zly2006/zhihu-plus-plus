@@ -194,6 +194,7 @@ val aboutLibraries = "14.0.1"
 val composeVersion = "1.11.0"
 val lifecycleVersion = "2.10.0"
 dependencies {
+    implementation(project(":shared"))
     implementation("androidx.preference:preference:1.2.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     implementation("io.ktor:ktor-client-core-jvm:$ktor")
