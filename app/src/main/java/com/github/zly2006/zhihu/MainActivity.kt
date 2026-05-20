@@ -66,6 +66,7 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -716,7 +717,7 @@ class MainActivity : ComponentActivity() {
         const val IOS = "5_2.0"
         const val ANDROID = "4_2.0"
         const val WEB = "3_2.0"
-        const val ZSE93 = "101_3_3.0"
+        const val ZSE93 = ZHIHU_WEB_ZSE93
         const val TAG = "MainActivity"
     }
 }

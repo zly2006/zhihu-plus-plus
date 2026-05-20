@@ -19,10 +19,11 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.shared.data.zhihuHotListUrl
 
 class HotListViewModel : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&mobile=true"
+        get() = zhihuHotListUrl()
 
     init {
         allowGuestAccess = true

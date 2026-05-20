@@ -2,9 +2,24 @@
 
 package com.github.zly2006.zhihu.shared.util
 
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sin
+
+const val ZHIHU_WEB_ZSE93 = "101_3_3.0"
+
+fun HttpRequestBuilder.signZhihuFetchRequest(
+    zse93: String = ZHIHU_WEB_ZSE93,
+    dc0: String,
+    body: String? = null,
+) {
+    val requestUrl = url.buildString()
+    header("x-zse-93", zse93)
+    header("x-zse-96", ZhihuFetchSignature.createZse96Header(zse93, requestUrl, dc0, body))
+    header("x-requested-with", "fetch")
+}
 
 object ZhihuFetchSignature {
     fun createZse96Header(

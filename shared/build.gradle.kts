@@ -20,6 +20,10 @@ ktlint {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "com.github.zly2006.zhihu.shared"
         compileSdk = 36
@@ -59,18 +63,24 @@ kotlin {
             implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             implementation("io.ktor:ktor-client-core:3.5.0")
+            implementation("io.ktor:ktor-client-content-negotiation:3.5.0")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+            implementation("io.ktor:ktor-client-mock:3.5.0")
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.13.0")
+            implementation("org.jsoup:jsoup:1.22.1")
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
+            implementation("org.jsoup:jsoup:1.22.1")
         }
     }
 }

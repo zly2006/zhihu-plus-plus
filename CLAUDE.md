@@ -155,4 +155,5 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - JVM 端必须可以扫码登录；覆盖 cookie 后必须能执行现有操作。桌面端 UI 自适配不属于本次范围，但核心 UI 应与 Android 保持一致。
 - `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。
 - 编译耗时较长时，尽量在完成一个大任务后再构建验证；每完成一个大任务，在本迁移分支里及时提交。
+- 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。

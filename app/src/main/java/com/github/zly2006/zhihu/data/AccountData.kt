@@ -24,8 +24,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
+import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuAccount
+import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -34,28 +38,20 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.cache.HttpCache
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.put
 import java.io.File
 
 object AccountData {
@@ -119,16 +115,16 @@ object AccountData {
         context: Context,
         cookies: MutableMap<String, String>?,
     ) {
-        install(HttpCache)
-        install(HttpCookies) {
-            storage = cookieStorage(context, cookies)
-        }
-        install(ContentNegotiation) {
-            json(json)
-        }
-        install(UserAgent) {
-            agent = data.userAgent
-        }
+        installZhihuCommonClientConfig(
+            cookies = cookies ?: data.cookies,
+            userAgent = data.userAgent,
+            onCookieChanged = {
+                if (cookies == null) {
+                    saveData(context, data)
+                }
+            },
+            enableHttpCache = true,
+        )
     }
 
     fun createConfiguredHttpClient(
@@ -175,22 +171,18 @@ object AccountData {
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
         val map = cookies.toMutableMap()
         val httpClient = httpClient(context, map)
-        val response = httpClient.get("https://www.zhihu.com/api/v4/me")
-        if (response.status == HttpStatusCode.OK) {
-            val jojo = response.body<JsonObject>()
-            val person = decodeJson<Person>(jojo)
-            saveData(
-                context,
-                Data(
-                    login = true,
-                    cookies = map,
-                    username = person.name,
-                    self = person,
-                ),
-            )
-            return true
-        }
-        return false
+        val jojo = fetchVerifiedZhihuAccount(httpClient) ?: return false
+        val person = decodeJson<Person>(jojo)
+        saveData(
+            context,
+            Data(
+                login = true,
+                cookies = map,
+                username = person.name,
+                self = person,
+            ),
+        )
+        return true
     }
 
     fun delete(context: Context) {
@@ -278,15 +270,10 @@ object AccountData {
         contentType: String,
     ) {
         runCatching {
-            fetchPost(context, "https://www.zhihu.com/api/v4/read_history/add") {
+            fetchPost(context, ZHIHU_READ_HISTORY_ADD_URL) {
                 signFetchRequest()
                 contentType(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("content_token", contentToken)
-                        put("content_type", contentType)
-                    }.toString(),
-                )
+                setBody(buildZhihuReadHistoryBody(contentToken, contentType))
             }
         }
     }

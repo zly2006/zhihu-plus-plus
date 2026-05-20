@@ -1,5 +1,8 @@
 package com.github.zly2006.zhihu.shared.util
 
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.http.HttpHeaders
+import io.ktor.http.takeFrom
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -21,5 +24,21 @@ class ZhihuFetchSignatureTest {
         )
 
         assertTrue(header.startsWith("2.0_"))
+    }
+
+    @Test
+    fun signZhihuFetchRequestAddsRequiredHeaders() {
+        val builder = HttpRequestBuilder().apply {
+            url.takeFrom("https://www.zhihu.com/api/v4/me")
+            signZhihuFetchRequest(
+                dc0 = "token",
+                body = """{"hello":"world"}""",
+            )
+        }
+
+        assertEquals("101_3_3.0", builder.headers["x-zse-93"])
+        assertEquals("fetch", builder.headers["x-requested-with"])
+        assertTrue(builder.headers["x-zse-96"].orEmpty().startsWith("2.0_"))
+        assertTrue(HttpHeaders.UserAgent !in builder.headers.names())
     }
 }

@@ -17,20 +17,6 @@
 
 package com.github.zly2006.zhihu.data
 
-import kotlinx.serialization.Serializable
+typealias DailyStoriesResponse = com.github.zly2006.zhihu.shared.data.DailyStoriesResponse
 
-@Serializable
-data class DailyStoriesResponse(
-    val date: String,
-    val stories: List<DailyStory>,
-)
-
-@Serializable
-data class DailyStory(
-    val id: Long,
-    val title: String,
-    val url: String,
-    val hint: String,
-    val images: List<String>,
-    val type: Int,
-)
+typealias DailyStory = com.github.zly2006.zhihu.shared.data.DailyStory

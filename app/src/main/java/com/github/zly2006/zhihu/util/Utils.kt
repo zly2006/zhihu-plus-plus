@@ -26,7 +26,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
-import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -41,7 +41,6 @@ import kotlinx.serialization.serializer
 import java.security.MessageDigest
 
 fun HttpRequestBuilder.signFetchRequest() {
-    val url = url.buildString()
     val body = if (contentType() == ContentType.Application.Json) {
         body as? String
             ?: bodyType?.kotlinType?.let { type ->
@@ -50,10 +49,11 @@ fun HttpRequestBuilder.signFetchRequest() {
     } else {
         null
     }
-    header("x-zse-93", MainActivity.ZSE93)
-    val dc0 = AccountData.data.cookies["d_c0"] ?: ""
-    header("x-zse-96", ZhihuFetchSignature.createZse96Header(MainActivity.ZSE93, url, dc0, body))
-    header("x-requested-with", "fetch")
+    signZhihuFetchRequest(
+        zse93 = MainActivity.ZSE93,
+        dc0 = AccountData.data.cookies["d_c0"] ?: "",
+        body = body,
+    )
 }
 
 @OptIn(DelicateCoroutinesApi::class)

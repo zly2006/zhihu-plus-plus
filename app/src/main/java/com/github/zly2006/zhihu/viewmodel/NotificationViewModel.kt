@@ -24,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.NotificationItem
-import com.github.zly2006.zhihu.data.ZhihuMeNotifications
+import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
+import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
+import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
 import com.github.zly2006.zhihu.ui.NotificationPreferences
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -35,7 +37,7 @@ class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
         dataType = typeOf<NotificationItem>(),
     ) {
-    override val initialUrl = "https://www.zhihu.com/api/v4/notifications/v2/recent?limit=20"
+    override val initialUrl = zhihuNotificationRecentUrl()
 
     // 未读消息数量
     var unreadCount: Int by mutableIntStateOf(0)
@@ -58,10 +60,9 @@ class NotificationViewModel :
      */
     private suspend fun getUnreadCount(context: Context): Int {
         try {
-            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+            return fetchZhihuUnreadNotificationCount(AccountData.httpClient(context)) {
                 signFetchRequest()
-            }!!
-            return AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
+            }
         } catch (_: Exception) {
             // 忽略错误
             return 0
@@ -111,13 +112,7 @@ class NotificationViewModel :
      */
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun markAllAsRead(context: Context) {
-        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/default/actions/readall") {
-            signFetchRequest()
-        }
-        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/follow/actions/readall") {
-            signFetchRequest()
-        }
-        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/notifications/v2/vote_thank/actions/readall") {
+        markAllZhihuNotificationsAsRead(AccountData.httpClient(context)) {
             signFetchRequest()
         }
     }

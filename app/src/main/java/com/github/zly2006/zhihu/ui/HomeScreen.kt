@@ -84,12 +84,12 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.RecommendationMode
-import com.github.zly2006.zhihu.data.ZhihuMeNotifications
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -270,10 +270,9 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+            unreadCount = fetchZhihuUnreadNotificationCount(AccountData.httpClient(context)) {
                 signFetchRequest()
-            }!!
-            unreadCount = AccountData.decodeJson<ZhihuMeNotifications>(jojo).totalCount
+            }
         } catch (_: Exception) {
             // 忽略错误
         }

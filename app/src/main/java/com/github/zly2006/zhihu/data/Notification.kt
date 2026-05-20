@@ -26,6 +26,8 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
+typealias ZhihuMeNotifications = com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
+
 class TrySerializer<T : Any>(
     val serializer: KSerializer<T>,
 ) : KSerializer<T?> {
@@ -41,15 +43,6 @@ class TrySerializer<T : Any>(
     } catch (_: Exception) {
         null
     }
-}
-
-@Serializable
-data class ZhihuMeNotifications(
-    val defaultNotificationsCount: Int = 0,
-    val followNotificationsCount: Int = 0,
-    val voteThankNotificationsCount: Int = 0,
-) {
-    val totalCount: Int get() = defaultNotificationsCount + followNotificationsCount + voteThankNotificationsCount
 }
 
 @Serializable

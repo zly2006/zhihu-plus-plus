@@ -1,6 +1,8 @@
 package com.github.zly2006.zhihu.shared.login
 
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -27,7 +29,6 @@ const val ZHIHU_DESKTOP_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) 
 private const val UDID_URL = "https://www.zhihu.com/udid"
 private const val CAPTCHA_V2_URL = "https://www.zhihu.com/api/v3/oauth/captcha/v2?type=captcha_sign_in"
 private const val QRCODE_URL = "https://www.zhihu.com/api/v3/account/api/login/qrcode"
-private const val ME_URL = "https://www.zhihu.com/api/v4/me"
 private const val DESKTOP_SEC_CH_UA = "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\""
 private const val DESKTOP_SEC_CH_UA_MOBILE = "?0"
 private const val DESKTOP_SEC_CH_UA_PLATFORM = "\"Windows\""
@@ -166,7 +167,7 @@ suspend fun pollQrCodeLogin(
             if (loginSucceeded || cookies.containsKey("z_c0")) {
                 if (!cookies.containsKey("z_c0")) {
                     runCatching {
-                        client.get(ME_URL) {
+                        client.get(ZHIHU_ME_URL) {
                             createZhihuLoginHeaders(cookies, ZHIHU_SIGNIN_URL, isPolling = true).forEach { (key, value) ->
                                 header(key, value)
                             }
@@ -219,7 +220,7 @@ fun createZhihuLoginHeaders(
         headers["sec-fetch-dest"] = "empty"
         headers["sec-fetch-mode"] = "cors"
         headers["sec-fetch-site"] = "same-origin"
-        headers["x-zse-93"] = "101_3_3.0"
+        headers["x-zse-93"] = ZHIHU_WEB_ZSE93
     }
     cookies["_xsrf"]?.let {
         headers["x-xsrftoken"] = it

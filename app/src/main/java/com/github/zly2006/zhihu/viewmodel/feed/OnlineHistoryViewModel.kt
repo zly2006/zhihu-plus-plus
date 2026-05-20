@@ -19,24 +19,20 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
 import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.OnlineHistoryItem
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.decodeOnlineHistoryItems
+import com.github.zly2006.zhihu.shared.data.zhihuOnlineHistoryUrl
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
-    override val initialUrl: String = "https://api.zhihu.com/unify-consumption/read_history?offset=0&limit=10"
+    override val initialUrl: String = zhihuOnlineHistoryUrl()
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         val history = (context as MainActivity).history
 
-        val response = rawData.mapNotNull {
-            runCatching {
-                AccountData.decodeJson<OnlineHistoryItem>(it)
-            }.getOrNull()
-        }
+        val response = decodeOnlineHistoryItems(rawData, ignoreInvalid = true)
 
         response.forEach { item ->
             val navDest = try {
