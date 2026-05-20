@@ -52,6 +52,7 @@ import androidx.navigation.NavBackStackEntry
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -418,7 +419,10 @@ class ArticleViewModel(
                                     else -> false
                                 }
                                 if (!isSameQuestion) {
-                                    sharedData.navigator = QuestionAnswerNavigator(questionId)
+                                    sharedData.navigator = QuestionAnswerNavigator(
+                                        questionId = questionId,
+                                        repository = AndroidAnswerNavigatorRepository(context),
+                                    )
                                 }
                             }
                             sharedData.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
@@ -426,9 +430,9 @@ class ArticleViewModel(
                             // 仅在无前向历史时预取下一个回答
                             sharedData.navigator?.let { nav ->
                                 if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
-                                    nav.prefetchNext(context, article.id)
+                                    nav.prefetchNext(article.id)
                                 }
-                                nav.prefetchPrevious(context, article.id)
+                                nav.prefetchPrevious(article.id)
                             }
                         } else {
                             content = "<h1>回答不存在</h1>"

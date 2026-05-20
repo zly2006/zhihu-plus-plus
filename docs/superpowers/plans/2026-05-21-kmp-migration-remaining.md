@@ -147,7 +147,7 @@ git commit -m "docs: 记录 KMP 剩余迁移计划"
 - Root research failure in `fd313cd`: it judged APIs by names and assumptions before checking KMP variants or compiling. `org.jetbrains.androidx.navigation:navigation-compose` has KMP variants, so Navigation Compose APIs must be tested in `shared/commonMain` before inventing a desktop-only route model or Android-only adapter.
 - Concrete files already corrected from that bad boundary: `NavDestination`, `FeedNavigation`, `ArticleState`, `CommentRoutes`, `ContentOpenEventSupport`, and `CommentItem` were moved back to shared. Do not move them back to app unless a real platform side effect is introduced and cannot be isolated.
 
-- [ ] **Step 1: Audit platform-only content in navigation files**
+- [x] **Step 1: Audit platform-only content in navigation files**
 
 Run:
 
@@ -157,7 +157,7 @@ rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity
 
 Expected: `NavDestination.kt` contains only serializable route semantics. `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` may contain Android API call sites today; list those call sites and split them, but keep the navigation shell itself as shared-target code.
 
-- [ ] **Step 2: Move Navigation Compose dependency to shared**
+- [x] **Step 2: Move Navigation Compose dependency to shared**
 
 In `shared/build.gradle.kts`, add to `commonMain.dependencies`:
 
@@ -175,7 +175,7 @@ Run:
 
 Expected: dependency resolves for JVM/desktop and Android.
 
-- [ ] **Step 3: Move the route semantics file**
+- [x] **Step 3: Move the route semantics file**
 
 Use `git mv`:
 
@@ -186,7 +186,7 @@ git mv app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt s
 
 Do not move `Intent`, WebView, APK/update, or platform callback semantics with it. `NavHostController`, `NavBackStackEntry`, `composable<T>`, and `toRoute<T>()` are allowed in shared if they compile from `org.jetbrains.androidx.navigation`.
 
-- [ ] **Step 4: Move LocalNavigator and AnswerNavigator toward shared**
+- [x] **Step 4: Move LocalNavigator and AnswerNavigator toward shared**
 
 Use `git mv` after splitting any Android API call sites found in Step 1:
 

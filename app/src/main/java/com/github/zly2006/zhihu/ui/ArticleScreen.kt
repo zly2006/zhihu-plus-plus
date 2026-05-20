@@ -949,7 +949,7 @@ fun ArticleScreen(
             sharedData?.pendingInitialContent = sharedData.navigator?.previousAnswerPreview
             sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
             coroutineScope.launch {
-                val prevCached = sharedData?.navigator?.loadPrevious(context)
+                val prevCached = sharedData?.navigator?.loadPrevious()
                 if (prevCached != null) {
                     sharedData.pendingInitialContent = prevCached
                     val activity = context as? MainActivity
@@ -998,7 +998,7 @@ fun ArticleScreen(
             sharedData?.pendingInitialContent = sharedData.navigator?.nextAnswer
             sharedData?.promoteForNavigation(sharedData.answerTransitionDirection)
             coroutineScope.launch {
-                val nextArticle = sharedData?.navigator?.loadNext(context)
+                val nextArticle = sharedData?.navigator?.loadNext()
                 if (nextArticle != null) {
                     val activity = context as? MainActivity
                     if (activity != null) {

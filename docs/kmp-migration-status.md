@@ -8,7 +8,7 @@
 - Android login uses shared QR login; Android WebView stays in app.
 - JVM login uses shared QR login and stores cookies under `~/.zhihu-plus-plus/account.json`.
 - KMP Room is used for content filter and local content databases.
-- 共享导航语义和导航壳应由 `shared/commonMain` 拥有；当前 `NavDestination`、`ZhihuMain.kt`、`LocalNavigator.kt`、`AnswerNavigator.kt` 暂在 Android app 侧是待修正状态，不是最终边界。
+- 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo
@@ -22,7 +22,7 @@
 
 ## Remaining Work
 
-- Move shared navigation semantics / `NavDestination` and the main navigation shell (`ZhihuMain.kt`, `LocalNavigator.kt`, `AnswerNavigator.kt`) back to common code after separating Android-only runtime effects.
+- Move `ZhihuMain.kt` back to common code after separating Android-only runtime effects.
 - Split account/session persistence from Android `AccountData`.
 - Move pagination and feed loading state into shared with platform effect adapters.
 - Replace Android duplicate feed display mapping with shared `Feed.toDisplayItem`.
