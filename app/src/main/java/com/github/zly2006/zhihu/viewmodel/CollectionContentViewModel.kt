@@ -29,8 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName

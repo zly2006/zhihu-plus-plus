@@ -26,10 +26,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.officialBadge
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel

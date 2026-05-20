@@ -18,7 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
-import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.zhihuHotListUrl
 
 class HotListViewModel : BaseFeedViewModel() {

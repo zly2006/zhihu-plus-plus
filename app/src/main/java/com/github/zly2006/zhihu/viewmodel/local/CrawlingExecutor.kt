@@ -19,9 +19,9 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.CommonFeed
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.shared.data.CommonFeed
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.target
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray

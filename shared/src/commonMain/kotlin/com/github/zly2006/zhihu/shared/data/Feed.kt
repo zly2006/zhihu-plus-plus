@@ -17,15 +17,9 @@
 
 @file:Suppress("unused")
 
-package com.github.zly2006.zhihu.data
+package com.github.zly2006.zhihu.shared.data
 
-import com.github.zly2006.zhihu.data.Feed.Badge
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed.Badge
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -56,7 +50,6 @@ sealed interface Feed {
         val author: Person?
         val createdTime: Long
         val updatedTime: Long
-        val navDestination: NavDestination?
     }
 
     private object LegacyAuthorSerCompat : KSerializer<Person?> {
@@ -117,15 +110,6 @@ sealed interface Feed {
         override val detailsText = "回答 · $voteupCount 赞同 · $commentCount 评论"
         override val title: String
             get() = question.title
-        override val navDestination = Article(
-            title = question.title,
-            type = ArticleType.Answer,
-            id = id,
-            authorName = author?.name ?: "loading...",
-            authorBio = author?.headline ?: "",
-            avatarSrc = author?.avatarUrl,
-            excerpt = excerpt,
-        )
     }
 
     @Serializable
@@ -147,8 +131,6 @@ sealed interface Feed {
         }
 
         override val detailsText = "视频 · $voteCount 赞 · $commentCount 评论"
-
-        override val navDestination = null
 
         override val createdTime: Long
             get() = -1
@@ -194,16 +176,6 @@ sealed interface Feed {
 
         override val detailsText = "文章 · $voteupCount 赞 · $commentCount 评论"
 
-        override val navDestination = Article(
-            title = title,
-            type = ArticleType.Article,
-            id = id,
-            authorName = author.name,
-            authorBio = author.headline,
-            avatarSrc = author.avatarUrl,
-            excerpt = excerpt,
-        )
-
         override val updatedTime: Long
             get() = updated
 
@@ -236,7 +208,6 @@ sealed interface Feed {
         override val title: String
             get() = "想法"
         override val excerpt = excerptTitle.ifEmpty { null }
-        override val navDestination = Pin(id)
 
         override val updatedTime: Long
             get() = updated
@@ -288,11 +259,6 @@ sealed interface Feed {
         }
 
         override val detailsText = "问题 · $followerCount 关注 · $answerCount 回答"
-
-        override val navDestination = Question(
-            questionId = id,
-            title = title,
-        )
 
         override val updatedTime: Long
             get() = -1

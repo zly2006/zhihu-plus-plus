@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson

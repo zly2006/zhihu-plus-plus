@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.shared.data.Feed
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -21,8 +21,8 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.Feed
-import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest

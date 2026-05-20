@@ -18,7 +18,7 @@
 package com.github.zly2006.zhihu
 
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.SearchResult
+import com.github.zly2006.zhihu.shared.data.SearchResult
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
