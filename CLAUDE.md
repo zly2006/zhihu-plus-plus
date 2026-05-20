@@ -147,6 +147,9 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 
 - 迁移时必须保留现有 `skills`、`agents`/`AGENTS.md`/`.agents`、`.codex`、`.claude`、`.mcp.json`、文档、报告、脚本、Rust 配套服务、fastlane 等 AI/文档/配套服务文件；只能增量新增或移动到兼容位置，不能无故删减。
 - 不能无脑覆盖 demo1。复制或复用 demo1 内容前必须检查包名、namespace、applicationId、模块名、资源名和入口类，改成当前项目需要的 `com.github.zly2006.zhihu` / `com.github.zly2006.zhplus` 约定。
+- 继续迁移前必须先查看 `docs/kmp-migration-status.md` 和 `docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md`，确认当前已完成/未完成边界，避免重复迁移同一模块或把已经纠正的平台边界改回去。
+- 对两个以上互不重叠的迁移 lane，默认优先并行推进：能用 subagent 时按文件所有权拆分给 subagent；不能用 subagent 时也要按 lane 批量审查、批量验证，避免串行地反复读同一批文件。
+- 导航语义应共享：`NavDestination`/route sealed model 这类页面和内容目的地语义应放入 `shared/commonMain`，Android 和 desktop 复用同一套模型。不能迁入 shared 的是 Android `Context`、`Intent`、WebView、APK/lite/full 发行语义、平台回调和不支持跨平台的 navigation runtime；这些只能作为 Android/desktop 薄适配层存在。现阶段 desktop 不做独立适配，优先还原 Android UI 和导航语义。
 - 迁移代码时默认先尝试 `git mv`/`mv` 整体移动现有文件或目录，保留原实现、历史和测试结构，然后只做必要的小幅包名、import、source set、依赖和平台边界修改，以最快路径让代码通过编译。不要先手工重写、复制粘贴重建已有代码，或把简单移动问题做成大重构。只有在原文件混入平台副作用、需要拆分纯逻辑和平台适配，或直接移动会破坏模块边界时，才拆文件并记录原因。
 - iOS 目标可以保留在工程结构中，但本次不执行任何 iOS 相关构建、测试、调试或发布任务。
 - Android 必须使用 AVD 验证，不使用真机；lite 包名仍为 `com.github.zly2006.zhplus.lite`。
@@ -157,7 +160,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。
 - 迁移中遇到不支持跨平台的库时，优先查找该库的 KMP 变种或兼容实现；没有合适 KMP 变种时，再评估其他跨平台替代库。只有在没有可靠替代或迁移风险过高时，才把依赖和实现留在对应平台 source set，并记录原因。
 - Room 支持 Kotlin Multiplatform，不能因为 Room 当前在 Android 侧就直接判定为平台独有。迁移数据库时必须优先按官方 KMP Room 方案实现真实跨平台 Room：实体、DAO、Database 放入 `shared`，使用 Room KMP 的 common schema/constructor 配置，平台 source set 只提供 database builder、文件路径和 driver 等必要适配。参考官方文档：https://developer.android.com/kotlin/multiplatform/room?hl=zh-cn 。只有确认某个数据库能力无法可靠跨平台或迁移风险过高时，才暂留平台侧，并记录原因。
-- APK、`lite`/`full` variant、安装包下载/选择/安装、Android `Context`、WebView、Android intent/file provider 等平台运行时或发行语义不得迁入 `shared`；需要共享时只能抽取纯数据模型或纯算法，平台适配、资源选择和副作用留在对应平台模块。
+- APK、`lite`/`full` variant、安装包下载/选择/安装、Android `Context`、WebView、Android intent/file provider 等平台运行时或发行语义不得迁入 `shared`；需要共享时只能抽取纯数据模型、纯算法或跨平台 UI/导航语义，平台适配、资源选择和副作用留在对应平台模块。
 - 编译耗时较长时，尽量在完成一个大任务后再构建验证；每完成一个大任务，在本迁移分支里及时提交。
 - 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。
