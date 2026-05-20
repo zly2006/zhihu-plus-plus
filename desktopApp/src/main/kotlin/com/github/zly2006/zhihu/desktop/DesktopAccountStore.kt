@@ -1,18 +1,15 @@
 package com.github.zly2006.zhihu.desktop
 
+import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.get
-import io.ktor.http.Cookie
-import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -53,7 +50,7 @@ class DesktopAccountStore(
 
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient(CIO) {
         install(HttpCookies) {
-            storage = mapBackedCookieStorage(cookies)
+            storage = ZhihuCookieStorage(cookies)
         }
         install(ContentNegotiation) {
             json(ZhihuJson.json)
@@ -80,24 +77,6 @@ class DesktopAccountStore(
             )
             return true
         }
-    }
-}
-
-private fun mapBackedCookieStorage(cookies: MutableMap<String, String>) = object : CookiesStorage {
-    override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
-        if (cookie.name == "z_c0" && cookie.value.isBlank()) {
-            return
-        }
-        if (cookie.domain?.endsWith("zhihu.com") != false) {
-            cookies[cookie.name] = cookie.value
-        }
-    }
-
-    override fun close() {
-    }
-
-    override suspend fun get(requestUrl: Url): List<Cookie> = cookies.map {
-        Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
     }
 }
 

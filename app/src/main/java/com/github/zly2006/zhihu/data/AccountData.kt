@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -36,18 +37,14 @@ import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
-import io.ktor.http.Cookie
-import io.ktor.http.CookieEncoding
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -108,30 +105,12 @@ object AccountData {
         file.writeText(json.encodeToString(data))
     }
 
-    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) = object : CookiesStorage {
-        override suspend fun addCookie(requestUrl: Url, cookie: Cookie) {
-            // https://github.com/zly2006/zhihu-plus-plus/issues/25#issuecomment-3311926550
-            if (cookie.name == "z_c0" && cookie.value.isBlank()) {
-                // 避免被登出
-                return
-            }
-            if (cookie.domain?.endsWith("zhihu.com") != false) {
-                if (cookies == null) {
-                    data.cookies[cookie.name] = cookie.value
-                    saveData(context, data)
-                } else {
-                    cookies[cookie.name] = cookie.value
-                }
+    fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) =
+        ZhihuCookieStorage(cookies ?: data.cookies) {
+            if (cookies == null) {
+                saveData(context, data)
             }
         }
-
-        override fun close() {
-        }
-
-        override suspend fun get(requestUrl: Url): List<Cookie> = (cookies ?: data.cookies).map {
-            Cookie(it.key, it.value, CookieEncoding.RAW, domain = "www.zhihu.com")
-        }
-    }
 
     private var httpClient: HttpClient? = null
     private var httpClientFactoryOverride: ((Context, MutableMap<String, String>?) -> HttpClient)? = null
