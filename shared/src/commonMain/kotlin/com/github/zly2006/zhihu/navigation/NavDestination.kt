@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.navigation
 
-import android.util.Log
+import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.http.Url
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
