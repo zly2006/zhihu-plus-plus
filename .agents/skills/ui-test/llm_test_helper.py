@@ -5,12 +5,12 @@ Zhihu++ LLM 自动化测试辅助脚本
 通过 UIAutomator dump + adb 精准交互 UI 元素，替代硬编码坐标。
 
 用法:
-    python3 .github/skills/ui-test/llm_test_helper.py dump
-    python3 .github/skills/ui-test/llm_test_helper.py tap --tag nav_tab_home
-    python3 .github/skills/ui-test/llm_test_helper.py tap --text "推荐"
-    python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card --index 1
-    python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "ChatGPT"
-    python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "AI" --index 1
+    python3 .agents/skills/ui-test/llm_test_helper.py dump
+    python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_home
+    python3 .agents/skills/ui-test/llm_test_helper.py tap --text "推荐"
+    python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card --index 1
+    python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "ChatGPT"
+    python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "AI" --index 1
 
 多元素消歧规则（LLM 必读）:
     同一 tag（如 feed_card_more_btn）在屏幕上可能出现多个。消歧步骤：

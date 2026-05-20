@@ -81,7 +81,7 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 2. ✅ 安装到设备
 3. ✅ 正确启动应用（检查包名！）
 4. ✅ 等待加载完成（至少 8-10 秒）
-5. ✅ 使用 ui-test 技能查看当前页面状态：`python3 .github/skills/ui-test/llm_test_helper.py dump`
+5. ✅ 使用 ui-test 技能查看当前页面状态：`python3 .agents/skills/ui-test/llm_test_helper.py dump`
 6. ✅ 先 `dump` 再 `tap`，优先通过 `--tag/--text/--desc` 交互，不使用硬编码坐标 tap
 7. ✅ 若目标是无标识可点击节点，使用 `--text "" --index N`（N 来自当前页面 dump）
 8. ✅ 交互后再次 `dump` 或截图验证状态
@@ -110,7 +110,7 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py update-status \
+python3 .agents/skills/ui-review-memory/memory_store.py update-status \
   --agent picky-user \
   --date "$TODAY" \
   --id PU-20260417-001 \

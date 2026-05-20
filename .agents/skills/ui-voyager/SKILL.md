@@ -16,7 +16,7 @@ license: CC BY-NC-SA 4.0
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py show-pending --agent ui-volayor --date "$TODAY"
+python3 .agents/skills/ui-review-memory/memory_store.py show-pending --agent ui-volayor --date "$TODAY"
 ```
 
 - 这里故意使用 `ui-volayor` 作为 memory key，这是项目约定路径。
@@ -46,9 +46,9 @@ python3 .github/skills/ui-review-memory/memory_store.py show-pending --agent ui-
 优先使用：
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py dump
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag ...
-python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/ui-voyager.png
+python3 .agents/skills/ui-test/llm_test_helper.py dump
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag ...
+python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/ui-voyager.png
 ```
 
 只有在没有 tag / text / desc 且必须手势时，才使用 `adb shell input swipe ...`。
@@ -65,7 +65,7 @@ python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/ui-voyager.png
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py record-issue \
+python3 .agents/skills/ui-review-memory/memory_store.py record-issue \
   --agent ui-volayor \
   --date "$TODAY" \
   --persona explorer \
@@ -83,7 +83,7 @@ python3 .github/skills/ui-review-memory/memory_store.py record-issue \
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py record-issue \
+python3 .agents/skills/ui-review-memory/memory_store.py record-issue \
   --agent ui-volayor \
   --date "$TODAY" \
   --persona explorer \
@@ -129,7 +129,7 @@ Carry-over:
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py update-status \
+python3 .agents/skills/ui-review-memory/memory_store.py update-status \
   --agent ui-volayor \
   --date "$TODAY" \
   --id UV-20260417-001 \

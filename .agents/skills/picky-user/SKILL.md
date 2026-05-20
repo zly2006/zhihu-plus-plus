@@ -16,7 +16,7 @@ license: CC BY-NC-SA 4.0
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py show-pending --agent picky-user --date "$TODAY"
+python3 .agents/skills/ui-review-memory/memory_store.py show-pending --agent picky-user --date "$TODAY"
 ```
 
 - `show-pending` 会跨天读取所有未关闭意见，不只看今天的目录。
@@ -50,7 +50,7 @@ python3 .github/skills/ui-review-memory/memory_store.py show-pending --agent pic
 3. 如需判断美观、层级、对齐、裁切、溢出，可截图后再看图：
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/picky-user.png
+python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/picky-user.png
 ```
 
 4. 分别从“新用户”和“老用户”视角审查。
@@ -61,7 +61,7 @@ python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/picky-user.png
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py record-issue \
+python3 .agents/skills/ui-review-memory/memory_store.py record-issue \
   --agent picky-user \
   --date "$TODAY" \
   --persona new-user \
@@ -80,7 +80,7 @@ python3 .github/skills/ui-review-memory/memory_store.py record-issue \
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py record-issue \
+python3 .agents/skills/ui-review-memory/memory_store.py record-issue \
   --agent picky-user \
   --date "$TODAY" \
   --persona old-user \
@@ -134,7 +134,7 @@ Verdict:
 
 ```bash
 TODAY=$(date +%F)
-python3 .github/skills/ui-review-memory/memory_store.py update-status \
+python3 .agents/skills/ui-review-memory/memory_store.py update-status \
   --agent picky-user \
   --date "$TODAY" \
   --id PU-20260417-001 \

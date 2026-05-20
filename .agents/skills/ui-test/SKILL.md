@@ -11,7 +11,7 @@ license: CC BY-NC-SA 4.0
 所有操作通过以下脚本完成（在项目根目录执行）：
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py <command> [options]
+python3 .agents/skills/ui-test/llm_test_helper.py <command> [options]
 ```
 
 ---
@@ -56,7 +56,7 @@ python3 .github/skills/ui-test/llm_test_helper.py <command> [options]
 ### `dump` — 查看当前界面关键信息元素（可点击 + 不可点击）
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py dump
+python3 .agents/skills/ui-test/llm_test_helper.py dump
 ```
 
 输出示例（带序号，LLM 可用序号决定 `--index`）：
@@ -85,10 +85,10 @@ python3 .github/skills/ui-test/llm_test_helper.py dump
 
 ```bash
 # 列出所有 feed_card 的坐标和序号
-python3 .github/skills/ui-test/llm_test_helper.py find --tag feed_card
+python3 .agents/skills/ui-test/llm_test_helper.py find --tag feed_card
 
 # 找包含"AI"的卡片内的 more_btn 坐标
-python3 .github/skills/ui-test/llm_test_helper.py find --tag feed_card_more_btn --within-text "AI"
+python3 .agents/skills/ui-test/llm_test_helper.py find --tag feed_card_more_btn --within-text "AI"
 ```
 
 > `--tag` 支持两种 resource-id 形式：`com.xxx:id/tag` 和裸 `tag`（如 `nav_tab_account`）。
@@ -100,50 +100,50 @@ python3 .github/skills/ui-test/llm_test_helper.py find --tag feed_card_more_btn 
 #### 场景 1：唯一元素（导航 tab、全局按钮）
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag nav_tab_home
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag nav_tab_hotlist
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag nav_tab_account
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_home
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_hotlist
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_account
 ```
 
 #### 场景 2：按内容定位（知道目标卡片的关键词）
 
 ```bash
 # 点击标题含"ChatGPT"的卡片本体
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card --within-text "ChatGPT"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card --within-text "ChatGPT"
 
 # 点击标题含"ChatGPT"的卡片的更多按钮
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "ChatGPT"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "ChatGPT"
 ```
 
 #### 场景 3：按位置定位（知道是第几个）
 
 ```bash
 # 点击屏幕上从上到下第 1 个卡片（0-based）
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card --index 0
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card --index 0
 
 # 点击第 2 个卡片的更多按钮
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --index 1
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --index 1
 ```
 
 #### 场景 4：组合使用（最精确，内容 + 位置双重限定）
 
 ```bash
 # 如果某个话题下有多张卡片都含"AI"，指定取其中第 2 个的更多按钮
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "AI" --index 1
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag feed_card_more_btn --within-text "AI" --index 1
 ```
 
 #### 场景 5：按显示文字点击（无 testTag 的动态元素）
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py tap --text "屏蔽用户"
-python3 .github/skills/ui-test/llm_test_helper.py tap --text "取消"
-python3 .github/skills/ui-test/llm_test_helper.py tap --text "登录"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --text "屏蔽用户"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --text "取消"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --text "登录"
 ```
 
 #### 场景 6：按 contentDescription 点击（无文本但有无障碍描述）
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py tap --desc "返回"
+python3 .agents/skills/ui-test/llm_test_helper.py tap --desc "返回"
 ```
 
 > 注意：若 `--desc` 匹配多个节点，脚本当前不会对 `desc` 提供 `--index` 消歧。
@@ -153,10 +153,10 @@ python3 .github/skills/ui-test/llm_test_helper.py tap --desc "返回"
 
 ```bash
 # 1) 先 dump，确认目标在当前页面中的相对位置
-python3 .github/skills/ui-test/llm_test_helper.py dump
+python3 .agents/skills/ui-test/llm_test_helper.py dump
 
 # 2) 再用空文本 + index 点击（index 基于当前页面 text="" 节点顺序）
-python3 .github/skills/ui-test/llm_test_helper.py tap --text "" --index 19
+python3 .agents/skills/ui-test/llm_test_helper.py tap --text "" --index 19
 ```
 
 > 适用场景：颜色面板色块、部分开关、部分“更多”按钮容器。
@@ -166,7 +166,7 @@ python3 .github/skills/ui-test/llm_test_helper.py tap --text "" --index 19
 ### `screenshot` — 截图
 
 ```bash
-python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/result.png
+python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/result.png
 ```
 
 截图后必须用 `view` 工具查看，不要在同一 response 中同时发出截图和 view 命令（截图需要时间）。
@@ -182,13 +182,13 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 sleep 10
 
 # 2. 确认界面元素
-python3 .github/skills/ui-test/llm_test_helper.py dump
+python3 .agents/skills/ui-test/llm_test_helper.py dump
 
 # 3. 交互（根据 dump 结果选择命令）
-python3 .github/skills/ui-test/llm_test_helper.py tap --tag nav_tab_hotlist
+python3 .agents/skills/ui-test/llm_test_helper.py tap --tag nav_tab_hotlist
 
 # 4. 截图验证
-python3 .github/skills/ui-test/llm_test_helper.py screenshot /tmp/after_tap.png
+python3 .agents/skills/ui-test/llm_test_helper.py screenshot /tmp/after_tap.png
 # （新 response 中）view /tmp/after_tap.png
 
 # 5. 滚动（无 tag 时）
