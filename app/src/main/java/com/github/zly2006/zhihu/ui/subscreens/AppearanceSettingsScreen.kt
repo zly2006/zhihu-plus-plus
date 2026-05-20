@@ -93,6 +93,7 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.shared.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
@@ -246,7 +247,7 @@ fun AppearanceSettingsScreen(
                                 val isSelected = currentThemeMode == mode
                                 OutlinedButton(
                                     onClick = {
-                                        ThemeManager.setThemeMode(context, mode)
+                                        AndroidThemeSettings.setThemeMode(context, mode)
                                         Toast.makeText(context, "已切换到$label", Toast.LENGTH_SHORT).show()
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -275,7 +276,7 @@ fun AppearanceSettingsScreen(
                     description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
                     checked = useDynamicColor,
                     onCheckedChange = {
-                        ThemeManager.setUseDynamicColor(context, it)
+                        AndroidThemeSettings.setUseDynamicColor(context, it)
                         Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
                     },
                     settingKey = "dynamicColor",
@@ -308,7 +309,7 @@ fun AppearanceSettingsScreen(
                         initialColor = customColor,
                         onDismiss = { showColorPicker = false },
                         onColorSelected = { color ->
-                            ThemeManager.setCustomColor(context, color)
+                            AndroidThemeSettings.setCustomColor(context, color)
                             Toast.makeText(context, "主题色已保存", Toast.LENGTH_SHORT).show()
                             showColorPicker = false
                         },
@@ -392,7 +393,7 @@ fun AppearanceSettingsScreen(
                         ),
                         onDismiss = { showBackgroundColorPicker = false },
                         onColorSelected = { color ->
-                            ThemeManager.setBackgroundColor(context, color, currentIsDarkTheme)
+                            AndroidThemeSettings.setBackgroundColor(context, color, currentIsDarkTheme)
                             Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
                             showBackgroundColorPicker = false
                         },

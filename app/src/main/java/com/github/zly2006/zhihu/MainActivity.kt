@@ -67,7 +67,7 @@ import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
-import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
         continuousUsageReminderManager = ContinuousUsageReminderManager(this)
         history = HistoryStorage(this)
         AccountData.loadData(this)
-        ThemeManager.initialize(this)
+        AndroidThemeSettings.initialize(this)
 
         val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
         val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)

@@ -71,6 +71,7 @@
 - KMP Room 已用于内容过滤和本地内容数据库。
 - `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 app adapter 留在平台侧。
 - `ZhihuMain.kt` 主导航壳已迁入 shared；Android 页面注册、偏好读取、`MainActivity` 和 ViewModel 创建留在 app adapter。
+- `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 shared；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 androidMain adapter。
 - bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
 - Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
@@ -118,6 +119,8 @@ rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity
 ```
 
 ### 任务 3：迁移 shared theme core
+
+状态：已完成当前切片。
 
 目标：
 

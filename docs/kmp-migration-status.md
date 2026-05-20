@@ -10,6 +10,7 @@
 - KMP Room is used for content filter and local content databases.
 - 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
 - `ZhihuMain.kt` 主导航壳已通过 `git mv` 迁入 `shared/commonMain`；Android 页面注册、`MainActivity`、偏好读取、ViewModel 创建等运行时副作用留在 app adapter。
+- `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 `shared/commonMain`；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 `shared/androidMain` adapter。
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
 - Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
@@ -26,6 +27,7 @@
 - Do not make `desktopApp` contain QR login, cookie persistence, networking, or main UI state.
 - Do not recreate the removed `.codex/hooks.json`; that deletion is intentional for this worktree.
 - Do not introduce `ZhihuPageLoader` or another one-off loader layer as a substitute for migrating `PaginationViewModel`. Split side effects into small cross-platform interfaces/adapters and move the ViewModel.
+- Do not move theme mode/custom color/background color state back to app just because Android currently owns persistence or dynamic color. Only platform environment and side effects stay in adapters.
 
 ## Remaining Work
 
