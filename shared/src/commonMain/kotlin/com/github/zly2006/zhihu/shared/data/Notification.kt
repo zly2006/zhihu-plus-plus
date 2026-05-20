@@ -15,9 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.data
+package com.github.zly2006.zhihu.shared.data
 
-import com.github.zly2006.zhihu.shared.data.Feed
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -26,8 +25,6 @@ import kotlinx.serialization.builtins.nullable
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-
-typealias ZhihuMeNotifications = com.github.zly2006.zhihu.shared.data.ZhihuMeNotifications
 
 class TrySerializer<T : Any>(
     val serializer: KSerializer<T>,

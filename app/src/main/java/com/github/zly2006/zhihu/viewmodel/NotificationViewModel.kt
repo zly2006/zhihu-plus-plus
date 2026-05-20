@@ -23,7 +23,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl

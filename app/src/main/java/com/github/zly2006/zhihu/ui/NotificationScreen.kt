@@ -66,8 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.data.NotificationItem
-import com.github.zly2006.zhihu.data.NotificationTarget
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -75,6 +73,8 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.NotificationItem
+import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -157,41 +157,41 @@ fun NotificationScreen() {
                         onClick = {
                             viewModel.markAsRead(context, notification.id)
                             // 处理点击事件 - 跳转到对应内容
-                            when (notification.target) {
+                            when (val target = notification.target) {
                                 is NotificationTarget
                                     .Comment,
                                 -> {
                                     Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
-                                    notification.target.target?.navDestination?.let {
+                                    target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
                                     } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
                                 }
 
                                 is NotificationTarget.Question -> {
-                                    navigator.onNavigate(Question(notification.target.id.toLong(), notification.target.title))
+                                    navigator.onNavigate(Question(target.id.toLong(), target.title))
                                 }
 
                                 is NotificationTarget.People -> {
-                                    navigator.onNavigate(Person(notification.target.id, notification.target.urlToken, name = notification.target.name))
+                                    navigator.onNavigate(Person(target.id, target.urlToken, name = target.name))
                                 }
 
                                 is NotificationTarget.Answer -> {
                                     navigator.onNavigate(
                                         Article(
-                                            title = notification.target.title,
+                                            title = target.title,
                                             type = ArticleType.Answer,
-                                            id = notification.target.id.toLong(),
-                                            excerpt = notification.target.excerpt,
+                                            id = target.id.toLong(),
+                                            excerpt = target.excerpt,
                                         ),
                                     )
                                 }
                                 is NotificationTarget.Article -> {
                                     navigator.onNavigate(
                                         Article(
-                                            title = notification.target.title,
+                                            title = target.title,
                                             type = ArticleType.Article,
-                                            id = notification.target.id.toLong(),
-                                            excerpt = notification.target.excerpt,
+                                            id = target.id.toLong(),
+                                            excerpt = target.excerpt,
                                         ),
                                     )
                                 }
@@ -251,9 +251,10 @@ fun NotificationItemView(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f),
                 ) {
-                    if (notification.content.extend?.icon != null) {
+                    val extend = notification.content.extend
+                    if (extend?.icon != null) {
                         AsyncImage(
-                            model = notification.content.extend.icon,
+                            model = extend.icon,
                             contentDescription = "",
                             modifier = Modifier
                                 .size(40.dp)
