@@ -4,7 +4,7 @@
 
 **Goal:** Finish the remaining migration from the Android-only Zhihu++ codebase to the current Kotlin Multiplatform shape while preserving Android behavior and making JVM/desktop run through shared logic.
 
-**Architecture:** Keep `desktopApp` as a demo1-style shallow entry point and move reusable state machines, network clients, parsers, display models, navigation semantics, and Compose screens into `shared`. Desktop should reuse the same route model and Android-like UI semantics during this migration; only platform runtime effects (`Context`, `Intent`, WebView, APK variants, file provider, AVD-only validation, JVM file paths, terminal notifications, packaging) stay in platform source sets. If the current Navigation Compose runtime compiles on JVM/desktop, prefer using it in shared; if it does not, keep the shared `NavDestination` model and add the thinnest platform adapter.
+**Architecture:** Keep `desktopApp` as a demo1-style shallow entry point and move reusable state machines, network clients, parsers, display models, navigation semantics, the main navigation shell, and Compose screens into `shared`. Desktop should reuse the same route model and Android-like UI semantics during this migration; only platform runtime effects (`Context`, `Intent`, WebView, APK variants, file provider, AVD-only validation, JVM file paths, terminal notifications, packaging) stay in platform source sets. Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime; if a specific call site does not compile on JVM/desktop, split only that platform-specific call site instead of inventing a separate route model.
 
 **Tech Stack:** Kotlin Multiplatform, Compose Multiplatform, Ktor 3.5, Kotlin Serialization, Room KMP, Ksoup, ZXing, Gradle 9.4, ktlint.
 
@@ -23,7 +23,8 @@
   - pure formatting and policy utilities under `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/util`
 - Android login already reuses `SharedQrLoginPane` from `LoginActivity.kt`; Android risk-control WebView remains in app.
 - JVM QR login uses shared QR flow and backs up cookies via `DesktopAccountStore`.
-- `NavDestination` was temporarily moved back to Android app boundary in `fd313cd`; this corrected platform side-effect leakage but is not the final target. Navigation semantics should be moved back to `shared/commonMain` after Android-only runtime effects are separated.
+- `NavDestination` was temporarily moved back to Android app boundary in `fd313cd`; this corrected platform side-effect leakage but is not the final target. Navigation semantics should be moved back to `shared/commonMain`. `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` are also cross-platform migration targets, not Android-only adapters.
+- Current evidence for `org.jetbrains.androidx.navigation`: `app/build.gradle.kts` already uses `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; local Gradle metadata exposes desktop/JVM variants for `navigation-compose`, `navigation-runtime`, and `navigation-common`; JetBrains Compose Multiplatform navigation docs use the same artifact in `commonMain`.
 - Latest verified commands from the previous completed slice:
 
 ```bash
@@ -39,8 +40,8 @@ git diff --check
 - `app/src/main/java/com/github/zly2006/zhihu/data/AccountData.kt` still owns account file persistence, global account state, Android `Context`, shared Ktor config, and token refresh orchestration in one Android object.
 - `app/src/main/java/com/github/zly2006/zhihu/viewmodel/PaginationViewModel.kt` is still Android-only and mixes pagination, network fetch, JSON decode, login-expired dialogs, clipboard, Toast, and Android lifecycle.
 - Feed display creation is duplicated: shared has `Feed.toDisplayItem()` and Android `BaseFeedViewModel.createDisplayItem()` still reimplements similar logic.
-- Desktop/JVM currently proves QR login and hot-list fetch, but it does not yet run the same shared main screen structure as Android.
-- Android feed/viewmodel classes still depend on `Context`, `Toast`, `AlertDialog`, and `MainActivity`; these need staged adapter seams. `NavDestination` itself is shared navigation semantics and should not be treated as an Android-only dependency.
+- Desktop/JVM currently proves QR login and hot-list fetch, but it does not yet run the same shared `ZhihuMain` navigation shell as Android.
+- Android feed/viewmodel classes still depend on `Context`, `Toast`, `AlertDialog`, and `MainActivity`; these need staged adapter seams. `NavDestination`, `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` should not be treated as Android-only merely because they currently live under `app/src/main`.
 - Local recommendation code has KMP Room entities/DAO, but orchestration classes (`LocalRecommendationEngine`, `CrawlingExecutor`, `TaskScheduler`, `UserBehaviorAnalyzer`, `FeedGenerator`, `LocalHomeFeedViewModel`) still live in Android and pass `Context` through business logic.
 - Jsoup remains in Android code (`ArticleScreen`, `DailyScreen`, markdown helpers); shared should use Ksoup only when moving pure HTML parsing.
 - Full end-state runtime validation is still missing: Android AVD login/cookie/core operations and JVM QR login/cookie/core operations must be executed before claiming completion.
@@ -82,7 +83,8 @@ Create `docs/kmp-migration-status.md` with this content:
 
 ## Do Not Redo
 
-- Do not keep navigation semantics Android-only. Move shared route/destination semantics to `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
+- Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
+- Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
 - Do not assume desktop needs a separate route model. Desktop should reuse the shared Android UI/navigation semantics for this migration; only introduce a thin runtime adapter if the current Navigation Compose dependency cannot compile for JVM/desktop.
 - Do not recreate `Time.android.kt` / `Time.jvm.kt`; use `Clock.System`.
 - Do not put APK/lite/full/update/install semantics into `shared`.
@@ -90,7 +92,7 @@ Create `docs/kmp-migration-status.md` with this content:
 
 ## Remaining Work
 
-- Move shared navigation semantics / `NavDestination` back to common code after separating Android-only runtime effects.
+- Move shared navigation semantics / `NavDestination` and the main navigation shell (`ZhihuMain.kt`, `LocalNavigator.kt`, `AnswerNavigator.kt`) back to common code after separating Android-only runtime effects.
 - Split account/session persistence from Android `AccountData`.
 - Move pagination and feed loading state into shared with platform effect adapters.
 - Replace Android duplicate feed display mapping with shared `Feed.toDisplayItem`.
@@ -126,26 +128,53 @@ git add AGENTS.md docs/kmp-migration-status.md docs/superpowers/plans/2026-05-21
 git commit -m "docs: 记录 KMP 剩余迁移计划"
 ```
 
-## Task 2: Restore Shared Navigation Semantics
+## Task 2: Restore Shared Navigation Semantics And Shell
 
 **Files:**
 - Move: `app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt` -> `shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/NavDestination.kt`
-- Modify: `app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt`
+- Move target: `app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt` -> shared after platform side effects are split.
+- Move target: `app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt` -> shared after platform side effects are split.
+- Move target: `app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt` -> shared after platform side effects are split.
+- Modify: `shared/build.gradle.kts`
+- Modify: `app/build.gradle.kts`
 - Modify: `app/src/main/java/com/github/zly2006/zhihu/data/HistoryStorage.kt`
 - Modify: app files importing `com.github.zly2006.zhihu.navigation.*`
 - Test: add or update shared/common tests for route serialization.
 
-- [ ] **Step 1: Audit platform-only content in NavDestination**
+**Prior Mistakes To Avoid:**
+- Do not repeat the earlier mistake of treating `NavDestination` as Android-only because it was under `app/src/main`.
+- Do not repeat the earlier mistake of treating `ZhihuMain.kt`, `LocalNavigator.kt`, or `AnswerNavigator.kt` as Android runtime adapters. They are shared navigation/UI-shell targets; only their actual Android API call sites should be split.
+- Do not create a separate desktop route model before proving `org.jetbrains.androidx.navigation:navigation-compose` cannot compile the shared shell.
+
+- [ ] **Step 1: Audit platform-only content in navigation files**
 
 Run:
 
 ```bash
-rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|NavHostController|NavBackStackEntry|composable<|hasRoute" app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt
+rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog" app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt
 ```
 
-Expected: `NavDestination.kt` contains only serializable route semantics; Android navigation runtime usage is in `ZhihuMain.kt`.
+Expected: `NavDestination.kt` contains only serializable route semantics. `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` may contain Android API call sites today; list those call sites and split them, but keep the navigation shell itself as shared-target code.
 
-- [ ] **Step 2: Move the route semantics file**
+- [ ] **Step 2: Move Navigation Compose dependency to shared**
+
+In `shared/build.gradle.kts`, add to `commonMain.dependencies`:
+
+```kotlin
+implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
+```
+
+In `app/build.gradle.kts`, keep the dependency only if Android-only app source still directly imports navigation APIs during the transition. Once `ZhihuMain.kt` and route runtime imports are in shared, remove the duplicate app dependency if Gradle still resolves it transitively.
+
+Run:
+
+```bash
+./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin assembleLiteDebug
+```
+
+Expected: dependency resolves for JVM/desktop and Android.
+
+- [ ] **Step 3: Move the route semantics file**
 
 Use `git mv`:
 
@@ -154,39 +183,58 @@ mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation
 git mv app/src/main/java/com/github/zly2006/zhihu/navigation/NavDestination.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/NavDestination.kt
 ```
 
-Do not move Android `NavHostController`, `NavBackStackEntry`, `Intent`, WebView, APK/update, or platform callback semantics with it.
+Do not move `Intent`, WebView, APK/update, or platform callback semantics with it. `NavHostController`, `NavBackStackEntry`, `composable<T>`, and `toRoute<T>()` are allowed in shared if they compile from `org.jetbrains.androidx.navigation`.
 
-- [ ] **Step 3: Keep Android runtime adapter in app**
+- [ ] **Step 4: Move LocalNavigator and AnswerNavigator toward shared**
 
-Keep Android-only navigation runtime code in app files such as `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt`. If shared route models require a platform action, expose it through a small interface rather than passing Android `Context` into shared.
+Use `git mv` after splitting any Android API call sites found in Step 1:
 
-- [ ] **Step 4: Check whether Navigation Compose runtime can be shared**
+```bash
+mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation
+git mv app/src/main/java/com/github/zly2006/zhihu/navigation/LocalNavigator.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/LocalNavigator.kt
+git mv app/src/main/java/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation/AnswerNavigator.kt
+```
+
+If a function needs Android `Context`, replace that parameter with a shared interface and implement the Android side in app.
+
+- [ ] **Step 5: Move ZhihuMain shell toward shared**
+
+Use `git mv` after replacing Android-only screen calls with temporary shared interfaces or expect/actual platform slots:
+
+```bash
+mkdir -p shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui
+git mv app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui/ZhihuMain.kt
+```
+
+Do not rewrite `ZhihuMain`; move first, then make minimal import/package/platform-slot edits.
+
+- [ ] **Step 6: Check whether remaining Navigation Compose runtime can be shared**
 
 Run dependency/compile checks before deciding:
 
 ```bash
-rg -n "navigation-compose|androidx.navigation" gradle/libs.versions.toml build.gradle.kts app/build.gradle.kts shared/build.gradle.kts desktopApp/build.gradle.kts
+rg -n "navigation-compose|androidx.navigation|org.jetbrains.androidx.navigation" build.gradle.kts app/build.gradle.kts shared/build.gradle.kts desktopApp/build.gradle.kts
 ./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin
 ```
 
-Expected: if current navigation runtime supports JVM/desktop, plan a follow-up to move the shared NavHost shell. If it does not, keep route semantics in shared and create thin Android/desktop runtime adapters.
+Expected: current navigation runtime supports JVM/desktop. If a specific API fails, isolate only that API; do not abandon shared navigation shell.
 
-- [ ] **Step 5: Verify route boundary**
+- [ ] **Step 7: Verify route boundary**
 
 Run:
 
 ```bash
-rg -n "android\\.content|android\\.webkit|androidx\\.webkit|\\bIntent\\b|\\bContext\\b|FileProvider|APK|lite|full" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared -g '*.kt'
+rg -n "android\\.content|android\\.webkit|androidx\\.webkit|\\bIntent\\b|\\bContext\\b|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared -g '*.kt'
 ./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin assembleLiteDebug :app:testLiteDebugUnitTest
 ```
 
 Expected: no platform runtime leak in shared navigation; builds/tests pass.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add app/src/main/java/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt app/src/main/java/com/github/zly2006/zhihu/data/HistoryStorage.kt
-git commit -m "refactor: 共享导航语义"
+git add app/src/main/java/com/github/zly2006/zhihu/navigation app/src/main/java/com/github/zly2006/zhihu/ui/ZhihuMain.kt shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared/ui app/src/main/java/com/github/zly2006/zhihu/data/HistoryStorage.kt shared/build.gradle.kts app/build.gradle.kts
+git commit -m "refactor: 共享导航语义和主导航壳"
 ```
 
 ## Task 3: Extract Shared Account Session Core

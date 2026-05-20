@@ -149,7 +149,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - 不能无脑覆盖 demo1。复制或复用 demo1 内容前必须检查包名、namespace、applicationId、模块名、资源名和入口类，改成当前项目需要的 `com.github.zly2006.zhihu` / `com.github.zly2006.zhplus` 约定。
 - 继续迁移前必须先查看 `docs/kmp-migration-status.md` 和 `docs/superpowers/plans/2026-05-21-kmp-migration-remaining.md`，确认当前已完成/未完成边界，避免重复迁移同一模块或把已经纠正的平台边界改回去。
 - 对两个以上互不重叠的迁移 lane，默认优先并行推进：能用 subagent 时按文件所有权拆分给 subagent；不能用 subagent 时也要按 lane 批量审查、批量验证，避免串行地反复读同一批文件。
-- 导航语义应共享：`NavDestination`/route sealed model 这类页面和内容目的地语义应放入 `shared/commonMain`，Android 和 desktop 复用同一套模型。不能迁入 shared 的是 Android `Context`、`Intent`、WebView、APK/lite/full 发行语义、平台回调和不支持跨平台的 navigation runtime；这些只能作为 Android/desktop 薄适配层存在。现阶段 desktop 不做独立适配，优先还原 Android UI 和导航语义。
+- 导航语义和导航壳应共享：`NavDestination`/route sealed model、`ZhihuMain.kt`、`LocalNavigator.kt`、`AnswerNavigator.kt` 这类页面和内容目的地语义及主导航 UI 壳，目标都应迁入 `shared/commonMain`，Android 和 desktop 复用同一套模型与 UI 结构。优先使用 `org.jetbrains.androidx.navigation:navigation-compose` 的 KMP 变体；当前项目已在 Android 侧使用 `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`，继续迁移时应先把它加到 shared/commonMain 并验证 `:shared:compileKotlinJvm` / `:desktopApp:compileKotlin`。不能迁入 shared 的是 Android `Context`、`Intent`、WebView、APK/lite/full 发行语义、平台回调和经验证不支持跨平台的代码片段；这些只能拆成 Android/desktop 薄适配。现阶段 desktop 不做独立适配，优先还原 Android UI 和导航语义。
 - 迁移代码时默认先尝试 `git mv`/`mv` 整体移动现有文件或目录，保留原实现、历史和测试结构，然后只做必要的小幅包名、import、source set、依赖和平台边界修改，以最快路径让代码通过编译。不要先手工重写、复制粘贴重建已有代码，或把简单移动问题做成大重构。只有在原文件混入平台副作用、需要拆分纯逻辑和平台适配，或直接移动会破坏模块边界时，才拆文件并记录原因。
 - iOS 目标可以保留在工程结构中，但本次不执行任何 iOS 相关构建、测试、调试或发布任务。
 - Android 必须使用 AVD 验证，不使用真机；lite 包名仍为 `com.github.zly2006.zhplus.lite`。
