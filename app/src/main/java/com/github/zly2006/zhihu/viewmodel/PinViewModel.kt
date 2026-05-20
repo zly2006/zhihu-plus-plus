@@ -28,8 +28,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom

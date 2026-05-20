@@ -110,7 +110,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
@@ -120,6 +119,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.createEmojiInlineContent
 import com.github.zly2006.zhihu.util.dfsSimple
@@ -1016,7 +1016,8 @@ private fun CommentItem(
                         AuthorTag(authorTag)
                     }
 
-                    if (commentData.replyToAuthor != null) {
+                    val replyToAuthor = commentData.replyToAuthor
+                    if (replyToAuthor != null) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             "回复",
@@ -1025,7 +1026,7 @@ private fun CommentItem(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = commentData.replyToAuthor.name,
+                            text = replyToAuthor.name,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             modifier = Modifier
@@ -1033,9 +1034,9 @@ private fun CommentItem(
                                 .clickable {
                                     navigator.onNavigate(
                                         Person(
-                                            id = commentData.replyToAuthor.id,
-                                            name = commentData.replyToAuthor.name,
-                                            urlToken = commentData.replyToAuthor.urlToken,
+                                            id = replyToAuthor.id,
+                                            name = replyToAuthor.name,
+                                            urlToken = replyToAuthor.urlToken,
                                         ),
                                     )
                                 },

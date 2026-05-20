@@ -27,7 +27,6 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AdvertisementFeed
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedItemIndexGroup
 import com.github.zly2006.zhihu.data.GroupFeed
@@ -39,6 +38,7 @@ import com.github.zly2006.zhihu.data.actionText
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager

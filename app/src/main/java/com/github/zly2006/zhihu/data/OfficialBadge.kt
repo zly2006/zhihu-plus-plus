@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.data
 
+import com.github.zly2006.zhihu.shared.data.DataHolder
+
 typealias OfficialBadge = com.github.zly2006.zhihu.shared.data.OfficialBadge
 
 fun DataHolder.BadgeV2?.officialBadge(): OfficialBadge? {

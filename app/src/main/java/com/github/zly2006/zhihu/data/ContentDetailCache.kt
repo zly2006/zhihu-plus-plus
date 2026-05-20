@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 

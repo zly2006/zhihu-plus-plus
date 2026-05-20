@@ -148,7 +148,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 
 - 迁移时必须保留现有 `skills`、`agents`/`AGENTS.md`/`.agents`、`.codex`、`.claude`、`.mcp.json`、文档、报告、脚本、Rust 配套服务、fastlane 等 AI/文档/配套服务文件；只能增量新增或移动到兼容位置，不能无故删减。
 - 不能无脑覆盖 demo1。复制或复用 demo1 内容前必须检查包名、namespace、applicationId、模块名、资源名和入口类，改成当前项目需要的 `com.github.zly2006.zhihu` / `com.github.zly2006.zhplus` 约定。
-- 迁移代码时优先用 `mv`/文件移动保留原实现、历史和测试结构，再做必要的小幅包名、import、source set、依赖和平台边界修改；不要先手工重写或复制粘贴重建已有代码。只有在原文件混入平台副作用、需要拆分纯逻辑和平台适配，或直接移动会破坏模块边界时，才拆文件并记录原因。
+- 迁移代码时必须优先找能整体 `mv`/文件移动的单元，保留原实现、历史和测试结构，然后只做必要的小幅包名、import、source set、依赖和平台边界修改，以最快路径让代码通过编译。不要先手工重写、复制粘贴重建已有代码，或把简单移动问题做成大重构。只有在原文件混入平台副作用、需要拆分纯逻辑和平台适配，或直接移动会破坏模块边界时，才拆文件并记录原因。
 - iOS 目标可以保留在工程结构中，但本次不执行任何 iOS 相关构建、测试、调试或发布任务。
 - Android 必须使用 AVD 验证，不使用真机；lite 包名仍为 `com.github.zly2006.zhplus.lite`。
 - JVM/desktop 端不能依赖或引入任何 WebView 相关实现。需要扫码登录时，先用 `terminal-notifier -message "需要扫码登录 JVM 端" -sound default` 提醒用户；登录成功后必须备份 cookie，避免重复要求登录。

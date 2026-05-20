@@ -73,7 +73,6 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.OfficialBadge
 import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.data.officialBadgeDetails
@@ -84,6 +83,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
@@ -436,8 +436,9 @@ class PersonViewModel(
         this.articleCount = person.articlesCount
         this.isFollowing = person.isFollowing
         this.isBlocking = person.isBlocking
-        if (person.urlToken != null) {
-            this.person.urlToken = person.urlToken
+        val urlToken = person.urlToken
+        if (urlToken != null) {
+            this.person.urlToken = urlToken
         }
 
         // Check if user is blocked in recommendations

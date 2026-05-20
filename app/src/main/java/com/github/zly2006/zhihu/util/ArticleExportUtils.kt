@@ -18,7 +18,7 @@
 package com.github.zly2006.zhihu.util
 
 import android.content.Context
-import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes

@@ -70,7 +70,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
@@ -81,6 +81,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -594,7 +595,8 @@ private fun PinContent(
         }
 
         // Topics
-        if (pin.topics?.isNotEmpty() == true) {
+        val topics = pin.topics
+        if (topics?.isNotEmpty() == true) {
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 "话题",
@@ -602,7 +604,7 @@ private fun PinContent(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(8.dp))
-            pin.topics.forEach { topic ->
+            topics.forEach { topic ->
                 Text(
                     "# ${topic.name}",
                     style = MaterialTheme.typography.bodyMedium,

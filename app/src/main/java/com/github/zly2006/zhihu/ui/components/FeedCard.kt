@@ -412,9 +412,9 @@ private fun FeedCardMenuBox(
             )
             if (onBlockTopic != null && item.raw != null) {
                 val topics = when (val raw = item.raw) {
-                    is com.github.zly2006.zhihu.data.DataHolder.Answer -> raw.question.topics
-                    is com.github.zly2006.zhihu.data.DataHolder.Question -> raw.topics
-                    is com.github.zly2006.zhihu.data.DataHolder.Article -> raw.topics ?: emptyList()
+                    is com.github.zly2006.zhihu.shared.data.DataHolder.Answer -> raw.question.topics
+                    is com.github.zly2006.zhihu.shared.data.DataHolder.Question -> raw.topics
+                    is com.github.zly2006.zhihu.shared.data.DataHolder.Article -> raw.topics ?: emptyList()
                     else -> emptyList()
                 }
                 topics.forEach { topic ->
