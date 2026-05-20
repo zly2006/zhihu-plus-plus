@@ -1,13 +1,11 @@
 package com.github.zly2006.zhihu.shared.data
 
-import com.github.zly2006.zhihu.navigation.NavDestination
-
 data class FeedDisplayItem(
     val title: String,
     val summary: String?,
     val details: String,
     val feed: Feed?,
-    val navDestination: NavDestination? = feed?.target?.navDestination,
+    val navDestinationJson: String? = null,
     val avatarSrc: String? = null,
     val authorName: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
@@ -21,8 +19,21 @@ data class FeedDisplayItem(
     val segmentSourceUrl: String? = null,
 ) {
     val stableKey: String
-        get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
+        get() = localFeedId
+            ?: localContentId
+            ?: navDestinationJson
+            ?: feed?.target?.stableTargetKey
+            ?: "$title|${summary.orEmpty()}|$details"
 }
+
+private val Feed.Target.stableTargetKey: String
+    get() = when (this) {
+        is Feed.AnswerTarget -> "answer:$id"
+        is Feed.ArticleTarget -> "article:$id"
+        is Feed.QuestionTarget -> "question:$id"
+        is Feed.PinTarget -> "pin:$id"
+        is Feed.VideoTarget -> "video:$id"
+    }
 
 fun List<Feed>.flattenFeeds(): List<Feed> = flatMap {
     (it as? GroupFeed)?.list ?: listOf(it)

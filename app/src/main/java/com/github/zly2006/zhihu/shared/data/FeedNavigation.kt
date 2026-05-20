@@ -22,6 +22,20 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val feedNavigationJson = Json {
+    ignoreUnknownKeys = true
+}
+
+val FeedDisplayItem.navDestination: NavDestination?
+    get() = navDestinationJson
+        ?.let { runCatching { feedNavigationJson.decodeFromString<NavDestination>(it) }.getOrNull() }
+        ?: feed?.target?.navDestination
+
+fun NavDestination.toFeedDisplayItemNavDestinationJson(): String = feedNavigationJson.encodeToString<NavDestination>(this)
 
 val Feed.Target.navDestination: NavDestination?
     get() = when (this) {

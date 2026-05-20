@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.decodeOnlineHistoryItems
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.data.zhihuOnlineHistoryUrl
 import kotlinx.serialization.json.JsonArray
 
@@ -55,7 +56,7 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
                 summary = item.data.content?.summary ?: "",
                 details = detailsText,
                 feed = null,
-                navDestination = navDest,
+                navDestinationJson = navDest?.toFeedDisplayItemNavDestinationJson(),
                 avatarSrc = when (matchedItem) {
                     is Article -> matchedItem.avatarSrc
                     else -> null

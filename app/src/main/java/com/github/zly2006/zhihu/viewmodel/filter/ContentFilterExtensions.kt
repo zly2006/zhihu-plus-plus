@@ -30,6 +30,7 @@ import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers

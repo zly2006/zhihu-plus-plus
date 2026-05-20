@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
@@ -71,7 +72,7 @@ class CollectionContentViewModel(
         title = item.content.title,
         summary = item.content.excerpt,
         details = item.content.detailsText,
-        navDestination = item.content.navDestination,
+        navDestinationJson = item.content.navDestination?.toFeedDisplayItemNavDestinationJson(),
         feed = null,
         avatarSrc = when (item.content) {
             is Feed.AnswerTarget -> item.content.author?.avatarUrl

@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.data.MomentsFeed
 import com.github.zly2006.zhihu.shared.data.QuestionFeedCard
 import com.github.zly2006.zhihu.shared.data.actionText
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel

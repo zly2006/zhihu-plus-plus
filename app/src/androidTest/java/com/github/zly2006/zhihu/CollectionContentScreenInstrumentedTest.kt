@@ -34,6 +34,7 @@ import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -204,7 +205,7 @@ class CollectionContentScreenInstrumentedTest {
                 title = seedTitle(index + 1),
                 summary = "用于 CollectionContentScreen 仪器测试的固定摘要 ${index + 1}",
                 details = "固定详情 ${index + 1}",
-                navDestination = seedQuestionDestination(index + 1),
+                navDestinationJson = seedQuestionDestination(index + 1).toFeedDisplayItemNavDestinationJson(),
                 feed = null,
                 authorName = "作者 ${index + 1}",
                 localFeedId = "collection-content-test-item-${index + 1}",

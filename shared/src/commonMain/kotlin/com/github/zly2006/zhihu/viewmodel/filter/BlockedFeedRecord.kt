@@ -35,7 +35,7 @@ data class BlockedFeedRecord(
     val url: String?,
     val content: String?, // 文本正文（可能为 HTML）
     val blockedReason: String, // 人类可读屏蔽原因
-    val navDestinationJson: String?, // NavDestination JSON 序列化
+    val navDestinationJson: String?, // 平台导航目标 JSON 序列化
     val feedJson: String?, // Feed JSON 序列化
     val blockedTime: Long = currentEpochMillis(),
 ) {

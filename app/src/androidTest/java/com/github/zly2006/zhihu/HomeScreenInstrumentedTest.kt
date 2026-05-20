@@ -35,6 +35,7 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -232,7 +233,7 @@ class HomeScreenInstrumentedTest {
             summary = "这是第 ${index + 1} 条用于 HomeScreen instrumented test 的离线摘要。",
             details = "离线验证 · 固定假数据",
             feed = null,
-            navDestination = Search(query = "fixture-$index"),
+            navDestinationJson = Search(query = "fixture-$index").toFeedDisplayItemNavDestinationJson(),
         )
     }
 }

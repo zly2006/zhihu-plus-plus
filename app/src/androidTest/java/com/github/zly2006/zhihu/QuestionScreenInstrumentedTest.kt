@@ -32,6 +32,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -239,10 +240,10 @@ class QuestionScreenInstrumentedTest {
             summary = "这是第 $id 条离线回答摘要。",
             details = "离线作者 $id · 赞同 ${(id * 3)}",
             feed = null,
-            navDestination = Article(
+            navDestinationJson = Article(
                 type = ArticleType.Answer,
                 id = 7000L + id,
-            ),
+            ).toFeedDisplayItemNavDestinationJson(),
             authorName = "离线作者 $id",
             localFeedId = "offline-question-item-$id",
         )

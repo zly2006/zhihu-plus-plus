@@ -37,6 +37,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.FollowedQuestion
 import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
@@ -390,7 +391,7 @@ class PeopleScreenInstrumentedTest {
                     summary = "动态摘要 ${index + 1}",
                     details = "动态详情 ${index + 1}",
                     feed = null,
-                    navDestination = Search(query = "离线动态 ${index + 1}"),
+                    navDestinationJson = Search(query = "离线动态 ${index + 1}").toFeedDisplayItemNavDestinationJson(),
                     localFeedId = "activity-${index + 1}",
                 )
             },

@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String
@@ -49,7 +50,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                         authorName = dest.authorName,
                         feed = null,
                         avatarSrc = dest.avatarSrc,
-                        navDestination = dest,
+                        navDestinationJson = dest.toFeedDisplayItemNavDestinationJson(),
                     )
                 }
                 is Question -> {
@@ -57,7 +58,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                         title = dest.title,
                         details = "问题",
                         feed = null,
-                        navDestination = dest,
+                        navDestinationJson = dest.toFeedDisplayItemNavDestinationJson(),
                         summary = "",
                     )
                 }
@@ -66,7 +67,7 @@ class HistoryViewModel : BaseFeedViewModel() {
                         title = dest.name,
                         details = "用户",
                         feed = null,
-                        navDestination = dest,
+                        navDestinationJson = dest.toFeedDisplayItemNavDestinationJson(),
                         summary = "",
                     )
                 }

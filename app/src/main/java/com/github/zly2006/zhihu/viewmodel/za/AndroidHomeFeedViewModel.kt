@@ -27,6 +27,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -151,7 +153,7 @@ class AndroidHomeFeedViewModel :
 
                             itemsToDisplay.add(
                                 FeedDisplayItem(
-                                    navDestination = routeDest,
+                                    navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
                                     avatarSrc = avatar,
                                     authorName = authorName,
                                     summary = summary,

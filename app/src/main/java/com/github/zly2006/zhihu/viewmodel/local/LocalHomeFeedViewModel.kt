@@ -23,6 +23,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.Dispatchers
@@ -111,7 +112,7 @@ class LocalHomeFeedViewModel :
         summary = entry.feed.summary,
         details = entry.feed.reasonDisplay,
         feed = null,
-        navDestination = entry.navDestination,
+        navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
         isFiltered = false,
         localContentId = entry.result.contentId,
         localFeedId = entry.feed.id,

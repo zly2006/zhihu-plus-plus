@@ -80,6 +80,7 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -87,7 +88,6 @@ import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
 

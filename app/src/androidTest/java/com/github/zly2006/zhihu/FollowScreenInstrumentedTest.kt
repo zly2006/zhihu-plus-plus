@@ -38,6 +38,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -336,7 +337,7 @@ class FollowScreenInstrumentedTest {
             summary = "这是第 $itemId 条 Follow 推荐页离线摘要。",
             details = "离线推荐详情 $itemId",
             feed = null,
-            navDestination = Search(query = "follow-recommend-$itemId"),
+            navDestinationJson = Search(query = "follow-recommend-$itemId").toFeedDisplayItemNavDestinationJson(),
             localFeedId = "recommend-item-$itemId",
         )
     }
@@ -348,7 +349,7 @@ class FollowScreenInstrumentedTest {
             summary = "这是第 $itemId 条 Follow 动态页离线摘要。",
             details = "离线动态详情 $itemId",
             feed = null,
-            navDestination = Search(query = "follow-dynamic-$itemId"),
+            navDestinationJson = Search(query = "follow-dynamic-$itemId").toFeedDisplayItemNavDestinationJson(),
             localFeedId = "dynamic-item-$itemId",
         )
     }
