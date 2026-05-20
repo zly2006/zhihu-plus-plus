@@ -25,13 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.edit
+import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-
-enum class ThemeMode {
-    LIGHT,
-    DARK,
-    SYSTEM,
-}
 
 object ThemeManager {
     private val useDynamicColor = mutableStateOf(true)

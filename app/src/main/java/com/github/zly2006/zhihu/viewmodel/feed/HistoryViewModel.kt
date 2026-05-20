@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String

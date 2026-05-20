@@ -86,6 +86,7 @@ import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -119,17 +120,6 @@ data class QuestionScreenTestOverrides(
     val onShareAction: (() -> Unit)? = null,
     val commentSheetContent: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
     val shareDialogContent: (@Composable (onDismissRequest: () -> Unit) -> Unit)? = null,
-)
-
-data class QuestionScreenUiState(
-    val questionContent: String = "",
-    val answerCount: Int = 0,
-    val visitCount: Int = 0,
-    val commentCount: Int = 0,
-    val followerCount: Int = 0,
-    val title: String = "",
-    val isFollowing: Boolean = false,
-    val isQuestionDetailExpanded: Boolean = true,
 )
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"

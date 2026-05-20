@@ -45,19 +45,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.notification.NotificationType
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-
-enum class NotificationType(
-    val displayName: String,
-    val defaultValue: Boolean,
-    val regex: Regex,
-) {
-    LIKE_ANSWER("喜欢了你的回答", true, Regex("喜欢了你的回答")),
-    LIKE_COMMENT("喜欢了你的评论", true, Regex("喜欢了.*你的评论")),
-    REPLY_COMMENT("回复了你的评论", true, Regex("回复了.*你的评论")),
-    INVITE_ANSWER("邀请你回答问题", false, Regex("\\s?(邀请你回答问题|的提问等你来答|邀请你回答)")),
-}
+import com.github.zly2006.zhihu.shared.notification.matchNotificationType as sharedMatchNotificationType
 
 object NotificationPreferences {
     private const val PREF_NAME = "notification_settings"
@@ -95,7 +86,7 @@ object NotificationPreferences {
         prefs.edit { putBoolean(KEY_AUTO_MARK_AS_READ, enabled) }
     }
 
-    fun matchNotificationType(verb: String): NotificationType? = NotificationType.entries.find { it.regex.matches(verb) }
+    fun matchNotificationType(verb: String): NotificationType? = sharedMatchNotificationType(verb)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

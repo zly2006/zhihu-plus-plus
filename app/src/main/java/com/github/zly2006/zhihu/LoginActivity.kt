@@ -19,8 +19,6 @@ package com.github.zly2006.zhihu
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Color
 import android.os.Bundle
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -36,7 +34,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -50,8 +47,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
@@ -70,8 +65,6 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.launch
 
 private const val LOGIN_MODE_WEB = 0
@@ -340,7 +333,6 @@ private fun QrLoginPane(activity: LoginActivity) {
     val context = LocalContext.current
     SharedQrLoginPane(
         createClient = { cookies -> AccountData.httpClient(context, cookies) },
-        generateQrBitmap = ::generateQrBitmap,
         onLoginSuccess = { cookies -> activity.finalizeLoginFromCookies(cookies) },
         readRiskControlCookies = ::readWebViewCookies,
         riskControlContent = { url, cookies, onCookiesChanged ->
@@ -421,18 +413,6 @@ private fun LoginNoticeScreen(
             }
         }
     }
-}
-
-private fun generateQrBitmap(content: String): ImageBitmap {
-    val size = 960
-    val bitMatrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
-    for (x in 0 until size) {
-        for (y in 0 until size) {
-            bitmap.setPixel(x, y, if (bitMatrix.get(x, y)) Color.BLACK else Color.WHITE)
-        }
-    }
-    return bitmap.asImageBitmap()
 }
 
 private fun readWebViewCookies(url: String?): Map<String, String> {

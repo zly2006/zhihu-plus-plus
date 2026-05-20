@@ -15,16 +15,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.viewmodel
+package com.github.zly2006.zhihu.shared.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.fetchDailyStoriesBefore
 import com.github.zly2006.zhihu.shared.data.fetchDailyStoriesForDate
 import com.github.zly2006.zhihu.shared.data.fetchLatestDailyStories
-import com.github.zly2006.zhihu.ui.DailySection
 import io.ktor.client.HttpClient
 
 class DailyViewModel : ViewModel() {

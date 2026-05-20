@@ -37,6 +37,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -54,7 +55,6 @@ import com.github.zly2006.zhihu.ui.followDynamicItemTag
 import com.github.zly2006.zhihu.ui.followRecommendItemTag
 import com.github.zly2006.zhihu.ui.followScreenTabTag
 import com.github.zly2006.zhihu.ui.followingUserItemTag
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
@@ -244,8 +244,8 @@ class FollowScreenInstrumentedTest {
 
     private fun setFollowScreen(
         showRefreshFab: Boolean,
-        recommendItems: List<BaseFeedViewModel.FeedDisplayItem>,
-        dynamicItems: List<BaseFeedViewModel.FeedDisplayItem>,
+        recommendItems: List<FeedDisplayItem>,
+        dynamicItems: List<FeedDisplayItem>,
         recentUsers: List<RecentMomentsViewModel.FollowingUserItem>,
         onTestRecommendRefreshClick: (() -> Unit)? = null,
         onTestRecommendLoadMore: (() -> Unit)? = null,
@@ -289,8 +289,8 @@ class FollowScreenInstrumentedTest {
     }
 
     private fun seedFollowScreenState(
-        recommendItems: List<BaseFeedViewModel.FeedDisplayItem>,
-        dynamicItems: List<BaseFeedViewModel.FeedDisplayItem>,
+        recommendItems: List<FeedDisplayItem>,
+        dynamicItems: List<FeedDisplayItem>,
         recentUsers: List<RecentMomentsViewModel.FollowingUserItem>,
     ) {
         composeRule.activity.runOnUiThread {
@@ -329,9 +329,9 @@ class FollowScreenInstrumentedTest {
         true,
     )
 
-    private fun seededRecommendItems(count: Int): List<BaseFeedViewModel.FeedDisplayItem> = List(count) { index ->
+    private fun seededRecommendItems(count: Int): List<FeedDisplayItem> = List(count) { index ->
         val itemId = index + 1
-        BaseFeedViewModel.FeedDisplayItem(
+        FeedDisplayItem(
             title = "推荐离线条目 ${itemId.toString().padStart(2, '0')}",
             summary = "这是第 $itemId 条 Follow 推荐页离线摘要。",
             details = "离线推荐详情 $itemId",
@@ -341,9 +341,9 @@ class FollowScreenInstrumentedTest {
         )
     }
 
-    private fun seededDynamicItems(count: Int): List<BaseFeedViewModel.FeedDisplayItem> = List(count) { index ->
+    private fun seededDynamicItems(count: Int): List<FeedDisplayItem> = List(count) { index ->
         val itemId = index + 1
-        BaseFeedViewModel.FeedDisplayItem(
+        FeedDisplayItem(
             title = "动态离线条目 ${itemId.toString().padStart(2, '0')}",
             summary = "这是第 $itemId 条 Follow 动态页离线摘要。",
             details = "离线动态详情 $itemId",

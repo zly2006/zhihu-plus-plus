@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.viewmodel
+package com.github.zly2006.zhihu.shared.viewmodel
 
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.shared.data.DataHolder

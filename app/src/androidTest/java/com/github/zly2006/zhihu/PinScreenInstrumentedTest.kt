@@ -31,6 +31,8 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
+import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
 import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
@@ -45,10 +47,8 @@ import com.github.zly2006.zhihu.ui.PIN_SCREEN_LINK_CARD_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_LOADING_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SCROLL_TAG
 import com.github.zly2006.zhihu.ui.PIN_SCREEN_SHARE_BUTTON_TAG
-import com.github.zly2006.zhihu.ui.PinLinkCardPreview
 import com.github.zly2006.zhihu.ui.PinScreen
 import com.github.zly2006.zhihu.ui.PinScreenTestOverrides
-import com.github.zly2006.zhihu.ui.PinScreenUiState
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule

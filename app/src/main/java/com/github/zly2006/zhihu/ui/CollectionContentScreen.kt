@@ -62,6 +62,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -291,7 +292,7 @@ private fun CollectionHtmlExportOptionsDialog(
 
 @Composable
 private fun CollectionHtmlExportDialog(
-    state: CollectionContentViewModel.CollectionHtmlExportDialogState,
+    state: CollectionHtmlExportDialogState,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(

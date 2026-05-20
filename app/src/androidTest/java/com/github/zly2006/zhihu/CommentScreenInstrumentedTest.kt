@@ -40,7 +40,9 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.ZhihuMockApi
@@ -69,9 +71,7 @@ import com.github.zly2006.zhihu.ui.commentLikeButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
 import com.github.zly2006.zhihu.ui.commentRowTag
-import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import com.github.zly2006.zhihu.viewmodel.comment.CommentSortOrder
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import org.junit.Assert.assertEquals

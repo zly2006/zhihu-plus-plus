@@ -34,9 +34,9 @@ import kotlinx.coroutines.CancellationException
 @Composable
 fun SharedQrLoginPane(
     createClient: (MutableMap<String, String>) -> HttpClient,
-    generateQrBitmap: (String) -> ImageBitmap,
     onLoginSuccess: suspend (Map<String, String>) -> Boolean,
     modifier: Modifier = Modifier,
+    generateQrBitmap: (String) -> ImageBitmap = ::generateQrLoginBitmap,
     initialCookies: Map<String, String> = emptyMap(),
     qrReadyMessage: String = "请打开知乎++ App 扫一扫",
     onQrReady: () -> Unit = {},

@@ -31,6 +31,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -51,9 +53,7 @@ import com.github.zly2006.zhihu.ui.QUESTION_TITLE_TAG
 import com.github.zly2006.zhihu.ui.QUESTION_VIEW_LOG_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.QuestionScreen
 import com.github.zly2006.zhihu.ui.QuestionScreenTestOverrides
-import com.github.zly2006.zhihu.ui.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.questionFeedItemTag
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -232,9 +232,9 @@ class QuestionScreenInstrumentedTest {
         )
     }
 
-    private fun seededItems(count: Int): List<BaseFeedViewModel.FeedDisplayItem> = List(count) { index ->
+    private fun seededItems(count: Int): List<FeedDisplayItem> = List(count) { index ->
         val id = index + 1L
-        BaseFeedViewModel.FeedDisplayItem(
+        FeedDisplayItem(
             title = "离线回答条目 $id",
             summary = "这是第 $id 条离线回答摘要。",
             details = "离线作者 $id · 赞同 ${(id * 3)}",

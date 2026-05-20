@@ -82,11 +82,11 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.max
@@ -95,20 +95,20 @@ import kotlin.math.min
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedCard(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     modifier: Modifier = Modifier,
     maxHeight: Dp = 240.dp,
     thumbnailUrl: String? = null,
     horizontalPadding: Dp = 16.dp,
-    onLike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onDislike: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
-    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)? = null,
+    onLike: ((FeedDisplayItem) -> Unit)? = null,
+    onDislike: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockUser: ((FeedDisplayItem) -> Unit)? = null,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)? = null,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)? = null,
     /**
      * Default onClick: navigate to feed detail if possible, otherwise do nothing
      */
-    onClick: (BaseFeedViewModel.FeedDisplayItem.() -> Unit)? = null,
+    onClick: (FeedDisplayItem.() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -369,11 +369,11 @@ fun FeedCard(
 
 @Composable
 private fun FeedCardMenuBox(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
+    onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     navigator: Navigator,
 ) {
@@ -449,13 +449,13 @@ private fun FeedCardMenuBox(
 
 @Composable
 private fun FeedCardContent(
-    item: BaseFeedViewModel.FeedDisplayItem,
+    item: FeedDisplayItem,
     showFeedThumbnail: Boolean,
     thumbnailUrl: String?,
     showMenu: Boolean,
     onShowMenuChange: (Boolean) -> Unit,
-    onBlockUser: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
-    onBlockByKeywords: ((BaseFeedViewModel.FeedDisplayItem) -> Unit)?,
+    onBlockUser: ((FeedDisplayItem) -> Unit)?,
+    onBlockByKeywords: ((FeedDisplayItem) -> Unit)?,
     onBlockTopic: ((topicId: String, topicName: String) -> Unit)?,
     duo3CardLayout: Boolean,
     duo3CardLargeTitle: Boolean,
@@ -510,25 +510,25 @@ private fun FeedCardContent(
                         .padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (item.avatarSrc != null && item.authorName != null) {
+                    val avatarSrc = item.avatarSrc
+                    val authorName = item.authorName
+                    if (avatarSrc != null && authorName != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .weight(1f, fill = false)
                                 .clickable {},
                         ) {
-                            item.avatarSrc.let {
-                                AsyncImage(
-                                    model = it,
-                                    contentDescription = "Avatar",
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .size(24.dp),
-                                )
-                                Spacer(Modifier.width(8.dp))
-                            }
+                            AsyncImage(
+                                model = avatarSrc,
+                                contentDescription = "Avatar",
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .size(24.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = item.authorName,
+                                text = authorName,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
@@ -570,24 +570,24 @@ private fun FeedCardContent(
                 )
             }
         }
-        if (item.avatarSrc != null && item.authorName != null) {
+        val avatarSrc = item.avatarSrc
+        val authorName = item.authorName
+        if (avatarSrc != null && authorName != null) {
             Spacer(Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable {},
             ) {
-                item.avatarSrc.let {
-                    AsyncImage(
-                        model = it,
-                        contentDescription = "Avatar",
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .size(20.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
+                AsyncImage(
+                    model = avatarSrc,
+                    contentDescription = "Avatar",
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .size(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = item.authorName,
+                    text = authorName,
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

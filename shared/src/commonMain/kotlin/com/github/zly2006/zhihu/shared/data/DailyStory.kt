@@ -17,3 +17,8 @@ data class DailyStory(
     val images: List<String>,
     val type: Int,
 )
+
+data class DailySection(
+    val date: String,
+    val stories: List<DailyStory>,
+)

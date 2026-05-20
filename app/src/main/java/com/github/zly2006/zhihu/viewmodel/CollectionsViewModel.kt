@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import com.github.zly2006.zhihu.ui.Collection
+import com.github.zly2006.zhihu.shared.data.Collection
 import kotlin.reflect.typeOf
 
 class CollectionsViewModel(

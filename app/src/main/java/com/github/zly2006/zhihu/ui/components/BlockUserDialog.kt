@@ -31,8 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import kotlinx.coroutines.launch
 
@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 fun BlockUserConfirmDialog(
     showDialog: Boolean,
     userToBlock: Pair<String, String>?, // Pair of userId and userName
-    displayItems: List<BaseFeedViewModel.FeedDisplayItem>,
+    displayItems: List<FeedDisplayItem>,
     context: Context,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,

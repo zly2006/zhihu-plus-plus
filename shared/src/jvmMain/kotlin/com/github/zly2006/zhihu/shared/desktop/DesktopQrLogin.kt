@@ -24,18 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.fetchHotListPage
 import com.github.zly2006.zhihu.shared.data.flattenFeeds
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
-import java.awt.Color
-import java.awt.image.BufferedImage
 
 @Composable
 fun DesktopQrLoginScreen(
@@ -68,7 +62,6 @@ fun DesktopQrLoginScreen(
         if (didCheckSavedAccount) {
             SharedQrLoginPane(
                 createClient = { cookies -> store.createHttpClient(cookies) },
-                generateQrBitmap = ::generateQrBitmap,
                 onLoginSuccess = { cookies ->
                     store.verifyAndSave(cookies.toMutableMap()).also { success ->
                         if (success) {
@@ -191,18 +184,6 @@ private fun HotListItem(item: FeedDisplayItem) {
             )
         }
     }
-}
-
-private fun generateQrBitmap(content: String): ImageBitmap {
-    val size = 960
-    val bitMatrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
-    val image = BufferedImage(size, size, BufferedImage.TYPE_INT_RGB)
-    for (x in 0 until size) {
-        for (y in 0 until size) {
-            image.setRGB(x, y, if (bitMatrix.get(x, y)) Color.BLACK.rgb else Color.WHITE.rgb)
-        }
-    }
-    return image.toComposeImageBitmap()
 }
 
 private fun notifyUser(message: String) {

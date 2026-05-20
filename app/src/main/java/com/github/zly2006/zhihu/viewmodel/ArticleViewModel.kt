@@ -57,6 +57,11 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
+import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.shared.article.VoteUpState
+import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
+import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadge
@@ -67,10 +72,7 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
-import com.github.zly2006.zhihu.ui.Collection
-import com.github.zly2006.zhihu.ui.CollectionResponse
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.VoteUpState
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.ArticleExportComment
@@ -82,7 +84,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel.Companion.rootCommentUrl
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import io.ktor.client.HttpClient
@@ -215,26 +216,6 @@ class ArticleViewModel(
         HORIZONTAL_NEXT,
         HORIZONTAL_PREVIOUS,
     }
-
-    /**
-     * 缓存的回答完整内容，用于水平滑动预览。
-     */
-    data class CachedAnswerContent(
-        val article: Article,
-        val title: String,
-        val authorName: String,
-        val authorBio: String,
-        val authorAvatarUrl: String,
-        val authorBadge: OfficialBadge? = null,
-        val content: String,
-        val voteUpCount: Int,
-        val commentCount: Int,
-        val createdAt: Long = 0L,
-        val updatedAt: Long = 0L,
-        val ipInfo: String? = null,
-        /** 来源标签，用于 UI 显示，例如 "此问题"、"「收藏夹名称」" */
-        val sourceLabel: String = "此问题",
-    )
 
     // todo: replace this with sqlite
     class ArticlesSharedData : ViewModel() {

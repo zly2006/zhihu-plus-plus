@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.navigation.History
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -35,7 +36,6 @@ import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.ONLINE_HISTORY_OVERFLOW_TAG
 import com.github.zly2006.zhihu.ui.OnlineHistoryScreen
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -167,7 +167,7 @@ class OnlineHistoryScreenInstrumentedTest {
             onlineHistoryViewModel.displayItems.clear()
             onlineHistoryViewModel.displayItems.addAll(
                 List(itemCount) { index ->
-                    BaseFeedViewModel.FeedDisplayItem(
+                    FeedDisplayItem(
                         title = seedTitle(index + 1),
                         summary = "用于 OnlineHistoryScreen 仪器测试的固定摘要 ${index + 1}",
                         details = "固定详情 ${index + 1}",

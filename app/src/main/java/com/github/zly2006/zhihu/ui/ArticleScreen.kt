@@ -140,6 +140,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
@@ -158,11 +160,9 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
-import com.github.zly2006.zhihu.viewmodel.PaginationViewModel.Paging
 import com.materialkolor.ktx.harmonize
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -197,43 +197,6 @@ private fun rememberBottomBarAvoidingBringIntoViewSpec(
             }
         }
     }
-}
-
-@Serializable
-data class Collection(
-    val id: String,
-    val isFavorited: Boolean = false,
-    val type: String = "collection",
-    val title: String = "",
-    val isPublic: Boolean = false,
-    val url: String = "",
-    val description: String = "",
-    val followerCount: Int = 0,
-    val answerCount: Int = 0,
-    val itemCount: Int = 0,
-    val likeCount: Int = 0,
-    val viewCount: Int = 0,
-    val commentCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isLiking: Boolean = false,
-    val createdTime: Long = 0L,
-    val updatedTime: Long = 0L,
-    val creator: Person? = null,
-    val isDefault: Boolean = false,
-)
-
-@Serializable
-data class CollectionResponse(
-    val data: List<Collection>,
-    val paging: Paging,
-)
-
-enum class VoteUpState(
-    val key: String,
-) {
-    Up("up"),
-    Down("down"),
-    Neutral("neutral"),
 }
 
 private val VoteUpNeutralContent = Color(0xFF3671EE)
@@ -1887,7 +1850,7 @@ fun ArticleScreen(
  */
 @Composable
 private fun CachedAnswerPreview(
-    cached: ArticleViewModel.CachedAnswerContent,
+    cached: CachedAnswerContent,
 ) {
     val context = LocalContext.current
     val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)

@@ -26,19 +26,17 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.FeedItemIndexGroup
 import com.github.zly2006.zhihu.shared.data.GroupFeed
 import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.data.MomentsFeed
 import com.github.zly2006.zhihu.shared.data.QuestionFeedCard
-import com.github.zly2006.zhihu.shared.data.SegmentInfoParagraph
 import com.github.zly2006.zhihu.shared.data.actionText
-import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
@@ -53,28 +51,6 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
     var isPullToRefresh by mutableStateOf(false)
         protected set
-
-    data class FeedDisplayItem(
-        val title: String,
-        val summary: String?,
-        val details: String,
-        val feed: Feed?,
-        val navDestination: NavDestination? = feed?.target?.navDestination,
-        val avatarSrc: String? = null,
-        val authorName: String? = null,
-        val authorBadgeV2: DataHolder.BadgeV2? = null,
-        val isFiltered: Boolean = false,
-        val content: String? = null,
-        var raw: DataHolder.Content? = null,
-        val localContentId: String? = null,
-        val localFeedId: String? = null,
-        val localReason: String? = null,
-        val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
-        val segmentSourceUrl: String? = null,
-    ) {
-        val stableKey: String
-            get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
-    }
 
     override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)

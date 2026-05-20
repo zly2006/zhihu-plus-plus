@@ -26,6 +26,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
+import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -33,8 +35,6 @@ import com.github.zly2006.zhihu.test.performVerticalSwipeCycle
 import com.github.zly2006.zhihu.test.resetAppPreferences
 import com.github.zly2006.zhihu.test.setScreenContent
 import com.github.zly2006.zhihu.ui.DailyScreen
-import com.github.zly2006.zhihu.ui.DailyScreenUiState
-import com.github.zly2006.zhihu.ui.DailySection
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule

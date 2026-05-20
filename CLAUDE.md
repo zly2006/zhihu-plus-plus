@@ -126,7 +126,6 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - ktlint 格式化（14.0.1）
 
 ## Code Review
-- 每次修改后，必须进行代码 review，等待批准后才能 commit
 - 不仅要进行上述所有检查，还要检查是否有代码重复片段，是否有未使用的变量或函数，是否有潜在的性能问题等
 - 不仅要检查当前代码，还要把关键地方都grep一下，检查你写的代码是否和其他地方重复了，是否有类似的代码片段可以复用
 - 在不降低注释质量的前提下，代码越短越好，避免过度设计和过度抽象
@@ -162,3 +161,4 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - 编译耗时较长时，尽量在完成一个大任务后再构建验证；每完成一个大任务，在本迁移分支里及时提交。
 - 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。
+- 每完成一个功能点，且编译通过，要及时commit。

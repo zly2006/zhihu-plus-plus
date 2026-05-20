@@ -1,20 +1,27 @@
 package com.github.zly2006.zhihu.shared.data
 
+import com.github.zly2006.zhihu.navigation.NavDestination
+
 data class FeedDisplayItem(
     val title: String,
     val summary: String?,
     val details: String,
     val feed: Feed?,
+    val navDestination: NavDestination? = feed?.target?.navDestination,
     val avatarSrc: String? = null,
     val authorName: String? = null,
     val authorBadgeV2: DataHolder.BadgeV2? = null,
     val isFiltered: Boolean = false,
     val content: String? = null,
+    var raw: DataHolder.Content? = null,
+    val localContentId: String? = null,
+    val localFeedId: String? = null,
+    val localReason: String? = null,
     val segmentInfos: List<SegmentInfoParagraph> = emptyList(),
     val segmentSourceUrl: String? = null,
 ) {
     val stableKey: String
-        get() = "${feed?.target?.url.orEmpty()}|$title|${summary.orEmpty()}|$details"
+        get() = localFeedId ?: localContentId ?: navDestination?.toString() ?: "$title|${summary.orEmpty()}|$details"
 }
 
 fun List<Feed>.flattenFeeds(): List<Feed> = flatMap {

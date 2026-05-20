@@ -81,9 +81,16 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.FollowedQuestion
+import com.github.zly2006.zhihu.shared.data.FollowedTopic
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
+import com.github.zly2006.zhihu.shared.people.PeopleListUiState
+import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
+import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
+import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
@@ -104,7 +111,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -235,32 +241,6 @@ class PeopleColumnContributionsViewModel(
 
     override val include: String
         get() = "data[*].articles_count,followers,author"
-}
-
-@Serializable
-data class FollowedQuestion(
-    val id: String,
-    val type: String = "question",
-    val url: String = "",
-    val title: String = "",
-    val questionType: String = "",
-    val created: Long = 0L,
-    val updatedTime: Long = 0L,
-)
-
-@Serializable
-data class FollowedTopic(
-    val id: String = "",
-    val type: String = "topic",
-    val url: String = "",
-    val name: String = "",
-    val avatarUrl: String? = null,
-    val topicType: String? = null,
-    val topic: DataHolder.Topic? = null,
-) {
-    val displayId: String get() = topic?.id ?: id
-    val displayName: String get() = topic?.name ?: name
-    val displayAvatarUrl: String? get() = topic?.avatarUrl ?: avatarUrl
 }
 
 class PeopleFollowingCollectionsViewModel(
@@ -584,49 +564,6 @@ internal fun peopleProfileUrl(person: Person): String {
     return "https://api.zhihu.com/people/$identifier"
 }
 
-data class PeopleProfileUiState(
-    val avatar: String = "",
-    val name: String = "",
-    val headline: String = "",
-    val officialBadge: OfficialBadge? = null,
-    val officialBadgeDetails: List<OfficialBadge> = emptyList(),
-    val followerCount: Int = 0,
-    val followingCount: Int = 0,
-    val answerCount: Int = 0,
-    val articleCount: Int = 0,
-    val isFollowing: Boolean = false,
-    val isBlocking: Boolean = false,
-    val isBlockedInRecommendations: Boolean = false,
-)
-
-data class PeopleListUiState<T>(
-    val items: List<T> = emptyList(),
-    val isEnd: Boolean = true,
-)
-
-data class PeopleSortedListUiState<T>(
-    val sortBy: String,
-    val items: List<T> = emptyList(),
-    val isEnd: Boolean = true,
-)
-
-data class PeopleScreenUiState(
-    val profile: PeopleProfileUiState = PeopleProfileUiState(),
-    val answers: PeopleSortedListUiState<DataHolder.Answer> = PeopleSortedListUiState(sortBy = "voteups"),
-    val articles: PeopleSortedListUiState<DataHolder.Article> = PeopleSortedListUiState(sortBy = "created"),
-    val activities: PeopleListUiState<BaseFeedViewModel.FeedDisplayItem> = PeopleListUiState(),
-    val collections: PeopleListUiState<DataHolder.Collection> = PeopleListUiState(),
-    val questions: PeopleListUiState<DataHolder.Question> = PeopleListUiState(),
-    val pins: PeopleListUiState<DataHolder.Pin> = PeopleListUiState(),
-    val columns: PeopleListUiState<DataHolder.Column> = PeopleListUiState(),
-    val followers: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
-    val following: PeopleListUiState<DataHolder.People> = PeopleListUiState(),
-    val followingColumns: PeopleListUiState<DataHolder.Column> = PeopleListUiState(),
-    val followingTopics: PeopleListUiState<FollowedTopic> = PeopleListUiState(),
-    val followingQuestions: PeopleListUiState<FollowedQuestion> = PeopleListUiState(),
-    val followingCollections: PeopleListUiState<DataHolder.Collection> = PeopleListUiState(),
-)
-
 /**
  * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
  * here so PeopleScreen can be exercised without touching remote profile fetches or mutations.
@@ -947,7 +884,7 @@ fun PeopleScreen(
                                 key = { it.id },
                             ) {
                                 FeedCard(
-                                    BaseFeedViewModel.FeedDisplayItem(
+                                    FeedDisplayItem(
                                         title = it.question.title,
                                         summary = it.excerpt,
                                         details = "回答 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",
@@ -996,7 +933,7 @@ fun PeopleScreen(
                                 key = { it.id },
                             ) {
                                 FeedCard(
-                                    BaseFeedViewModel.FeedDisplayItem(
+                                    FeedDisplayItem(
                                         title = it.title,
                                         summary = it.excerpt,
                                         details = "文章 · ${it.voteupCount} 赞同 · ${it.commentCount} 评论",

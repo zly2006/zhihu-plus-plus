@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -29,22 +28,22 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
+import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.ui.Collection
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel.CollectionItem
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel.FeedDisplayItem
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
@@ -59,30 +58,6 @@ class CollectionContentViewModel(
     }
     var exportDialogState by mutableStateOf<CollectionHtmlExportDialogState?>(null)
         private set
-
-    @Serializable
-    class CollectionItem(
-        val created: String,
-        val content: Feed.Target,
-    )
-
-    @Stable
-    data class CollectionHtmlExportDialogState(
-        val phaseText: String,
-        val totalCount: Int,
-        val processedCount: Int,
-        val successCount: Int,
-        val skippedCount: Int,
-        val failedCount: Int,
-        val currentTitle: String = "",
-        val isIndeterminate: Boolean = false,
-        val isCompleted: Boolean = false,
-        val resultMessage: String? = null,
-        val zipFilePath: String? = null,
-    ) {
-        val progress: Float
-            get() = if (totalCount <= 0) 0f else (processedCount.toFloat() / totalCount.toFloat()).coerceIn(0f, 1f)
-    }
 
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
@@ -100,7 +75,7 @@ class CollectionContentViewModel(
         feed = null,
         avatarSrc = when (item.content) {
             is Feed.AnswerTarget -> item.content.author?.avatarUrl
-            is Feed.ArticleTarget -> item.content.author.avatarUrl
+            is Feed.ArticleTarget -> item.content.author?.avatarUrl
             is Feed.QuestionTarget -> item.content.author?.avatarUrl
             else -> null
         },

@@ -26,14 +26,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import kotlinx.serialization.json.jsonObject
@@ -340,8 +340,8 @@ class QuestionAnswerNavigator(
 class CollectionAnswerNavigator(
     val collectionId: String,
     collectionTitle: String,
-    initialNextItems: List<CollectionContentViewModel.CollectionItem>,
-    initialPreviousItems: List<CollectionContentViewModel.CollectionItem> = emptyList(),
+    initialNextItems: List<CollectionItem>,
+    initialPreviousItems: List<CollectionItem> = emptyList(),
 ) : AnswerNavigator("「$collectionTitle」") {
     private val queue = ArrayDeque<Article>().also { deque ->
         initialNextItems.forEach { item ->
@@ -381,7 +381,7 @@ class CollectionAnswerNavigator(
         if (queue.isNotEmpty() || prefetchedArticle != null) return
         if (nextPageUrl.isEmpty()) return
         val jojo = AccountData.fetchGet(context, nextPageUrl) { signFetchRequest() } ?: return
-        val items = AccountData.decodeJson<List<CollectionContentViewModel.CollectionItem>>(jojo["data"] ?: return)
+        val items = AccountData.decodeJson<List<CollectionItem>>(jojo["data"] ?: return)
         nextPageUrl = jojo["paging"]
             ?.jsonObject
             ?.get("next")

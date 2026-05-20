@@ -33,6 +33,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
@@ -49,7 +50,6 @@ import com.github.zly2006.zhihu.ui.HomeScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.QQ_GROUP_DISMISSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -184,7 +184,7 @@ class HomeScreenInstrumentedTest {
     private fun MainActivityComposeRule.launchHomeScreen(
         duo3HomeAccount: Boolean,
         showRefreshFab: Boolean,
-        displayItems: List<BaseFeedViewModel.FeedDisplayItem>,
+        displayItems: List<FeedDisplayItem>,
     ): RecordingNavigator {
         activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE).edit(commit = true) {
             putBoolean("duo3_home_account", duo3HomeAccount)
@@ -221,13 +221,13 @@ class HomeScreenInstrumentedTest {
         viewModel.displayItems.clear()
     }
 
-    private fun seedHomeFeedViewModel(items: List<BaseFeedViewModel.FeedDisplayItem>) {
+    private fun seedHomeFeedViewModel(items: List<FeedDisplayItem>) {
         val viewModel = ViewModelProvider(composeRule.activity)[HomeFeedViewModel::class.java]
         viewModel.addDisplayItems(items)
     }
 
-    private fun homeFeedFixtureItems(count: Int = 8): List<BaseFeedViewModel.FeedDisplayItem> = List(count) { index ->
-        BaseFeedViewModel.FeedDisplayItem(
+    private fun homeFeedFixtureItems(count: Int = 8): List<FeedDisplayItem> = List(count) { index ->
+        FeedDisplayItem(
             title = "离线条目 ${index.toString().padStart(2, '0')}",
             summary = "这是第 ${index + 1} 条用于 HomeScreen instrumented test 的离线摘要。",
             details = "离线验证 · 固定假数据",

@@ -119,6 +119,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.13.0")
+            implementation("com.google.zxing:core:3.5.3")
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)

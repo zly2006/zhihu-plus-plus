@@ -22,6 +22,7 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -144,7 +145,7 @@ class HomeFeedViewModel :
      * 记录用户点击内容
      * 在viewModelScope中运行，使用viewModelScope代替GlobalScope
      */
-    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.IO) {
             sendReadStatusToServer(context, feed)
             recordContentInteraction(context, feed)

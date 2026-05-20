@@ -29,6 +29,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.test.MainActivityComposeRule
 import com.github.zly2006.zhihu.test.RecordingNavigator
 import com.github.zly2006.zhihu.test.performHorizontalSwipeCycle
@@ -39,7 +40,6 @@ import com.github.zly2006.zhihu.ui.HOT_LIST_LIST_TAG
 import com.github.zly2006.zhihu.ui.HOT_LIST_REFRESH_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.HotListScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -170,7 +170,7 @@ class HotListScreenInstrumentedTest {
             hotListViewModel.displayItems.clear()
             hotListViewModel.displayItems.addAll(
                 List(itemCount) { index ->
-                    BaseFeedViewModel.FeedDisplayItem(
+                    FeedDisplayItem(
                         title = seedTitle(index + 1),
                         summary = "用于 HotListScreen 仪器测试的固定摘要 ${index + 1}",
                         details = "固定热榜详情 ${index + 1}",

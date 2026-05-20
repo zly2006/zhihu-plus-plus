@@ -80,29 +80,16 @@ import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
+import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
-import com.github.zly2006.zhihu.viewmodel.DailyViewModel
+import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-// Data class to hold stories grouped by date
-data class DailySection(
-    val date: String,
-    val stories: List<DailyStory>,
-)
-
-// Stable UI snapshot used by instrumented tests so DailyScreen can be rendered without
-// depending on the Zhihu Daily API or ViewModel side effects.
-data class DailyScreenUiState(
-    val sections: List<DailySection> = emptyList(),
-    val isLoading: Boolean = true,
-    val isLoadingMore: Boolean = false,
-    val error: String? = null,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

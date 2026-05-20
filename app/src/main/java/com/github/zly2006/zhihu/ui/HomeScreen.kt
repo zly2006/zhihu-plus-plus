@@ -87,6 +87,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.target
@@ -130,7 +131,7 @@ const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 interface IHomeFeedViewModel {
     suspend fun recordContentInteraction(context: Context, feed: Feed)
 
-    fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem)
+    fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem)
 
     /**
      * 发送"已读"状态到知乎服务器的通用实现
@@ -586,14 +587,16 @@ fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
                         viewModel.handleBlockTopic(context, topicId, topicName)
                     },
                 ) {
+                    val feed = this.feed
+                    val destination = navDestination
                     if (feed != null) {
 //                            DataHolder.putFeed(feed)
                         (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
                     } else if (localHomeViewModel != null && item.localContentId != null) {
                         localHomeViewModel.onLocalItemOpened(context, item)
                     }
-                    if (navDestination != null) {
-                        navigator.onNavigate(navDestination)
+                    if (destination != null) {
+                        navigator.onNavigate(destination)
                     }
                 }
             }

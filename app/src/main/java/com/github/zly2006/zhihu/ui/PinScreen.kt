@@ -82,6 +82,8 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
+import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
+import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -107,19 +109,6 @@ const val PIN_SCREEN_AUTHOR_TAG = "pin_screen_author"
 const val PIN_SCREEN_LINK_CARD_TAG = "pin_screen_link_card"
 const val PIN_SCREEN_LIKE_BUTTON_TAG = "pin_screen_like_button"
 const val PIN_SCREEN_COMMENT_BUTTON_TAG = "pin_screen_comment_button"
-
-data class PinScreenUiState(
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val pinContent: DataHolder.Pin? = null,
-    val isLiked: Boolean = false,
-    val likeCount: Int = 0,
-)
-
-data class PinLinkCardPreview(
-    val title: String,
-    val preview: String,
-)
 
 data class PinScreenTestOverrides(
     val state: PinScreenUiState,
@@ -252,8 +241,9 @@ fun PinScreen(
                 }
 
                 screenState.pinContent != null -> {
+                    val pinContent = screenState.pinContent ?: return@Box
                     PinContent(
-                        pin = screenState.pinContent,
+                        pin = pinContent,
                         isLiked = screenState.isLiked,
                         likeCount = screenState.likeCount,
                         onLikeClick = {

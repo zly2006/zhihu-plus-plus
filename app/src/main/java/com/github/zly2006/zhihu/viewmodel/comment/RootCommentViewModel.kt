@@ -21,16 +21,14 @@ import android.content.Context
 import androidx.core.text.htmlEncode
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
+import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
+import com.github.zly2006.zhihu.shared.comment.submitCommentUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.CommentItem
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.post
@@ -46,59 +44,6 @@ import kotlinx.serialization.json.put
 class RootCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
-    companion object {
-        val NavDestination.submitCommentUrl: String
-            get() = when (this) {
-                is Article -> {
-                    when (type) {
-                        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/comment"
-                        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/comment"
-                    }
-                }
-
-                is Pin -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/pins/$id/comment"
-                }
-
-                is Question -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/questions/$questionId/comment"
-                }
-
-                is SegmentCommentHolder -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/comment?segment_id=$segmentId"
-                }
-
-                else -> ""
-            }
-
-        val NavDestination.rootCommentUrl: String
-            get() = when (this) {
-                is Article -> {
-                    when (type) {
-                        ArticleType.Answer -> "https://www.zhihu.com/api/v4/comment_v5/answers/$id/root_comment"
-                        ArticleType.Article -> "https://www.zhihu.com/api/v4/comment_v5/articles/$id/root_comment"
-                    }
-                }
-
-                is Pin -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/pins/$id/root_comment"
-                }
-
-                is Question -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/questions/$questionId/root_comment"
-                }
-
-                is SegmentCommentHolder -> {
-                    "https://www.zhihu.com/api/v4/comment_v5/${normalizedContentType}s/$contentId/segment/root_comment?segment_id=$segmentId&limit=20&offset="
-                }
-
-                else -> ""
-            }
-
-        private val SegmentCommentHolder.normalizedContentType: String
-            get() = contentType.removeSuffix("s")
-    }
-
     override val initialUrl: String
         get() {
             val baseUrl = article.rootCommentUrl

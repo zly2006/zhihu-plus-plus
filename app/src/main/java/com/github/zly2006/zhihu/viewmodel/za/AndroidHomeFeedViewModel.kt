@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -215,7 +216,7 @@ class AndroidHomeFeedViewModel :
         // Android 版本暂不记录交互
     }
 
-    override fun onUiContentClick(context: Context, feed: Feed, item: BaseFeedViewModel.FeedDisplayItem) {
+    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.IO) {
             sendReadStatusToServer(context, feed)
         }
