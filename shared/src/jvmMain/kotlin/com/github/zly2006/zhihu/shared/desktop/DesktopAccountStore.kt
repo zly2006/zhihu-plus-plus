@@ -1,42 +1,30 @@
 package com.github.zly2006.zhihu.shared.desktop
 
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuProfile
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
-import kotlinx.serialization.Serializable
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0"
-
-@Serializable
-data class DesktopAccountData(
-    val login: Boolean = false,
-    val username: String = "",
-    val cookies: MutableMap<String, String> = mutableMapOf(),
-    val userAgent: String = DEFAULT_USER_AGENT,
-)
+typealias DesktopAccountData = ZhihuAccountSession
 
 class DesktopAccountStore(
     private val accountFile: Path = defaultAccountFile(),
 ) {
-    fun load(): DesktopAccountData = runCatching {
-        if (accountFile.exists()) {
-            ZhihuJson.json.decodeFromString<DesktopAccountData>(accountFile.readText())
-        } else {
-            DesktopAccountData()
-        }
-    }.getOrDefault(DesktopAccountData())
+    private val repository = ZhihuAccountRepository(PathAccountSessionStore(accountFile))
 
-    fun save(data: DesktopAccountData) {
-        accountFile.parent.createDirectories()
-        accountFile.writeText(ZhihuJson.json.encodeToString(data))
-    }
+    fun load(): DesktopAccountData = repository.load()
+
+    fun save(data: DesktopAccountData) = repository.save(data)
 
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient(CIO) {
         val savedData = load()
@@ -61,6 +49,12 @@ class DesktopAccountStore(
                     login = true,
                     username = profile.name,
                     cookies = cookies,
+                    profile = ZhihuAccountProfileSnapshot(
+                        id = profile.id,
+                        name = profile.name,
+                        urlToken = profile.urlToken,
+                        userType = profile.userType,
+                    ),
                 ),
             )
             return true
@@ -71,4 +65,23 @@ class DesktopAccountStore(
 private fun defaultAccountFile(): Path {
     val home = System.getProperty("user.home")
     return Path.of(home, ".zhihu-plus-plus", "account.json")
+}
+
+private class PathAccountSessionStore(
+    private val accountFile: Path,
+) : ZhihuAccountSessionStore {
+    override fun readText(): String? = if (accountFile.exists()) {
+        accountFile.readText()
+    } else {
+        null
+    }
+
+    override fun writeText(text: String) {
+        accountFile.parent.createDirectories()
+        accountFile.writeText(text)
+    }
+
+    override fun delete() {
+        accountFile.deleteIfExists()
+    }
 }
