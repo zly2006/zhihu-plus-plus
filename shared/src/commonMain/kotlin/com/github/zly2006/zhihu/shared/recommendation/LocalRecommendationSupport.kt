@@ -1,5 +1,12 @@
 package com.github.zly2006.zhihu.shared.recommendation
 
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.data.Feed
+
 data class LocalContentIdentity(
     val type: String,
     val id: String,
@@ -51,6 +58,41 @@ fun parseLocalContentIdentity(
     }
 
     return inferIdentityFromUrl(url)
+}
+
+fun LocalContentIdentity.toNavDestination(title: String): NavDestination? {
+    val numericId = id.toLongOrNull() ?: return null
+    return when (type) {
+        LOCAL_CONTENT_TYPE_ANSWER ->
+            Article(type = ArticleType.Answer, id = numericId, title = title)
+        LOCAL_CONTENT_TYPE_ARTICLE ->
+            Article(type = ArticleType.Article, id = numericId, title = title)
+        LOCAL_CONTENT_TYPE_QUESTION ->
+            Question(questionId = numericId, title = title)
+        LOCAL_CONTENT_TYPE_PIN ->
+            Pin(id = numericId)
+        else -> null
+    }
+}
+
+fun Feed.Target.toLocalContentIdentity(): LocalContentIdentity = when (this) {
+    is Feed.AnswerTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_ANSWER,
+        id.toString(),
+    )
+    is Feed.ArticleTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_ARTICLE,
+        id.toString(),
+    )
+    is Feed.QuestionTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_QUESTION,
+        id.toString(),
+    )
+    is Feed.PinTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_PIN,
+        id.toString(),
+    )
+    is Feed.VideoTarget -> LocalContentIdentity("video", id.toString())
 }
 
 fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference {
