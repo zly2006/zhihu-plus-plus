@@ -24,6 +24,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.shared.account.DEFAULT_ZHIHU_USER_AGENT
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
@@ -53,6 +58,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
 
 object AccountData {
@@ -73,18 +79,12 @@ object AccountData {
         val login: Boolean = false,
         val username: String = "",
         val cookies: MutableMap<String, String> = mutableMapOf(),
-        val userAgent: String = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 " +
-            "Safari/540.0",
+        val userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
         val self: Person? = null,
     )
 
     fun loadData(context: Context): Data {
-        val file = File(context.filesDir, "account.json")
-        runCatching {
-            if (file.exists()) {
-                dataState.value = json.decodeFromString<Data>(file.readText())
-            }
-        }
+        dataState.value = accountRepository(context).load().toAndroidData()
         return data
     }
 
@@ -98,8 +98,7 @@ object AccountData {
     fun saveData(context: Context, data: Data) {
         dataState.value = data
         // https://static.zhihu.com/zse-ck/v4/24df2abbfcb1b98cd5ce1b519f02eeabea28c83ac9d9ec2778dc5b03a3b8b710.js
-        val file = File(context.filesDir, "account.json")
-        file.writeText(json.encodeToString(data))
+        accountRepository(context).save(data.toSession())
     }
 
     fun cookieStorage(context: Context, cookies: MutableMap<String, String>? = null) =
@@ -187,7 +186,59 @@ object AccountData {
     }
 
     fun delete(context: Context) {
-        saveData(context, Data())
+        dataState.value = Data()
+        accountRepository(context).clear()
+    }
+
+    private fun accountRepository(context: Context) = ZhihuAccountRepository(
+        AndroidAccountSessionStore(File(context.filesDir, "account.json")),
+    )
+
+    private fun Data.toSession(): ZhihuAccountSession = ZhihuAccountSession(
+        login = login,
+        username = username,
+        cookies = cookies.toMutableMap(),
+        userAgent = userAgent,
+        profile = self?.let {
+            ZhihuAccountProfileSnapshot(
+                id = it.id,
+                name = it.name,
+                urlToken = it.urlToken,
+                userType = it.userType,
+            )
+        },
+        self = self?.let { json.encodeToJsonElement(it) },
+    )
+
+    private fun ZhihuAccountSession.toAndroidData(): Data = Data(
+        login = login,
+        username = username,
+        cookies = cookies.toMutableMap(),
+        userAgent = userAgent,
+        self = self?.let {
+            runCatching {
+                json.decodeFromJsonElement<Person>(it)
+            }.getOrNull()
+        },
+    )
+
+    private class AndroidAccountSessionStore(
+        private val file: File,
+    ) : ZhihuAccountSessionStore {
+        override fun readText(): String? = if (file.exists()) {
+            file.readText()
+        } else {
+            null
+        }
+
+        override fun writeText(text: String) {
+            file.parentFile?.mkdirs()
+            file.writeText(text)
+        }
+
+        override fun delete() {
+            file.delete()
+        }
     }
 
     /**

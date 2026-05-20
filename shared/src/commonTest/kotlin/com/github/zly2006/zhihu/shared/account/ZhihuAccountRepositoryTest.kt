@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu.shared.account
 
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -34,6 +36,10 @@ class ZhihuAccountRepositoryTest {
                 urlToken = "alice-token",
                 userType = "people",
             ),
+            self = buildJsonObject {
+                put("id", "123")
+                put("name", "alice")
+            },
         )
 
         repository.save(session)

@@ -10,7 +10,7 @@
 - KMP Room is used for content filter and local content databases.
 - 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
-- Account session data and JSON persistence rules have a shared repository; JVM desktop storage is now a thin file-path adapter over that repository.
+- Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo
@@ -25,7 +25,7 @@
 ## Remaining Work
 
 - Move `ZhihuMain.kt` back to common code after separating Android-only runtime effects.
-- Finish wiring Android `AccountData` onto the shared account session repository while preserving its current public API.
+- Split account fetch/token refresh orchestration from Android `AccountData`.
 - Move pagination and feed loading state into shared with platform effect adapters.
 - Replace Android duplicate feed display mapping with shared `Feed.toDisplayItem`.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
