@@ -23,48 +23,23 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_ANSWER
+import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_ARTICLE
+import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_PIN
+import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_QUESTION
 import kotlin.math.ceil
+import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity as buildSharedContentAffinity
+import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason as buildSharedLocalRecommendationReason
+import com.github.zly2006.zhihu.shared.recommendation.buildReasonPreference as buildSharedReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.normalizeLocalContentId as normalizeSharedLocalContentId
+import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity as parseSharedLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.stableLocalFeedId as stableSharedLocalFeedId
 
-data class LocalContentIdentity(
-    val type: String,
-    val id: String,
-) {
-    val value: String
-        get() = "$type:$id"
-
-    fun toNavDestination(title: String): NavDestination? {
-        val numericId = id.toLongOrNull() ?: return null
-        return when (type) {
-            CONTENT_TYPE_ANSWER -> Article(type = ArticleType.Answer, id = numericId, title = title)
-            CONTENT_TYPE_ARTICLE -> Article(type = ArticleType.Article, id = numericId, title = title)
-            CONTENT_TYPE_QUESTION -> Question(questionId = numericId, title = title)
-            CONTENT_TYPE_PIN -> Pin(id = numericId)
-            else -> null
-        }
-    }
-}
-
-data class LocalReasonStats(
-    val clicks: Int = 0,
-    val likes: Int = 0,
-    val dislikes: Int = 0,
-)
-
-data class LocalContentStats(
-    val clicks: Int = 0,
-    val likes: Int = 0,
-    val dislikes: Int = 0,
-)
-
-data class LocalReasonPreference(
-    val multiplier: Double,
-    val explanation: String? = null,
-)
-
-data class LocalContentAffinity(
-    val multiplier: Double,
-    val explanation: String? = null,
-)
+typealias LocalContentIdentity = com.github.zly2006.zhihu.shared.recommendation.LocalContentIdentity
+typealias LocalReasonStats = com.github.zly2006.zhihu.shared.recommendation.LocalReasonStats
+typealias LocalContentStats = com.github.zly2006.zhihu.shared.recommendation.LocalContentStats
+typealias LocalReasonPreference = com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+typealias LocalContentAffinity = com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 
 data class RankedLocalResult(
     val result: CrawlingResult,
@@ -72,34 +47,45 @@ data class RankedLocalResult(
     val reasonDisplay: String,
 )
 
-private const val CONTENT_TYPE_ANSWER = "answer"
-private const val CONTENT_TYPE_ARTICLE = "article"
-private const val CONTENT_TYPE_QUESTION = "question"
-private const val CONTENT_TYPE_PIN = "pin"
-
-fun normalizeLocalContentId(type: String, id: String): String = LocalContentIdentity(type = type, id = id).value
+fun normalizeLocalContentId(type: String, id: String): String = normalizeSharedLocalContentId(type, id)
 
 fun parseLocalContentIdentity(
     contentId: String,
     url: String,
-): LocalContentIdentity? {
-    val trimmedContentId = contentId.trim()
-    if (trimmedContentId.contains(':')) {
-        val type = trimmedContentId.substringBefore(':').trim()
-        val id = trimmedContentId.substringAfter(':').trim()
-        if (type.isNotEmpty() && id.isNotEmpty()) {
-            return LocalContentIdentity(type = type, id = id)
-        }
-    }
+): LocalContentIdentity? = parseSharedLocalContentIdentity(contentId, url)
 
-    return inferIdentityFromUrl(url)
+fun LocalContentIdentity.toNavDestination(title: String): NavDestination? {
+    val numericId = id.toLongOrNull() ?: return null
+    return when (type) {
+        LOCAL_CONTENT_TYPE_ANSWER ->
+            Article(type = ArticleType.Answer, id = numericId, title = title)
+        LOCAL_CONTENT_TYPE_ARTICLE ->
+            Article(type = ArticleType.Article, id = numericId, title = title)
+        LOCAL_CONTENT_TYPE_QUESTION ->
+            Question(questionId = numericId, title = title)
+        LOCAL_CONTENT_TYPE_PIN ->
+            Pin(id = numericId)
+        else -> null
+    }
 }
 
 fun Feed.Target.toLocalContentIdentity(): LocalContentIdentity = when (this) {
-    is Feed.AnswerTarget -> LocalContentIdentity(CONTENT_TYPE_ANSWER, id.toString())
-    is Feed.ArticleTarget -> LocalContentIdentity(CONTENT_TYPE_ARTICLE, id.toString())
-    is Feed.QuestionTarget -> LocalContentIdentity(CONTENT_TYPE_QUESTION, id.toString())
-    is Feed.PinTarget -> LocalContentIdentity(CONTENT_TYPE_PIN, id.toString())
+    is Feed.AnswerTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_ANSWER,
+        id.toString(),
+    )
+    is Feed.ArticleTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_ARTICLE,
+        id.toString(),
+    )
+    is Feed.QuestionTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_QUESTION,
+        id.toString(),
+    )
+    is Feed.PinTarget -> LocalContentIdentity(
+        LOCAL_CONTENT_TYPE_PIN,
+        id.toString(),
+    )
     is Feed.VideoTarget -> LocalContentIdentity("video", id.toString())
 }
 
@@ -144,37 +130,19 @@ fun scoreFeedTarget(target: Feed.Target): Double {
     return score.coerceIn(0.1, 10.0)
 }
 
-fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference {
-    val signal = (stats.clicks * 0.12) + (stats.likes * 0.35) - (stats.dislikes * 0.45)
-    val multiplier = (1.0 + signal).coerceIn(0.55, 1.6)
-    val explanation = when {
-        stats.likes > 0 -> "你最近更偏好这类来源"
-        stats.clicks >= 2 -> "你经常点开这类来源"
-        else -> null
-    }
-    return LocalReasonPreference(multiplier = multiplier, explanation = explanation)
-}
+fun buildReasonPreference(stats: LocalReasonStats): LocalReasonPreference = buildSharedReasonPreference(stats)
 
-fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity {
-    val signal = (stats.clicks * 0.08) + (stats.likes * 0.40) - (stats.dislikes * 0.70)
-    val multiplier = (1.0 + signal).coerceIn(0.15, 1.8)
-    val explanation = when {
-        stats.likes > 0 -> "你明确喜欢过类似内容"
-        stats.clicks >= 2 -> "你最近点开过类似内容"
-        else -> null
-    }
-    return LocalContentAffinity(multiplier = multiplier, explanation = explanation)
-}
+fun buildContentAffinity(stats: LocalContentStats): LocalContentAffinity = buildSharedContentAffinity(stats)
 
 fun buildLocalRecommendationReason(
     baseReason: String,
     reasonPreference: LocalReasonPreference?,
     contentAffinity: LocalContentAffinity?,
-): String = listOfNotNull(
-    baseReason.takeIf { it.isNotBlank() },
-    contentAffinity?.explanation,
-    reasonPreference?.explanation,
-).joinToString(" · ")
+): String = buildSharedLocalRecommendationReason(
+    baseReason = baseReason,
+    reasonPreference = reasonPreference,
+    contentAffinity = contentAffinity,
+)
 
 fun applyReasonDiversity(
     rankedResults: List<RankedLocalResult>,
@@ -224,19 +192,4 @@ fun applyReasonDiversity(
     return selected.take(limit)
 }
 
-fun stableLocalFeedId(contentId: String): String = "local_feed_${contentId.replace(':', '_')}"
-
-private fun inferIdentityFromUrl(url: String): LocalContentIdentity? {
-    val patterns = listOf(
-        CONTENT_TYPE_ANSWER to Regex("""/(?:answer|answers)/(\d+)"""),
-        CONTENT_TYPE_ARTICLE to Regex("""/(?:articles|p)/(\d+)"""),
-        CONTENT_TYPE_QUESTION to Regex("""/(?:question|questions)/(\d+)"""),
-        CONTENT_TYPE_PIN to Regex("""/(?:pin|pins)/(\d+)"""),
-    )
-
-    return patterns.firstNotNullOfOrNull { (type, regex) ->
-        regex.find(url)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }?.let { id ->
-            LocalContentIdentity(type = type, id = id)
-        }
-    }
-}
+fun stableLocalFeedId(contentId: String): String = stableSharedLocalFeedId(contentId)
