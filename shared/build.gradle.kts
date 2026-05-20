@@ -79,6 +79,8 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation("com.google.zxing:core:3.5.3")
+            implementation("io.ktor:ktor-client-cio:3.5.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
         }
     }

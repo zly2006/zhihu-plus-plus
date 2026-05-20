@@ -36,13 +36,6 @@ java {
 dependencies {
     implementation(projects.shared)
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("io.ktor:ktor-client-cio:3.5.0")
-    implementation("io.ktor:ktor-client-content-negotiation:3.5.0")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 }
 
 compose.desktop {

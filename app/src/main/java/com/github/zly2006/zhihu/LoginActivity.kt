@@ -29,33 +29,28 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -64,15 +59,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
 import com.github.zly2006.zhihu.shared.login.ZHIHU_DESKTOP_USER_AGENT
 import com.github.zly2006.zhihu.shared.login.ZHIHU_HOME_URL
-import com.github.zly2006.zhihu.shared.login.ZHIHU_RISK_CONTROL_URL
 import com.github.zly2006.zhihu.shared.login.ZHIHU_SIGNIN_URL
-import com.github.zly2006.zhihu.shared.login.normalizeDeadline
 import com.github.zly2006.zhihu.shared.login.parseCookieAssignments
-import com.github.zly2006.zhihu.shared.login.pollQrCodeLogin
-import com.github.zly2006.zhihu.shared.login.prefetchQrLoginContext
-import com.github.zly2006.zhihu.shared.login.requestQrCode
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -81,7 +72,6 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private const val LOGIN_MODE_WEB = 0
@@ -348,178 +338,29 @@ private fun LoginModeButton(
 @Composable
 private fun QrLoginPane(activity: LoginActivity) {
     val context = LocalContext.current
-    var refreshKey by rememberSaveable { mutableIntStateOf(0) }
-    var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var statusText by remember { mutableStateOf("正在获取二维码") }
-    var sessionCookies by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var riskControlUrl by remember { mutableStateOf<String?>(null) }
-    var riskControlMessage by remember { mutableStateOf<String?>(null) }
-    var isWorking by remember { mutableStateOf(true) }
-
-    LaunchedEffect(refreshKey) {
-        val cookies = sessionCookies.toMutableMap()
-        val client = AccountData.httpClient(context, cookies)
-        qrBitmap = null
-        statusText = "正在获取二维码"
-        isWorking = true
-
-        try {
-            prefetchQrLoginContext(client, cookies)
-            val qrCode = requestQrCode(client, cookies)
-            sessionCookies = cookies.toMap()
-            val qrLink = qrCode.link ?: throw IllegalStateException("知乎没有返回二维码链接")
-            val qrToken = qrCode.token ?: qrCode.qrcodeToken ?: throw IllegalStateException("知乎没有返回二维码 token")
-            qrBitmap = generateQrBitmap(qrLink)
-            statusText = "请打开知乎++ App 扫一扫"
-
-            val deadline = normalizeDeadline(qrCode.expiresAt)
-            val success = pollQrCodeLogin(
-                client = client,
-                cookies = cookies,
-                token = qrToken,
-                deadline = deadline,
-                onScanned = {
-                    statusText = "请在知乎 App 上确认登录"
-                },
-                onRiskControl = { message, redirectUrl ->
-                    sessionCookies = cookies.toMap()
-                    riskControlMessage = message ?: "知乎需要验证当前网络环境"
-                    riskControlUrl = redirectUrl ?: ZHIHU_RISK_CONTROL_URL
-                    statusText = riskControlMessage ?: "知乎需要验证当前网络环境"
-                },
-            )
-
-            if (success) {
-                statusText = "正在验证登录"
-                isWorking = false
-                activity.finalizeLoginFromCookies(cookies)
-            } else if (!riskControlUrl.isNullOrBlank()) {
-                isWorking = false
-            } else {
-                statusText = "二维码已过期，请重试"
-                isWorking = false
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            statusText = e.message ?: "二维码获取失败，请重试"
-            isWorking = false
-        } finally {
-            client.close()
-        }
-    }
-
-    if (!riskControlUrl.isNullOrBlank()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("qr_risk_control_content"),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = riskControlMessage ?: "请先完成知乎的网络环境验证",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedButton(
-                onClick = {
-                    sessionCookies = sessionCookies + readWebViewCookies(riskControlUrl)
-                    riskControlUrl = null
-                    riskControlMessage = null
-                    refreshKey += 1
-                },
+    SharedQrLoginPane(
+        createClient = { cookies -> AccountData.httpClient(context, cookies) },
+        generateQrBitmap = ::generateQrBitmap,
+        onLoginSuccess = { cookies -> activity.finalizeLoginFromCookies(cookies) },
+        readRiskControlCookies = ::readWebViewCookies,
+        riskControlContent = { url, cookies, onCookiesChanged ->
+            WebviewComp(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("qr_risk_control_continue"),
-            ) {
-                Text("完成验证后继续扫码")
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                WebviewComp(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .testTag("qr_risk_control_webview"),
-                    onLoad = { webView ->
-                        activity.configureRiskControlWebView(
-                            webView = webView,
-                            url = riskControlUrl.orEmpty(),
-                            cookies = sessionCookies,
-                            onCookiesChanged = { updatedCookies ->
-                                sessionCookies = sessionCookies + updatedCookies
-                            },
-                        )
-                    },
-                )
-            }
-        }
-        return
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("qr_login_content"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        if (qrBitmap != null) {
-            Image(
-                bitmap = qrBitmap!!.asImageBitmap(),
-                contentDescription = "知乎登录二维码",
-                modifier = Modifier
-                    .size(260.dp)
-                    .testTag("qr_login_image"),
-            )
-            Spacer(modifier = Modifier.size(16.dp))
-        } else if (isWorking) {
-            CircularProgressIndicator(
-                modifier = Modifier.testTag("qr_login_loading"),
-            )
-            Spacer(modifier = Modifier.size(16.dp))
-        }
-
-        Text(
-            text = statusText,
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .testTag("qr_login_status"),
-        )
-
-        if (!riskControlMessage.isNullOrBlank()) {
-            Spacer(modifier = Modifier.size(12.dp))
-            Text(
-                text = riskControlMessage.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        Spacer(modifier = Modifier.size(20.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            OutlinedButton(
-                onClick = {
-                    riskControlUrl = null
-                    riskControlMessage = null
-                    refreshKey += 1
+                    .fillMaxSize()
+                    .testTag("qr_risk_control_webview"),
+                onLoad = { webView ->
+                    activity.configureRiskControlWebView(
+                        webView = webView,
+                        url = url,
+                        cookies = cookies,
+                        onCookiesChanged = { updatedCookies ->
+                            onCookiesChanged(cookies + updatedCookies)
+                        },
+                    )
                 },
-                modifier = Modifier.testTag("qr_login_retry"),
-            ) {
-                Text("刷新二维码")
-            }
-        }
-    }
+            )
+        },
+    )
 }
 
 @Composable
@@ -582,7 +423,7 @@ private fun LoginNoticeScreen(
     }
 }
 
-private fun generateQrBitmap(content: String): Bitmap {
+private fun generateQrBitmap(content: String): ImageBitmap {
     val size = 960
     val bitMatrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.RGB_565)
@@ -591,7 +432,7 @@ private fun generateQrBitmap(content: String): Bitmap {
             bitmap.setPixel(x, y, if (bitMatrix.get(x, y)) Color.BLACK else Color.WHITE)
         }
     }
-    return bitmap
+    return bitmap.asImageBitmap()
 }
 
 private fun readWebViewCookies(url: String?): Map<String, String> {

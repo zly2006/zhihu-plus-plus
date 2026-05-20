@@ -1,4 +1,4 @@
-package com.github.zly2006.zhihu.desktop
+package com.github.zly2006.zhihu.shared.desktop
 
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuProfile
