@@ -65,6 +65,7 @@ kotlin {
             implementation("io.ktor:ktor-client-core:3.5.0")
             implementation("io.ktor:ktor-client-content-negotiation:3.5.0")
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.5.0")
+            implementation("com.fleeksoft.ksoup:ksoup:0.2.6")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
         }
@@ -75,12 +76,10 @@ kotlin {
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.13.0")
-            implementation("org.jsoup:jsoup:1.22.1")
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
-            implementation("org.jsoup:jsoup:1.22.1")
         }
     }
 }
