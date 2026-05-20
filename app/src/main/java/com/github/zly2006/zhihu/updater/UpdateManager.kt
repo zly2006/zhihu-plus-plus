@@ -27,7 +27,6 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
-import com.github.zly2006.zhihu.shared.updater.extractGithubDownloadInfo
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.raiseForStatus
@@ -44,6 +43,7 @@ import java.net.URI
 
 object UpdateManager {
     private const val AUTO_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
+    private const val ANDROID_APK_CONTENT_TYPE = "application/vnd.android.package-archive"
 
     /**
      * 自动检查更新要跳过的版本
@@ -51,6 +51,11 @@ object UpdateManager {
     private const val PREF_SKIPPED_VERSION = "skippedVersion"
     private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
     private const val PREF_LAST_UPDATE_CHECK = "lastUpdateCheck"
+
+    data class DownloadInfo(
+        val browserDownloadUrl: String,
+        val cnDownloadUrl: String? = null,
+    )
 
     sealed class UpdateState {
         object NoUpdate : UpdateState()
@@ -133,6 +138,18 @@ object UpdateManager {
         preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
     }
 
+    private fun GithubRelease.extractDownloadInfo(): DownloadInfo {
+        val apkAssets = assets.filter {
+            it.contentType == ANDROID_APK_CONTENT_TYPE
+        }
+
+        val selectedAsset = selectApkAsset(apkAssets, BuildConfig.IS_LITE) ?: apkAssets.first()
+        return DownloadInfo(
+            browserDownloadUrl = selectedAsset.browserDownloadUrl,
+            cnDownloadUrl = selectedAsset.cnDownloadUrl,
+        )
+    }
+
     suspend fun getLatestVersion(context: Context): GithubRelease {
         val client = AccountData.httpClient(context)
         return runCatching {
@@ -170,7 +187,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             Log.i("UpdateManager", "Latest version response: $latestResponse")
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            val latestDownloadInfo = latestResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
+            val latestDownloadInfo = latestResponse.extractDownloadInfo()
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 val versionString = latestVersion.toString()
@@ -215,7 +232,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
-            var downloadInfo = latestResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
+            var downloadInfo = latestResponse.extractDownloadInfo()
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -238,7 +255,7 @@ object UpdateManager {
                         )
                         isNightly = true
                         releaseNotes = nightlyResponse.body?.let(::extractGithubReleaseNotes)
-                        downloadInfo = nightlyResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
+                        downloadInfo = nightlyResponse.extractDownloadInfo()
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -281,6 +298,14 @@ object UpdateManager {
         } catch (e: Exception) {
             updateState.value = UpdateState.Error(e.message ?: "Unknown error")
         }
+    }
+
+    internal fun selectApkAsset(apkAssets: List<GithubAsset>, isLiteVariant: Boolean): GithubAsset? = if (isLiteVariant) {
+        // Lite version: strictly look for "lite" in filename
+        apkAssets.firstOrNull { it.name.contains("lite", ignoreCase = true) }
+    } else {
+        // Full version: prefer "full" in filename
+        apkAssets.firstOrNull { it.name.contains("full", ignoreCase = true) }
     }
 
     fun installUpdate(context: Context, file: File) {
