@@ -15,14 +15,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.ui
+package com.github.zly2006.zhihu.shared.ui
 
-typealias TopLevelReselectAction = com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+enum class TopLevelReselectAction {
+    ScrollToTop,
+    Refresh,
+}
 
 fun topLevelReselectAction(
     triggerDelta: Int,
     isAtTop: Boolean,
-): TopLevelReselectAction? = com.github.zly2006.zhihu.shared.ui.topLevelReselectAction(
-    triggerDelta = triggerDelta,
-    isAtTop = isAtTop,
-)
+): TopLevelReselectAction? = when {
+    triggerDelta <= 0 -> null
+    triggerDelta >= 2 || isAtTop -> TopLevelReselectAction.Refresh
+    else -> TopLevelReselectAction.ScrollToTop
+}
