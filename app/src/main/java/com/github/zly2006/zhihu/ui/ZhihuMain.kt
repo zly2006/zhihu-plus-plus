@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.annotation.SuppressLint
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -72,7 +71,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -90,7 +88,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -115,18 +112,12 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
 import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
 import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
 import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
-import com.github.zly2006.zhihu.ui.subscreens.START_DESTINATION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
-import com.github.zly2006.zhihu.ui.subscreens.defaultBottomBarSelectionKeys
-import com.github.zly2006.zhihu.ui.subscreens.navDestinationFromName
-import com.github.zly2006.zhihu.ui.subscreens.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.subscreens.resolveValidStartDestinationKey
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import kotlinx.coroutines.launch
@@ -159,47 +150,16 @@ private sealed class MainTabPage(
 @Composable
 fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
-    val activity = LocalActivity.current as MainActivity
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE) }
-
-    // 底部导航栏功能
-    var duo3HomeAccount by remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
-    var duo3NavStyle by remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
-    var tapToScrollToTopEnabled by remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
-    var autoHideBottomBar by remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
-    val allBottomBarItemKeys = remember {
-        listOf(Home.name, Follow.name, HotList.name, Daily.name, OnlineHistory.name, Account.name)
-    }
-
-    fun computeSelectedKeys(isDuo3HomeAccount: Boolean) = normalizeBottomBarSelection(
-        preferences
-            .getStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, defaultBottomBarSelectionKeys(isDuo3HomeAccount))
-            ?.toSet() ?: defaultBottomBarSelectionKeys(isDuo3HomeAccount),
-        isDuo3HomeAccount,
-        enforceMinimumSelection = true,
-    )
-
-    fun computeStartDestination(selectedKeys: Set<String>) = navDestinationFromName(
-        resolveValidStartDestinationKey(
-            preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
-            allBottomBarItemKeys.filter { it in selectedKeys },
-        ),
-    )
-
-    var selectedBottomBarItemKeys by remember { mutableStateOf(computeSelectedKeys(duo3HomeAccount)) }
-    var startDestination by remember { mutableStateOf(computeStartDestination(selectedBottomBarItemKeys)) }
-
-    val reloadBottomBarPreferences = {
-        val updatedDuo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
-        val updatedSelectedBottomBarItemKeys = computeSelectedKeys(updatedDuo3HomeAccount)
-        duo3HomeAccount = updatedDuo3HomeAccount
-        duo3NavStyle = preferences.getBoolean("duo3_nav_style", false)
-        tapToScrollToTopEnabled = preferences.getBoolean("bottomBarTapScrollToTop", true)
-        autoHideBottomBar = preferences.getBoolean("autoHideBottomBar", false)
-        selectedBottomBarItemKeys = updatedSelectedBottomBarItemKeys
-        startDestination = computeStartDestination(updatedSelectedBottomBarItemKeys)
-    }
+    val activity = rememberAndroidZhihuMainActivity()
+    val activityState = rememberAndroidZhihuMainActivityState()
+    val preferenceState = rememberAndroidZhihuMainPreferenceState()
+    val duo3HomeAccount = preferenceState.duo3HomeAccount
+    val duo3NavStyle = preferenceState.duo3NavStyle
+    val tapToScrollToTopEnabled = preferenceState.tapToScrollToTopEnabled
+    val autoHideBottomBar = preferenceState.autoHideBottomBar
+    val selectedBottomBarItemKeys = preferenceState.selectedBottomBarItemKeys
+    val startDestination = preferenceState.startDestination
+    val reloadBottomBarPreferences = preferenceState::reload
 
     val navEntry by navController.currentBackStackEntryAsState()
 
@@ -282,18 +242,18 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         }
         currentMainTabPage()?.bottomDestination?.let { destination ->
             currentMainTabDestination = destination
-            activity.setCurrentMainTabOpenFrom(destination.openFrom)
+            activityState.setCurrentMainTabOpenFrom(destination.openFrom)
         }
     }
 
-    val mainTabNavigationTarget = activity.mainTabNavigationTarget
+    val mainTabNavigationTarget = activityState.mainTabNavigationTarget
     LaunchedEffect(mainTabNavigationTarget, mainTabPages) {
         mainTabNavigationTarget?.let { destination ->
             // MainActivity maps legacy top-level route requests onto MainTabs. Consume that request
             // here so callers such as deeplinks can still select Home/Follow/etc. without pushing
             // those old routes onto the back stack.
             mainPagerState.scrollToPage(pageIndexForBottomDestination(destination))
-            activity.consumeMainTabNavigationTarget(destination)
+            activityState.consumeMainTabNavigationTarget(destination)
         }
     }
 
@@ -401,7 +361,7 @@ fun ZhihuMain(modifier: Modifier = Modifier, navController: NavHostController) {
         CompositionLocalProvider(
             LocalNavigator provides Navigator(
                 onNavigate = { destination ->
-                    activity.navigate(destination)
+                    activityState.navigate(destination)
                 },
                 onNavigateBack = navController::popBackStack,
             ),
