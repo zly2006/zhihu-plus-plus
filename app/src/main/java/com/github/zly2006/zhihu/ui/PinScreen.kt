@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
+import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -687,16 +688,3 @@ private fun compactPreview(raw: String, maxLength: Int = 120): String {
 }
 
 private fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
-
-private fun formatCompactCount(count: Int): String = when {
-    count >= 10_000 -> {
-        val value = count / 10_000f
-        if (count % 10_000 == 0) {
-            "${count / 10_000} 万"
-        } else {
-            String.format(Locale.getDefault(), "%.1f 万", value)
-        }
-    }
-
-    else -> count.toString()
-}

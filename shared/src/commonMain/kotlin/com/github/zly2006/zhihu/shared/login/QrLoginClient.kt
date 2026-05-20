@@ -19,6 +19,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlin.time.Clock
 
 const val ZHIHU_HOME_URL = "https://www.zhihu.com/"
 const val ZHIHU_SIGNIN_URL = "https://www.zhihu.com/signin?next=%2F"
@@ -124,7 +125,7 @@ suspend fun pollQrCodeLogin(
     var hasPromptedConfirm = false
     var hasPromptedRiskControl = false
 
-    while (currentTimeMillis() <= deadline) {
+    while (currentEpochMillis() <= deadline) {
         currentCoroutineContext().ensureActive()
 
         try {
@@ -280,7 +281,7 @@ fun isRiskControlResponse(
 
 fun normalizeDeadline(expiresAt: Long?): Long {
     if (expiresAt == null || expiresAt <= 0) {
-        return currentTimeMillis() + 120_000
+        return currentEpochMillis() + 120_000
     }
     return if (expiresAt < 10_000_000_000L) {
         expiresAt * 1000
@@ -288,6 +289,8 @@ fun normalizeDeadline(expiresAt: Long?): Long {
         expiresAt
     }
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 internal fun decodeZhihuLoginJson(
     serializer: KSerializer<ZhihuQrCodeResponse>,

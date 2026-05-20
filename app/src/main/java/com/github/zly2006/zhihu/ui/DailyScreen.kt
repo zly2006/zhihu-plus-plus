@@ -83,6 +83,7 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
+import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
@@ -301,7 +302,7 @@ fun DailyScreen(
                             // Date header
                             item(key = "header_${section.date}") {
                                 DateHeader(
-                                    date = formatDate(section.date),
+                                    date = formatDailyDate(section.date),
                                     modifier = Modifier.testTag(dailySectionHeaderTag(section.date)),
                                 )
                             }
@@ -466,15 +467,6 @@ fun DailyStoryCard(
     }
 }
 
-private fun formatDate(dateString: String): String = try {
-    val inputFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-    val outputFormat = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
-    val date = inputFormat.parse(dateString)
-    outputFormat.format(date ?: Date())
-} catch (e: Exception) {
-    dateString
-}
-
 private fun resolveViewingDate(
     firstVisibleItemIndex: Int,
     sections: List<DailySection>,
@@ -482,7 +474,7 @@ private fun resolveViewingDate(
     var count = 0
     for (section in sections) {
         if (firstVisibleItemIndex < count + 1 + section.stories.size) {
-            return formatDate(section.date)
+            return formatDailyDate(section.date)
         }
         count += 1 + section.stories.size
     }

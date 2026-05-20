@@ -75,6 +75,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
@@ -82,9 +83,6 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -323,7 +321,7 @@ fun NotificationItemView(
 
             // 时间
             Text(
-                text = formatTime(notification.createTime),
+                text = formatRelativeTime(notification.createTime),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -363,25 +361,6 @@ private fun buildNotificationText(notification: NotificationItem) = buildAnnotat
         append(" ")
         withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) {
             append(target.text)
-        }
-    }
-}
-
-/**
- * 格式化时间
- */
-private fun formatTime(timestamp: Long): String {
-    val now = System.currentTimeMillis() / 1000
-    val diff = now - timestamp
-
-    return when {
-        diff < 60 -> "刚刚"
-        diff < 3600 -> "${diff / 60}分钟前"
-        diff < 86400 -> "${diff / 3600}小时前"
-        diff < 604800 -> "${diff / 86400}天前"
-        else -> {
-            val date = Date(timestamp * 1000)
-            SimpleDateFormat("MM-dd HH:mm", Locale.CHINA).format(date)
         }
     }
 }
