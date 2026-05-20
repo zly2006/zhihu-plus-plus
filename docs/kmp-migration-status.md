@@ -11,6 +11,7 @@
 - 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
+- Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo
@@ -27,7 +28,6 @@
 - Move `ZhihuMain.kt` back to common code after separating Android-only runtime effects.
 - Split account fetch/token refresh orchestration from Android `AccountData`.
 - Move pagination and feed loading state into shared with platform effect adapters.
-- Replace Android duplicate feed display mapping with shared `Feed.toDisplayItem`.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
 - Move local recommendation orchestration behind platform adapters.
 - Move pure HTML/text parsing only after replacing Jsoup with Ksoup-compatible shared code.

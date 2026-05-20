@@ -26,19 +26,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
-import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.FeedItemIndexGroup
 import com.github.zly2006.zhihu.shared.data.GroupFeed
-import com.github.zly2006.zhihu.shared.data.HotListFeed
-import com.github.zly2006.zhihu.shared.data.MomentsFeed
-import com.github.zly2006.zhihu.shared.data.QuestionFeedCard
-import com.github.zly2006.zhihu.shared.data.actionText
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
@@ -83,101 +77,10 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     open fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return when (feed) {
-            is CommonFeed, is FeedItemIndexGroup, is MomentsFeed, is HotListFeed -> {
-                val enableQualityFilter = preferences.getBoolean("enableQualityFilter", true)
-                val eatShit = preferences.getBoolean("reverseBlock", false)
-
-                val filterReason = if (!enableQualityFilter || eatShit) null else feed.target?.filterReason()
-
-                if (filterReason != null) {
-                    FeedDisplayItem(
-                        title = "已屏蔽",
-                        summary = filterReason,
-                        details = feed.target!!.detailsText,
-                        feed = feed,
-                        isFiltered = true,
-                    )
-                } else {
-                    when (feed.target) {
-                        is Feed.AnswerTarget,
-                        is Feed.ArticleTarget,
-                        is Feed.QuestionTarget,
-                        -> {
-                            FeedDisplayItem(
-                                title = feed.target!!.title,
-                                summary = feed.target!!.excerpt,
-                                details = listOfNotNull(feed.target!!.detailsText, feed.actionText)
-                                    .joinToString(" · "),
-                                avatarSrc = feed.target?.author?.avatarUrl,
-                                authorName = feed.target?.author?.name,
-                                authorBadgeV2 = feed.target?.author?.badgeV2,
-                                feed = feed,
-                                segmentInfos = when (val target = feed.target) {
-                                    is Feed.AnswerTarget -> target.segmentInfos
-                                    is Feed.ArticleTarget -> target.segmentInfos
-                                    else -> emptyList()
-                                },
-                                segmentSourceUrl = when (val target = feed.target) {
-                                    is Feed.AnswerTarget -> "https://www.zhihu.com/question/${target.question.id}/answer/${target.id}"
-                                    is Feed.ArticleTarget -> "https://zhuanlan.zhihu.com/p/${target.id}"
-                                    else -> null
-                                },
-                            )
-                        }
-
-                        is Feed.PinTarget -> {
-                            FeedDisplayItem(
-                                title = feed.target!!.author!!.name + "的想法",
-                                summary = feed.target!!.excerpt,
-                                details = feed.target!!.detailsText,
-                                avatarSrc = feed.target?.author?.avatarUrl,
-                                authorName = feed.target?.author?.name,
-                                authorBadgeV2 = feed.target?.author?.badgeV2,
-                                feed = feed,
-                            )
-                        }
-
-                        else -> {
-                            FeedDisplayItem(
-                                title = feed.target?.javaClass?.simpleName ?: "广告",
-                                summary = "Not Implemented",
-                                details = feed.target?.detailsText ?: "广告",
-                                feed = feed,
-                            )
-                        }
-                    }
-                }
-            }
-
-            is AdvertisementFeed -> {
-                FeedDisplayItem(
-                    title = if (preferences.getBoolean("reverseBlock", false)) {
-                        feed.ad.creatives
-                            .firstOrNull()
-                            ?.title ?: ""
-                    } else {
-                        ""
-                    },
-                    summary = if (preferences.getBoolean("reverseBlock", false)) {
-                        feed.ad.creatives
-                            .firstOrNull()
-                            ?.description ?: feed.actionText
-                    } else {
-                        feed.actionText
-                    },
-                    details = feed.actionText + "广告",
-                    feed = feed,
-                    isFiltered = !preferences.getBoolean("reverseBlock", false),
-                    content = feed.ad.creatives
-                        .firstOrNull()
-                        ?.landingUrl,
-                )
-            }
-
-            is GroupFeed -> error("GroupFeed should be flatten") // GroupFeed will be handled in the UI
-            is QuestionFeedCard -> TODO()
-        }
+        return feed.toDisplayItem(
+            enableQualityFilter = preferences.getBoolean("enableQualityFilter", true),
+            reverseBlock = preferences.getBoolean("reverseBlock", false),
+        )
     }
 
     fun addDisplayItems(newItems: List<FeedDisplayItem>) {
