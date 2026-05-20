@@ -15,14 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.data
+package com.github.zly2006.zhihu.shared.data
 
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.Feed
 
 val Feed.Target.navDestination: NavDestination?
     get() = when (this) {
@@ -47,6 +46,7 @@ val Feed.Target.navDestination: NavDestination?
         )
 
         is Feed.PinTarget -> Pin(id)
+
         is Feed.QuestionTarget -> Question(
             questionId = id,
             title = title,

@@ -66,7 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -75,6 +74,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
