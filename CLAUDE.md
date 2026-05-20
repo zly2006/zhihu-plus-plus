@@ -155,6 +155,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - JVM 端必须可以扫码登录；覆盖 cookie 后必须能执行现有操作。桌面端 UI 自适配不属于本次范围，但核心 UI 应与 Android 保持一致。
 - `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。
 - 迁移中遇到不支持跨平台的库时，优先查找该库的 KMP 变种或兼容实现；没有合适 KMP 变种时，再评估其他跨平台替代库。只有在没有可靠替代或迁移风险过高时，才把依赖和实现留在对应平台 source set，并记录原因。
+- APK、`lite`/`full` variant、安装包下载/选择/安装、Android `Context`、Room、`NavDestination`、WebView、Android intent/file provider 等平台运行时或发行语义不得迁入 `shared`；需要共享时只能抽取纯数据模型或纯算法，平台适配、资源选择和副作用留在对应平台模块。
 - 编译耗时较长时，尽量在完成一个大任务后再构建验证；每完成一个大任务，在本迁移分支里及时提交。
 - 阶段性迁移写得差不多，且 `./gradlew assembleLiteDebug` 和 `./gradlew :desktopApp:compileKotlin` 都通过后，可以在本迁移分支里及时提交一次。
 - 本迁移仍需遵守 `$superpowers:using-superpowers` 和 `$superpowers:using-git-worktrees` 的流程要求。

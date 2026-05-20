@@ -1,8 +1,8 @@
-package com.github.zly2006.zhihu.shared.updater
+package com.github.zly2006.zhihu.updater
 
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class GithubReleaseTest {
     @Test
