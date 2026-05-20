@@ -528,7 +528,7 @@ object ContentFilterExtensions {
         blocked: List<Pair<FilterableContent, String>>,
     ) {
         try {
-            val dao = ContentFilterDatabase.getDatabase(context).blockedFeedRecordDao()
+            val dao = getContentFilterDatabase(context).blockedFeedRecordDao()
             blocked.forEach { (content, reason) ->
                 dao.insert(
                     BlockedFeedRecord(

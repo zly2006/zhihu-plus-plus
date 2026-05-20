@@ -21,6 +21,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlin.time.Clock
 
 @Dao
 interface ContentFilterDao {
@@ -34,10 +35,10 @@ interface ContentFilterDao {
     suspend fun insertOrUpdateViewRecord(record: ContentViewRecord)
 
     @Query("UPDATE ${ContentViewRecord.TABLE_NAME} SET viewCount = viewCount + 1, lastViewTime = :currentTime WHERE id = :id")
-    suspend fun incrementViewCount(id: String, currentTime: Long = System.currentTimeMillis())
+    suspend fun incrementViewCount(id: String, currentTime: Long = currentEpochMillis())
 
     @Query("UPDATE ${ContentViewRecord.TABLE_NAME} SET hasInteraction = 1, lastInteractionTime = :currentTime WHERE id = :id")
-    suspend fun markAsInteracted(id: String, currentTime: Long = System.currentTimeMillis())
+    suspend fun markAsInteracted(id: String, currentTime: Long = currentEpochMillis())
 
     @Query("SELECT * FROM ${ContentViewRecord.TABLE_NAME} WHERE viewCount > :maxCount")
     suspend fun getFilteredContent(maxCount: Int = ContentViewRecord.MAX_VIEW_COUNT_WITHOUT_INTERACTION): List<ContentViewRecord>
@@ -60,3 +61,5 @@ interface ContentFilterDao {
     @Query("SELECT COUNT(*) FROM ${ContentViewRecord.TABLE_NAME}")
     suspend fun getRecordCount(): Int
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

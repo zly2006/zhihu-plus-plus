@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
  * Feed 屏蔽记录实体。
@@ -36,10 +37,12 @@ data class BlockedFeedRecord(
     val blockedReason: String, // 人类可读屏蔽原因
     val navDestinationJson: String?, // NavDestination JSON 序列化
     val feedJson: String?, // Feed JSON 序列化
-    val blockedTime: Long = System.currentTimeMillis(),
+    val blockedTime: Long = currentEpochMillis(),
 ) {
     companion object {
         const val TABLE_NAME = "blocked_feed_records"
         const val MAX_RECORDS = 500
     }
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

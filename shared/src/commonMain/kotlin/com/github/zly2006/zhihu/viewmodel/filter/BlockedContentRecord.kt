@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
  * 被屏蔽内容记录实体。
@@ -33,7 +34,7 @@ data class BlockedContentRecord(
     val excerpt: String?, // 内容摘要
     val authorName: String?, // 作者名称
     val authorId: String?, // 作者ID
-    val blockedTime: Long = System.currentTimeMillis(), // 屏蔽时间
+    val blockedTime: Long = currentEpochMillis(), // 屏蔽时间
     val blockReason: String, // 人类可读屏蔽原因
     val matchedKeywords: String, // 匹配的关键词列表JSON格式：[{"keyword":"xxx","similarity":0.8}]
 ) {
@@ -51,3 +52,5 @@ data class MatchedKeywordInfo(
     val keyword: String,
     val similarity: Double,
 )
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

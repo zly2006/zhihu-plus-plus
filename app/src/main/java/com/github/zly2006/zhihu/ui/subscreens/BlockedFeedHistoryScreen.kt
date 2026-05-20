@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedFeedRecord
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
@@ -71,7 +71,7 @@ fun BlockedFeedHistoryScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val dao = remember { ContentFilterDatabase.getDatabase(context).blockedFeedRecordDao() }
+    val dao = remember { getContentFilterDatabase(context).blockedFeedRecordDao() }
 
     val records by dao.observeAll().collectAsState(initial = emptyList())
     var showClearDialog by remember { mutableStateOf(false) }
@@ -167,15 +167,16 @@ private fun BlockedFeedRecordItem(
         verticalAlignment = Alignment.Top,
     ) {
         Column(modifier = Modifier.weight(1f)) {
+            val authorName = record.authorName
             Text(
                 text = record.title.ifBlank { "（无标题）" },
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (!record.authorName.isNullOrBlank()) {
+            if (!authorName.isNullOrBlank()) {
                 Text(
-                    text = record.authorName,
+                    text = authorName,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

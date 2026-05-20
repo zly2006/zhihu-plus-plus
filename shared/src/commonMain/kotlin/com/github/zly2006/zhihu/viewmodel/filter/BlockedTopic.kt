@@ -18,30 +18,18 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
- * 内容打开事件。
- * 这是内容详情层面的已打开记录，用于回答切换/已读判断，不是 feed 曝光记录。
+ * 屏蔽主题实体
  */
-@Entity(
-    tableName = ContentOpenEvent.TABLE_NAME,
-    indices = [
-        Index(value = ["contentType", "contentId"]),
-        Index(value = ["openedAt"]),
-    ],
+@Entity(tableName = "blocked_topics")
+data class BlockedTopic(
+    @PrimaryKey
+    val topicId: String,
+    val topicName: String,
+    val addedTime: Long = currentEpochMillis(),
 )
-data class ContentOpenEvent(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val contentType: String,
-    val contentId: String,
-    val questionId: Long? = null,
-    val openFrom: String,
-    val openedAt: Long = System.currentTimeMillis(),
-) {
-    companion object {
-        const val TABLE_NAME = "content_open_events"
-    }
-}
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

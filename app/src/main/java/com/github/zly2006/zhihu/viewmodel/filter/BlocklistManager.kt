@@ -31,7 +31,7 @@ import java.io.File
 class BlocklistManager private constructor(
     context: Context,
 ) {
-    private val database = ContentFilterDatabase.getDatabase(context)
+    private val database = getContentFilterDatabase(context)
     private val keywordDao = database.blockedKeywordDao()
     private val userDao = database.blockedUserDao()
     private val topicDao = database.blockedTopicDao()

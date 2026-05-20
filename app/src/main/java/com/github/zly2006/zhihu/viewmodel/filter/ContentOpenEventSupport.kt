@@ -88,8 +88,7 @@ object ContentOpenEventSupport {
     ) {
         val identity = toTrackedContentIdentity(destination) ?: return
         withContext(Dispatchers.IO) {
-            ContentFilterDatabase
-                .getDatabase(context)
+            getContentFilterDatabase(context)
                 .contentOpenEventDao()
                 .insert(
                     ContentOpenEvent(
@@ -109,8 +108,7 @@ object ContentOpenEventSupport {
         val idsToCheck = content.map { (targetType, targetId) ->
             buildContentKey(targetType, targetId)
         }
-        ContentFilterDatabase
-            .getDatabase(context)
+        getContentFilterDatabase(context)
             .contentOpenEventDao()
             .getOpenedContentKeysByKeys(idsToCheck)
             .toSet()

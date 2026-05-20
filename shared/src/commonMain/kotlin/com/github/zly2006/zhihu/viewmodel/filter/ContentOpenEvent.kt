@@ -18,21 +18,33 @@
 package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
- * 屏蔽用户实体
- * 用于屏蔽特定用户发布的内容
+ * 内容打开事件。
+ * 这是内容详情层面的已打开记录，用于回答切换/已读判断，不是 feed 曝光记录。
  */
-@Entity(tableName = BlockedUser.TABLE_NAME)
-data class BlockedUser(
-    @PrimaryKey val userId: String, // 用户ID
-    val userName: String, // 用户名（用于显示）
-    val urlToken: String? = null, // 用户URL Token
-    val avatarUrl: String? = null, // 用户头像URL
-    val createdTime: Long = System.currentTimeMillis(), // 创建时间
+@Entity(
+    tableName = ContentOpenEvent.TABLE_NAME,
+    indices = [
+        Index(value = ["contentType", "contentId"]),
+        Index(value = ["openedAt"]),
+    ],
+)
+data class ContentOpenEvent(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val contentType: String,
+    val contentId: String,
+    val questionId: Long? = null,
+    val openFrom: String,
+    val openedAt: Long = currentEpochMillis(),
 ) {
     companion object {
-        const val TABLE_NAME = "blocked_users"
+        const val TABLE_NAME = "content_open_events"
     }
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

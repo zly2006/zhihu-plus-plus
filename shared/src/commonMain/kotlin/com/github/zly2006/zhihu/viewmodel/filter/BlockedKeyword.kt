@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
  * 关键词类型枚举
@@ -39,7 +40,7 @@ data class BlockedKeyword(
     val keywordType: String = KeywordType.EXACT_MATCH.name, // 关键词类型
     val caseSensitive: Boolean = false, // 是否区分大小写（仅精确匹配模式）
     val isRegex: Boolean = false, // 是否为正则表达式（仅精确匹配模式）
-    val createdTime: Long = System.currentTimeMillis(), // 创建时间
+    val createdTime: Long = currentEpochMillis(), // 创建时间
 ) {
     companion object {
         const val TABLE_NAME = "blocked_keywords"
@@ -59,3 +60,5 @@ data class BlockedKeyword(
         emptyList()
     }
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()

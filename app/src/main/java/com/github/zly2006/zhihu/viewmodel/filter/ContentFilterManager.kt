@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit
 class ContentFilterManager private constructor(
     context: Context,
 ) {
-    private val dao = ContentFilterDatabase.getDatabase(context).contentFilterDao()
+    private val dao = getContentFilterDatabase(context).contentFilterDao()
 
     companion object {
         @Volatile

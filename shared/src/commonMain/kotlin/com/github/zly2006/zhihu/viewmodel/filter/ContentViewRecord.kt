@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlin.time.Clock
 
 /**
  * 内容曝光记录实体。
@@ -31,8 +32,8 @@ data class ContentViewRecord(
     val targetId: String, // 目标内容ID
     val viewCount: Int = 0, // 展示次数
     val hasInteraction: Boolean = false, // 是否有过交互（点击、点赞等）
-    val firstViewTime: Long = System.currentTimeMillis(), // 首次展示时间
-    val lastViewTime: Long = System.currentTimeMillis(), // 最后展示时间
+    val firstViewTime: Long = currentEpochMillis(), // 首次展示时间
+    val lastViewTime: Long = currentEpochMillis(), // 最后展示时间
     val lastInteractionTime: Long? = null, // 最后交互时间
 ) {
     companion object {
@@ -43,3 +44,5 @@ data class ContentViewRecord(
         fun generateId(targetType: String, targetId: String): String = "$targetType:$targetId"
     }
 }
+
+private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
