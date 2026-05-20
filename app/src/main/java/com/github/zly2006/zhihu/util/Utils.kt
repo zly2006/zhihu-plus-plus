@@ -26,6 +26,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.util.ZhihuFetchSignature
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -51,16 +52,7 @@ fun HttpRequestBuilder.signFetchRequest() {
     }
     header("x-zse-93", MainActivity.ZSE93)
     val dc0 = AccountData.data.cookies["d_c0"] ?: ""
-    val pathname = "/" + url.substringAfter("//").substringAfter('/')
-    val signSource = listOfNotNull(
-        MainActivity.ZSE93,
-        pathname,
-        dc0,
-        body,
-    ).joinToString("+")
-    val md5 = MessageDigest.getInstance("MD5").digest(signSource.toByteArray()).toHexString()
-    val kotlinSign = ZseSigner.encryptZseV4(md5)
-    header("x-zse-96", "2.0_$kotlinSign")
+    header("x-zse-96", ZhihuFetchSignature.createZse96Header(MainActivity.ZSE93, url, dc0, body))
     header("x-requested-with", "fetch")
 }
 
