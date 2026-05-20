@@ -36,7 +36,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -66,10 +66,7 @@ class PinViewModel(
                 if (content != null) {
                     pinContent = content
                     likeCount = content.likeCount
-                    isLiked = content.virtuals
-                        ?.get("isLiked")
-                        ?.jsonPrimitive
-                        ?.boolean ?: false
+                    isLiked = content.virtuals.booleanCompat("isLiked", "is_liked")
                     ContentOpenEventSupport.recordOpenEvent(
                         context = context,
                         destination = pin,
@@ -112,4 +109,11 @@ class PinViewModel(
         pinContent = null
         loadPinDetail(context)
     }
+}
+
+private fun kotlinx.serialization.json.JsonObject?.booleanCompat(vararg keys: String): Boolean {
+    if (this == null) return false
+    return keys.firstNotNullOfOrNull { key ->
+        get(key)?.jsonPrimitive?.booleanOrNull
+    } ?: false
 }

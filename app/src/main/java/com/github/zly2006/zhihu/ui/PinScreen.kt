@@ -33,13 +33,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -70,6 +71,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.DataHolder
+import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -79,6 +81,7 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -92,6 +95,7 @@ import org.jsoup.Jsoup
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
 const val PIN_SCREEN_SHARE_BUTTON_TAG = "pin_screen_share_button"
@@ -172,10 +176,11 @@ fun PinScreen(
         topBar = {
             TopAppBar(
                 title = {
+                    val titleAuthor = screenState.pinContent?.author?.name
                     Text(
                         buildString {
-                            if (viewModel?.pinContent?.author != null) {
-                                append(viewModel.pinContent!!.author.name)
+                            if (titleAuthor != null) {
+                                append(titleAuthor)
                                 append("的")
                             }
                             append("想法")
@@ -335,38 +340,97 @@ private fun PinContent(
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncImage(
-                model = pin.author.avatarUrl,
-                contentDescription = "头像",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape),
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    pin.author.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AsyncImage(
+                    model = pin.author.avatarUrl,
+                    contentDescription = "头像",
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape),
                 )
-                if (pin.author.headline.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            pin.author.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        val authorBadge = pin.author.badgeV2.officialBadge()
+                        if (authorBadge != null) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AuthorBadge(authorBadge)
+                        }
+                    }
+                    if (pin.author.headline.isNotEmpty()) {
+                        Text(
+                            pin.author.headline,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            if (!pin.selfCreate) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (pin.author.isFollowing) {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    },
+                ) {
                     Text(
-                        pin.author.headline,
+                        text = if (pin.author.isFollowing) "已关注" else "关注",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (pin.author.isFollowing) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Time
         Text(
-            dateFormat.format(Date(pin.created * 1000)),
+            buildString {
+                append("发布于")
+                append(dateFormat.format(Date(pin.created * 1000)))
+                if (pin.updated > pin.created) {
+                    append(" · 编辑于")
+                    append(dateFormat.format(Date(pin.updated * 1000)))
+                }
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        if (likeCount > 0) {
+            // SocialProof
+            Spacer(modifier = Modifier.height(8.dp))
+            val firstLiker = pin.likers.firstOrNull()
+            Text(
+                text = if (firstLiker != null) {
+                    "${firstLiker.name} 等 ${formatCompactCount(likeCount)} 人赞同了该想法"
+                } else {
+                    "${formatCompactCount(likeCount)} 人赞同了该想法"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -501,7 +565,7 @@ private fun PinContent(
                 modifier = Modifier.testTag(PIN_SCREEN_LIKE_BUTTON_TAG),
             ) {
                 Icon(
-                    if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.OutlinedThumbUp,
                     contentDescription = "赞",
                     modifier = Modifier.size(20.dp),
                 )
@@ -631,3 +695,16 @@ private fun compactPreview(raw: String, maxLength: Int = 120): String {
 }
 
 private fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
+
+private fun formatCompactCount(count: Int): String = when {
+    count >= 10_000 -> {
+        val value = count / 10_000f
+        if (count % 10_000 == 0) {
+            "${count / 10_000} 万"
+        } else {
+            String.format(Locale.getDefault(), "%.1f 万", value)
+        }
+    }
+
+    else -> count.toString()
+}
