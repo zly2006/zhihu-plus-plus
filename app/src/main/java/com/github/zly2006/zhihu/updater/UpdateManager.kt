@@ -24,6 +24,11 @@ import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
+import com.github.zly2006.zhihu.shared.updater.extractGithubDownloadInfo
+import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
@@ -39,9 +44,6 @@ import java.net.URI
 
 object UpdateManager {
     private const val AUTO_CHECK_INTERVAL_MILLIS = 3 * 60 * 60 * 1000L
-    private const val GITHUB_API_LATEST = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/latest"
-    private const val REDEN_API_LATEST = "https://redenmc.com/api/zhihu/releases/latest"
-    private const val GITHUB_API_NIGHTLY = "https://api.github.com/repos/zly2006/zhihu-plus-plus/releases/tags/nightly"
 
     /**
      * 自动检查更新要跳过的版本
@@ -49,11 +51,6 @@ object UpdateManager {
     private const val PREF_SKIPPED_VERSION = "skippedVersion"
     private const val PREF_AUTO_CHECK_UPDATES = "autoCheckUpdates"
     private const val PREF_LAST_UPDATE_CHECK = "lastUpdateCheck"
-
-    data class DownloadInfo(
-        val browserDownloadUrl: String,
-        val cnDownloadUrl: String? = null,
-    )
 
     sealed class UpdateState {
         object NoUpdate : UpdateState()
@@ -136,32 +133,13 @@ object UpdateManager {
         preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
     }
 
-    private fun String.extractReleaseNotes() = this
-        .replace("\r\n", "\n")
-        .substringAfter("## What's Changed\n")
-        .substringBefore("\n**Full Changelog**:")
-        .trimEnd('\n')
-
-    private fun GithubRelease.extractDownloadInfo(): DownloadInfo {
-        val apkAssets = assets.filter {
-            it.contentType == "application/vnd.android.package-archive"
-        }
-
-        @Suppress("KotlinConstantConditions")
-        val selectedAsset = selectApkAsset(apkAssets, BuildConfig.IS_LITE) ?: apkAssets.first()
-        return DownloadInfo(
-            browserDownloadUrl = selectedAsset.browserDownloadUrl,
-            cnDownloadUrl = selectedAsset.cnDownloadUrl,
-        )
-    }
-
     suspend fun getLatestVersion(context: Context): GithubRelease {
         val client = AccountData.httpClient(context)
         return runCatching {
-            client.get(REDEN_API_LATEST).raiseForStatus().body<GithubRelease>()
+            client.get(ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL).raiseForStatus().body<GithubRelease>()
         }.getOrNull() ?: run {
             client
-                .get(GITHUB_API_LATEST) {
+                .get(ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL) {
                     getGitHubToken(context)?.let { token ->
                         headers {
                             append(HttpHeaders.Authorization, "Bearer $token")
@@ -192,7 +170,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             Log.i("UpdateManager", "Latest version response: $latestResponse")
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            val latestDownloadInfo = latestResponse.extractDownloadInfo()
+            val latestDownloadInfo = latestResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 val versionString = latestVersion.toString()
@@ -201,7 +179,7 @@ object UpdateManager {
                     updateState.value = UpdateState.UpdateAvailable(
                         latestVersion,
                         false,
-                        latestResponse.body?.extractReleaseNotes(),
+                        latestResponse.body?.let(::extractGithubReleaseNotes),
                         latestDownloadInfo.browserDownloadUrl,
                         latestDownloadInfo.cnDownloadUrl,
                     )
@@ -236,14 +214,14 @@ object UpdateManager {
             // 检查正式版本
             val latestResponse = getLatestVersion(context)
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            releaseNotes = latestResponse.body?.extractReleaseNotes()
-            var downloadInfo = latestResponse.extractDownloadInfo()
+            releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
+            var downloadInfo = latestResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
                 try {
                     val nightlyResponse = client
-                        .get(GITHUB_API_NIGHTLY) {
+                        .get(ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL) {
                             getGitHubToken(context)?.let { token ->
                                 headers {
                                     append(HttpHeaders.Authorization, "Bearer $token")
@@ -259,8 +237,8 @@ object UpdateManager {
                             build = "",
                         )
                         isNightly = true
-                        releaseNotes = nightlyResponse.body?.extractReleaseNotes()
-                        downloadInfo = nightlyResponse.extractDownloadInfo()
+                        releaseNotes = nightlyResponse.body?.let(::extractGithubReleaseNotes)
+                        downloadInfo = nightlyResponse.extractGithubDownloadInfo(BuildConfig.IS_LITE)
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
@@ -303,14 +281,6 @@ object UpdateManager {
         } catch (e: Exception) {
             updateState.value = UpdateState.Error(e.message ?: "Unknown error")
         }
-    }
-
-    internal fun selectApkAsset(apkAssets: List<GithubAsset>, isLiteVariant: Boolean): GithubAsset? = if (isLiteVariant) {
-        // Lite version: strictly look for "lite" in filename
-        apkAssets.firstOrNull { it.name.contains("lite", ignoreCase = true) }
-    } else {
-        // Full version: prefer "full" in filename
-        apkAssets.firstOrNull { it.name.contains("full", ignoreCase = true) }
     }
 
     fun installUpdate(context: Context, file: File) {
