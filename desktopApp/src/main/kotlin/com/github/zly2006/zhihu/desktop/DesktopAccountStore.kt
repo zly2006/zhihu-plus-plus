@@ -1,5 +1,6 @@
 package com.github.zly2006.zhihu.desktop
 
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO
@@ -14,7 +15,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -26,12 +26,6 @@ import kotlin.io.path.writeText
 
 private const val ME_URL = "https://www.zhihu.com/api/v4/me"
 private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/540.0 (KHTML, like Gecko) Ubuntu/10.10 Chrome/9.1.0.0 Safari/540.0"
-
-private val desktopJson = Json {
-    ignoreUnknownKeys = true
-    isLenient = true
-    encodeDefaults = true
-}
 
 @Serializable
 data class DesktopAccountData(
@@ -46,7 +40,7 @@ class DesktopAccountStore(
 ) {
     fun load(): DesktopAccountData = runCatching {
         if (accountFile.exists()) {
-            desktopJson.decodeFromString<DesktopAccountData>(accountFile.readText())
+            ZhihuJson.json.decodeFromString<DesktopAccountData>(accountFile.readText())
         } else {
             DesktopAccountData()
         }
@@ -54,7 +48,7 @@ class DesktopAccountStore(
 
     fun save(data: DesktopAccountData) {
         accountFile.parent.createDirectories()
-        accountFile.writeText(desktopJson.encodeToString(data))
+        accountFile.writeText(ZhihuJson.json.encodeToString(data))
     }
 
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient(CIO) {
@@ -62,7 +56,7 @@ class DesktopAccountStore(
             storage = mapBackedCookieStorage(cookies)
         }
         install(ContentNegotiation) {
-            json(desktopJson)
+            json(ZhihuJson.json)
         }
         install(UserAgent) {
             agent = load().userAgent

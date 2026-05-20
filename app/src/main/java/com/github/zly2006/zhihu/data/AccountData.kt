@@ -24,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -53,22 +54,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
 import java.io.File
 
 object AccountData {
-    val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-    }
+    val json = ZhihuJson.json
 
     internal val ANDROID_HEADERS = mapOf(
         "x-api-version" to "3.1.8",
@@ -228,12 +222,12 @@ object AccountData {
      * 将snake_case的JSON转换为camelCase并解析为对象
      */
     internal inline fun <reified T> decodeJson(json: JsonElement): T {
-        val json = snake_case2camelCase(json)
+        val convertedJson = ZhihuJson.snakeCaseToCamelCase(json)
         try {
-            return this.json.decodeFromJsonElement<T>(json)
+            return this.json.decodeFromJsonElement<T>(convertedJson)
         } catch (e: SerializationException) {
-            Log.e("AccountData", "Failed to parse JSON: $json", e)
-            throw SerializationException("Failed to parse JSON: ${e.message}\n\n$json", e)
+            Log.e("AccountData", "Failed to parse JSON: $convertedJson", e)
+            throw SerializationException("Failed to parse JSON: ${e.message}\n\n$convertedJson", e)
         }
     }
 
@@ -244,34 +238,19 @@ object AccountData {
     ) : SerializationException(message, cause)
 
     internal fun <T> decodeJson(serializer: KSerializer<T>, json: JsonElement): T {
-        val json = snake_case2camelCase(json)
+        val convertedJson = ZhihuJson.snakeCaseToCamelCase(json)
         try {
-            return this.json.decodeFromJsonElement(serializer, json)
+            return this.json.decodeFromJsonElement(serializer, convertedJson)
         } catch (e: SerializationException) {
-            throw ZhPlusJsonSerializationException(json, "Failed to parse JSON: ${e.message}", e)
+            throw ZhPlusJsonSerializationException(convertedJson, "Failed to parse JSON: ${e.message}", e)
         }
     }
 
     @Suppress("FunctionName")
-    fun snake_case2camelCase(snakeCase: String): String = snakeCase
-        .split("_")
-        .joinToString("") { it.replaceFirstChar { char -> char.uppercase() } }
-        .replaceFirstChar { it.lowercase() }
+    fun snake_case2camelCase(snakeCase: String): String = ZhihuJson.snakeCaseToCamelCase(snakeCase)
 
     @Suppress("FunctionName")
-    fun snake_case2camelCase(json: JsonElement): JsonElement = when (json) {
-        is JsonObject -> buildJsonObject {
-            for ((key, value) in json) {
-                put(snake_case2camelCase(key), snake_case2camelCase(value))
-            }
-        }
-        is JsonArray -> buildJsonArray {
-            for (item in json) {
-                add(snake_case2camelCase(item))
-            }
-        }
-        else -> json
-    }
+    fun snake_case2camelCase(json: JsonElement): JsonElement = ZhihuJson.snakeCaseToCamelCase(json)
 
     private var lastRefreshCookie = 0L
 
