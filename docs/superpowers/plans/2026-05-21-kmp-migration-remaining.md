@@ -60,6 +60,7 @@
 - `ZhihuPageLoader` 的根本错误：把“迁移分页 ViewModel”误解成“绕开现有 ViewModel 新建 loader”。正确方向是拆 Android 副作用，让 `PaginationViewModel` 本体迁入 shared。
 - `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
+- `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
 - `.codex/hooks.json` 在当前 worktree 中是有意删除，不要恢复。
 
 ## 当前完成状态
@@ -70,7 +71,7 @@
 - JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
 - KMP Room 已用于内容过滤和本地内容数据库。
 - `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 app adapter 留在平台侧。
-- `ZhihuMain.kt` 主导航壳已迁入 shared；Android 页面注册、偏好读取、`MainActivity` 和 ViewModel 创建留在 app adapter。
+- `ZhihuMain.kt` 主导航壳已迁入 shared；但 route 注册仍需按 `master` 的大函数结构继续收回 shared。Android 只应保留具体页面实现、偏好读取、`MainActivity`、ViewModel 创建和其他平台副作用 adapter。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 shared；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 androidMain adapter。
 - bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
@@ -99,8 +100,9 @@ git diff --check
 目标：
 
 - `ZhihuMain.kt` 本体位于 `shared/commonMain`。
-- Android 具体页面注册、Activity、ViewModelProvider、WebView 相关页面、Toast/Dialog 等留在 app adapter。
-- shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 语义、导航动画语义。
+- shared `ZhihuMain` 继续保持 `master` 的大函数形状：同一个函数内负责底栏、pager、`NavHost` 和全部 `composable<...>` route 注册。
+- Android 只提供具体页面 content、Activity、ViewModelProvider、WebView 相关页面、Toast/Dialog 等平台实现；不能把 route graph 注册拆成 `androidZhihuMainRouteContent` 这类 app 侧函数。
+- shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 注册语义、导航动画语义。
 - 不引入独立 desktop route model。
 - 不用大而全 screen table 重写 Android UI。
 

@@ -9,7 +9,7 @@
 - JVM login uses shared QR login and stores cookies under `~/.zhihu-plus-plus/account.json`.
 - KMP Room is used for content filter and local content databases.
 - 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
-- `ZhihuMain.kt` 主导航壳已通过 `git mv` 迁入 `shared/commonMain`；Android 页面注册、`MainActivity`、偏好读取、ViewModel 创建等运行时副作用留在 app adapter。
+- `ZhihuMain.kt` 主导航壳已通过 `git mv` 迁入 `shared/commonMain`；但 route 注册仍需按 `master` 的大函数形状收回 shared。Android 只应保留具体页面实现、`MainActivity`、偏好读取、ViewModel 创建等运行时副作用 adapter。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 `shared/commonMain`；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 `shared/androidMain` adapter。
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
@@ -20,6 +20,7 @@
 ## Do Not Redo
 
 - Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
+- Do not move `ZhihuMain` route registration into an Android-only helper such as `androidZhihuMainRouteContent`. Match `master`: the shared `ZhihuMain` big function owns `NavHost` and all `composable<...>` route registrations; platforms inject page implementations and runtime side effects only.
 - Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
 - Do not assume desktop needs a separate route model. Desktop should reuse the shared Android UI/navigation semantics for this migration; only introduce a thin runtime adapter if the current Navigation Compose dependency cannot compile for JVM/desktop.
 - Do not recreate `Time.android.kt` / `Time.jvm.kt`; use `Clock.System`.
