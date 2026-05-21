@@ -25,7 +25,6 @@ import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -328,92 +327,31 @@ object ContentFilterExtensions {
         blocked: MutableList<Pair<FilterableContent, String>>,
         settings: FeedFilterSettings,
     ): List<FilterableContent> {
-        var filteredContents = contents
-
-        // 应用作者屏蔽
-        if (settings.enableUserBlocking) {
-            val blocklistManager = BlocklistManager.getInstance(context)
-            val (kept, removed) = filteredContents.partition { !blocklistManager.isUserBlocked(it.authorId) }
-            removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
-            filteredContents = kept
-        }
-
-        // 应用关键词屏蔽
-        if (settings.enableKeywordBlocking) {
-            val blocklistManager = BlocklistManager.getInstance(context)
-            val (kept, removed) = filteredContents.partition { content ->
-                !blocklistManager.containsBlockedKeyword(content.title) &&
-                    !blocklistManager.containsBlockedKeyword(content.summary ?: "") &&
-                    !blocklistManager.containsBlockedKeyword(content.content ?: "")
-            }
-            removed.forEach { blocked.add(it to "关键词屏蔽") }
-            filteredContents = kept
-        }
-
-        // 应用NLP语义屏蔽
-        if (settings.enableNlpBlocking) {
-            val blockedThisRound = mutableListOf<FilterableContent>()
-            val nlpRepository = BlockedKeywordRepository(context, NlpServiceKeywordSemanticMatcher)
-            val finalFilteredContents = mutableListOf<FilterableContent>()
-
-            for (content in filteredContents) {
-                val (shouldBlock, matchedKeywords) = nlpRepository.checkNLPBlockingWithWeight(
-                    title = content.title,
-                    excerpt = content.summary,
-                    content = content.content?.let { Jsoup.parse(it).text() },
-                    threshold = settings.nlpSimilarityThreshold,
-                )
-
-                if (!shouldBlock) {
-                    finalFilteredContents.add(content)
-                } else {
-                    nlpRepository.recordBlockedContent(
-                        contentId = content.contentId,
-                        contentType = content.contentType,
-                        title = content.title,
-                        excerpt = content.summary ?: "",
-                        authorName = content.authorName,
-                        authorId = content.authorId,
-                        matchedKeywords = matchedKeywords,
-                    )
-                    val keywordNames = matchedKeywords.joinToString("、") { it.keyword }
-                    blocked.add(content to "NLP语义屏蔽：$keywordNames")
-                    blockedThisRound.add(content)
-                }
-            }
-
-            if (blockedThisRound.isNotEmpty()) {
+        val database = getContentFilterDatabase(context)
+        val pipeline = FeedContentFilterPipeline(
+            settings = settings,
+            blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ),
+            blockedKeywordService = BlockedKeywordService(
+                keywordDao = database.blockedKeywordDao(),
+                recordDao = database.blockedContentRecordDao(),
+                semanticMatcher = NlpServiceKeywordSemanticMatcher,
+            ),
+            htmlToText = { Jsoup.parse(it).text() },
+            onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {
                         Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
                     }
                 }
-            }
-
-            filteredContents = finalFilteredContents
-        }
-
-        // 应用主题屏蔽
-        if (settings.enableTopicBlocking) {
-            val blocklistManager = BlocklistManager.getInstance(context)
-
-            filteredContents = filteredContents.filter { content ->
-                val topicIds = extractTopicIds(content.raw)
-                val kept = blocklistManager.countBlockedTopics(topicIds) < settings.topicBlockingThreshold
-                if (!kept) {
-                    val topicName = topicIds
-                        ?.first { topicId ->
-                            blocklistManager.isTopicBlocked(topicId)
-                        }?.let { topicId ->
-                            blocklistManager.getTopicName(topicId)
-                        }
-                    blocked.add(content to "屏蔽主题：$topicName")
-                }
-                kept
-            }
-        }
-
-        return filteredContents
+            },
+        )
+        val result = pipeline.filter(contents)
+        blocked.addAll(result.blocked)
+        return result.kept
     }
 
     private suspend fun saveBlockedFeedRecords(
