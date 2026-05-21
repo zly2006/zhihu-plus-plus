@@ -25,7 +25,6 @@ import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
@@ -36,7 +35,6 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import org.jsoup.Jsoup
 
 /**
@@ -45,27 +43,6 @@ import org.jsoup.Jsoup
  * 这里不负责定义内容级规则本身，也不负责详情页打开事件；那些逻辑分别在 blocklist/NLP 仓库和已读事件支持类里。
  */
 object ContentFilterExtensions {
-    /**
-     * 从 feed item 提炼出的内容快照。
-     * 还可以后续再添加fetch到的详细信息，精确判断。
-     * 这个结构只在 feed 过滤流水线内部流转，用来承接关键词/NLP/作者/主题等内容级规则。
-     */
-    data class FilterableContent(
-        val title: String,
-        val summary: String?,
-        val content: String?,
-        val authorName: String?,
-        val authorId: String?,
-        val contentId: String,
-        val contentType: String,
-        val raw: DataHolder.Content,
-        val isFollowing: Boolean = false,
-        val questionId: Long? = null,
-        val url: String? = null,
-        val feedJson: String? = null,
-        val navDestinationJson: String? = null,
-    )
-
     /** 检查是否启用了 feed 已读/低质过滤总开关。 */
     fun isContentFilterEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -486,45 +463,6 @@ object ContentFilterExtensions {
         return filteredContents
     }
 
-    private data class ContentIdentity(
-        val type: String,
-        val id: String,
-    )
-
-    private fun FeedDisplayItem.resolveContentIdentity(): ContentIdentity = when (val dest = navDestination) {
-        is Article, is Question, is Pin -> {
-            val identity = ContentOpenEventSupport.toTrackedContentIdentity(dest)
-            ContentIdentity(identity!!.type, identity.id)
-        }
-        else -> {
-            ContentIdentity("unknown", navDestination.hashCode().toString())
-        }
-    }
-
-    private fun FeedDisplayItem.toFilterableContent(
-        identity: ContentIdentity,
-        rawContent: DataHolder.Content,
-    ): FilterableContent = FilterableContent(
-        title = title,
-        summary = summary,
-        content = when (rawContent) {
-            is DataHolder.Answer -> rawContent.content
-            is DataHolder.Article -> rawContent.content
-            is DataHolder.Pin -> rawContent.contentHtml
-            else -> null
-        } ?: content ?: summary,
-        authorName = authorName,
-        authorId = rawContent.author?.id,
-        contentId = identity.id,
-        contentType = identity.type,
-        raw = rawContent,
-        isFollowing = rawContent.author?.isFollowing ?: false,
-        questionId = (rawContent as? DataHolder.Answer)?.question?.id,
-        url = feed?.target?.url,
-        feedJson = feed?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
-        navDestinationJson = navDestination?.let { runCatching { recordJson.encodeToString(it) }.getOrNull() },
-    )
-
     private suspend fun saveBlockedFeedRecords(
         context: Context,
         blocked: List<Pair<FilterableContent, String>>,
@@ -552,27 +490,4 @@ object ContentFilterExtensions {
         }
     }
 
-    /** 从内容实体中提取主题 ID 列表，供 feed 过滤阶段的主题规则使用。 */
-    private fun extractTopicIds(raw: DataHolder.Content): List<String>? = when (raw) {
-        is DataHolder.Answer -> raw.question.topics.map { it.id }
-        is DataHolder.Question -> raw.topics.map { it.id }
-        is DataHolder.Article -> raw.topics?.map { it.id }
-        else -> null
-    }
-}
-
-private val DataHolder.Content.author: DataHolder.Author?
-    get() = when (this) {
-        is DataHolder.Answer -> this.author
-        is DataHolder.Article -> this.author
-        is DataHolder.Pin -> this.author
-        is DataHolder.Question -> this.author
-//        is DataHolder.Comment -> this.author
-        else -> null
-    }
-
-/** 用于序列化屏蔽记录的 Json 实例 */
-internal val recordJson = Json {
-    ignoreUnknownKeys = true
-    encodeDefaults = false
 }
