@@ -561,19 +561,6 @@ object ContentFilterExtensions {
     }
 }
 
-/**
- * 定义常见的内容类型常量
- */
-object ContentType {
-    const val ANSWER = "answer"
-    const val ARTICLE = "article"
-    const val QUESTION = "question"
-    const val TOPIC = "topic"
-    const val COLUMN = "column"
-    const val VIDEO = "video"
-    const val PIN = "pin"
-}
-
 private val DataHolder.Content.author: DataHolder.Author?
     get() = when (this) {
         is DataHolder.Answer -> this.author
