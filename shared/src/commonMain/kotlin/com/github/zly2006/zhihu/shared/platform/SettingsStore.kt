@@ -9,6 +9,8 @@ data class SettingsStore(
     val putString: (String, String) -> Unit,
     val getInt: (String, Int) -> Int,
     val putInt: (String, Int) -> Unit,
+    val getFloat: (String, Float) -> Float,
+    val putFloat: (String, Float) -> Unit,
 )
 
 @Composable

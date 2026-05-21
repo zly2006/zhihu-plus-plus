@@ -20,6 +20,8 @@ actual fun rememberSettingsStore(): SettingsStore {
             putString = { key, value -> preferences.edit { putString(key, value) } },
             getInt = { key, defaultValue -> preferences.getInt(key, defaultValue) },
             putInt = { key, value -> preferences.edit { putInt(key, value) } },
+            getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
+            putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
         )
     }
 }

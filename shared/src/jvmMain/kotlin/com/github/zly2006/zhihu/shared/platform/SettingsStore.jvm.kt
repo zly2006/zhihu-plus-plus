@@ -47,5 +47,12 @@ actual fun rememberSettingsStore(): SettingsStore = remember {
             properties.setProperty(key, value.toString())
             save()
         },
+        getFloat = { key, defaultValue ->
+            properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
+        },
+        putFloat = { key, value ->
+            properties.setProperty(key, value.toString())
+            save()
+        },
     )
 }
