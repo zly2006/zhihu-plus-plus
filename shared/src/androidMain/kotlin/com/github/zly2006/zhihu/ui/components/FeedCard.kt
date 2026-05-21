@@ -78,7 +78,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Navigator
@@ -114,6 +113,7 @@ fun FeedCard(
     val density = LocalDensity.current
     val context = LocalContext.current
     val navigator = LocalNavigator.current
+    val isLiteVariant = remember(context) { context.packageName.endsWith(".lite") }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
@@ -195,7 +195,7 @@ fun FeedCard(
                     showMenu = showMenu,
                     onShowMenuChange = { showMenu = it },
                     onBlockUser = onBlockUser,
-                    onBlockByKeywords = onBlockByKeywords,
+                    onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                     onBlockTopic = onBlockTopic,
                     duo3CardLayout = duo3CardLayout,
                     duo3CardLargeTitle = duo3CardLargeTitle,
@@ -283,7 +283,7 @@ fun FeedCard(
                         showMenu = showMenu,
                         onShowMenuChange = { showMenu = it },
                         onBlockUser = onBlockUser,
-                        onBlockByKeywords = onBlockByKeywords,
+                        onBlockByKeywords = if (isLiteVariant) null else onBlockByKeywords,
                         onBlockTopic = onBlockTopic,
                         duo3CardLayout = duo3CardLayout,
                         duo3CardLargeTitle = duo3CardLargeTitle,
@@ -394,8 +394,7 @@ private fun FeedCardMenuBox(
             expanded = showMenu,
             onDismissRequest = { onShowMenuChange(false) },
         ) {
-            @Suppress("SimplifyBooleanWithConstants", "KotlinConstantConditions")
-            if (onBlockByKeywords != null && !BuildConfig.IS_LITE) {
+            if (onBlockByKeywords != null) {
                 DropdownMenuItem(
                     text = { Text("按关键词屏蔽") },
                     onClick = {
