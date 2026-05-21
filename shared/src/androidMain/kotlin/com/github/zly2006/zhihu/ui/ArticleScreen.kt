@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -80,7 +81,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -89,8 +89,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TwoRowsTopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -121,7 +123,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -143,6 +145,8 @@ import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.Person
+import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
@@ -582,7 +586,6 @@ private fun prepareContentDocument(content: String, context: Context): Document 
 
 @OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalMaterial3ExpressiveApi::class,
     ExperimentalFoundationApi::class,
 )
 @Composable
@@ -1041,7 +1044,7 @@ fun ArticleScreen(
                             }
                         },
                 ) {
-                    TwoRowsTopAppBar(
+                    ArticleTopAppBar(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
@@ -1988,69 +1991,34 @@ private fun CachedAnswerPreview(
     }
 }
 
-@Preview
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleScreenPreview() {
-    ArticleScreen(
-        Article(
-            "如何看待《狂暴之翼》中的人物设定？",
-            ArticleType.Answer,
-            123456789,
-            "知乎用户",
-            "知乎用户",
-            "",
-        ),
-        viewModel = viewModel {
-            ArticleViewModel(
-                Article(
-                    "如何看待《狂暴之翼》中的人物设定？",
-                    ArticleType.Answer,
-                    123456789,
-                    "知乎用户",
-                    "知乎用户",
-                    "",
-                ),
-                null,
-                null,
-            )
+private fun ArticleTopAppBar(
+    title: @Composable (expanded: Boolean) -> Unit,
+    subtitle: (@Composable (expanded: Boolean) -> Unit)?,
+    navigationIcon: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit,
+    titleHorizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    collapsedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
+    expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
+    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+) {
+    TopAppBar(
+        title = {
+            Column(
+                horizontalAlignment = titleHorizontalAlignment,
+            ) {
+                title(false)
+                subtitle?.invoke(false)
+            }
         },
+        navigationIcon = navigationIcon,
+        actions = actions,
+        expandedHeight = maxOf(collapsedHeight, expandedHeight),
+        windowInsets = windowInsets,
+        colors = colors,
+        scrollBehavior = scrollBehavior,
     )
-}
-
-@Preview
-@Composable
-fun ArticleActionsMenuPreview() {
-    MaterialTheme {
-        Surface {
-            ArticleActionsMenu(
-                article = Article(
-                    "如何看待《狂暴之翼》中的人物设定？",
-                    ArticleType.Answer,
-                    123456789,
-                    "知乎用户",
-                    "知乎用户",
-                    "",
-                ),
-                viewModel = viewModel {
-                    ArticleViewModel(
-                        Article(
-                            "如何看待《狂暴之翼》中的人物设定？",
-                            ArticleType.Answer,
-                            123456789,
-                            "知乎用户",
-                            "知乎用户",
-                            "",
-                        ),
-                        null,
-                        null,
-                    )
-                },
-                context = LocalContext.current,
-                showMenu = true,
-                onDismissRequest = {},
-                onSummaryRequest = {},
-                onExportRequest = {},
-            )
-        }
-    }
 }
