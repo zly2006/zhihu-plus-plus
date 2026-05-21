@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context.MODE_PRIVATE
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
@@ -41,6 +39,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.shared.data.HotListFeed
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -61,9 +62,8 @@ actual fun HotListScreen(
 ) {
     val context = LocalActivity.current as MainActivity
     val viewModel: HotListViewModel by context.viewModels()
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
+    val userMessages = rememberUserMessageSink()
+    val settings = rememberSettingsStore()
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
@@ -73,7 +73,7 @@ actual fun HotListScreen(
 
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
 
@@ -98,7 +98,7 @@ actual fun HotListScreen(
                 )
             }
 
-            val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+            val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
             if (showRefreshFab) {
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),

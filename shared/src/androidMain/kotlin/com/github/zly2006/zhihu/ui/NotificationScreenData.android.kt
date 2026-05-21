@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
-import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material3.Icon
@@ -10,6 +9,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.BuildConfig
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
@@ -21,6 +22,7 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
     val context = LocalContext.current
     val viewModel = viewModel<NotificationViewModel>()
     val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
     return NotificationScreenData(
         notifications = viewModel.allData.filter { viewModel.shouldShowNotification(context, it) },
         totalItemCount = viewModel.allData.size,
@@ -34,16 +36,16 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
         markAllAsRead = {
             coroutineScope.launch {
                 viewModel.markAllAsRead(context)
-                Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
+                userMessages.showMessage("已全部标记为已读")
             }
         },
         copyDebugData = {
             val debugData = Json.encodeToString(viewModel.debugData)
             context.clipboardManager.setPrimaryClip(ClipData.newPlainText("data", debugData))
-            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+            userMessages.showMessage("已复制调试数据")
         },
         showMessage = { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(message, UserMessageDuration.Long)
         },
     )
 }

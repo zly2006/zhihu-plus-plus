@@ -29,6 +29,7 @@
 - xhigh 审查完成后必须生成新的独立审查文档，默认放在 `docs/superpowers/reviews/` 或对应任务目录，记录输入、结论、证据、风险和验证命令。
 - 现有 plan、AGENTS、CLAUDE、status 文档只在发现错误、过期、冲突或遗漏会误导后续执行时，才做必要的最小修改；不要把每次审查结论都直接塞回长期规则文档。
 - 主 agent 不能把 subagent 结论当成免检结论；必须结合当前代码和编译结果复核。
+- 只要启动了 subagent，主 agent 必须等待所有仍存活的 subagent 完成，或在明确不再需要时主动关闭并记录原因；不能留下孤儿 subagent。subagent 未完成前，不能提交、不能宣布切片完成、不能把本地判断当作最终结论。
 - 如果当前环境不能启动 subagent，必须在当前回复和相关文档中明确记录，并改为本地按同一清单审查。
 
 这个规则的目的，是防止再次把“当前文件位置、调用方、import 包名”误当成平台所有权。
@@ -60,6 +61,8 @@
 - `ZhihuPageLoader` 的根本错误：把“迁移分页 ViewModel”误解成“绕开现有 ViewModel 新建 loader”。正确方向是拆 Android 副作用，让 `PaginationViewModel` 本体迁入 shared。
 - `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
 - `ContentFilterManager` / `ContentFilterExtensions` 的根本边界：它们是核心过滤器，不是 Android-only 工具类。不能把“当前从 Android `Context` 取 SharedPreferences/Room/Toast/log”误判成“过滤所有权属于 Android”。正确方向是过滤编排、曝光/交互记录、前台已读过滤、广告/付费/关键词/用户/主题过滤策略、统计清理、去重和屏蔽记录保存算法进 shared；平台只提供数据库 builder/文件路径、偏好存取、Toast/Dialog/log、平台生命周期和内容详情 fetch/provider。
+- 内容过滤设置页混合 adapter 的根本错误：为了让设置页先编译到 common，把偏好读写、过滤统计/清理/重置、Toast/消息提示塞进一个页面专用聚合对象，等于把三种不同所有权和变化频率的能力糊成“页面平台适配”，还按页面命名，妨碍后续复用。正确方向是拆成三块通用能力：`SettingsStore` 只负责设置存取；`ContentFilterMaintenance` 只负责统计/清理/重置，并在 `ContentFilterManager` 迁入 shared 后委托 shared 核心；`UserMessageSink` 只负责平台提示。不要在设置页 adapter 里复制或替代过滤核心逻辑。
+- 通用 adapter 抽出后不复用也是错误：每次新增或拆出 shared 能力后，必须同步 grep 同类调用并替换低风险重复点，例如 `Toast.makeText` -> `UserMessageSink`、`getSharedPreferences` -> `SettingsStore`、过滤统计/清理 -> `ContentFilterMaintenance`。若暂不替换，必须在当前切片说明原因，不能默认让重复平台调用继续扩散。
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
 - `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
 - 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。页面级 `expect` 只能作为极短期编译桥，必须在后续切片中优先删除；长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择等具体副作用。
@@ -181,6 +184,8 @@ rg -n "ZhihuPageLoader" .
 - `ContentFilterManager` 和 `ContentFilterExtensions` 主体迁入 `shared/commonMain`。
 - 保留关键过滤功能：曝光/交互记录、前台已读过滤、重复曝光过滤、广告/知乎学堂/微信公众号/付费内容过滤、关键词/用户/主题过滤、reverseBlock、统计、清理和屏蔽记录保存。
 - Android 副作用拆成小 adapter：SharedPreferences/设置读取、Room database builder 和文件路径、Toast/Dialog/log、`Context`、内容详情 fetch/provider、平台生命周期维护触发。
+- `ContentFilterSettingsScreen` 必须依赖三块通用能力：`SettingsStore`、`ContentFilterMaintenance`、`UserMessageSink`；后续迁移核心过滤器时，逐步让过滤维护动作委托 shared 的 `ContentFilterManager`/KMP Room，而不是继续在页面 adapter 里扩写逻辑。
+- 复用要求：迁移本任务涉及页面、feed ViewModel 或过滤器时，必须先 grep `Toast.makeText`、`getSharedPreferences`、`ContentFilterMaintenance`/统计清理相关重复实现，优先接入已存在的 `UserMessageSink`、`SettingsStore`、`ContentFilterMaintenance`。对仍保留在 Android-only 页面或 ViewModel 中的重复点，要在切片记录中说明为什么暂不替换。
 - 不允许把过滤器替换成空实现、只保留 UI 开关，或让 desktop/JVM 绕开过滤语义。
 
 迁移前必须由 subagent 审查：

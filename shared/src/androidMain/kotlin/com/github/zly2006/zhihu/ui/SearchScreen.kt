@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
-import android.widget.Toast
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +72,9 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
@@ -100,13 +101,14 @@ actual fun SearchScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
+    val userMessages = rememberUserMessageSink()
+    val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query) }
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
 
-    val showHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+    val showHotSearch = remember { mutableStateOf(settings.getBoolean("showSearchHotSearch", true)) }
     val hotSearchItems = remember(testHotSearchQueries) {
         mutableStateListOf<HotSearchItem>().apply {
             addAll(testHotSearchQueries.orEmpty().map { query -> HotSearchItem(query = query) })
@@ -139,7 +141,7 @@ actual fun SearchScreen(
 
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
 
@@ -356,7 +358,7 @@ actual fun SearchScreen(
                         FeedCard(item)
                     }
 
-                    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+                    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
                     if (showRefreshFab) {
                         DraggableRefreshButton(
                             onClick = {

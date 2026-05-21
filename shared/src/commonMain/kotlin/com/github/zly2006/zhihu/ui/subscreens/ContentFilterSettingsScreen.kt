@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +37,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -62,43 +59,39 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
+import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterManager
-import com.github.zly2006.zhihu.viewmodel.filter.FilterStats
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun ContentFilterSettingsScreen(
-    setting: String = "",
+fun ContentFilterSettingsScreen(
+    setting: String? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember {
-        context.getSharedPreferences(
-            PREFERENCE_NAME,
-            Context.MODE_PRIVATE,
-        )
-    }
+    val settings = rememberSettingsStore()
+    val filterMaintenance = rememberContentFilterMaintenance()
+    val userMessages = rememberUserMessageSink()
+    val highlightedSetting = setting.orEmpty()
 
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    LaunchedEffect(setting) {
-        if (setting.isNotEmpty()) {
+    LaunchedEffect(highlightedSetting) {
+        if (highlightedSetting.isNotEmpty()) {
             delay(200.milliseconds)
             // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
             scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
@@ -142,13 +135,13 @@ actual fun ContentFilterSettingsScreen(
                 SettingItem(
                     title = { Text("推荐算法") },
                     settingKey = "recommendationMode",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                     endAction = {
                         // Rec Mode
                         val currentRecommendationMode = remember {
                             mutableStateOf(
                                 RecommendationMode.entries.find {
-                                    it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+                                    it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
                                 } ?: RecommendationMode.MIXED,
                             )
                         }
@@ -182,7 +175,7 @@ actual fun ContentFilterSettingsScreen(
                                         },
                                         onClick = {
                                             currentRecommendationMode.value = mode
-                                            preferences.edit { putString("recommendationMode", mode.key) }
+                                            settings.putString("recommendationMode", mode.key)
                                             expanded = false
                                         },
                                     )
@@ -193,7 +186,7 @@ actual fun ContentFilterSettingsScreen(
                 )
 
                 val isLoginForRecommendation = remember {
-                    mutableStateOf(preferences.getBoolean("loginForRecommendation", true))
+                    mutableStateOf(settings.getBoolean("loginForRecommendation", true))
                 }
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
@@ -202,26 +195,26 @@ actual fun ContentFilterSettingsScreen(
                     checked = isLoginForRecommendation.value,
                     onCheckedChange = { checked ->
                         isLoginForRecommendation.value = checked
-                        preferences.edit { putBoolean("loginForRecommendation", checked) }
+                        settings.putBoolean("loginForRecommendation", checked)
                     },
                     settingKey = "loginForRecommendation",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
             }
 
-            val enableContentFilter = remember { mutableStateOf(preferences.getBoolean("enableContentFilter", true)) }
+            val enableContentFilter = remember { mutableStateOf(settings.getBoolean("enableContentFilter", true)) }
             SettingItemGroup {
-                val enableQualityFilter = remember { mutableStateOf(preferences.getBoolean("enableQualityFilter", true)) }
+                val enableQualityFilter = remember { mutableStateOf(settings.getBoolean("enableQualityFilter", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用质量过滤规则") },
                     description = { Text("根据赞同数、关注数等指标过滤低质量内容") },
                     checked = enableQualityFilter.value,
                     onCheckedChange = {
                         enableQualityFilter.value = it
-                        preferences.edit { putBoolean("enableQualityFilter", it) }
+                        settings.putBoolean("enableQualityFilter", it)
                     },
                     settingKey = "enableQualityFilter",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
                 SettingItemWithSwitch(
@@ -231,13 +224,13 @@ actual fun ContentFilterSettingsScreen(
                     checked = enableContentFilter.value,
                     onCheckedChange = {
                         enableContentFilter.value = it
-                        preferences.edit { putBoolean("enableContentFilter", it) }
+                        settings.putBoolean("enableContentFilter", it)
                     },
                     settingKey = "enableContentFilter",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val filterFollowedUserContent = remember { mutableStateOf(preferences.getBoolean("filterFollowedUserContent", false)) }
+                val filterFollowedUserContent = remember { mutableStateOf(settings.getBoolean("filterFollowedUserContent", false)) }
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
                     title = { Text("过滤已关注用户内容") },
@@ -245,56 +238,56 @@ actual fun ContentFilterSettingsScreen(
                     checked = filterFollowedUserContent.value,
                     onCheckedChange = {
                         filterFollowedUserContent.value = it
-                        preferences.edit { putBoolean("filterFollowedUserContent", it) }
+                        settings.putBoolean("filterFollowedUserContent", it)
                     },
                     enabled = enableContentFilter.value,
                     settingKey = "filterFollowedUserContent",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
             }
 
             SettingItemGroup {
-                val enableKeywordBlocking = remember { mutableStateOf(preferences.getBoolean("enableKeywordBlocking", true)) }
+                val enableKeywordBlocking = remember { mutableStateOf(settings.getBoolean("enableKeywordBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用关键词屏蔽") },
                     description = { Text("屏蔽包含特定关键词的内容") },
                     checked = enableKeywordBlocking.value,
                     onCheckedChange = {
                         enableKeywordBlocking.value = it
-                        preferences.edit { putBoolean("enableKeywordBlocking", it) }
+                        settings.putBoolean("enableKeywordBlocking", it)
                     },
                     settingKey = "enableKeywordBlocking",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val enableUserBlocking = remember { mutableStateOf(preferences.getBoolean("enableUserBlocking", true)) }
+                val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用用户屏蔽") },
                     description = { Text("屏蔽特定用户发布的内容") },
                     checked = enableUserBlocking.value,
                     onCheckedChange = {
                         enableUserBlocking.value = it
-                        preferences.edit { putBoolean("enableUserBlocking", it) }
+                        settings.putBoolean("enableUserBlocking", it)
                     },
                     settingKey = "enableUserBlocking",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val enableTopicBlocking = remember { mutableStateOf(preferences.getBoolean("enableTopicBlocking", true)) }
+                val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用主题屏蔽") },
                     description = { Text("屏蔽包含特定主题的内容") },
                     checked = enableTopicBlocking.value,
                     onCheckedChange = {
                         enableTopicBlocking.value = it
-                        preferences.edit { putBoolean("enableTopicBlocking", it) }
+                        settings.putBoolean("enableTopicBlocking", it)
                     },
                     settingKey = "enableTopicBlocking",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
                 AnimatedVisibility(visible = enableTopicBlocking.value) {
-                    val topicThreshold = remember { mutableStateOf(preferences.getInt("topicBlockingThreshold", 1)) }
+                    val topicThreshold = remember { mutableStateOf(settings.getInt("topicBlockingThreshold", 1)) }
                     var showThresholdDialog by remember { mutableStateOf(false) }
 
                     SettingItem(
@@ -338,10 +331,10 @@ actual fun ContentFilterSettingsScreen(
                                         val newThreshold = inputValue.toIntOrNull()
                                         if (newThreshold != null && newThreshold > 0) {
                                             topicThreshold.value = newThreshold
-                                            preferences.edit { putInt("topicBlockingThreshold", newThreshold) }
+                                            settings.putInt("topicBlockingThreshold", newThreshold)
                                             showThresholdDialog = false
                                         } else {
-                                            Toast.makeText(context, "请输入大于0的整数", Toast.LENGTH_SHORT).show()
+                                            userMessages.showMessage("请输入大于0的整数")
                                         }
                                     },
                                 ) {
@@ -359,69 +352,69 @@ actual fun ContentFilterSettingsScreen(
             }
 
             SettingItemGroup {
-                val blockZhihuAdPlatform = remember { mutableStateOf(preferences.getBoolean("blockZhihuAdPlatform", true)) }
+                val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎广告平台内容") },
                     description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容") },
                     checked = blockZhihuAdPlatform.value,
                     onCheckedChange = {
                         blockZhihuAdPlatform.value = it
-                        preferences.edit { putBoolean("blockZhihuAdPlatform", it) }
+                        settings.putBoolean("blockZhihuAdPlatform", it)
                     },
                     settingKey = "blockZhihuAdPlatform",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val blockZhihuSchool = remember { mutableStateOf(preferences.getBoolean("blockZhihuSchool", true)) }
+                val blockZhihuSchool = remember { mutableStateOf(settings.getBoolean("blockZhihuSchool", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎学堂内容") },
                     description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容") },
                     checked = blockZhihuSchool.value,
                     onCheckedChange = {
                         blockZhihuSchool.value = it
-                        preferences.edit { putBoolean("blockZhihuSchool", it) }
+                        settings.putBoolean("blockZhihuSchool", it)
                     },
                     settingKey = "blockZhihuSchool",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val blockWeChatOfficialAccount = remember { mutableStateOf(preferences.getBoolean("blockWeChatOfficialAccount", true)) }
+                val blockWeChatOfficialAccount = remember { mutableStateOf(settings.getBoolean("blockWeChatOfficialAccount", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽微信公众号文章") },
                     description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章") },
                     checked = blockWeChatOfficialAccount.value,
                     onCheckedChange = {
                         blockWeChatOfficialAccount.value = it
-                        preferences.edit { putBoolean("blockWeChatOfficialAccount", it) }
+                        settings.putBoolean("blockWeChatOfficialAccount", it)
                     },
                     settingKey = "blockWeChatOfficialAccount",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val blockPaidContent = remember { mutableStateOf(preferences.getBoolean("blockPaidContent", true)) }
+                val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎严选付费内容") },
                     description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
                     checked = blockPaidContent.value,
                     onCheckedChange = {
                         blockPaidContent.value = it
-                        preferences.edit { putBoolean("blockPaidContent", it) }
+                        settings.putBoolean("blockPaidContent", it)
                     },
                     settingKey = "blockPaidContent",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
 
-                val reverseBlock = remember { mutableStateOf(preferences.getBoolean("reverseBlock", false)) }
+                val reverseBlock = remember { mutableStateOf(settings.getBoolean("reverseBlock", false)) }
                 SettingItemWithSwitch(
                     title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
                     description = { Text("开启后，首页将只保留广告和付费内容，屏蔽其余所有内容") },
                     checked = reverseBlock.value,
                     onCheckedChange = {
                         reverseBlock.value = it
-                        preferences.edit { putBoolean("reverseBlock", it) }
+                        settings.putBoolean("reverseBlock", it)
                     },
                     settingKey = "reverseBlock",
-                    highlightedKey = setting,
+                    highlightedKey = highlightedSetting,
                 )
             }
 
@@ -456,13 +449,12 @@ actual fun ContentFilterSettingsScreen(
             }
 
             // Filter Stats (Simplified)
-            var filterStats by remember { mutableStateOf<FilterStats?>(null) }
+            var filterStats by remember { mutableStateOf<ContentFilterStats?>(null) }
             var showStatsDialog by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
                 try {
-                    val contentFilterManager = ContentFilterManager.getInstance(context)
-                    filterStats = contentFilterManager.getFilterStats()
+                    filterStats = filterMaintenance.loadFilterStats()
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -500,10 +492,8 @@ actual fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            val contentFilterManager = ContentFilterManager.getInstance(context)
-                                            contentFilterManager.cleanupOldData()
-                                            filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已清理过期数据", Toast.LENGTH_SHORT).show()
+                                            filterStats = filterMaintenance.cleanupOldData()
+                                            userMessages.showMessage("已清理过期数据")
                                         } catch (e: Exception) {
                                             // ignore
                                         }
@@ -517,10 +507,8 @@ actual fun ContentFilterSettingsScreen(
                                 onClick = {
                                     coroutineScope.launch {
                                         try {
-                                            val contentFilterManager = ContentFilterManager.getInstance(context)
-                                            contentFilterManager.clearAllData()
-                                            filterStats = contentFilterManager.getFilterStats()
-                                            Toast.makeText(context, "已重置所有数据", Toast.LENGTH_SHORT).show()
+                                            filterStats = filterMaintenance.clearAllData()
+                                            userMessages.showMessage("已重置所有数据")
                                             showStatsDialog = false
                                         } catch (e: Exception) {
                                             // ignore

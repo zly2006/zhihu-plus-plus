@@ -16,11 +16,14 @@
 - Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
 - Generic paging state uses shared `ZhihuPaging`; `PaginationViewModel` is still Android-side only because signed fetch, login-expired handling, Toast/Dialog/clipboard, Activity navigation, preferences, and lifecycle effects have not yet been split into small platform adapters. The target is to move `PaginationViewModel` itself to `shared/commonMain`, not to replace it with a separate `ZhihuPageLoader`.
 - `ContentFilterManager` and `ContentFilterExtensions` are core filtering features and must move to `shared/commonMain`; current Android `Context`/preferences/Room/log/Toast dependencies are adapter seams, not ownership. Do not replace or bypass the filtering logic while migrating settings pages or feed view models.
+- `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
+- Newly extracted generic adapters must be reused in the same migration slice where reasonable. Grep for duplicate `Toast.makeText`, `getSharedPreferences`, and filter maintenance logic; replace low-risk call sites with `UserMessageSink`, `SettingsStore`, and `ContentFilterMaintenance`, or record why a remaining Android-only call site is deliberately left alone.
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo
 
+- Do not leave spawned subagents alive while continuing to final decisions. If a subagent is started, wait for it to complete, or explicitly close it and record why before committing, declaring a slice complete, or treating the local decision as final.
 - Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
 - Do not move `ZhihuMain` route registration into an Android-only helper such as `androidZhihuMainRouteContent`. Match `master`: the shared `ZhihuMain` big function owns `NavHost` and all `composable<...>` route registrations; platforms inject page implementations and runtime side effects only.
 - Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
@@ -32,6 +35,8 @@
 - Do not introduce `ZhihuPageLoader` or another one-off loader layer as a substitute for migrating `PaginationViewModel`. Split side effects into small cross-platform interfaces/adapters and move the ViewModel.
 - Do not move theme mode/custom color/background color state back to app just because Android currently owns persistence or dynamic color. Only platform environment and side effects stay in adapters.
 - Do not treat `ContentFilterManager` or `ContentFilterExtensions` as Android-only just because they currently read Android preferences, Room builders, or `Context`; move the filtering orchestration and strategy to shared and keep only platform access in adapters.
+- Do not grow a page-specific content-filter-settings aggregate back into a mixed adapter. Keep `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` separate and generically named; page-level adapters must not become a replacement for the shared filtering manager.
+- Do not leave newly extracted generic adapters unused outside their first page when adjacent low-risk duplicates exist.
 
 ## Remaining Work
 
