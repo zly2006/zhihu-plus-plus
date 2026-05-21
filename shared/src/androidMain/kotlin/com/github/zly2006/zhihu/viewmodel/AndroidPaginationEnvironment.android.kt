@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -48,7 +49,7 @@ interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
 }
 
-class SharedAndroidPaginationEnvironment(
+open class SharedAndroidPaginationEnvironment(
     override val context: Context,
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment {
@@ -100,6 +101,10 @@ class SharedAndroidPaginationEnvironment(
         context.mainExecutor.execute {
             Toast.makeText(context, "加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun configureSignedRequest(builder: HttpRequestBuilder) {
+        builder.signFetchRequest()
     }
 
     private fun tryShowLoginExpiredDialog(error: HttpStatusException): Boolean {
@@ -157,8 +162,21 @@ class SharedAndroidPaginationEnvironment(
     }
 }
 
+class SharedAndroidNotificationPaginationEnvironment(
+    context: Context,
+    allowGuestAccess: Boolean,
+    override val notificationSettingsStore: NotificationSettingsStore,
+) : SharedAndroidPaginationEnvironment(context, allowGuestAccess),
+    NotificationPaginationEnvironment
+
 fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidContextPaginationEnvironment =
     SharedAndroidPaginationEnvironment(context, allowGuestAccess)
+
+fun PaginationViewModel<*>.notificationPaginationEnvironment(
+    context: Context,
+    notificationSettingsStore: NotificationSettingsStore,
+): NotificationPaginationEnvironment =
+    SharedAndroidNotificationPaginationEnvironment(context, allowGuestAccess, notificationSettingsStore)
 
 fun PaginationEnvironment.androidContext(): Context =
     (this as? AndroidContextPaginationEnvironment)?.context

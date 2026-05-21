@@ -17,22 +17,23 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
-import com.github.zly2006.zhihu.ui.NotificationPreferences
-import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.androidContext
+import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.shared.notification.matchNotificationType
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.reflect.typeOf
+
+interface NotificationPaginationEnvironment : PaginationEnvironment {
+    val notificationSettingsStore: NotificationSettingsStore
+}
 
 class NotificationViewModel :
     PaginationViewModel<NotificationItem>(
@@ -46,24 +47,24 @@ class NotificationViewModel :
 
     @Suppress("HttpUrlsUsage")
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val context = environment.androidContext()
+        val notificationEnvironment = environment.requireNotificationEnvironment()
         super.fetchFeeds(environment)
         if (lastPaging?.next?.startsWith("http://") == true) {
             lastPaging = lastPaging!!.copy(next = lastPaging!!.next.replace("http://", "https://"))
         }
 
         // 获取未读消息数量
-        unreadCount = getUnreadCount(context)
-        checkAndMarkAllAsRead(context)
+        unreadCount = getUnreadCount(environment)
+        checkAndMarkAllAsRead(notificationEnvironment)
     }
 
     /**
      * 更新未读消息数量
      */
-    private suspend fun getUnreadCount(context: Context): Int {
+    private suspend fun getUnreadCount(environment: PaginationEnvironment): Int {
         try {
-            return fetchZhihuUnreadNotificationCount(AccountData.httpClient(context)) {
-                signFetchRequest()
+            return fetchZhihuUnreadNotificationCount(environment.httpClient()) {
+                environment.configureSignedRequest(this)
             }
         } catch (_: Exception) {
             // 忽略错误
@@ -74,11 +75,11 @@ class NotificationViewModel :
     /**
      * 检查是否需要显示通知
      */
-    fun shouldShowNotification(context: Context, notification: NotificationItem): Boolean {
+    fun shouldShowNotification(settingsStore: NotificationSettingsStore, notification: NotificationItem): Boolean {
         val verb = notification.content.verb
-        val type = NotificationPreferences.matchNotificationType(verb)
+        val type = matchNotificationType(verb)
         return if (type != null) {
-            NotificationPreferences.getDisplayInAppEnabled(context, type)
+            settingsStore.getDisplayInAppEnabled(type)
         } else {
             true
         }
@@ -87,15 +88,17 @@ class NotificationViewModel :
     /**
      * 检查如果所有消息都被屏蔽了，且unreadCount>=0，则主动调用一次readall
      */
-    private suspend fun checkAndMarkAllAsRead(context: Context) {
+    private suspend fun checkAndMarkAllAsRead(environment: NotificationPaginationEnvironment) {
         if (unreadCount >= 0 && allData.isNotEmpty()) {
-            val hasVisibleNotification = allData.any { shouldShowNotification(context, it) }
+            val hasVisibleNotification = allData.any {
+                shouldShowNotification(environment.notificationSettingsStore, it)
+            }
             if (!hasVisibleNotification) {
-                markAllAsRead(context)
+                markAllAsRead(environment)
             }
         }
-        if (NotificationPreferences.getAutoMarkAsReadEnabled(context)) {
-            markAllAsRead(context)
+        if (environment.notificationSettingsStore.getAutoMarkAsReadEnabled()) {
+            markAllAsRead(environment)
             unreadCount = 0
         }
     }
@@ -104,7 +107,7 @@ class NotificationViewModel :
      * 标记消息为已读
      */
     @OptIn(DelicateCoroutinesApi::class)
-    fun markAsRead(context: Context, notificationId: String) {
+    fun markAsRead(notificationId: String) {
         viewModelScope.launch {
         }
     }
@@ -113,9 +116,13 @@ class NotificationViewModel :
      * 标记所有消息为已读
      */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun markAllAsRead(context: Context) {
-        markAllZhihuNotificationsAsRead(AccountData.httpClient(context)) {
-            signFetchRequest()
+    suspend fun markAllAsRead(environment: PaginationEnvironment) {
+        markAllZhihuNotificationsAsRead(environment.httpClient()) {
+            environment.configureSignedRequest(this)
         }
     }
 }
+
+private fun PaginationEnvironment.requireNotificationEnvironment(): NotificationPaginationEnvironment =
+    this as? NotificationPaginationEnvironment
+        ?: error("NotificationSettingsStore is required for notification pagination")

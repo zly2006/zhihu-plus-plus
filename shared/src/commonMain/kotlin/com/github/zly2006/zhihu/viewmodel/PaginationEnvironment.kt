@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import io.ktor.client.HttpClient
+import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -39,4 +40,7 @@ interface PaginationEnvironment {
         tag: String?,
         error: Exception,
     )
+
+    fun configureSignedRequest(builder: HttpRequestBuilder) {
+    }
 }
