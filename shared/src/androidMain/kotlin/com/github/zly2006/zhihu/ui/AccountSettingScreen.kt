@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -86,7 +88,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.QRCodeScanActivity
@@ -137,6 +138,7 @@ actual fun AccountSettingScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val versionInfo = remember(context) { context.zhihuVersionInfo() }
     val preferences = remember {
         context.getSharedPreferences(
             PREFERENCE_NAME,
@@ -499,7 +501,7 @@ actual fun AccountSettingScreen(
             ) {
                 SettingItem(
                     title = { Text("知乎++") },
-                    description = { Text("版本号：${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}") },
+                    description = { Text("版本号：$versionInfo") },
                     icon = {
                         Image(
                             painterResource(R.drawable.ic_launcher_foreground),
@@ -520,7 +522,6 @@ actual fun AccountSettingScreen(
                             }
                         },
                         onLongClick = {
-                            val versionInfo = "${BuildConfig.VERSION_NAME} ${BuildConfig.BUILD_TYPE}, ${BuildConfig.GIT_HASH}"
                             val clip = android.content.ClipData.newPlainText("version", versionInfo)
                             context.clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
@@ -593,6 +594,20 @@ actual fun AccountSettingScreen(
             },
         )
     }
+}
+
+private fun Context.zhihuVersionInfo(): String {
+    val versionName = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull() ?: "unknown"
+    val appInfo = runCatching {
+        packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+    }.getOrNull()
+    val metaData = appInfo?.metaData
+    val buildType = metaData?.getString("com.github.zly2006.zhihu.BUILD_TYPE")
+        ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
+    val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
+    return "$versionName $buildType, $gitHash"
 }
 
 @Preview(showBackground = true)

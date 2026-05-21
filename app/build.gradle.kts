@@ -94,12 +94,16 @@ android {
         val gitHash = gitHash(rootProject.projectDir)
         debug {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            manifestPlaceholders["zhihuBuildType"] = "debug"
+            manifestPlaceholders["zhihuGitHash"] = gitHash
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
+            manifestPlaceholders["zhihuBuildType"] = "release"
+            manifestPlaceholders["zhihuGitHash"] = gitHash
             if (System.getenv("signingKey") != null) {
                 signingConfig = signingConfigs["env"]
             }
