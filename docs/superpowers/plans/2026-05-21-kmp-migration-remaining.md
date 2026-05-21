@@ -59,6 +59,7 @@
 - `fd313cd refactor: 收紧 shared 平台边界` 的根本误解：把“代码当前放在 Android app、由 Android UI 调用、或 import 名字看起来像 androidx”误当成“代码所有权属于 Android”。已纠正的方向：`NavDestination`、`FeedNavigation`、`ArticleState`、`CommentRoutes`、`ContentOpenEventSupport`、`CommentItem` 等语义应在 shared。
 - `ZhihuPageLoader` 的根本错误：把“迁移分页 ViewModel”误解成“绕开现有 ViewModel 新建 loader”。正确方向是拆 Android 副作用，让 `PaginationViewModel` 本体迁入 shared。
 - `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
+- `ContentFilterManager` / `ContentFilterExtensions` 的根本边界：它们是核心过滤器，不是 Android-only 工具类。不能把“当前从 Android `Context` 取 SharedPreferences/Room/Toast/log”误判成“过滤所有权属于 Android”。正确方向是过滤编排、曝光/交互记录、前台已读过滤、广告/付费/关键词/用户/主题过滤策略、统计清理、去重和屏蔽记录保存算法进 shared；平台只提供数据库 builder/文件路径、偏好存取、Toast/Dialog/log、平台生命周期和内容详情 fetch/provider。
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
 - `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
 - 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。页面级 `expect` 只能作为极短期编译桥，必须在后续切片中优先删除；长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择等具体副作用。
@@ -81,6 +82,7 @@
 - Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
 - 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel` 本体仍待迁移。
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 只保留必要 data/runtime adapter。
+- `ContentFilterManager` / `ContentFilterExtensions` 仍在 app 或 Android 调用链中，但目标必须迁入 shared；迁移 ContentFilter 设置页、feed ViewModel 或 PaginationViewModel 时不得弱化、绕开或空实现过滤功能。
 
 ## 剩余任务顺序
 
@@ -172,7 +174,32 @@ rg -n "ZhihuPageLoader" .
 ./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin :app:testLiteDebugUnitTest
 ```
 
-### 任务 5：继续拆 AccountData
+### 任务 5：迁移核心内容过滤器
+
+目标：
+
+- `ContentFilterManager` 和 `ContentFilterExtensions` 主体迁入 `shared/commonMain`。
+- 保留关键过滤功能：曝光/交互记录、前台已读过滤、重复曝光过滤、广告/知乎学堂/微信公众号/付费内容过滤、关键词/用户/主题过滤、reverseBlock、统计、清理和屏蔽记录保存。
+- Android 副作用拆成小 adapter：SharedPreferences/设置读取、Room database builder 和文件路径、Toast/Dialog/log、`Context`、内容详情 fetch/provider、平台生命周期维护触发。
+- 不允许把过滤器替换成空实现、只保留 UI 开关，或让 desktop/JVM 绕开过滤语义。
+
+迁移前必须由 subagent 审查：
+
+- `ContentFilterManager.kt`
+- `ContentFilterExtensions.kt`
+- `ContentFilterSettingsScreen.kt`
+- feed viewmodels 中所有过滤调用点。
+- `ContentFilterDatabase`、DAO/entity、`BlockedFeedRecord`、`ContentOpenEvent`、`BlocklistManager` 的 shared 边界。
+
+验证：
+
+```bash
+rg -n "android\\.|Context|SharedPreferences|Toast|Log\\.|MainActivity|AccountData|getContentDetail" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/viewmodel/filter shared/src/commonMain/kotlin/com/github/zly2006/zhihu/shared -g '*.kt'
+rg -n "ContentFilterManager|ContentFilterExtensions" app/src/main/java shared/src/androidMain/kotlin shared/src/commonMain/kotlin -g '*.kt'
+./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin :app:testLiteDebugUnitTest
+```
+
+### 任务 6：继续拆 AccountData
 
 目标：
 
@@ -194,7 +221,7 @@ rg -n "Context|SharedPreferences|File\\(|filesDir|android\\." shared/src/commonM
 ./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-### 任务 6：把 desktop 接入 shared 主 UI
+### 任务 7：把 desktop 接入 shared 主 UI
 
 目标：
 
@@ -211,7 +238,7 @@ rg -n "DesktopQrLoginScreen|SharedQrLoginPane|ZhihuMain|NavDestination" desktopA
 ./gradlew :desktopApp:compileKotlin :shared:compileKotlinJvm
 ```
 
-### 任务 7：本地推荐编排迁移
+### 任务 8：本地推荐编排迁移
 
 目标：
 
@@ -235,7 +262,7 @@ rg -n "android\\.|Context|ConnectivityManager|Toast|AlertDialog|AccountData" sha
 ./gradlew :shared:jvmTest :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 ```
 
-### 任务 8：HTML 解析迁移
+### 任务 9：HTML 解析迁移
 
 目标：
 
