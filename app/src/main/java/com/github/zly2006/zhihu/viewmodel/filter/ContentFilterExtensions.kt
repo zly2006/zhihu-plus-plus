@@ -128,7 +128,7 @@ object ContentFilterExtensions {
 
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager.getInstance(context)
+                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
                 filterManager.recordContentView(targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content display", e)
@@ -145,7 +145,7 @@ object ContentFilterExtensions {
 
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager.getInstance(context)
+                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
                 filterManager.recordContentInteraction(targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content interaction", e)
@@ -161,7 +161,7 @@ object ContentFilterExtensions {
 
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager.getInstance(context)
+                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
                 filterManager.cleanupOldData()
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to perform maintenance cleanup", e)
@@ -183,7 +183,7 @@ object ContentFilterExtensions {
                 return@withContext items
             }
 
-            val filterManager = ContentFilterManager.getInstance(context)
+            val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
             val itemIdentityPairs = items.map { item -> item to item.resolveContentIdentity() }
             val viewedContentIds = filterManager.getAlreadyViewedContentIds(
                 itemIdentityPairs.map { (_, identity) -> identity.type to identity.id },

@@ -23,7 +23,7 @@
 
 ## Do Not Redo
 
-- Do not leave spawned subagents alive while continuing to final decisions. If a subagent is started, wait for it to complete, or explicitly close it and record why before committing, declaring a slice complete, or treating the local decision as final.
+- Do not leave spawned subagents alive while continuing to final decisions. If a subagent is started, wait for every live subagent to complete. Only close one when its task is explicitly no longer needed, and record why. Before that, do not commit, declare a slice complete, treat the local decision as final, or continue work that depends on the pending conclusion.
 - Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
 - Do not move `ZhihuMain` route registration into an Android-only helper such as `androidZhihuMainRouteContent`. Match `master`: the shared `ZhihuMain` big function owns `NavHost` and all `composable<...>` route registrations; platforms inject page implementations and runtime side effects only.
 - Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
