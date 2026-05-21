@@ -27,6 +27,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
+import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -420,7 +421,7 @@ object ContentFilterExtensions {
         // 应用NLP语义屏蔽
         if (isNLPBlockingEnabled(context)) {
             val blockedThisRound = mutableListOf<FilterableContent>()
-            val nlpRepository = BlockedKeywordRepository(context)
+            val nlpRepository = BlockedKeywordRepository(context, NlpServiceKeywordSemanticMatcher)
             val threshold = getNLPSimilarityThreshold(context)
             val finalFilteredContents = mutableListOf<FilterableContent>()
 
