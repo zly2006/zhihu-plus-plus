@@ -62,11 +62,13 @@
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
 - `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
 - 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。页面级 `expect` 只能作为极短期编译桥，必须在后续切片中优先删除；长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择等具体副作用。
+- `SentenceSimilarityTestScreen` 的根本边界：它不是普通可共享页面，而是 full/lite 变体页面。full 变体承载 `sentence_embeddings` 真实模型测试，lite 变体提供 fallback；不能迁入 `shared/commonMain` 做占位实现。shared 只能保留一个最小平台 slot，由 Android app 的当前 variant 注入真实页面。
 - `.codex/hooks.json` 在当前 worktree 中是有意删除，不要恢复。
 
 ## 当前完成状态
 
 - KMP 骨架已存在：`shared`、`desktopApp`、Android `app`、Android-only `sentence_embeddings`。
+- `SentenceSimilarityTestScreen` 已确认保留为 Android full/lite 变体页面：`app/src/full/...` 是真实模型测试，`app/src/lite/...` 是 fallback；shared 只通过 platform slot 调用。
 - `desktopApp` 已是浅入口，但 desktop 仍未复用完整 Android UI。
 - QR 登录核心和 QR UI 已在 shared；Android 风控 WebView 留在 app。
 - JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
@@ -102,7 +104,7 @@ git diff --check
 
 - `ZhihuMain.kt` 本体位于 `shared/commonMain`。
 - shared `ZhihuMain` 继续保持 `master` 的大函数形状：同一个函数内负责底栏、pager、`NavHost` 和全部 `composable<...>` route 注册。
-- UI 页面主体必须进入 `shared/commonMain`。不能把整页 screen 当成平台实现注入，也不能长期保留整页 `expect/actual`；Android/desktop 只提供最小平台能力 adapter，如 Activity、ViewModelProvider、WebView、Toast/Dialog、偏好读写和文件/Intent 副作用。
+- UI 页面主体必须进入 `shared/commonMain`。不能把整页 screen 当成平台实现注入，也不能长期保留整页 `expect/actual`；Android/desktop 只提供最小平台能力 adapter，如 Activity、ViewModelProvider、WebView、Toast/Dialog、偏好读写和文件/Intent 副作用。例外是真实 variant-owned 页面，例如 `SentenceSimilarityTestScreen`：full/lite 变体代码本身就是发行能力边界，shared 只保留最小调用 slot。
 - shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 注册语义、导航动画语义。
 - 不引入独立 desktop route model。
 - 不用大而全 screen table 重写 Android UI。

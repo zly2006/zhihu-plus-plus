@@ -163,7 +163,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - `desktopApp` 必须保持和 `/Users/zhaoliyan/IdeaProjects/demo1` 一样的薄入口结构：`desktopApp/src/main/kotlin/.../Main.kt` 只负责启动 Compose/app 壳和注入平台能力，不承载 QR 登录、cookie 备份、业务导航、网络请求或主要 UI 状态机；这些跨平台逻辑应放在 `shared` 中，由 Android/JVM 平台层提供最小必要适配。
 - Android 端可以在 AVD 正常登录；覆盖 cookie 后必须能执行现有操作，且 UI 不应发生非预期变化。
 - JVM 端必须可以扫码登录；覆盖 cookie 后必须能执行现有操作。桌面端 UI 自适配不属于本次范围，但核心 UI 应与 Android 保持一致。
-- `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。
+- `sentence_embeddings` 只需要在 Android/full variant 提供；JVM/desktop 不要求接入。`SentenceSimilarityTestScreen` 依赖 full/lite 变体能力：full 变体有真实模型测试页面，lite 变体有自己的 fallback 页面，不能迁入 `shared/commonMain` 做占位或空实现。shared 只能通过最小平台 slot 调用当前 Android 变体提供的页面。
 - 迁移中遇到不支持跨平台的库时，优先查找该库的 KMP 变种或兼容实现；没有合适 KMP 变种时，再评估其他跨平台替代库。只有在没有可靠替代或迁移风险过高时，才把依赖和实现留在对应平台 source set，并记录原因。
 - Room 支持 Kotlin Multiplatform，不能因为 Room 当前在 Android 侧就直接判定为平台独有。迁移数据库时必须优先按官方 KMP Room 方案实现真实跨平台 Room：实体、DAO、Database 放入 `shared`，使用 Room KMP 的 common schema/constructor 配置，平台 source set 只提供 database builder、文件路径和 driver 等必要适配。参考官方文档：https://developer.android.com/kotlin/multiplatform/room?hl=zh-cn 。只有确认某个数据库能力无法可靠跨平台或迁移风险过高时，才暂留平台侧，并记录原因。
 - APK、`lite`/`full` variant、安装包下载/选择/安装、Android `Context`、WebView、Android intent/file provider 等平台运行时或发行语义不得迁入 `shared`；需要共享时只能抽取纯数据模型、纯算法或跨平台 UI/导航语义，平台适配、资源选择和副作用留在对应平台模块。
