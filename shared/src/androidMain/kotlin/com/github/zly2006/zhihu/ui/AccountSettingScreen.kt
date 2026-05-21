@@ -83,7 +83,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
@@ -608,13 +607,4 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AccountSettingScreenPreview() {
-    AccountSettingScreen(
-        innerPadding = PaddingValues(0.dp),
-        unreadCount = 5,
-    )
 }
