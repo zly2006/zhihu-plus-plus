@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,12 +51,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -67,22 +63,15 @@ import kotlin.math.roundToInt
 fun ExportDialogComponent(
     showDialog: Boolean,
     onDismiss: () -> Unit,
-    viewModel: ArticleViewModel,
+    onExportHtml: suspend (includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) -> Unit,
+    onExportImage: suspend (includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) -> Unit,
+    onExportMarkdown: () -> Unit,
+    onExportImageWithComments: suspend (
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) -> Unit,
 ) {
-    val context = LocalContext.current
-
-    // 权限请求
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (!allGranted) {
-            android.widget.Toast
-                .makeText(context, "权限被拒绝，无法导出", android.widget.Toast.LENGTH_SHORT)
-                .show()
-        }
-    }
-
     if (showDialog) {
         val coroutineScope = rememberCoroutineScope()
         var commentCount by remember { mutableIntStateOf(3) }
@@ -155,7 +144,7 @@ fun ExportDialogComponent(
                             if (!isExporting) {
                                 isExporting = true
                                 coroutineScope.launch {
-                                    viewModel.exportToHtml(context, includeAppAttribution) { success ->
+                                    onExportHtml(includeAppAttribution) { success ->
                                         isExporting = false
                                         if (success) {
                                             onDismiss()
@@ -205,7 +194,7 @@ fun ExportDialogComponent(
                             if (!isExporting) {
                                 isExporting = true
                                 coroutineScope.launch {
-                                    viewModel.exportToImage(context, includeAppAttribution) { success ->
+                                    onExportImage(includeAppAttribution) { success ->
                                         isExporting = false
                                         if (success) {
                                             onDismiss()
@@ -245,7 +234,7 @@ fun ExportDialogComponent(
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
                         onClick = {
-                            viewModel.exportToClipboard(context)
+                            onExportMarkdown()
                             onDismiss()
                         },
                         shape = RoundedCornerShape(12.dp),
@@ -312,7 +301,7 @@ fun ExportDialogComponent(
                             if (!isExporting) {
                                 isExporting = true
                                 coroutineScope.launch {
-                                    viewModel.exportToImageWithComments(context, commentCount, includeAppAttribution) { success ->
+                                    onExportImageWithComments(commentCount, includeAppAttribution) { success ->
                                         isExporting = false
                                         if (success) {
                                             onDismiss()

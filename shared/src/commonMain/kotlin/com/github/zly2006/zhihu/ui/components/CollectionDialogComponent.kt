@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,22 +51,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.Collection
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectionDialogComponent(
     showDialog: Boolean,
     onDismiss: () -> Unit,
-    viewModel: ArticleViewModel,
-    context: Context,
+    collections: List<Collection>,
+    onLoadCollections: () -> Unit,
+    onToggleFavorite: (Collection) -> Unit,
+    onCreateCollection: (title: String, description: String, isPublic: Boolean) -> Unit,
 ) {
     // 新建收藏夹对话框状态
     var showCreateDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        if (viewModel.collections.isEmpty()) {
-            viewModel.loadCollections(context)
+    LaunchedEffect(showDialog) {
+        if (showDialog && collections.isEmpty()) {
+            onLoadCollections()
         }
     }
 
@@ -129,12 +128,12 @@ fun CollectionDialogComponent(
                         }
                     }
 
-                    items(viewModel.collections) { collection ->
+                    items(collections) { collection ->
                         CollectionItem(
                             collection = collection,
                             onToggle = {
-                                viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
-                                viewModel.loadCollections(context)
+                                onToggleFavorite(collection)
+                                onLoadCollections()
                             },
                         )
                     }
@@ -148,15 +147,9 @@ fun CollectionDialogComponent(
         showDialog = showCreateDialog,
         onDismiss = { showCreateDialog = false },
         onConfirm = { title, description, isPublic ->
-            viewModel.createNewCollection(context, title, description, isPublic)
+            onCreateCollection(title, description, isPublic)
         },
     )
-
-    BackHandler(
-        enabled = showCreateDialog,
-    ) {
-        showCreateDialog = false
-    }
 }
 
 @Composable

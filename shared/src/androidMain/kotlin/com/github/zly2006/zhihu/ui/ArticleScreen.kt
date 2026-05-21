@@ -1773,8 +1773,14 @@ fun ArticleScreen(
     CollectionDialogComponent(
         showDialog = showCollectionDialog,
         onDismiss = { showCollectionDialog = false },
-        viewModel = viewModel,
-        context = context,
+        collections = viewModel.collections,
+        onLoadCollections = { viewModel.loadCollections(context) },
+        onToggleFavorite = { collection ->
+            viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
+        },
+        onCreateCollection = { title, description, isPublic ->
+            viewModel.createNewCollection(context, title, description, isPublic)
+        },
     )
 
     CommentScreenComponent(
@@ -1841,7 +1847,18 @@ fun ArticleScreen(
     ExportDialogComponent(
         showDialog = showExportDialog,
         onDismiss = { showExportDialog = false },
-        viewModel = viewModel,
+        onExportHtml = { includeAppAttribution, onComplete ->
+            viewModel.exportToHtml(context, includeAppAttribution, onComplete)
+        },
+        onExportImage = { includeAppAttribution, onComplete ->
+            viewModel.exportToImage(context, includeAppAttribution, onComplete)
+        },
+        onExportMarkdown = {
+            viewModel.exportToClipboard(context)
+        },
+        onExportImageWithComments = { commentCount, includeAppAttribution, onComplete ->
+            viewModel.exportToImageWithComments(context, commentCount, includeAppAttribution, onComplete)
+        },
     )
 }
 
