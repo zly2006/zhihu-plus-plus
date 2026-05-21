@@ -185,6 +185,11 @@ rg -n "ZhihuPageLoader" .
 
 ### 任务 5：迁移核心内容过滤器
 
+状态：
+
+- 2026-05-21：`ContentFilterExtensions.kt` 已从 app 移入 `shared/androidMain`，解除 shared feed ViewModel 对 app 源集的反向引用。NLP 语义 matcher 通过 `AndroidContentFilterRuntime.semanticMatcher` 注入，`MainActivity` 启动时接入现有 full/lite `NlpServiceKeywordSemanticMatcher`，没有把 Android variant NLP 实现迁入 shared。
+- 剩余：`ContentFilterExtensions` 仍是 Android wrapper；继续把 `applyContentFilterToDisplayItems` 的详情补齐、关键词/NLP/作者/主题编排和消息/日志回调拆进 `shared/commonMain`，Android 只保留 `Context`、settings/db builder、`ContentDetailCache`、Toast/log 和 variant NLP 注入。
+
 目标：
 
 - `ContentFilterManager` 和 `ContentFilterExtensions` 主体迁入 `shared/commonMain`。

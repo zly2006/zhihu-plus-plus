@@ -23,7 +23,6 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -187,7 +186,7 @@ private fun createFeedDisplayFilterPipeline(
             blockedKeywordService = BlockedKeywordService(
                 keywordDao = database.blockedKeywordDao(),
                 recordDao = database.blockedContentRecordDao(),
-                semanticMatcher = NlpServiceKeywordSemanticMatcher,
+                semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
             ),
             htmlToText = { Jsoup.parse(it).text() },
             onNlpBlocked = { blockedThisRound ->
