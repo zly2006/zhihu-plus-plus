@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
@@ -189,6 +190,7 @@ class MainActivity : ComponentActivity() {
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
         AndroidContentFilterRuntime.semanticMatcher = NlpServiceKeywordSemanticMatcher
+        AndroidContentFilterRuntime.keywordWeightExtractor = NLPService::extractKeywordsWithWeight
 
         val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
         val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)

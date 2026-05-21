@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -58,8 +57,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.nlp.BlockedKeywordRepository
-import com.github.zly2006.zhihu.nlp.KeywordAnalyzer
-import com.github.zly2006.zhihu.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
+import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import kotlinx.coroutines.launch
 
 /**
@@ -76,6 +77,7 @@ fun BlockByKeywordsDialog(
     onConfirm: () -> Unit,
 ) {
     val context = LocalContext.current
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     val repository = remember { BlockedKeywordRepository(context) }
 
@@ -91,12 +93,13 @@ fun BlockByKeywordsDialog(
         if (showDialog) {
             isLoading = true
             try {
-                // 使用KeywordAnalyzer提取关键词，自动处理标题加权、去重、过滤
-                val keywordsWithWeight = KeywordAnalyzer.extractFromFeedWithWeight(
+                // 使用 shared analyzer core 处理标题加权、去重、过滤；具体 NLP extractor 由 Android full/lite variant 注入。
+                val keywordsWithWeight = KeywordAnalyzerCore.extractFromFeedWithWeight(
                     title = feedTitle,
                     excerpt = feedExcerpt,
                     content = null,
                     topN = 10,
+                    extractor = AndroidContentFilterRuntime.keywordWeightExtractor,
                 )
 
                 keywordInfoList = keywordsWithWeight
@@ -106,7 +109,7 @@ fun BlockByKeywordsDialog(
                 selectedKeywords = extractedKeywords.take(3).toSet()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "提取关键词失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                userMessages.showShortMessage("提取关键词失败: ${e.message}")
             } finally {
                 isLoading = false
             }
@@ -257,21 +260,11 @@ fun BlockByKeywordsDialog(
                                         // 将选中的关键词用空格串联成一个短语
                                         val phrase = selectedKeywords.sorted().joinToString(" ")
                                         repository.addNLPPhrase(phrase)
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "已添加NLP屏蔽短语: $phrase",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        userMessages.showShortMessage("已添加NLP屏蔽短语: $phrase")
                                         onConfirm()
                                     } catch (e: Exception) {
                                         e.printStackTrace()
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                "添加失败: ${e.message}",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        userMessages.showShortMessage("添加失败: ${e.message}")
                                     } finally {
                                         isAdding = false
                                     }

@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
+
 object AndroidContentFilterRuntime {
     var semanticMatcher: KeywordSemanticMatcher = KeywordSemanticMatcher { _, _, _ -> emptyList() }
+    var keywordWeightExtractor: KeywordWeightExtractor = KeywordWeightExtractor { _, _ -> emptyList() }
 }
