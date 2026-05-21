@@ -24,7 +24,6 @@ import android.util.Log
 import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
@@ -96,12 +95,9 @@ object ContentFilterExtensions {
      * 这里记录的是“内容在 feed 中曝光”，不是内容详情页被打开。
      */
     suspend fun recordContentDisplay(context: Context, targetType: String, targetId: String) {
-        if (!isContentFilterEnabled(context)) return
-
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
-                filterManager.recordContentView(targetType, targetId)
+                createContentExposureRecorder(context).recordDisplay(targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content display", e)
             }
@@ -113,12 +109,9 @@ object ContentFilterExtensions {
      * 这里的交互用于放宽已读/重复曝光过滤，不等同于详情页打开事件表。
      */
     suspend fun recordContentInteraction(context: Context, targetType: String, targetId: String) {
-        if (!isContentFilterEnabled(context)) return
-
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
-                filterManager.recordContentInteraction(targetType, targetId)
+                createContentExposureRecorder(context).recordInteraction(targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content interaction", e)
             }
@@ -129,12 +122,9 @@ object ContentFilterExtensions {
      * 定期清理过期数据（建议在应用启动时调用）
      */
     suspend fun performMaintenanceCleanup(context: Context) {
-        if (!isContentFilterEnabled(context)) return
-
         withContext(Dispatchers.IO) {
             try {
-                val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
-                filterManager.cleanupOldData()
+                createContentExposureRecorder(context).performMaintenanceCleanup()
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to perform maintenance cleanup", e)
             }
@@ -152,44 +142,7 @@ object ContentFilterExtensions {
         try {
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             val settings = preferences.toFeedFilterSettings()
-            if (settings.reverseBlock || !settings.enableContentFilter) {
-                return@withContext items
-            }
-
-            val filterManager = ContentFilterManager(getContentFilterDatabase(context).contentFilterDao())
-            val itemIdentityPairs = items.map { item -> item to item.resolveContentIdentity() }
-            val viewedContentIds = filterManager.getAlreadyViewedContentIds(
-                itemIdentityPairs.map { (_, identity) -> identity.type to identity.id },
-            )
-
-            val keptItems = mutableListOf<FeedDisplayItem>()
-            val blockedItems = mutableListOf<Pair<FilterableContent, String>>()
-
-            itemIdentityPairs.forEach { (item, identity) ->
-                val isViewed = ContentViewRecord.generateId(identity.type, identity.id) in viewedContentIds
-                val isFollowing = item.feed
-                    ?.target
-                    ?.author
-                    ?.isFollowing ?: false
-                // 手机版特供垃圾，根本没人点赞那种。
-                // 没人点赞，你乎就只能拿时间和浏览量来招笑了。
-                val isLowQualityAndroidFeed = item.details.contains("小时前") || item.details.contains("分钟前") || item.details.contains("浏览")
-
-                if (isFollowing || (!isViewed && !isLowQualityAndroidFeed)) {
-                    keptItems.add(item)
-                    filterManager.recordContentView(identity.type, identity.id)
-                } else {
-                    blockedItems.add(
-                        item.toFilterableContent(identity, DataHolder.DummyContent) to "已读过且未关注作者",
-                    )
-                }
-            }
-
-            if (blockedItems.isNotEmpty()) {
-                saveBlockedFeedRecords(context, blockedItems)
-            }
-
-            keptItems
+            createForegroundReadFilterPipeline(context, settings).filter(items)
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply foreground read filter", e)
             items
@@ -228,6 +181,27 @@ object ContentFilterExtensions {
         }
     }
 
+}
+
+private fun createContentExposureRecorder(context: Context): ContentExposureRecorder {
+    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val database = getContentFilterDatabase(context)
+    return ContentExposureRecorder(
+        settings = preferences.toFeedFilterSettings(),
+        contentFilterManager = ContentFilterManager(database.contentFilterDao()),
+    )
+}
+
+private fun createForegroundReadFilterPipeline(
+    context: Context,
+    settings: FeedFilterSettings,
+): ForegroundReadFilterPipeline {
+    val database = getContentFilterDatabase(context)
+    return ForegroundReadFilterPipeline(
+        settings = settings,
+        contentFilterManager = ContentFilterManager(database.contentFilterDao()),
+        blockedFeedRecordDao = database.blockedFeedRecordDao(),
+    )
 }
 
 private fun createFeedDisplayFilterPipeline(
