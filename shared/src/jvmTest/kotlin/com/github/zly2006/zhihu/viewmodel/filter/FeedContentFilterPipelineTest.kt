@@ -61,6 +61,45 @@ class FeedContentFilterPipelineTest {
         database.close()
     }
 
+    @Test
+    fun nlpFilteringUsesPlainTextFromHtmlByDefault() = runTest {
+        val database = getContentFilterDatabase(
+            createTempDirectory("feed-content-filter-html").resolve("content-filter.db").toFile(),
+        )
+        val keywordService = BlockedKeywordService(
+            keywordDao = database.blockedKeywordDao(),
+            recordDao = database.blockedContentRecordDao(),
+            semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
+                phrases
+                    .filter { text.contains("blocked phrase") && !text.contains("<strong>") }
+                    .map { it to 0.95 }
+            },
+        )
+        keywordService.addNLPPhrase("nlp phrase")
+
+        val result = FeedContentFilterPipeline(
+            settings = FeedFilterSettings(),
+            blocklistService = BlocklistService(
+                keywordDao = database.blockedKeywordDao(),
+                userDao = database.blockedUserDao(),
+                topicDao = database.blockedTopicDao(),
+            ),
+            blockedKeywordService = keywordService,
+        ).filter(
+            listOf(
+                filterable(
+                    title = "html",
+                    content = "<p>blocked <strong>phrase</strong></p>",
+                    authorId = "ok-user",
+                ),
+            ),
+        )
+
+        assertEquals(emptyList(), result.kept)
+        assertEquals(listOf("NLP语义屏蔽：nlp phrase"), result.blocked.map { it.second })
+        database.close()
+    }
+
     private fun filterable(
         title: String,
         content: String = title,

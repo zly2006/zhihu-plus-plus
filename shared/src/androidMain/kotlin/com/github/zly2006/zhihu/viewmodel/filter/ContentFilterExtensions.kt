@@ -28,7 +28,6 @@ import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
 
 /**
  * Feed 过滤扩展工具。
@@ -188,7 +187,6 @@ private fun createFeedDisplayFilterPipeline(
                 recordDao = database.blockedContentRecordDao(),
                 semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
             ),
-            htmlToText = { Jsoup.parse(it).text() },
             onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {

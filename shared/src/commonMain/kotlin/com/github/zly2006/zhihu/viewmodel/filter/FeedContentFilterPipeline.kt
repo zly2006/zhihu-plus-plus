@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.fleeksoft.ksoup.Ksoup
+
 data class FeedContentFilterResult(
     val kept: List<FilterableContent>,
     val blocked: List<Pair<FilterableContent, String>>,
@@ -26,7 +28,7 @@ class FeedContentFilterPipeline(
     private val settings: FeedFilterSettings,
     private val blocklistService: BlocklistService,
     private val blockedKeywordService: BlockedKeywordService,
-    private val htmlToText: (String) -> String = { it },
+    private val htmlToText: (String) -> String = ::htmlToPlainText,
     private val onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
 ) {
     suspend fun filter(contents: List<FilterableContent>): FeedContentFilterResult {
@@ -106,3 +108,5 @@ class FeedContentFilterPipeline(
         return FeedContentFilterResult(filteredContents, blocked)
     }
 }
+
+private fun htmlToPlainText(html: String): String = Ksoup.parse(html).text()

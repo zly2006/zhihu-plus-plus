@@ -138,7 +138,7 @@ class BlockedKeywordService(
 
     /**
      * 检查内容快照是否应该被 NLP 语义屏蔽。
-     * 当前实现只使用标题和摘要参与匹配，正文参数暂未纳入加权文本。
+     * 使用标题、摘要和正文纯文本参与匹配。
      * @param title 标题
      * @param excerpt 摘要
      * @param content 正文内容，当前保留给后续扩展
@@ -159,13 +159,15 @@ class BlockedKeywordService(
         // 获取所有 NLP 短语
         val phrases = nlpKeywords.map { it.keyword }
 
-        // 当前只用标题和摘要构造匹配文本；不要把这里误认为和 KeywordAnalyzer 一样会重复标题或拼接正文。
         val weightedText = buildString {
             append(title)
             append(" ")
-            // 追加摘要，补充主题上下文
             if (!excerpt.isNullOrBlank()) {
                 append(excerpt)
+                append(" ")
+            }
+            if (!content.isNullOrBlank()) {
+                append(content)
                 append(" ")
             }
         }
