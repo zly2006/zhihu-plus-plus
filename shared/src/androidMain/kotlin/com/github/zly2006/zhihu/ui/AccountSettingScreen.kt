@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -87,10 +88,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.QRCodeScanActivity
-import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
@@ -98,6 +95,7 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -126,12 +124,29 @@ internal const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 internal const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
 internal const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 
+private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
+private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
+private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
+private const val QR_SCAN_RESULT_EXTRA = "scan_result"
+
 @OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
 @Composable
-actual fun AccountSettingScreen(
+actual fun AccountSettingScreen(innerPadding: PaddingValues) {
+    AccountSettingScreen(
+        innerPadding = innerPadding,
+        unreadCount = 0,
+        onDismissRequest = {},
+        refreshAccountProfileOnEnter = true,
+        testAccountData = null,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@Composable
+fun AccountSettingScreen(
     innerPadding: PaddingValues,
-    unreadCount: Int = 0,
-    onDismissRequest: () -> Unit = {},
+    unreadCount: Int,
+    onDismissRequest: () -> Unit,
     refreshAccountProfileOnEnter: Boolean = true,
     testAccountData: AccountData.Data? = null,
 ) {
@@ -233,23 +248,19 @@ actual fun AccountSettingScreen(
                         contract = ActivityResultContracts.StartActivityForResult(),
                     ) scan@{ result ->
                         if (result.resultCode == android.app.Activity.RESULT_OK) {
-                            val scanResult = result.data?.getStringExtra(QRCodeScanActivity.EXTRA_SCAN_RESULT) ?: return@scan
+                            val scanResult = result.data?.getStringExtra(QR_SCAN_RESULT_EXTRA) ?: return@scan
                             val url = Url(scanResult)
                             if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
                                 Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
                                 return@scan
                             }
                             Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                            Intent(context, WebviewActivity::class.java).let {
-                                it.data = scanResult.toUri()
-                                context.startActivity(it)
-                            }
+                            context.startActivity(context.webviewActivityIntent(scanResult))
                         }
                     }
                     FilledTonalIconButton(
                         onClick = {
-                            val intent = Intent(context, QRCodeScanActivity::class.java)
-                            scanActivityLauncher.launch(intent)
+                            scanActivityLauncher.launch(context.qrCodeScanActivityIntent())
                         },
                         modifier = Modifier.size(40.dp),
                     ) {
@@ -284,7 +295,7 @@ actual fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            context.startActivity(Intent(context, LoginActivity::class.java))
+                            context.startActivity(context.loginActivityIntent())
                         },
                     )
                 }
@@ -396,7 +407,7 @@ actual fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        (context as? MainActivity)?.navigateMainTab(OnlineHistory)
+                                        context.navigateMainTab(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -607,4 +618,37 @@ private fun Context.zhihuVersionInfo(): String {
         ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
     val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
     return "$versionName $buildType, $gitHash"
+}
+
+private fun Context.loginActivityIntent(): Intent = Intent().setClassName(
+    packageName,
+    LOGIN_ACTIVITY_CLASS,
+)
+
+private fun Context.qrCodeScanActivityIntent(): Intent = Intent().setClassName(
+    packageName,
+    QR_CODE_SCAN_ACTIVITY_CLASS,
+)
+
+private fun Context.webviewActivityIntent(url: String): Intent = Intent().apply {
+    setClassName(packageName, WEBVIEW_ACTIVITY_CLASS)
+    data = url.toUri()
+}
+
+private fun Context.navigateMainTab(destination: TopLevelDestination) {
+    val activity = findActivity() ?: return
+    activity
+        .javaClass
+        ?.methods
+        ?.firstOrNull { method ->
+            method.name == "navigateMainTab" &&
+                method.parameterTypes.size == 1 &&
+                method.parameterTypes.first().isAssignableFrom(destination::class.java)
+        }?.invoke(activity, destination)
+}
+
+private fun Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
