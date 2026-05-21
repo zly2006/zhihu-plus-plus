@@ -138,6 +138,9 @@ private sealed class MainTabPage(
 
 data class ZhihuMainPlatformAdapter(
     val article: @Composable (Article, NavBackStackEntry) -> Unit,
+    val sentenceSimilarityTest: @Composable () -> Unit = {
+        Text("Sentence similarity test is not available on this platform.")
+    },
     val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 )
@@ -469,7 +472,7 @@ fun ZhihuMain(
                     NotificationSettingsScreen()
                 }
                 composable<SentenceSimilarityTest> {
-                    SentenceSimilarityTestScreen()
+                    platformAdapter.sentenceSimilarityTest()
                 }
                 composable<Account.AppearanceSettings> { navEntry ->
                     val args = navEntry.toRoute<Account.AppearanceSettings>()

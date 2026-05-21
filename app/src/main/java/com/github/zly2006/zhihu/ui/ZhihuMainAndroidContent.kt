@@ -87,4 +87,7 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
         }
         ArticleScreen(article, viewModel)
     },
+    sentenceSimilarityTest = {
+        SentenceSimilarityTestScreen()
+    },
 )
