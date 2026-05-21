@@ -21,6 +21,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.LocalActivity
@@ -78,7 +79,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -603,7 +603,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) 
             }
 
             if (showRefreshFab) {
-                if (BuildConfig.DEBUG) {
+                if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                     DraggableRefreshButton(
                         onClick = {
                             val data = Json.encodeToString(viewModel.debugData)
