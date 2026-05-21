@@ -74,7 +74,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -552,13 +551,4 @@ private fun QuestionScreenContent(
             context = context,
         )
     }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun QuestionScreenPreview() {
-    val question = Question(123456789, "这是一个问题的标题")
-    QuestionScreen(
-        question = question,
-    )
 }
