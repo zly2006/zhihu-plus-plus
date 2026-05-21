@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
@@ -39,7 +39,7 @@ class HistoryViewModel : BaseFeedViewModel() {
         isLoading = true
         errorMessage = null
 
-        val history = (context as MainActivity).history
+        val history = HistoryStorage(context)
         displayItems.clear()
 
         history.history.forEach { dest ->

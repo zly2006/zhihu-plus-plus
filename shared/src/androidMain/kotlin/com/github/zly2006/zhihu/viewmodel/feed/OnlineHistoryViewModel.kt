@@ -17,7 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -35,7 +35,7 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         val context = environment.androidContext()
-        val history = (context as MainActivity).history
+        val history = HistoryStorage(context)
 
         val response = decodeOnlineHistoryItems(rawData, ignoreInvalid = true)
 

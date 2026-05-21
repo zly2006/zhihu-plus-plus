@@ -159,6 +159,7 @@ rg -n "ThemeManager|ZhihuTheme|dynamic|isSystemInDarkTheme|SharedPreferences|Con
 状态：
 
 - 2026-05-21：`PaginationViewModel.kt` 本体已通过 `git mv` 进入 `shared/commonMain`，并改为依赖 common `PaginationEnvironment`。`./gradlew :shared:jvmTest :desktopApp:compileKotlin` 已通过。
+- 2026-05-21：`HistoryViewModel`、`OnlineHistoryViewModel` 和 `OnlineHistoryScreen` 已改为使用 `shared/androidMain` 的 `HistoryStorage`，去掉对 `MainActivity.history` 的直接依赖。
 - 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；需要继续拆 `ContentFilterExtensions`、history repository、notification preferences、comment HTML/request helper、collection export 等平台副作用后再迁子类。
 - 注意：`:app:compileLiteDebugKotlin` 当前仍因既有 `shared/androidMain` 迁移债失败，包括 `AccountSettingScreen`、`ArticleScreen`、`WebviewComp`、`ContentFilterExtensions`、`MainActivity`/`BuildConfig`/`R` 访问等；不能把这个 slice 说成 Android 编译通过。
 
