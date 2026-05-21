@@ -21,6 +21,33 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 
+suspend fun ContentFilterDatabase.recordContentDisplay(
+    settings: FeedFilterSettings,
+    targetType: String,
+    targetId: String,
+) {
+    createContentExposureRecorder(settings).recordDisplay(targetType, targetId)
+}
+
+suspend fun ContentFilterDatabase.recordContentInteraction(
+    settings: FeedFilterSettings,
+    targetType: String,
+    targetId: String,
+) {
+    createContentExposureRecorder(settings).recordInteraction(targetType, targetId)
+}
+
+suspend fun ContentFilterDatabase.performContentFilterMaintenanceCleanup(
+    settings: FeedFilterSettings,
+) {
+    createContentExposureRecorder(settings).performMaintenanceCleanup()
+}
+
+suspend fun ContentFilterDatabase.filterForegroundReadItems(
+    settings: FeedFilterSettings,
+    items: List<FeedDisplayItem>,
+): List<FeedDisplayItem> = createForegroundReadFilterPipeline(settings).filter(items)
+
 class ContentExposureRecorder(
     private val settings: FeedFilterSettings,
     private val contentFilterManager: ContentFilterManager,

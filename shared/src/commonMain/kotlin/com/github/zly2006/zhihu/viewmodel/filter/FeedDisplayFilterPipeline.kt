@@ -74,6 +74,23 @@ fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
     onDetailsKeywordFiltered = onDetailsKeywordFiltered,
 )
 
+suspend fun ContentFilterDatabase.filterFeedDisplayItems(
+    settings: FeedFilterSettings,
+    items: List<FeedDisplayItem>,
+    contentDetailProvider: ContentDetailProvider,
+    semanticMatcher: KeywordSemanticMatcher,
+    onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
+    onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
+    onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+): List<FeedDisplayItem> = createFeedDisplayFilterPipeline(
+    settings = settings,
+    contentDetailProvider = contentDetailProvider,
+    semanticMatcher = semanticMatcher,
+    onNlpBlocked = onNlpBlocked,
+    onDetailFetchFailed = onDetailFetchFailed,
+    onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+).filter(items)
+
 class FeedDisplayFilterPipeline(
     private val settings: FeedFilterSettings,
     private val contentDetailProvider: ContentDetailProvider,

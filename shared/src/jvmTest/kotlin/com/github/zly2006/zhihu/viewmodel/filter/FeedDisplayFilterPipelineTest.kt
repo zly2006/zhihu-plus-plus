@@ -135,13 +135,14 @@ class FeedDisplayFilterPipelineTest {
         keywordService.addNLPPhrase("semantic phrase")
 
         val result = fixture.database
-            .createFeedDisplayFilterPipeline(
+            .filterFeedDisplayItems(
                 settings = FeedFilterSettings(),
+                items = listOf(item("semantic", 1)),
                 contentDetailProvider = provider(1L to article("semantic", content = "<p>semantic body</p>")),
                 semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
                     phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
                 },
-            ).filter(listOf(item("semantic", 1)))
+            )
 
         assertEquals(emptyList(), result)
         assertEquals(

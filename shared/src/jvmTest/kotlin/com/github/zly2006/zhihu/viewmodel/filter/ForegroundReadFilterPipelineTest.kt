@@ -71,10 +71,9 @@ class ForegroundReadFilterPipelineTest {
     @Test
     fun contentExposureRecorderMarksInteractionAndCleanup() = runTest {
         val fixture = fixture()
-        val recorder = ContentExposureRecorder(FeedFilterSettings(), fixture.manager)
 
-        recorder.recordDisplay("article", "1")
-        recorder.recordInteraction("article", "1")
+        fixture.database.recordContentDisplay(FeedFilterSettings(), "article", "1")
+        fixture.database.recordContentInteraction(FeedFilterSettings(), "article", "1")
 
         val record = fixture.database.contentFilterDao().getViewRecord("article:1")
         assertEquals(true, record?.hasInteraction)
@@ -87,7 +86,7 @@ class ForegroundReadFilterPipelineTest {
                 lastViewTime = 0L,
             ),
         )
-        recorder.performMaintenanceCleanup()
+        fixture.database.performContentFilterMaintenanceCleanup(FeedFilterSettings())
         assertEquals(null, fixture.database.contentFilterDao().getViewRecord("article:old"))
         fixture.database.close()
     }
