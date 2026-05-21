@@ -24,7 +24,7 @@
 
 ## Do Not Redo
 
-- 不得留下仍存活的 subagent 继续自行决策。只要本轮启动、接手上下文、摘要或环境中列出的任何 subagent 仍然存活，主 agent 必须继续 `wait_agent` 等待完成；在此之前不能提交、不能宣布完成、不能发送最终回复、不能把本地判断当成最终结论，也不能继续推进任何实现或迁移工作。等待完成并消费结论是唯一默认路径，不能因为本地判断似乎足够、等待较久、或认为待返回结论大概率不重要而绕过。若 subagent 超时但仍存活，应继续等待、补充输入或调整任务。主动关闭不是常规退路；只有用户明确取消、任务已作废、或书面说明该结果已不再可能影响当前工作时才能关闭，并必须记录原因。
+- 不得留下仍存活的 subagent 继续自行决策。只要本轮启动、接手上下文、摘要或环境中列出的任何 subagent 仍然存活，主 agent 必须继续 `wait_agent` 等待完成；subagent 是前台阻塞任务，不是可遗留后台任务。在此之前不能提交、不能宣布完成、不能发送最终回复、不能把本地判断当成最终结论，也不能继续推进任何实现或迁移工作。等待完成并消费结论是唯一默认路径，不能因为本地判断似乎足够、等待较久、或认为待返回结论大概率不重要而绕过。若 subagent 超时但仍存活，应继续等待、补充输入或调整任务。主动关闭不是常规退路；只有用户明确取消、任务已作废、或书面说明该结果已不再可能影响当前工作时才能关闭，并必须记录原因。
 - Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
 - Do not move `ZhihuMain` route registration into an Android-only helper such as `androidZhihuMainRouteContent`. Match `master`: the shared `ZhihuMain` big function owns `NavHost` and all `composable<...>` route registrations; platforms inject page implementations and runtime side effects only.
 - Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
