@@ -107,6 +107,37 @@ fun followDynamicItemTag(stableKey: String) = "follow_dynamic_item_$stableKey"
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 actual fun FollowScreen(
+    scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
+): Unit = FollowScreenContent(
+    scrollToTopTrigger = scrollToTopTrigger,
+    innerPadding = innerPadding,
+    onTestRecommendRefreshClick = null,
+    onTestRecommendLoadMore = null,
+    onTestDynamicRefreshClick = null,
+    onTestDynamicLoadMore = null,
+)
+
+@Composable
+fun FollowScreen(
+    scrollToTopTrigger: Int = 0,
+    innerPadding: PaddingValues,
+    onTestRecommendRefreshClick: (() -> Unit)?,
+    onTestRecommendLoadMore: (() -> Unit)?,
+    onTestDynamicRefreshClick: (() -> Unit)?,
+    onTestDynamicLoadMore: (() -> Unit)?,
+): Unit = FollowScreenContent(
+    scrollToTopTrigger = scrollToTopTrigger,
+    innerPadding = innerPadding,
+    onTestRecommendRefreshClick = onTestRecommendRefreshClick,
+    onTestRecommendLoadMore = onTestRecommendLoadMore,
+    onTestDynamicRefreshClick = onTestDynamicRefreshClick,
+    onTestDynamicLoadMore = onTestDynamicLoadMore,
+)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun FollowScreenContent(
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onTestRecommendRefreshClick: (() -> Unit)? = null,
@@ -173,9 +204,9 @@ actual fun FollowScreen(
 actual fun FollowTopLevelPage(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
-    scrollToTopTrigger: Int = 0,
-    innerPadding: PaddingValues = PaddingValues(0.dp),
-    isActive: Boolean = true,
+    scrollToTopTrigger: Int,
+    innerPadding: PaddingValues,
+    isActive: Boolean,
 ) {
     Column(
         modifier = Modifier

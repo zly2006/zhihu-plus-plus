@@ -56,6 +56,19 @@ const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 actual fun HotListScreen(
+    innerPadding: PaddingValues,
+): Unit = HotListScreenContent(innerPadding, onTestRefreshClick = null, onTestLoadMore = null)
+
+@Composable
+fun HotListScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onTestRefreshClick: (() -> Unit)?,
+    onTestLoadMore: (() -> Unit)?,
+): Unit = HotListScreenContent(innerPadding, onTestRefreshClick, onTestLoadMore)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HotListScreenContent(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,

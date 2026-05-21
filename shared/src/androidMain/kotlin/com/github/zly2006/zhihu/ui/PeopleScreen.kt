@@ -620,6 +620,18 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
 @Composable
 actual fun PeopleScreen(
     person: Person,
+): Unit = PeopleScreenContent(person, testOverrides = null)
+
+@Composable
+fun PeopleScreen(
+    person: Person,
+    testOverrides: PeopleScreenTestOverrides,
+): Unit = PeopleScreenContent(person, testOverrides)
+
+@OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun PeopleScreenContent(
+    person: Person,
     testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current

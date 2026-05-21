@@ -87,6 +87,18 @@ data class CollectionContentScreenTestOverrides(
 @Composable
 actual fun CollectionContentScreen(
     collectionId: String,
+): Unit = CollectionContentScreenContent(collectionId, testOverrides = null)
+
+@Composable
+fun CollectionContentScreen(
+    collectionId: String,
+    testOverrides: CollectionContentScreenTestOverrides,
+): Unit = CollectionContentScreenContent(collectionId, testOverrides)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CollectionContentScreenContent(
+    collectionId: String,
     testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current

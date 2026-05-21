@@ -141,6 +141,18 @@ fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 @Composable
 actual fun QuestionScreen(
     question: Question,
+): Unit = QuestionScreenContent(question, testOverrides = null)
+
+@Composable
+fun QuestionScreen(
+    question: Question,
+    testOverrides: QuestionScreenTestOverrides,
+): Unit = QuestionScreenContent(question, testOverrides)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun QuestionScreenContent(
+    question: Question,
     testOverrides: QuestionScreenTestOverrides? = null,
 ) {
     val context = LocalContext.current

@@ -195,7 +195,7 @@ interface IHomeFeedViewModel {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues) {
+actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
     val context = LocalActivity.current as MainActivity
     val preferences = remember {

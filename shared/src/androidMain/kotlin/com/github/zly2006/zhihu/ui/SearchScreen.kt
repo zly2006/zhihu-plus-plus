@@ -96,6 +96,19 @@ private data class HotSearchItem(
 @Composable
 actual fun SearchScreen(
     search: Search,
+): Unit = SearchScreenContent(search, testHotSearchQueries = null, onTestHotSearchRefresh = null)
+
+@Composable
+fun SearchScreen(
+    search: Search,
+    testHotSearchQueries: List<String>?,
+    onTestHotSearchRefresh: (() -> Unit)?,
+): Unit = SearchScreenContent(search, testHotSearchQueries, onTestHotSearchRefresh)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchScreenContent(
+    search: Search,
     testHotSearchQueries: List<String>? = null,
     onTestHotSearchRefresh: (() -> Unit)? = null,
 ) {
