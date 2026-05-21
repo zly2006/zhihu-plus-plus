@@ -31,6 +31,8 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import io.ktor.client.HttpClient
@@ -66,7 +68,8 @@ class AndroidHomeFeedViewModel :
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
-    override fun httpClient(context: Context): HttpClient {
+    override fun httpClient(environment: PaginationEnvironment): HttpClient {
+        val context = environment.androidContext()
         // 检查是否启用推荐内容时登录设置
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
@@ -95,9 +98,10 @@ class AndroidHomeFeedViewModel :
         this.firstOrNull { it[key]?.jsonPrimitive?.content == value }
             ?: throw IllegalStateException("No matching JsonObject found for $key = $value: $this")
 
-    public override suspend fun fetchFeeds(context: Context) {
+    public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
         try {
-            val response = httpClient(context).get(lastPaging?.next ?: initialUrl)
+            val response = httpClient(environment).get(lastPaging?.next ?: initialUrl)
             if (response.status.isSuccess()) {
                 val jojo = response.body<JsonObject>()
                 val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")

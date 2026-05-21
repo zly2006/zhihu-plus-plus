@@ -28,6 +28,8 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import io.ktor.client.HttpClient
@@ -58,13 +60,15 @@ class HomeFeedViewModel :
         allowGuestAccess = true
     }
 
-    public override suspend fun fetchFeeds(context: Context) {
+    public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
         markItemsAsTouched(context)
-        super.fetchFeeds(context)
+        super.fetchFeeds(environment)
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+    override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
+        val context = environment.androidContext()
         allData.addAll(data)
         debugData.addAll(rawData)
 
@@ -202,8 +206,8 @@ class HomeFeedViewModel :
         }
     }
 
-    override fun refresh(context: Context) {
-        super.refresh(context)
+    override fun refresh(environment: PaginationEnvironment) {
+        super.refresh(environment)
         reportedTouchedItems.clear()
     }
 }

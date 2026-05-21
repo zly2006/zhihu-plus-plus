@@ -14,7 +14,7 @@
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
 - Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
-- Generic paging state uses shared `ZhihuPaging`; `PaginationViewModel` is still Android-side only because signed fetch, login-expired handling, Toast/Dialog/clipboard, Activity navigation, preferences, and lifecycle effects have not yet been split into small platform adapters. The target is to move `PaginationViewModel` itself to `shared/commonMain`, not to replace it with a separate `ZhihuPageLoader`.
+- `PaginationViewModel.kt` 本体已通过 `git mv` 迁入 `shared/commonMain`，当前 common API 依赖 `PaginationEnvironment` 而不是 Android `Context`。Android 侧仍有临时 `Context -> PaginationEnvironment` 薄适配，feed/comment/list 子类还在 Android source set；下一步继续把子类的状态和纯分页流程迁入 shared，并把登录过期 Dialog、Toast/clipboard、Activity 导航、偏好读取、history repository 等副作用压缩到平台 adapter。不得用 `ZhihuPageLoader` 替代本体迁移。
 - `ContentFilterManager` and `ContentFilterExtensions` are core filtering features and must move to `shared/commonMain`; current Android `Context`/preferences/Room/log/Toast dependencies are adapter seams, not ownership. Do not replace or bypass the filtering logic while migrating settings pages or feed view models.
 - `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
 - Newly extracted generic adapters must be reused in the same migration slice where reasonable. Grep for duplicate `Toast.makeText`, `getSharedPreferences`, and filter maintenance logic; replace low-risk call sites with `UserMessageSink`, `SettingsStore`, and `ContentFilterMaintenance`, or record why a remaining Android-only call site is deliberately left alone.
@@ -42,7 +42,7 @@
 
 - Continue shrinking the Android `ZhihuMain` adapter only where it removes real platform side effects; do not rewrite the shared main shell.
 - Split account fetch/token refresh orchestration from Android `AccountData`.
-- Move `PaginationViewModel` into shared after splitting Android side effects into small cross-platform interfaces/adapters.
+- Continue migrating `PaginationViewModel` subclasses and Android-only pagination call sites into shared after splitting their remaining platform side effects into small adapters.
 - Move `ContentFilterManager` and `ContentFilterExtensions` into shared after splitting preferences, database builder, logging/toast, and content-detail fetch side effects into adapters.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
 - Move local recommendation orchestration behind platform adapters.

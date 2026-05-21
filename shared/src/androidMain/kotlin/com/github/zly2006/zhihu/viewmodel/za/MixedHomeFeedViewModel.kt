@@ -21,6 +21,7 @@ import android.content.Context
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import kotlinx.coroutines.async
@@ -40,11 +41,11 @@ class MixedHomeFeedViewModel :
         web.displayItems = this.displayItems
     }
 
-    override suspend fun fetchFeeds(context: Context) {
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         coroutineScope {
             listOf(
-                async { android.fetchFeeds(context) },
-                async { web.fetchFeeds(context) },
+                async { android.fetchFeeds(environment) },
+                async { web.fetchFeeds(environment) },
             ).joinAll()
         }
         isLoading = false

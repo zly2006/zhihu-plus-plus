@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import android.content.Context
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
@@ -26,12 +25,16 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.decodeOnlineHistoryItems
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.data.zhihuOnlineHistoryUrl
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String = zhihuOnlineHistoryUrl()
+    override val shouldLogDecodeFailures: Boolean = false
 
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+    override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
+        val context = environment.androidContext()
         val history = (context as MainActivity).history
 
         val response = decodeOnlineHistoryItems(rawData, ignoreInvalid = true)

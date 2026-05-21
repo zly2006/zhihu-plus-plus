@@ -64,8 +64,8 @@ class CollectionContentViewModel(
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
 
-    override fun processResponse(context: Context, data: List<CollectionItem>, rawData: JsonArray) {
-        super.processResponse(context, data, rawData)
+    override fun processResponse(environment: PaginationEnvironment, data: List<CollectionItem>, rawData: JsonArray) {
+        super.processResponse(environment, data, rawData)
         displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据
     }
 
@@ -87,13 +87,14 @@ class CollectionContentViewModel(
         exportDialogState = null
     }
 
-    override fun refresh(context: Context) {
+    override fun refresh(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
         if (isLoading) return
         displayItems.clear()
         viewModelScope.launch {
             loadCollectionInfo(context)
         }
-        super.refresh(context)
+        super.refresh(environment)
     }
 
     fun exportAllToHtmlZip(
@@ -218,7 +219,7 @@ class CollectionContentViewModel(
             val beforeCount = allData.size
             val beforePaging = lastPaging
             isLoading = true
-            fetchFeeds(context)
+            fetchFeeds(paginationEnvironment(context))
 
             val pagingAdvanced = hasPagingProgress(beforePaging, lastPaging)
             val itemCountAdvanced = allData.size > beforeCount

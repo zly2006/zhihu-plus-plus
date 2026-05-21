@@ -17,13 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import android.content.Context
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.androidContext
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String
@@ -32,7 +33,8 @@ class HistoryViewModel : BaseFeedViewModel() {
     override val isEnd: Boolean
         get() = displayItems.isNotEmpty()
 
-    override fun refresh(context: Context) {
+    override fun refresh(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
         if (isLoading) return
         isLoading = true
         errorMessage = null
@@ -83,10 +85,10 @@ class HistoryViewModel : BaseFeedViewModel() {
         isLoading = false
     }
 
-    override suspend fun fetchFeeds(context: Context) {
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
     }
 
-    override fun loadMore(context: Context) {
+    override fun loadMore(environment: PaginationEnvironment) {
         // 不需要loadMore，所有数据一次性加载
     }
 }

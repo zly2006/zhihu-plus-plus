@@ -34,8 +34,11 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.data.toDisplayItem
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,14 +50,15 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var isPullToRefresh by mutableStateOf(false)
         protected set
 
-    override fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
-        super.processResponse(context, data, rawData)
+    override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
+        val context = environment.androidContext()
+        super.processResponse(environment, data, rawData)
         addDisplayItems(data.flatten().map { createDisplayItem(context, it) })
     }
 
-    override fun refresh(context: Context) {
+    override fun refresh(environment: PaginationEnvironment) {
         displayItems.clear()
-        super.refresh(context)
+        super.refresh(environment)
     }
 
     suspend fun pullToRefresh(context: Context) {
@@ -67,7 +71,7 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         lastPaging = null // 重置 lastPaging
         isLoading = true
         try {
-            fetchFeeds(context)
+            fetchFeeds(paginationEnvironment(context))
         } catch (e: Exception) {
             errorHandle(e)
         }

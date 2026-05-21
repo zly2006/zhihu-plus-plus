@@ -17,11 +17,10 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import android.content.Context
-import android.util.Log
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.SearchResult
-import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.ZhihuPaging
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import kotlinx.serialization.json.jsonArray
 import java.net.URLEncoder
 
@@ -37,36 +36,31 @@ class SearchViewModel(
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
 
-    override suspend fun fetchFeeds(context: Context) {
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
-            val jojo = AccountData.fetchGet(context, url) {
-                url {
-                    parameters["include"] = include
-                }
-                signFetchRequest()
-            }!!
+            val jojo = environment.fetchJson(url, include)!!
             val jsonArray = jojo["data"]!!.jsonArray
 
             // Parse search results and convert to Feed objects
             val feeds = jsonArray.mapNotNull { element ->
                 try {
-                    val searchResult = AccountData.decodeJson<SearchResult>(element)
+                    val searchResult = ZhihuJson.decodeJson<SearchResult>(element)
                     searchResult.toFeed()
                 } catch (e: Exception) {
-                    Log.e("SearchViewModel", "Failed to decode search result: $element", e)
+                    environment.logDecodeFailure("SearchViewModel", element, e)
                     null
                 }
             }
 
-            processResponse(context, feeds, jsonArray)
+            processResponse(environment, feeds, jsonArray)
 
             // Handle pagination
             if ("paging" in jojo) {
-                lastPaging = AccountData.decodeJson(jojo["paging"]!!)
+                lastPaging = ZhihuJson.decodeJson<ZhihuPaging>(jojo["paging"]!!)
             }
         } catch (e: Exception) {
-            Log.e("SearchViewModel", "Failed to fetch search results", e)
+            environment.handleFetchFailure("SearchViewModel", e)
             throw e
         } finally {
             isLoading = false

@@ -29,6 +29,7 @@ import com.github.zly2006.zhihu.shared.data.markAllZhihuNotificationsAsRead
 import com.github.zly2006.zhihu.shared.data.zhihuNotificationRecentUrl
 import com.github.zly2006.zhihu.ui.NotificationPreferences
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlin.reflect.typeOf
@@ -44,8 +45,9 @@ class NotificationViewModel :
         private set
 
     @Suppress("HttpUrlsUsage")
-    override suspend fun fetchFeeds(context: Context) {
-        super.fetchFeeds(context)
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
+        super.fetchFeeds(environment)
         if (lastPaging?.next?.startsWith("http://") == true) {
             lastPaging = lastPaging!!.copy(next = lastPaging!!.next.replace("http://", "https://"))
         }

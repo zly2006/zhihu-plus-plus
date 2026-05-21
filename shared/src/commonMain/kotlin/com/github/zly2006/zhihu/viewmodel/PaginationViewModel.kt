@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,7 +25,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -55,9 +53,7 @@ abstract class PaginationViewModel<T : Any>(
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
     private var currentJob: Job? = null
-
-    protected open fun paginationEnvironment(context: Context): PaginationEnvironment =
-        AndroidPaginationEnvironment(context, allowGuestAccess)
+    protected open val shouldLogDecodeFailures: Boolean = true
 
     /**
      * Generally used fields to include in the API request.
@@ -65,7 +61,7 @@ abstract class PaginationViewModel<T : Any>(
      */
     open val include = "data[*].content,excerpt,headline,target.author.badge_v2"
 
-    open fun refresh(context: Context) {
+    open fun refresh(environment: PaginationEnvironment) {
         currentJob?.cancel()
         currentJob = null
         isLoading = false
@@ -73,18 +69,17 @@ abstract class PaginationViewModel<T : Any>(
         debugData.clear()
         allData.clear()
         lastPaging = null // 重置 lastPaging
-        loadMore(context)
+        loadMore(environment)
     }
 
-    open fun httpClient(context: Context): HttpClient = paginationEnvironment(context).httpClient()
+    open fun httpClient(environment: PaginationEnvironment): HttpClient = environment.httpClient()
 
-    protected open fun processResponse(context: Context, data: List<T>, rawData: JsonArray) {
+    protected open fun processResponse(environment: PaginationEnvironment, data: List<T>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
         allData.addAll(data) // 保存未flatten的数据
     }
 
-    protected open suspend fun fetchFeeds(context: Context) {
-        val environment = paginationEnvironment(context)
+    protected open suspend fun fetchFeeds(environment: PaginationEnvironment) {
         try {
             val url = lastPaging?.next ?: initialUrl
 
@@ -93,7 +88,7 @@ abstract class PaginationViewModel<T : Any>(
 
             val jsonArray = json["data"]!!.jsonArray
             processResponse(
-                context,
+                environment,
                 jsonArray.mapNotNull {
                     if ("type" in it.jsonObject &&
                         it.jsonObject["type"]?.jsonPrimitive?.content in listOf(
@@ -108,8 +103,7 @@ abstract class PaginationViewModel<T : Any>(
                         @Suppress("UNCHECKED_CAST")
                         ZhihuJson.decodeJson(serializer(dataType) as KSerializer<T>, it)
                     } catch (e: Exception) {
-                        if (this !is OnlineHistoryViewModel) {
-                            // Note: 小特判一下，懒得写了
+                        if (shouldLogDecodeFailures) {
                             environment.logDecodeFailure(this::class.simpleName, it, e)
                         }
                         null
@@ -129,12 +123,12 @@ abstract class PaginationViewModel<T : Any>(
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    open fun loadMore(context: Context) {
+    open fun loadMore(environment: PaginationEnvironment) {
         if (isLoading || isEnd) return // 使用新的isEnd getter
         isLoading = true
         currentJob = viewModelScope.launch {
             try {
-                fetchFeeds(context)
+                fetchFeeds(environment)
             } catch (e: Exception) {
                 errorHandle(e)
             }

@@ -25,6 +25,8 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -39,13 +41,14 @@ class LocalHomeFeedViewModel :
     override val initialUrl: String
         get() = error("LocalHomeFeedViewModel should not be used directly. Use LocalFeedViewModel instead.")
 
-    override fun loadMore(context: Context) {
+    override fun loadMore(environment: PaginationEnvironment) {
         if (displayItems.isEmpty()) {
-            super.loadMore(context)
+            super.loadMore(environment)
         }
     }
 
-    override suspend fun fetchFeeds(context: Context) {
+    override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val context = environment.androidContext()
         try {
             val engine = ensureEngine(context)
             val recommendations = engine.generateRecommendations(20)

@@ -28,7 +28,9 @@ import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import io.ktor.client.HttpClient
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -45,7 +47,7 @@ abstract class BaseCommentViewModel(
     protected val commentsMap = mutableMapOf<String, CommentItem>()
     var sortOrder by mutableStateOf(CommentSortOrder.SCORE)
 
-    override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
+    override fun processResponse(environment: PaginationEnvironment, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
         data.forEach { comment ->
             if (allData.none { it.id == comment.id }) {
@@ -69,7 +71,7 @@ abstract class BaseCommentViewModel(
     fun changeSortOrder(newSortOrder: CommentSortOrder, context: Context) {
         if (sortOrder != newSortOrder) {
             sortOrder = newSortOrder
-            refresh(context)
+            refresh(paginationEnvironment(context))
         }
     }
 
