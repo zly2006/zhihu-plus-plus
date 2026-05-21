@@ -41,9 +41,6 @@ expect fun QuestionScreen(question: Question)
 expect fun SearchScreen(search: Search)
 
 @Composable
-expect fun CollectionScreen(userToken: String?)
-
-@Composable
 expect fun CollectionContentScreen(collectionId: String)
 
 @Composable

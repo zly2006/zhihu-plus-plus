@@ -42,9 +42,6 @@ actual fun QuestionScreen(question: Question) = UnsupportedDesktopScreen()
 actual fun SearchScreen(search: Search) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun CollectionScreen(userToken: String?) = UnsupportedDesktopScreen()
-
-@Composable
 actual fun CollectionContentScreen(collectionId: String) = UnsupportedDesktopScreen()
 
 @Composable
