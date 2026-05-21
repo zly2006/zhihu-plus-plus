@@ -23,14 +23,9 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
-import com.github.zly2006.zhihu.shared.data.AdvertisementFeed
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -215,120 +210,35 @@ object ContentFilterExtensions {
         try {
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             val settings = preferences.toFeedFilterSettings()
-
-            var filteredItems = items
-
-            // 1. 应用关注用户过滤逻辑
-            val shouldFilterFollowed = settings.filterFollowedUserContent
-
-            val (followedUserItems, otherItems) = if (!shouldFilterFollowed) {
-                // 分离已关注用户的内容
-                filteredItems.partition { item ->
-                    item.feed
-                        ?.target
-                        ?.author
-                        ?.isFollowing == true
-                }
-            } else {
-                Pair(emptyList(), filteredItems)
-            }
-
-            // 2. 转换为FilterableContent并获取完整内容，同时建立映射关系
-            val itemToFilterableMap = mutableMapOf<FeedDisplayItem, FilterableContent>()
-
-            otherItems.forEach { item ->
-                val identity = item.resolveContentIdentity()
-
-                // 获取完整内容详情
-                val rawContent = when (val dest = item.navDestination) {
-                    is Article -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
-                    is Pin -> ContentDetailCache.getOrFetch(context, dest) ?: DataHolder.DummyContent
-                    else -> DataHolder.DummyContent
-                }
-
-                if (rawContent is DataHolder.DummyContent) {
-                    Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}' with navDestination '${item.navDestination}'. Using dummy content for filtering.")
-                }
-
-                itemToFilterableMap[item] = item.toFilterableContent(identity, rawContent)
-            }
-
-            val filterableContents = itemToFilterableMap.values.toList()
-
-            // 3. 过滤广告和付费内容
-            val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
-            if (settings.reverseBlock) {
-                val ads = filterableContents.filter { content -> isFeedAdOrPaidContent(content) }
-                val ids = ads.map { it.contentId }
-                return@withContext items.filter { item ->
-                    val contentId = item.resolveContentIdentity().id
-                    contentId in ids
-                } + items.filter { it.feed is AdvertisementFeed }
-            }
-            val nonAdContents = filterableContents.filter { content ->
-                val blockReason = getFeedAdBlockReason(content, settings.adBlockSettings)
-                if (blockReason != null) adBlockedContents.add(content to blockReason)
-                blockReason == null
-            }
-
-            // 4. 应用关键词和NLP过滤
-            val blockedContents = mutableListOf<Pair<FilterableContent, String>>()
-            val filteredContents = filterContents(context, nonAdContents, blockedContents, settings)
-            val filteredContentIds = filteredContents.map { it.contentId }.toSet()
-
-            // 5. 根据过滤结果重新构建FeedDisplayItem，并附带raw信息
-            val itemToRawMap = itemToFilterableMap.entries.associate { (item, filterable) ->
-                filterable.contentId to Pair(item, filterable.raw)
-            }
-
-            val filteredOtherItems = otherItems.mapNotNull { item ->
-                val contentId = item.resolveContentIdentity().id
-                if (contentId in filteredContentIds) {
-                    val (_, raw) = itemToRawMap[contentId] ?: (null to null)
-                    item.copy(raw = raw)
-                } else {
-                    null
-                }
-            }
-
-            filteredItems = followedUserItems + filteredOtherItems
-
-            // 6. 持久化所有屏蔽记录
-            val allBlocked = adBlockedContents + blockedContents
-            if (allBlocked.isNotEmpty()) {
-                saveBlockedFeedRecords(context, allBlocked)
-            }
-
-            filteredItems.filter {
-                listOf(
-                    "感兴趣",
-                    "购买",
-                ).none { keyword ->
-                    val shouldFilter = it.details.contains(keyword)
-                    if (shouldFilter) {
-                        Log.e("ContentFilterExtensions", "Filtered item '${it.title}' due to keyword '$keyword' in details: ${it.content}")
-                    }
-                    shouldFilter
-                }
-            }
+            createFeedDisplayFilterPipeline(context, settings).filter(items)
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply content filter to display items", e)
             items
         }
     }
 
-    /**
-     * 对从 feed 提取出的内容快照应用内容级规则。
-     * @param blocked 收集被屏蔽的 feed 内容快照及原因，供后续写入 feed 屏蔽历史
-     */
-    private suspend fun filterContents(
+    private suspend fun saveBlockedFeedRecords(
         context: Context,
-        contents: List<FilterableContent>,
-        blocked: MutableList<Pair<FilterableContent, String>>,
-        settings: FeedFilterSettings,
-    ): List<FilterableContent> {
-        val database = getContentFilterDatabase(context)
-        val pipeline = FeedContentFilterPipeline(
+        blocked: List<Pair<FilterableContent, String>>,
+    ) {
+        try {
+            saveBlockedFeedRecords(getContentFilterDatabase(context).blockedFeedRecordDao(), blocked)
+        } catch (e: Exception) {
+            Log.e("ContentFilterExtensions", "Failed to save blocked feed records", e)
+        }
+    }
+
+}
+
+private fun createFeedDisplayFilterPipeline(
+    context: Context,
+    settings: FeedFilterSettings,
+): FeedDisplayFilterPipeline {
+    val database = getContentFilterDatabase(context)
+    return FeedDisplayFilterPipeline(
+        settings = settings,
+        contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
+        contentFilterPipeline = FeedContentFilterPipeline(
             settings = settings,
             blocklistService = BlocklistService(
                 keywordDao = database.blockedKeywordDao(),
@@ -348,39 +258,15 @@ object ContentFilterExtensions {
                     }
                 }
             },
-        )
-        val result = pipeline.filter(contents)
-        blocked.addAll(result.blocked)
-        return result.kept
-    }
-
-    private suspend fun saveBlockedFeedRecords(
-        context: Context,
-        blocked: List<Pair<FilterableContent, String>>,
-    ) {
-        try {
-            val dao = getContentFilterDatabase(context).blockedFeedRecordDao()
-            blocked.forEach { (content, reason) ->
-                dao.insert(
-                    BlockedFeedRecord(
-                        title = content.title,
-                        questionId = content.questionId,
-                        authorName = content.authorName,
-                        authorId = content.authorId,
-                        url = content.url,
-                        content = content.content,
-                        blockedReason = reason,
-                        navDestinationJson = content.navDestinationJson,
-                        feedJson = content.feedJson,
-                    ),
-                )
-            }
-            dao.maintainLimit()
-        } catch (e: Exception) {
-            Log.e("ContentFilterExtensions", "Failed to save blocked feed records", e)
-        }
-    }
-
+        ),
+        blockedFeedRecordDao = database.blockedFeedRecordDao(),
+        onDetailFetchFailed = { item ->
+            Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
+        },
+        onDetailsKeywordFiltered = { item, keyword ->
+            Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
+        },
+    )
 }
 
 private fun SharedPreferences.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSettings(
