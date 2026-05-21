@@ -25,6 +25,7 @@ import android.widget.Toast
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,56 +39,49 @@ import org.jsoup.Jsoup
 object ContentFilterExtensions {
     /** 检查是否启用了 feed 已读/低质过滤总开关。 */
     fun isContentFilterEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().enableContentFilter
+        return context.feedFilterSettings().enableContentFilter
     }
 
     /**
      * 检查是否启用了关键词屏蔽功能
      */
     fun isKeywordBlockingEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().enableKeywordBlocking
+        return context.feedFilterSettings().enableKeywordBlocking
     }
 
     /**
      * 检查是否启用了NLP语义屏蔽功能
      */
     fun isNLPBlockingEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().enableNlpBlocking
+        return context.feedFilterSettings().enableNlpBlocking
     }
 
     /**
      * 获取NLP相似度阈值
      */
     fun getNLPSimilarityThreshold(context: Context): Double {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().nlpSimilarityThreshold
+        return context.feedFilterSettings().nlpSimilarityThreshold
     }
 
     /**
      * 检查是否启用了用户屏蔽功能
      */
     fun isUserBlockingEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().enableUserBlocking
+        return context.feedFilterSettings().enableUserBlocking
     }
 
     /**
      * 检查是否启用了主题屏蔽功能
      */
     fun isTopicBlockingEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().enableTopicBlocking
+        return context.feedFilterSettings().enableTopicBlocking
     }
 
     /**
      * 获取主题屏蔽阈值
      */
     fun getTopicBlockingThreshold(context: Context): Int {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.toFeedFilterSettings().topicBlockingThreshold
+        return context.feedFilterSettings().topicBlockingThreshold
     }
 
     /**
@@ -140,8 +134,7 @@ object ContentFilterExtensions {
         items: List<FeedDisplayItem>,
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val settings = preferences.toFeedFilterSettings()
+            val settings = context.feedFilterSettings()
             createForegroundReadFilterPipeline(context, settings).filter(items)
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply foreground read filter", e)
@@ -161,8 +154,7 @@ object ContentFilterExtensions {
         items: List<FeedDisplayItem>,
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val settings = preferences.toFeedFilterSettings()
+            val settings = context.feedFilterSettings()
             createFeedDisplayFilterPipeline(context, settings).filter(items)
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply content filter to display items", e)
@@ -170,24 +162,12 @@ object ContentFilterExtensions {
         }
     }
 
-    private suspend fun saveBlockedFeedRecords(
-        context: Context,
-        blocked: List<Pair<FilterableContent, String>>,
-    ) {
-        try {
-            saveBlockedFeedRecords(getContentFilterDatabase(context).blockedFeedRecordDao(), blocked)
-        } catch (e: Exception) {
-            Log.e("ContentFilterExtensions", "Failed to save blocked feed records", e)
-        }
-    }
-
 }
 
 private fun createContentExposureRecorder(context: Context): ContentExposureRecorder {
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     val database = getContentFilterDatabase(context)
     return ContentExposureRecorder(
-        settings = preferences.toFeedFilterSettings(),
+        settings = context.feedFilterSettings(),
         contentFilterManager = ContentFilterManager(database.contentFilterDao()),
     )
 }
@@ -243,20 +223,21 @@ private fun createFeedDisplayFilterPipeline(
     )
 }
 
-private fun SharedPreferences.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSettings(
-    enableContentFilter = getBoolean("enableContentFilter", true),
-    reverseBlock = getBoolean("reverseBlock", false),
-    filterFollowedUserContent = getBoolean("filterFollowedUserContent", false),
-    enableKeywordBlocking = getBoolean("enableKeywordBlocking", true),
-    enableNlpBlocking = getBoolean("enableNLPBlocking", true),
-    nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),
-    enableUserBlocking = getBoolean("enableUserBlocking", true),
-    enableTopicBlocking = getBoolean("enableTopicBlocking", true),
-    topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
-    adBlockSettings = FeedAdBlockSettings(
-        blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
-        blockZhihuSchool = getBoolean("blockZhihuSchool", true),
-        blockWeChatOfficialAccount = getBoolean("blockWeChatOfficialAccount", true),
-        blockPaidContent = getBoolean("blockPaidContent", true),
-    ),
+private fun Context.feedFilterSettings(): FeedFilterSettings =
+    getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        .toSettingsStore()
+        .toFeedFilterSettings()
+
+private fun SharedPreferences.toSettingsStore(): SettingsStore = SettingsStore(
+    getBoolean = ::getBoolean,
+    putBoolean = { key, value -> edit().putBoolean(key, value).apply() },
+    getString = ::getStringValue,
+    putString = { key, value -> edit().putString(key, value).apply() },
+    getInt = ::getInt,
+    putInt = { key, value -> edit().putInt(key, value).apply() },
+    getFloat = ::getFloat,
+    putFloat = { key, value -> edit().putFloat(key, value).apply() },
 )
+
+private fun SharedPreferences.getStringValue(key: String, defaultValue: String): String =
+    getString(key, defaultValue) ?: defaultValue

@@ -17,6 +17,8 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.shared.platform.SettingsStore
+
 data class FeedFilterSettings(
     val enableContentFilter: Boolean = true,
     val reverseBlock: Boolean = false,
@@ -28,4 +30,22 @@ data class FeedFilterSettings(
     val enableTopicBlocking: Boolean = true,
     val topicBlockingThreshold: Int = 1,
     val adBlockSettings: FeedAdBlockSettings = FeedAdBlockSettings(),
+)
+
+fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSettings(
+    enableContentFilter = getBoolean("enableContentFilter", true),
+    reverseBlock = getBoolean("reverseBlock", false),
+    filterFollowedUserContent = getBoolean("filterFollowedUserContent", false),
+    enableKeywordBlocking = getBoolean("enableKeywordBlocking", true),
+    enableNlpBlocking = getBoolean("enableNLPBlocking", true),
+    nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),
+    enableUserBlocking = getBoolean("enableUserBlocking", true),
+    enableTopicBlocking = getBoolean("enableTopicBlocking", true),
+    topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
+    adBlockSettings = FeedAdBlockSettings(
+        blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
+        blockZhihuSchool = getBoolean("blockZhihuSchool", true),
+        blockWeChatOfficialAccount = getBoolean("blockWeChatOfficialAccount", true),
+        blockPaidContent = getBoolean("blockPaidContent", true),
+    ),
 )
