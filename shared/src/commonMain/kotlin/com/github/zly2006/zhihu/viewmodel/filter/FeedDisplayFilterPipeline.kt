@@ -30,6 +30,50 @@ fun interface ContentDetailProvider {
     suspend fun get(navDestination: NavDestination): DataHolder.Content?
 }
 
+fun ContentFilterDatabase.createContentExposureRecorder(
+    settings: FeedFilterSettings,
+): ContentExposureRecorder = ContentExposureRecorder(
+    settings = settings,
+    contentFilterManager = ContentFilterManager(contentFilterDao()),
+)
+
+fun ContentFilterDatabase.createForegroundReadFilterPipeline(
+    settings: FeedFilterSettings,
+): ForegroundReadFilterPipeline = ForegroundReadFilterPipeline(
+    settings = settings,
+    contentFilterManager = ContentFilterManager(contentFilterDao()),
+    blockedFeedRecordDao = blockedFeedRecordDao(),
+)
+
+fun ContentFilterDatabase.createFeedDisplayFilterPipeline(
+    settings: FeedFilterSettings,
+    contentDetailProvider: ContentDetailProvider,
+    semanticMatcher: KeywordSemanticMatcher,
+    onNlpBlocked: suspend (List<FilterableContent>) -> Unit = {},
+    onDetailFetchFailed: (FeedDisplayItem) -> Unit = {},
+    onDetailsKeywordFiltered: (FeedDisplayItem, String) -> Unit = { _, _ -> },
+): FeedDisplayFilterPipeline = FeedDisplayFilterPipeline(
+    settings = settings,
+    contentDetailProvider = contentDetailProvider,
+    contentFilterPipeline = FeedContentFilterPipeline(
+        settings = settings,
+        blocklistService = BlocklistService(
+            keywordDao = blockedKeywordDao(),
+            userDao = blockedUserDao(),
+            topicDao = blockedTopicDao(),
+        ),
+        blockedKeywordService = BlockedKeywordService(
+            keywordDao = blockedKeywordDao(),
+            recordDao = blockedContentRecordDao(),
+            semanticMatcher = semanticMatcher,
+        ),
+        onNlpBlocked = onNlpBlocked,
+    ),
+    blockedFeedRecordDao = blockedFeedRecordDao(),
+    onDetailFetchFailed = onDetailFetchFailed,
+    onDetailsKeywordFiltered = onDetailsKeywordFiltered,
+)
+
 class FeedDisplayFilterPipeline(
     private val settings: FeedFilterSettings,
     private val contentDetailProvider: ContentDetailProvider,

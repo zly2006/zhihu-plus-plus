@@ -122,6 +122,38 @@ class FeedDisplayFilterPipelineTest {
         fixture.database.close()
     }
 
+    @Test
+    fun databaseFactoryWiresFeedDisplayPipelineServices() = runTest {
+        val fixture = fixture()
+        val keywordService = BlockedKeywordService(
+            keywordDao = fixture.database.blockedKeywordDao(),
+            recordDao = fixture.database.blockedContentRecordDao(),
+            semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
+                phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
+            },
+        )
+        keywordService.addNLPPhrase("semantic phrase")
+
+        val result = fixture.database
+            .createFeedDisplayFilterPipeline(
+                settings = FeedFilterSettings(),
+                contentDetailProvider = provider(1L to article("semantic", content = "<p>semantic body</p>")),
+                semanticMatcher = KeywordSemanticMatcher { text, phrases, _ ->
+                    phrases.filter { text.contains("semantic body") }.map { it to 0.95 }
+                },
+            ).filter(listOf(item("semantic", 1)))
+
+        assertEquals(emptyList(), result)
+        assertEquals(
+            listOf("NLP语义屏蔽：semantic phrase"),
+            fixture.database
+                .blockedFeedRecordDao()
+                .getRecent()
+                .map { it.blockedReason },
+        )
+        fixture.database.close()
+    }
+
     private fun fixture(settings: FeedFilterSettings = FeedFilterSettings()): Fixture {
         val database = getContentFilterDatabase(
             createTempDirectory("feed-display-filter-pipeline").resolve("content-filter.db").toFile(),
@@ -179,13 +211,14 @@ class FeedDisplayFilterPipelineTest {
 
     private fun article(
         title: String,
+        content: String = title,
         paid: Boolean = false,
     ): DataHolder.Article = DataHolder.Article(
         id = title.hashCode().toLong(),
         author = author(),
         canComment = DataHolder.CanComment(status = true, reason = ""),
         title = title,
-        content = title,
+        content = content,
         excerpt = "",
         type = "article",
         created = 1L,

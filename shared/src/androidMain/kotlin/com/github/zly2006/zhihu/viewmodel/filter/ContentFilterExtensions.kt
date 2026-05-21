@@ -149,10 +149,7 @@ object ContentFilterExtensions {
 
 private fun createContentExposureRecorder(context: Context): ContentExposureRecorder {
     val database = getContentFilterDatabase(context)
-    return ContentExposureRecorder(
-        settings = context.feedFilterSettings(),
-        contentFilterManager = ContentFilterManager(database.contentFilterDao()),
-    )
+    return database.createContentExposureRecorder(context.feedFilterSettings())
 }
 
 private fun createForegroundReadFilterPipeline(
@@ -160,11 +157,7 @@ private fun createForegroundReadFilterPipeline(
     settings: FeedFilterSettings,
 ): ForegroundReadFilterPipeline {
     val database = getContentFilterDatabase(context)
-    return ForegroundReadFilterPipeline(
-        settings = settings,
-        contentFilterManager = ContentFilterManager(database.contentFilterDao()),
-        blockedFeedRecordDao = database.blockedFeedRecordDao(),
-    )
+    return database.createForegroundReadFilterPipeline(settings)
 }
 
 private fun createFeedDisplayFilterPipeline(
@@ -172,30 +165,17 @@ private fun createFeedDisplayFilterPipeline(
     settings: FeedFilterSettings,
 ): FeedDisplayFilterPipeline {
     val database = getContentFilterDatabase(context)
-    return FeedDisplayFilterPipeline(
+    return database.createFeedDisplayFilterPipeline(
         settings = settings,
         contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
-        contentFilterPipeline = FeedContentFilterPipeline(
-            settings = settings,
-            blocklistService = BlocklistService(
-                keywordDao = database.blockedKeywordDao(),
-                userDao = database.blockedUserDao(),
-                topicDao = database.blockedTopicDao(),
-            ),
-            blockedKeywordService = BlockedKeywordService(
-                keywordDao = database.blockedKeywordDao(),
-                recordDao = database.blockedContentRecordDao(),
-                semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
-            ),
-            onNlpBlocked = { blockedThisRound ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    context.mainExecutor.execute {
-                        Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
-                    }
+        semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+        onNlpBlocked = { blockedThisRound ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                context.mainExecutor.execute {
+                    Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
                 }
-            },
-        ),
-        blockedFeedRecordDao = database.blockedFeedRecordDao(),
+            }
+        },
         onDetailFetchFailed = { item ->
             Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
         },
