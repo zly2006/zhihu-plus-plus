@@ -17,11 +17,10 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,14 +30,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,21 +53,20 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -76,25 +77,63 @@ import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
-import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
-import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
+
+data class NotificationScreenData(
+    val notifications: List<NotificationItem>,
+    val totalItemCount: Int,
+    val unreadCount: Int,
+    val isLoading: Boolean,
+    val isEnd: Boolean,
+    val showDebugCopy: Boolean,
+    val refresh: () -> Unit,
+    val loadMore: () -> Unit,
+    val markAsRead: (String) -> Unit,
+    val markAllAsRead: () -> Unit,
+    val copyDebugData: () -> Unit,
+    val showMessage: (String) -> Unit,
+)
+
+@Composable
+expect fun rememberNotificationScreenData(): NotificationScreenData
+
+@Composable
+expect fun NotificationDebugCopyButton(
+    visible: Boolean,
+    onClick: () -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun NotificationScreen() {
+fun NotificationScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val viewModel = viewModel<NotificationViewModel>()
-    val coroutineScope = rememberCoroutineScope()
+    val data = rememberNotificationScreenData()
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember(data.notifications.size, data.totalItemCount, data.isEnd, data.isLoading) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return@derivedStateOf false
+            lastVisibleIndex >= layoutInfo.totalItemsCount - 3 &&
+                data.totalItemCount > 0 &&
+                !data.isEnd &&
+                !data.isLoading
+        }
+    }
 
     LaunchedEffect(Unit) {
-        if (viewModel.allData.isEmpty()) {
-            viewModel.refresh(context)
+        if (data.totalItemCount == 0) {
+            data.refresh()
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            data.loadMore()
+        }
+    }
+
+    LaunchedEffect(data.totalItemCount, data.notifications.size, data.isEnd, data.isLoading) {
+        if (data.totalItemCount > 0 && data.notifications.isEmpty() && !data.isEnd && !data.isLoading) {
+            data.loadMore()
         }
     }
 
@@ -115,13 +154,8 @@ actual fun NotificationScreen() {
                     }
                 },
                 actions = {
-                    if (viewModel.unreadCount > 0) {
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                viewModel.markAllAsRead(context)
-                                Toast.makeText(context, "已全部标记为已读", Toast.LENGTH_SHORT).show()
-                            }
-                        }) {
+                    if (data.unreadCount > 0) {
+                        IconButton(onClick = data.markAllAsRead) {
                             Icon(Icons.Default.MarkChatRead, contentDescription = "已读")
                         }
                     }
@@ -138,31 +172,27 @@ actual fun NotificationScreen() {
         },
     ) { paddingValues ->
         PullToRefreshBox(
-            isRefreshing = viewModel.isLoading,
-            onRefresh = { viewModel.refresh(context) },
+            isRefreshing = data.isLoading,
+            onRefresh = data.refresh,
             modifier = Modifier.padding(paddingValues),
         ) {
-            PaginatedList(
-                items = viewModel.allData,
-                onLoadMore = { viewModel.loadMore(context) },
-                isEnd = { viewModel.isEnd },
+            LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
-                footer = ProgressIndicatorFooter,
-            ) { notification ->
-                if (viewModel.shouldShowNotification(context, notification)) {
+            ) {
+                items(data.notifications, key = { it.id }) { notification ->
                     NotificationItemView(
                         notification = notification,
                         onClick = {
-                            viewModel.markAsRead(context, notification.id)
-                            // 处理点击事件 - 跳转到对应内容
+                            data.markAsRead(notification.id)
                             when (val target = notification.target) {
                                 is NotificationTarget
                                     .Comment,
                                 -> {
-                                    Toast.makeText(context, "暂不支持跳转到评论，将跳转到对应回答。", Toast.LENGTH_LONG).show()
+                                    data.showMessage("暂不支持跳转到评论，将跳转到对应回答。")
                                     target.target?.navDestination?.let {
                                         navigator.onNavigate(it)
-                                    } ?: Toast.makeText(context, "导航失败", Toast.LENGTH_LONG).show()
+                                    } ?: data.showMessage("导航失败")
                                 }
 
                                 is NotificationTarget.Question -> {
@@ -199,20 +229,26 @@ actual fun NotificationScreen() {
                         },
                     )
                 }
-            }
-            if (BuildConfig.DEBUG) {
-                DraggableRefreshButton(
-                    onClick = {
-                        val data = Json.encodeToString(viewModel.debugData)
-                        val clip = ClipData.newPlainText("data", data)
-                        context.clipboardManager.setPrimaryClip(clip)
-                        Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
-                    },
-                    preferenceName = "copyAll",
-                ) {
-                    Icon(Icons.Default.CopyAll, contentDescription = "复制")
+
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (data.isEnd) {
+                            Text("已经到底啦")
+                        } else if (data.isLoading) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
             }
+            NotificationDebugCopyButton(
+                visible = data.showDebugCopy,
+                onClick = data.copyDebugData,
+            )
         }
     }
 }

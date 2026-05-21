@@ -51,6 +51,3 @@ expect fun PinScreen(pin: Pin)
 
 @Composable
 expect fun BlocklistSettingsScreen()
-
-@Composable
-expect fun NotificationScreen()

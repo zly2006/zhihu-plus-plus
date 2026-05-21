@@ -54,9 +54,6 @@ actual fun PinScreen(pin: Pin) = UnsupportedDesktopScreen()
 actual fun BlocklistSettingsScreen() = UnsupportedDesktopScreen()
 
 @Composable
-actual fun NotificationScreen() = UnsupportedDesktopScreen()
-
-@Composable
 private fun UnsupportedDesktopScreen() {
     Text("Desktop screen implementation is pending migration.")
 }

@@ -80,6 +80,7 @@
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
 - Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
 - 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel` 本体仍待迁移。
+- `DailyScreen`、`CollectionScreen`、`NotificationScreen` 页面主体已迁入 `shared/commonMain`；Android 只保留必要 data/runtime adapter。
 
 ## 剩余任务顺序
 
