@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Intent
-import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -68,39 +66,46 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.daily.DailyScreenUiState
 import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.DailyStory
 import com.github.zly2006.zhihu.shared.util.formatDailyDate
 import com.github.zly2006.zhihu.shared.viewmodel.DailyViewModel
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class)
 @Composable
-actual fun DailyScreen(
+fun DailyScreen(
     testState: DailyScreenUiState? = null,
     onTestDateSelected: ((String) -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalActivity.current as MainActivity
+    val httpClient = rememberZhihuHttpClient()
+    val uriHandler = LocalUriHandler.current
     val viewModel = viewModel<DailyViewModel>()
     val isTestMode = testState != null
     var isRefreshing by remember { mutableStateOf(false) }
@@ -139,7 +144,7 @@ actual fun DailyScreen(
                 if (isTestMode) {
                     onTestLoadMore?.invoke()
                 } else {
-                    viewModel.loadMore(context.httpClient)
+                    viewModel.loadMore(httpClient)
                 }
             }
         }
@@ -147,7 +152,7 @@ actual fun DailyScreen(
 
     LaunchedEffect(isTestMode) {
         if (!isTestMode && viewModel.sections.isEmpty()) {
-            viewModel.loadLatest(context.httpClient)
+            viewModel.loadLatest(httpClient)
         }
     }
 
@@ -155,7 +160,7 @@ actual fun DailyScreen(
         scope.launch {
             isRefreshing = true
             if (!isTestMode) {
-                viewModel.loadLatest(context.httpClient)
+                viewModel.loadLatest(httpClient)
                 listState.scrollToItem(0)
             }
             isRefreshing = false
@@ -164,7 +169,7 @@ actual fun DailyScreen(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = System.currentTimeMillis(),
+            initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds(),
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -172,13 +177,12 @@ actual fun DailyScreen(
                 TextButton(onClick = {
                     showDatePicker = false
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val sdf = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-                        val dateStr = sdf.format(Date(millis))
+                        val dateStr = formatDailyDatePickerSelection(millis)
                         scope.launch {
                             if (isTestMode) {
                                 onTestDateSelected?.invoke(dateStr)
                             } else {
-                                viewModel.loadDate(context.httpClient, dateStr)
+                                viewModel.loadDate(httpClient, dateStr)
                                 listState.scrollToItem(0)
                             }
                         }
@@ -269,7 +273,7 @@ actual fun DailyScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            uiState.error ?: "未知错误",
+                            uiState.error,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -314,15 +318,11 @@ actual fun DailyScreen(
                                     onClick = {
                                         if (!isTestMode) {
                                             scope.launch {
-                                                val jojo = AccountData.fetchGet(context, "https://daily.zhihu.com/api/7/story/${story.id}")!!
-                                                val body = Jsoup.parse(jojo["body"]!!.jsonPrimitive.content)
-                                                val url = body.selectFirst("a")?.attr("href")
-                                                val destination = url?.let(::resolveContent)
+                                                val destination = fetchDailyStoryDestination(httpClient, story.id)
                                                 if (destination != null) {
                                                     navigator.onNavigate(destination)
                                                 } else {
-                                                    val intent = Intent(Intent.ACTION_VIEW, story.url.toUri())
-                                                    context.startActivity(intent)
+                                                    uriHandler.openUri(story.url)
                                                 }
                                             }
                                         }
@@ -479,6 +479,28 @@ private fun resolveViewingDate(
         count += 1 + section.stories.size
     }
     return ""
+}
+
+private fun formatDailyDatePickerSelection(millis: Long): String {
+    val date = kotlin.time.Instant
+        .fromEpochMilliseconds(millis)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+    return date.year.toString().padStart(4, '0') +
+        (date.month.ordinal + 1).toString().padStart(2, '0') +
+        date.day.toString().padStart(2, '0')
+}
+
+private suspend fun fetchDailyStoryDestination(
+    httpClient: HttpClient,
+    storyId: Long,
+): NavDestination? = withContext(Dispatchers.Default) {
+    val response: JsonObject = httpClient
+        .get("https://daily.zhihu.com/api/7/story/$storyId")
+        .body()
+    val body = response["body"]?.jsonPrimitive?.content ?: return@withContext null
+    val url = Ksoup.parse(body).selectFirst("a")?.attr("href")
+    url?.let(::resolveContent)
 }
 
 private fun dailySectionHeaderTag(date: String) = "daily_screen_section_$date"

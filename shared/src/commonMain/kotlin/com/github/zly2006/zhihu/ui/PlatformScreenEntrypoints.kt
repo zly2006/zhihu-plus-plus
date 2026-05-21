@@ -26,9 +26,6 @@ expect fun FollowScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues
 expect fun HotListScreen(innerPadding: PaddingValues)
 
 @Composable
-expect fun DailyScreen()
-
-@Composable
 expect fun LegacyLocalHistoryScreen(innerPadding: PaddingValues)
 
 @Composable
