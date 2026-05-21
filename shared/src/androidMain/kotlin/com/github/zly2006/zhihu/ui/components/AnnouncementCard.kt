@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,7 +40,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardElevation
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -104,7 +104,6 @@ fun AnnouncementCard(
     )
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnnouncementCard(
     modifier: Modifier = Modifier,
@@ -121,10 +120,10 @@ fun AnnouncementCard(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn() + expandVertically(
-            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            animationSpec = tween(durationMillis = 300),
         ),
         exit = shrinkVertically(
-            animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+            animationSpec = tween(durationMillis = 300),
         ) + fadeOut(),
     ) {
         Card(
