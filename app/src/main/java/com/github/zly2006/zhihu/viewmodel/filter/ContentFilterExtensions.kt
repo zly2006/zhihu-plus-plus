@@ -257,15 +257,16 @@ object ContentFilterExtensions {
             // 3. 过滤广告和付费内容
             val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
             if (preferences.getBoolean("reverseBlock", false)) {
-                val ads = filterableContents.filter { content -> checkForAd(content) }
+                val ads = filterableContents.filter { content -> isFeedAdOrPaidContent(content) }
                 val ids = ads.map { it.contentId }
                 return@withContext items.filter { item ->
                     val contentId = item.resolveContentIdentity().id
                     contentId in ids
                 } + items.filter { it.feed is AdvertisementFeed }
             }
+            val adBlockSettings = preferences.toFeedAdBlockSettings()
             val nonAdContents = filterableContents.filter { content ->
-                val blockReason = getAdBlockReason(content, preferences)
+                val blockReason = getFeedAdBlockReason(content, adBlockSettings)
                 if (blockReason != null) adBlockedContents.add(content to blockReason)
                 blockReason == null
             }
@@ -314,54 +315,6 @@ object ContentFilterExtensions {
             Log.e("ContentFilterExtensions", "Failed to apply content filter to display items", e)
             items
         }
-    }
-
-    private fun checkForAd(content: FilterableContent): Boolean = when (val raw = content.raw) {
-        is DataHolder.Answer -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
-        is DataHolder.Article -> raw.paidInfo != null || getLinkBasedAdReason(raw.content, true, true, true) != null
-        is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, true, true, true) != null
-        else -> false
-    }
-
-    /**
-     * 获取广告或付费内容的具体屏蔽原因
-     */
-    private fun getAdBlockReason(content: FilterableContent, preferences: SharedPreferences): String? {
-        val blockZhihuAdPlatform = preferences.getBoolean("blockZhihuAdPlatform", true)
-        val blockZhihuSchool = preferences.getBoolean("blockZhihuSchool", true)
-        val blockWeChatOfficialAccount = preferences.getBoolean("blockWeChatOfficialAccount", true)
-        val blockPaidContent = preferences.getBoolean("blockPaidContent", true)
-
-        return when (val raw = content.raw) {
-            is DataHolder.Answer -> {
-                if (blockPaidContent && raw.paidInfo != null) {
-                    "知乎盐选付费内容"
-                } else {
-                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
-                }
-            }
-            is DataHolder.Article -> {
-                if (blockPaidContent && raw.paidInfo != null) {
-                    "知乎盐选付费内容"
-                } else {
-                    getLinkBasedAdReason(raw.content, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
-                }
-            }
-            is DataHolder.Pin -> getLinkBasedAdReason(raw.contentHtml, blockZhihuAdPlatform, blockZhihuSchool, blockWeChatOfficialAccount)
-            else -> null
-        }
-    }
-
-    private fun getLinkBasedAdReason(
-        content: String,
-        blockZhihuAdPlatform: Boolean,
-        blockZhihuSchool: Boolean,
-        blockWeChatOfficialAccount: Boolean,
-    ): String? {
-        if (blockZhihuAdPlatform && "xg.zhihu.com" in content) return "知乎广告平台内容"
-        if (blockZhihuSchool && ("d.zhihu.com" in content || "data-edu-card-id" in content)) return "知乎学堂内容"
-        if (blockWeChatOfficialAccount && "mp.weixin.qq.com" in content) return "微信公众号文章"
-        return null
     }
 
     /**
@@ -491,3 +444,10 @@ object ContentFilterExtensions {
     }
 
 }
+
+private fun SharedPreferences.toFeedAdBlockSettings(): FeedAdBlockSettings = FeedAdBlockSettings(
+    blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
+    blockZhihuSchool = getBoolean("blockZhihuSchool", true),
+    blockWeChatOfficialAccount = getBoolean("blockWeChatOfficialAccount", true),
+    blockPaidContent = getBoolean("blockPaidContent", true),
+)
