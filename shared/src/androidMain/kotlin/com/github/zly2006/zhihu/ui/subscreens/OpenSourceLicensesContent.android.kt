@@ -2,13 +2,11 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.R
-import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
+import androidx.compose.ui.platform.LocalContext
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
+@Suppress("DEPRECATION")
 @Composable
 actual fun OpenSourceLicensesContent(
     modifier: Modifier,
@@ -16,9 +14,7 @@ actual fun OpenSourceLicensesContent(
     manualLibraries: List<ManualLicenseEntry>,
     onOpenUrl: (String) -> Unit,
 ) {
-    val libraries by produceLibraries(R.raw.aboutlibraries)
     LibrariesContainer(
-        libraries = libraries,
         modifier = modifier,
         contentPadding = contentPadding,
         showDescription = false,
@@ -36,4 +32,4 @@ actual fun OpenSourceLicensesContent(
 }
 
 @Composable
-actual fun rememberShowFullVariantLicenses(): Boolean = !BuildConfig.IS_LITE
+actual fun rememberShowFullVariantLicenses(): Boolean = !LocalContext.current.packageName.endsWith(".lite")
