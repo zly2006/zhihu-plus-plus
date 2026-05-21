@@ -38,51 +38,37 @@ import org.jsoup.Jsoup
  */
 object ContentFilterExtensions {
     /** 检查是否启用了 feed 已读/低质过滤总开关。 */
-    fun isContentFilterEnabled(context: Context): Boolean {
-        return context.feedFilterSettings().enableContentFilter
-    }
+    fun isContentFilterEnabled(context: Context): Boolean = context.feedFilterSettings().enableContentFilter
 
     /**
      * 检查是否启用了关键词屏蔽功能
      */
-    fun isKeywordBlockingEnabled(context: Context): Boolean {
-        return context.feedFilterSettings().enableKeywordBlocking
-    }
+    fun isKeywordBlockingEnabled(context: Context): Boolean = context.feedFilterSettings().enableKeywordBlocking
 
     /**
      * 检查是否启用了NLP语义屏蔽功能
      */
-    fun isNLPBlockingEnabled(context: Context): Boolean {
-        return context.feedFilterSettings().enableNlpBlocking
-    }
+    fun isNLPBlockingEnabled(context: Context): Boolean = context.feedFilterSettings().enableNlpBlocking
 
     /**
      * 获取NLP相似度阈值
      */
-    fun getNLPSimilarityThreshold(context: Context): Double {
-        return context.feedFilterSettings().nlpSimilarityThreshold
-    }
+    fun getNLPSimilarityThreshold(context: Context): Double = context.feedFilterSettings().nlpSimilarityThreshold
 
     /**
      * 检查是否启用了用户屏蔽功能
      */
-    fun isUserBlockingEnabled(context: Context): Boolean {
-        return context.feedFilterSettings().enableUserBlocking
-    }
+    fun isUserBlockingEnabled(context: Context): Boolean = context.feedFilterSettings().enableUserBlocking
 
     /**
      * 检查是否启用了主题屏蔽功能
      */
-    fun isTopicBlockingEnabled(context: Context): Boolean {
-        return context.feedFilterSettings().enableTopicBlocking
-    }
+    fun isTopicBlockingEnabled(context: Context): Boolean = context.feedFilterSettings().enableTopicBlocking
 
     /**
      * 获取主题屏蔽阈值
      */
-    fun getTopicBlockingThreshold(context: Context): Int {
-        return context.feedFilterSettings().topicBlockingThreshold
-    }
+    fun getTopicBlockingThreshold(context: Context): Int = context.feedFilterSettings().topicBlockingThreshold
 
     /**
      * 在 feed 中记录某个内容身份被展示了一次。
@@ -161,7 +147,6 @@ object ContentFilterExtensions {
             items
         }
     }
-
 }
 
 private fun createContentExposureRecorder(context: Context): ContentExposureRecorder {

@@ -47,6 +47,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -55,6 +56,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -76,6 +78,9 @@ abstract class PaginationViewModel<T : Any>(
     open val isEnd: Boolean get() = lastPaging?.isEnd == true
     protected abstract val initialUrl: String
     private var currentJob: Job? = null
+
+    protected open fun paginationEnvironment(context: Context): PaginationEnvironment =
+        AndroidPaginationEnvironment(context)
 
     /**
      * Generally used fields to include in the API request.
@@ -121,18 +126,12 @@ abstract class PaginationViewModel<T : Any>(
     }
 
     protected open suspend fun fetchFeeds(context: Context) {
+        val environment = paginationEnvironment(context)
         try {
             val url = lastPaging?.next ?: initialUrl
 
             @Suppress("HttpUrlsUsage")
-            val json = AccountData.fetchGet(context, url.replace("http://", "https://")) {
-                url {
-                    if (include.isNotEmpty()) {
-                        parameters["include"] = include
-                    }
-                }
-                signFetchRequest()
-            }!!
+            val json = environment.fetchJson(url.replace("http://", "https://"), include)!!
 
             val jsonArray = json["data"]!!.jsonArray
             processResponse(
@@ -153,7 +152,7 @@ abstract class PaginationViewModel<T : Any>(
                     } catch (e: Exception) {
                         if (this !is OnlineHistoryViewModel) {
                             // Note: 小特判一下，懒得写了
-                            Log.e(this::class.simpleName, "Failed to decode item: $it", e)
+                            environment.logDecodeFailure(this::class.simpleName, it, e)
                         }
                         null
                     }
@@ -165,58 +164,7 @@ abstract class PaginationViewModel<T : Any>(
             }
         } catch (e: Exception) {
             if (e is java.util.concurrent.CancellationException) throw e
-            if (e is HttpStatusException && BuildConfig.DEBUG) {
-                Log.e(this::class.simpleName, "Response: ${e.bodyText}", e)
-                try {
-                    val jojo = json.parseToJsonElement(e.bodyText)
-                    if (jojo.jsonObject["error"]!!
-                            .jsonObject["code"]!!
-                            .jsonPrimitive.int == 100 &&
-                        jojo.jsonObject["error"]!!
-                            .jsonObject["message"]!!
-                            .jsonPrimitive.content == "ERR_TICKET_NOT_EXIST"
-                    ) {
-                        context.mainExecutor.execute {
-                            if (context.canSafelyShowDialog()) {
-                                AlertDialog
-                                    .Builder(context)
-                                    .setTitle("登录已过期")
-                                    .setMessage("请重新登录以继续使用完整功能。")
-                                    .setPositiveButton("重新登录") { _, _ ->
-                                        AccountData.delete(context)
-                                        context.startActivity(Intent(context, LoginActivity::class.java))
-                                    }.setNegativeButton("取消", null)
-                                    .show()
-                            }
-                        }
-                        return
-                    }
-                } catch (_: Exception) {
-                }
-                context.mainExecutor.execute {
-                    if (context.canSafelyShowDialog()) {
-                        AlertDialog
-                            .Builder(context)
-                            .setTitle("错误 ${e.status}")
-                            .setMessage(e.bodyText)
-                            .setNeutralButton("复制curl") { _, _ ->
-                                val curl = e.dumpedCurlRequest
-                                context.clipboardManager
-                                    .setPrimaryClip(
-                                        ClipData.newPlainText(
-                                            "curl",
-                                            curl,
-                                        ),
-                                    )
-                                Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
-                            }.show()
-                    }
-                }
-            }
-            Log.e(this::class.simpleName, "Failed to fetch feeds", e)
-            context.mainExecutor.execute {
-                Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            environment.handleFetchFailure(this::class.simpleName, e)
         } finally {
             isLoading = false
         }
@@ -242,10 +190,114 @@ abstract class PaginationViewModel<T : Any>(
         }
     }
 
-    private fun Context.canSafelyShowDialog(): Boolean {
-        val activity = this as? Activity ?: return false
-        if (activity.isFinishing || activity.isDestroyed) return false
-        val lifecycleOwner = activity as? LifecycleOwner ?: return true
-        return lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+    private class AndroidPaginationEnvironment(
+        private val context: Context,
+    ) : PaginationEnvironment {
+        override suspend fun fetchJson(
+            url: String,
+            include: String,
+        ): JsonObject? =
+            fetchWithClient(context, url) {
+                url {
+                    if (include.isNotEmpty()) {
+                        parameters["include"] = include
+                    }
+                }
+                signFetchRequest()
+            }
+
+        override fun logDecodeFailure(
+            tag: String?,
+            item: JsonElement,
+            error: Exception,
+        ) {
+            Log.e(tag, "Failed to decode item: $item", error)
+        }
+
+        override suspend fun handleFetchFailure(
+            tag: String?,
+            error: Exception,
+        ) {
+            if (error is HttpStatusException && BuildConfig.DEBUG) {
+                Log.e(tag, "Response: ${error.bodyText}", error)
+                if (tryShowLoginExpiredDialog(error)) {
+                    return
+                }
+                showDebugErrorDialog(error)
+            }
+            Log.e(tag, "Failed to fetch feeds", error)
+            context.mainExecutor.execute {
+                Toast.makeText(context, "加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        private fun tryShowLoginExpiredDialog(error: HttpStatusException): Boolean {
+            try {
+                val jojo = json.parseToJsonElement(error.bodyText)
+                if (jojo.jsonObject["error"]!!
+                        .jsonObject["code"]!!
+                        .jsonPrimitive.int == 100 &&
+                    jojo.jsonObject["error"]!!
+                        .jsonObject["message"]!!
+                        .jsonPrimitive.content == "ERR_TICKET_NOT_EXIST"
+                ) {
+                    context.mainExecutor.execute {
+                        if (context.canSafelyShowDialog()) {
+                            AlertDialog
+                                .Builder(context)
+                                .setTitle("登录已过期")
+                                .setMessage("请重新登录以继续使用完整功能。")
+                                .setPositiveButton("重新登录") { _, _ ->
+                                    AccountData.delete(context)
+                                    context.startActivity(Intent(context, LoginActivity::class.java))
+                                }.setNegativeButton("取消", null)
+                                .show()
+                        }
+                    }
+                    return true
+                }
+            } catch (_: Exception) {
+            }
+            return false
+        }
+
+        private fun showDebugErrorDialog(error: HttpStatusException) {
+            context.mainExecutor.execute {
+                if (context.canSafelyShowDialog()) {
+                    AlertDialog
+                        .Builder(context)
+                        .setTitle("错误 ${error.status}")
+                        .setMessage(error.bodyText)
+                        .setNeutralButton("复制curl") { _, _ ->
+                            val curl = error.dumpedCurlRequest
+                            context.clipboardManager
+                                .setPrimaryClip(
+                                    ClipData.newPlainText(
+                                        "curl",
+                                        curl,
+                                    ),
+                                )
+                            Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                        }.show()
+                }
+            }
+        }
     }
+
+    companion object {
+        private suspend fun fetchWithClient(
+            context: Context,
+            url: String,
+            block: suspend HttpRequestBuilder.() -> Unit,
+        ): JsonObject? = AccountData.fetchGet(context, url) {
+            block()
+        }
+    }
+}
+
+private fun Context.canSafelyShowDialog(): Boolean {
+    val activity = this as? Activity ?: return false
+    if (activity.isFinishing || activity.isDestroyed) return false
+    val lifecycleOwner = activity as? LifecycleOwner ?: return true
+    return lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 }
