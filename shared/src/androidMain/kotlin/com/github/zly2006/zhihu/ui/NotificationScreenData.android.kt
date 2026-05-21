@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
+import android.content.pm.ApplicationInfo
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material3.Icon
@@ -8,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -29,7 +29,7 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
         unreadCount = viewModel.unreadCount,
         isLoading = viewModel.isLoading,
         isEnd = viewModel.isEnd,
-        showDebugCopy = BuildConfig.DEBUG,
+        showDebugCopy = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0,
         refresh = { viewModel.refresh(context) },
         loadMore = { viewModel.loadMore(context) },
         markAsRead = { id -> viewModel.markAsRead(context, id) },
