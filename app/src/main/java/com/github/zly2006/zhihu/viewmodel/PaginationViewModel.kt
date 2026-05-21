@@ -36,7 +36,7 @@ import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -148,7 +148,7 @@ abstract class PaginationViewModel<T : Any>(
                     }
                     try {
                         @Suppress("UNCHECKED_CAST")
-                        AccountData.decodeJson(serializer(dataType) as KSerializer<T>, it)
+                        ZhihuJson.decodeJson(serializer(dataType) as KSerializer<T>, it)
                     } catch (e: Exception) {
                         if (this !is OnlineHistoryViewModel) {
                             // Note: 小特判一下，懒得写了
@@ -160,7 +160,7 @@ abstract class PaginationViewModel<T : Any>(
                 jsonArray,
             )
             if ("paging" in json) {
-                lastPaging = AccountData.decodeJson(json["paging"]!!)
+                lastPaging = ZhihuJson.decodeJson(json["paging"]!!)
             }
         } catch (e: Exception) {
             if (e is java.util.concurrent.CancellationException) throw e
@@ -233,7 +233,7 @@ abstract class PaginationViewModel<T : Any>(
 
         private fun tryShowLoginExpiredDialog(error: HttpStatusException): Boolean {
             try {
-                val jojo = json.parseToJsonElement(error.bodyText)
+                val jojo = ZhihuJson.json.parseToJsonElement(error.bodyText)
                 if (jojo.jsonObject["error"]!!
                         .jsonObject["code"]!!
                         .jsonPrimitive.int == 100 &&
