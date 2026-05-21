@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -77,23 +78,40 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.CollectionContent
+import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
+import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.ui.subscreens.AppearanceSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.BlockedFeedHistoryScreen
+import com.github.zly2006.zhihu.ui.subscreens.ColorSchemeScreen
+import com.github.zly2006.zhihu.ui.subscreens.ContentFilterSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperSettingsScreen
+import com.github.zly2006.zhihu.ui.subscreens.OpenSourceLicensesScreen
+import com.github.zly2006.zhihu.ui.subscreens.SystemAndUpdateSettingsScreen
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
@@ -118,19 +136,10 @@ private sealed class MainTabPage(
     data object AccountPage : MainTabPage(Account, "account")
 }
 
-data class ZhihuMainTabContentScope(
-    val destination: TopLevelDestination,
-    val followTabIndex: Int?,
-    val scrollToTopTrigger: Int,
-    val innerPadding: PaddingValues,
-    val isActive: Boolean,
-    val onFollowTabSelected: (Int) -> Unit,
-)
-
-data class ZhihuMainRouteContentScope(
-    val innerPadding: PaddingValues,
-    val scrollToTopTrigger: Int,
-    val reloadBottomBarPreferences: () -> Unit,
+data class ZhihuMainPlatformAdapter(
+    val article: @Composable (Article, NavBackStackEntry) -> Unit,
+    val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
+    val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -142,8 +151,7 @@ fun ZhihuMain(
     navigationState: ZhihuMainNavigationState,
     preferenceState: ZhihuMainPreferenceState,
     isDarkTheme: Boolean,
-    mainTabContent: @Composable (ZhihuMainTabContentScope) -> Unit,
-    routeContent: NavGraphBuilder.(ZhihuMainRouteContentScope) -> Unit,
+    platformAdapter: ZhihuMainPlatformAdapter,
 ) {
     val bottomPadding = ScaffoldDefaults.contentWindowInsets.asPaddingValues().calculateBottomPadding()
     val duo3HomeAccount = preferenceState.duo3HomeAccount
@@ -394,16 +402,98 @@ fun ZhihuMain(
                                 }
                             }
                         },
-                        content = mainTabContent,
                     )
                 }
-                routeContent(
-                    ZhihuMainRouteContentScope(
-                        innerPadding = innerPadding,
+                composable<Question> { navEntry ->
+                    val question: Question = navEntry.toRoute()
+                    QuestionScreen(question)
+                }
+                composable<Article>(
+                    enterTransition = platformAdapter.articleEnterTransition,
+                    exitTransition = platformAdapter.articleExitTransition,
+                ) { navEntry ->
+                    val article: Article = navEntry.toRoute()
+                    platformAdapter.article(article, navEntry)
+                }
+                composable<HotList> {
+                    HotListScreen(innerPadding)
+                }
+                composable<Follow> {
+                    FollowScreen(
                         scrollToTopTrigger = scrollToTopTrigger,
-                        reloadBottomBarPreferences = reloadBottomBarPreferences,
-                    ),
-                )
+                        innerPadding = innerPadding,
+                    )
+                }
+                composable<Daily> {
+                    DailyScreen()
+                }
+                composable<History> {
+                    LegacyLocalHistoryScreen(innerPadding)
+                }
+                composable<OnlineHistory> {
+                    OnlineHistoryScreen()
+                }
+                composable<Account> {
+                    AccountSettingScreen(innerPadding)
+                }
+                composable<Search> { navEntry ->
+                    val search: Search = navEntry.toRoute()
+                    SearchScreen(search)
+                }
+                composable<Collections> { navEntry ->
+                    val data: Collections = navEntry.toRoute()
+                    CollectionScreen(data.userToken)
+                }
+                composable<CollectionContent> { navEntry ->
+                    val content: CollectionContent = navEntry.toRoute()
+                    CollectionContentScreen(content.collectionId)
+                }
+                composable<Person> { navEntry ->
+                    val person: Person = navEntry.toRoute()
+                    PeopleScreen(person)
+                }
+                composable<Pin> { navEntry ->
+                    val pin: Pin = navEntry.toRoute()
+                    PinScreen(pin)
+                }
+                composable<Account.RecommendSettings.Blocklist> {
+                    BlocklistSettingsScreen()
+                }
+                composable<Account.RecommendSettings.BlockedFeedHistory> {
+                    BlockedFeedHistoryScreen()
+                }
+                composable<Notification> {
+                    NotificationScreen()
+                }
+                composable<Notification.NotificationSettings> {
+                    NotificationSettingsScreen()
+                }
+                composable<SentenceSimilarityTest> {
+                    SentenceSimilarityTestScreen()
+                }
+                composable<Account.AppearanceSettings> { navEntry ->
+                    val args = navEntry.toRoute<Account.AppearanceSettings>()
+                    AppearanceSettingsScreen(
+                        setting = args.setting,
+                        onExit = reloadBottomBarPreferences,
+                    )
+                }
+                composable<Account.RecommendSettings> { navEntry ->
+                    val args = navEntry.toRoute<Account.RecommendSettings>()
+                    ContentFilterSettingsScreen(args.setting)
+                }
+                composable<Account.SystemAndUpdateSettings> {
+                    SystemAndUpdateSettingsScreen()
+                }
+                composable<Account.OpenSourceLicenses> {
+                    OpenSourceLicensesScreen()
+                }
+                composable<Account.DeveloperSettings> {
+                    DeveloperSettingsScreen()
+                }
+                composable<Account.DeveloperSettings.ColorScheme> {
+                    ColorSchemeScreen()
+                }
             }
         }
     }
@@ -417,27 +507,36 @@ private fun MainTabsPager(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
     onFollowTabSelected: (Int) -> Unit,
-    content: @Composable (ZhihuMainTabContentScope) -> Unit,
 ) {
     HorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
     ) { pageIndex ->
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
-        content(
-            ZhihuMainTabContentScope(
-                destination = page.bottomDestination,
-                followTabIndex = when (page) {
-                    MainTabPage.FollowRecommendPage -> 0
-                    MainTabPage.FollowDynamicPage -> 1
-                    else -> null
-                },
+        when (page) {
+            MainTabPage.HomePage -> HomeScreen(
+                scrollToTopTrigger = scrollToTopTrigger,
+                innerPadding = innerPadding,
+            )
+            MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
+                selectedTabIndex = 0,
+                onTabSelected = onFollowTabSelected,
                 scrollToTopTrigger = scrollToTopTrigger,
                 innerPadding = innerPadding,
                 isActive = pagerState.currentPage == pageIndex,
-                onFollowTabSelected = onFollowTabSelected,
-            ),
-        )
+            )
+            MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
+                selectedTabIndex = 1,
+                onTabSelected = onFollowTabSelected,
+                scrollToTopTrigger = scrollToTopTrigger,
+                innerPadding = innerPadding,
+                isActive = pagerState.currentPage == pageIndex,
+            )
+            MainTabPage.HotListPage -> HotListScreen(innerPadding)
+            MainTabPage.DailyPage -> DailyScreen()
+            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
+        }
     }
 }
 

@@ -61,6 +61,7 @@
 - `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
 - `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
+- 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。页面级 `expect` 只能作为极短期编译桥，必须在后续切片中优先删除；长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择等具体副作用。
 - `.codex/hooks.json` 在当前 worktree 中是有意删除，不要恢复。
 
 ## 当前完成状态
@@ -101,10 +102,11 @@ git diff --check
 
 - `ZhihuMain.kt` 本体位于 `shared/commonMain`。
 - shared `ZhihuMain` 继续保持 `master` 的大函数形状：同一个函数内负责底栏、pager、`NavHost` 和全部 `composable<...>` route 注册。
-- Android 只提供具体页面 content、Activity、ViewModelProvider、WebView 相关页面、Toast/Dialog 等平台实现；不能把 route graph 注册拆成 `androidZhihuMainRouteContent` 这类 app 侧函数。
+- UI 页面主体必须进入 `shared/commonMain`。不能把整页 screen 当成平台实现注入，也不能长期保留整页 `expect/actual`；Android/desktop 只提供最小平台能力 adapter，如 Activity、ViewModelProvider、WebView、Toast/Dialog、偏好读写和文件/Intent 副作用。
 - shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 注册语义、导航动画语义。
 - 不引入独立 desktop route model。
 - 不用大而全 screen table 重写 Android UI。
+- 当前临时整页 entrypoint `expect` 是迁移债务，消除优先级高于继续新增页面级 `expect`。每迁移一个页面，应先尝试 `git mv` 到 `commonMain`，再把实际平台触点拆成小 adapter/provider。
 
 迁移前审查：
 

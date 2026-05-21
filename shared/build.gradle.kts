@@ -122,7 +122,22 @@ kotlin {
         }
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.13.0")
+            implementation("androidx.browser:browser:1.8.0")
+            implementation("androidx.core:core-ktx:1.18.0")
+            implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0")
+            implementation("androidx.preference:preference:1.2.1")
+            implementation("androidx.webkit:webkit:1.16.0")
+            implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
+            implementation("com.journeyapps:zxing-android-embedded:4.3.0")
             implementation("com.google.zxing:core:3.5.3")
+            implementation("io.coil-kt.coil3:coil-compose:3.4.0")
+            implementation("io.coil-kt.coil3:coil-gif:3.4.0")
+            implementation("io.coil-kt.coil3:coil-network-ktor3-android:3.4.0")
+            implementation("io.github.zly2006:latex-renderer-android:1.4.4-zly")
+            implementation("io.github.zly2006:markdown-parser-android:0.0.1-alpha.9")
+            implementation("io.github.zly2006:markdown-renderer-android:0.0.1-alpha.9")
+            implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
+            implementation("org.jsoup:jsoup:1.22.1")
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)

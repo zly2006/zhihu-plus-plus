@@ -1,0 +1,1236 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.ui.subscreens
+
+import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
+import com.github.zly2006.zhihu.navigation.Account
+import com.github.zly2006.zhihu.navigation.Daily
+import com.github.zly2006.zhihu.navigation.Follow
+import com.github.zly2006.zhihu.navigation.Home
+import com.github.zly2006.zhihu.navigation.HotList
+import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.shared.theme.ThemeMode
+import com.github.zly2006.zhihu.theme.AndroidThemeSettings
+import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.START_DESTINATION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
+import com.github.zly2006.zhihu.ui.components.SettingItem
+import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.github.zly2006.zhihu.ui.components.SettingItemOverall
+import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.defaultBottomBarSelectionKeys
+import com.github.zly2006.zhihu.ui.normalizeBottomBarSelection
+import com.github.zly2006.zhihu.ui.resolveValidStartDestinationKey
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
+
+const val DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY = "duo3_card_large_title"
+const val PREF_FONT_SIZE = "contentFontSize"
+const val PREF_LINE_HEIGHT = "contentLineHeight"
+internal const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
+internal const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
+internal const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
+internal const val APPEARANCE_SETTINGS_USE_WEBVIEW_TAG = "appearanceSettings.useWebView"
+internal const val APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG = "appearanceSettings.webViewFont"
+internal const val APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG = "appearanceSettings.webViewOptions"
+internal const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.bottomBarSection"
+
+internal fun appearanceSettingsStartDestinationOptionTag(key: String): String =
+    "appearanceSettings.startDestinationOption.$key"
+
+internal fun appearanceSettingsBottomBarItemTag(key: String): String =
+    "appearanceSettings.bottomBarItem.$key"
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+actual fun AppearanceSettingsScreen(
+    setting: String = "",
+    onExit: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val preferences = remember {
+        context.getSharedPreferences(
+            PREFERENCE_NAME,
+            Context.MODE_PRIVATE,
+        )
+    }
+
+    val scrollState = rememberScrollState()
+    val navigator = LocalNavigator.current
+
+    val bringIntoViewRequesters = remember { mutableStateMapOf<String, BringIntoViewRequester>() }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    var scrolledSetting by remember { mutableStateOf<String?>(null) }
+
+    fun requesterFor(settingKey: String): BringIntoViewRequester =
+        bringIntoViewRequesters.getOrPut(settingKey) { BringIntoViewRequester() }
+    val duo3HomeAccount = remember { mutableStateOf(preferences.getBoolean("duo3_home_account", false)) }
+    val selectedBottomBarItemKeys = remember {
+        mutableStateOf(
+            normalizeBottomBarSelection(
+                preferences
+                    .getStringSet(
+                        BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                        defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+                    )?.toSet() ?: defaultBottomBarSelectionKeys(duo3HomeAccount.value),
+                duo3HomeAccount.value,
+                enforceMinimumSelection = true,
+            ),
+        )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onExit()
+        }
+    }
+
+    LaunchedEffect(setting, bringIntoViewRequesters[setting]) {
+        if (setting.isNotEmpty() && scrolledSetting != setting) {
+            bringIntoViewRequesters[setting]?.let { requester ->
+                scrolledSetting = setting
+                delay(200.milliseconds)
+                // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
+                scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
+                requester.bringIntoView()
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            LargeTopAppBar(
+                title = { Text("外观与阅读体验") },
+                navigationIcon = {
+                    IconButton(
+                        onClick = navigator.onNavigateBack,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors().copy(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .testTag(APPEARANCE_SETTINGS_SCROLL_TAG)
+                .padding(innerPadding)
+                .padding(vertical = 16.dp),
+        ) {
+            val useDynamicColor = ThemeManager.getUseDynamicColor()
+            val currentThemeMode = ThemeManager.getThemeMode()
+
+            // ── 主题 ────────────────────────────────────────────────────────────
+
+            SettingItemGroup(
+                title = "主题",
+            ) {
+                SettingItem(
+                    title = { Text("主题模式") },
+                    description = { Text("设置应用的显示主题。") },
+                    settingKey = "nightMode",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("nightMode"),
+                    bottomAction = {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        ) {
+                            val themeModes = listOf(
+                                ThemeMode.SYSTEM to "自动",
+                                ThemeMode.LIGHT to "亮色",
+                                ThemeMode.DARK to "暗色",
+                            )
+                            themeModes.forEach { (mode, label) ->
+                                val isSelected = currentThemeMode == mode
+                                OutlinedButton(
+                                    onClick = {
+                                        AndroidThemeSettings.setThemeMode(context, mode)
+                                        Toast.makeText(context, "已切换到$label", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            Color.Transparent
+                                        },
+                                        contentColor = if (isSelected) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(label)
+                                }
+                            }
+                        }
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("使用 Material You 动态取色") },
+                    description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
+                    checked = useDynamicColor,
+                    onCheckedChange = {
+                        AndroidThemeSettings.setUseDynamicColor(context, it)
+                        Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
+                    },
+                    settingKey = "dynamicColor",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("dynamicColor"),
+                )
+
+                var showColorPicker by remember { mutableStateOf(false) }
+                val customColor = ThemeManager.getCustomColor()
+
+                AnimatedVisibility(visible = !useDynamicColor) {
+                    SettingItem(
+                        title = { Text("自定义主题色") },
+                        description = { Text("点击选择您喜欢的主题颜色") },
+                        onClick = { showColorPicker = true },
+                        endAction = {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(customColor)
+                                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                            )
+                        },
+                    )
+                }
+                if (showColorPicker) {
+                    ColorPickerDialog(
+                        title = "选择主题色",
+                        initialColor = customColor,
+                        onDismiss = { showColorPicker = false },
+                        onColorSelected = { color ->
+                            AndroidThemeSettings.setCustomColor(context, color)
+                            Toast.makeText(context, "主题色已保存", Toast.LENGTH_SHORT).show()
+                            showColorPicker = false
+                        },
+                    )
+                }
+
+                var showLuotianYiColorPicker by remember { mutableStateOf(false) }
+                val luotianYiColor = remember {
+                    Color(preferences.getInt("luotianyi_color", 0xff_66CCFF.toInt()))
+                }
+
+                SettingItem(
+                    title = { Text("唤起浏览器主题色") },
+                    description = { Text("应用内浏览器的工具栏颜色") },
+                    onClick = { showLuotianYiColorPicker = true },
+                    endAction = {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(luotianYiColor)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    },
+                )
+
+                if (showLuotianYiColorPicker) {
+                    ColorPickerDialog(
+                        title = "选择浏览器主题色",
+                        initialColor = luotianYiColor,
+                        presetColors = listOf(
+                            Color(0xFF66CCFF),
+                            Color(0xFF2196F3),
+                            Color(0xFF4CAF50),
+                            Color(0xFFF44336),
+                            Color(0xFFFF9800),
+                            Color(0xFF9C27B0),
+                        ),
+                        onDismiss = { showLuotianYiColorPicker = false },
+                        onColorSelected = { color ->
+                            val argbColor = android.graphics.Color.argb(
+                                (color.alpha * 255).toInt(),
+                                (color.red * 255).toInt(),
+                                (color.green * 255).toInt(),
+                                (color.blue * 255).toInt(),
+                            )
+                            preferences.edit { putInt("luotianyi_color", argbColor) }
+                            Toast.makeText(context, "浏览器主题色已保存", Toast.LENGTH_SHORT).show()
+                            showLuotianYiColorPicker = false
+                        },
+                    )
+                }
+
+                val currentIsDarkTheme = ThemeManager.isDarkTheme()
+                var showBackgroundColorPicker by remember { mutableStateOf(false) }
+                val backgroundColor = ThemeManager.getBackgroundColor()
+
+                SettingItem(
+                    title = { Text("自定义背景颜色") },
+                    description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
+                    onClick = { showBackgroundColorPicker = true },
+                    endAction = {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(backgroundColor)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                        )
+                    },
+                )
+
+                if (showBackgroundColorPicker) {
+                    ColorPickerDialog(
+                        title = "选择背景颜色",
+                        initialColor = backgroundColor,
+                        presetColors = listOfNotNull(
+                            Color(if (currentIsDarkTheme) 0xFF121212.toInt() else 0xFFFFFFFF.toInt()),
+                            MaterialTheme.colorScheme.surfaceContainer,
+                            if (ThemeManager.isDarkTheme()) Color.Black else null,
+                        ),
+                        onDismiss = { showBackgroundColorPicker = false },
+                        onColorSelected = { color ->
+                            AndroidThemeSettings.setBackgroundColor(context, color, currentIsDarkTheme)
+                            Toast.makeText(context, "背景颜色已保存", Toast.LENGTH_SHORT).show()
+                            showBackgroundColorPicker = false
+                        },
+                    )
+                }
+            }
+            // ── 阅读 ────────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = "阅读",
+            ) {
+                var fontSize by remember { mutableIntStateOf(preferences.getInt(PREF_FONT_SIZE, 100)) }
+                SettingItem(
+                    title = { Text("字号") },
+                    description = { Text("调整内容文字大小 ($fontSize%)") },
+                    settingKey = "fontScale",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("fontScale"),
+                    bottomAction = {
+                        Slider(
+                            value = fontSize.toFloat(),
+                            onValueChange = {
+                                fontSize = it.toInt()
+                                preferences.edit { putInt(PREF_FONT_SIZE, it.toInt()) }
+                            },
+                            valueRange = 50f..200f,
+                            steps = 14,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
+
+                var lineHeight by remember { mutableIntStateOf(preferences.getInt(PREF_LINE_HEIGHT, 160)) }
+                SettingItem(
+                    title = { Text("行高") },
+                    description = { Text("调整内容行间距 (${lineHeight / 100f})") },
+                    bottomAction = {
+                        Slider(
+                            value = lineHeight.toFloat(),
+                            onValueChange = {
+                                lineHeight = it.toInt()
+                                preferences.edit { putInt(PREF_LINE_HEIGHT, it.toInt()) }
+                            },
+                            valueRange = 100f..300f,
+                            steps = 19,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    },
+                )
+            }
+
+            // ── 信息流 ──────────────────────────────────────────────────────────
+            val showRefreshFab = remember { mutableStateOf(preferences.getBoolean("showRefreshFab", true)) }
+            SettingItemGroup(
+                title = "信息流",
+            ) {
+                val showFeedThumbnail = remember { mutableStateOf(preferences.getBoolean("showFeedThumbnail", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("显示 Feed 卡片缩略图") },
+                    description = { Text("在信息流卡片中显示文章缩略图。") },
+                    checked = showFeedThumbnail.value,
+                    onCheckedChange = {
+                        showFeedThumbnail.value = it
+                        preferences.edit { putBoolean("showFeedThumbnail", it) }
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("显示刷新 FAB 按钮") },
+                    description = { Text("在页面上显示可拖动的刷新按钮。") },
+                    checked = showRefreshFab.value,
+                    onCheckedChange = {
+                        showRefreshFab.value = it
+                        preferences.edit { putBoolean("showRefreshFab", it) }
+                    },
+                )
+
+                var feedCardStyleExpanded by remember { mutableStateOf(false) }
+                val feedCardStyle = remember {
+                    mutableStateOf(preferences.getString("feedCardStyle", "card") ?: "card")
+                }
+                val feedCardStyleOptions = listOf(
+                    "card" to "卡片样式",
+                    "divider" to "分割线样式",
+                )
+                SettingItem(
+                    title = { Text("信息流样式") },
+                    description = { Text("卡片样式使用圆角卡片展示，分割线样式使用细线分隔条目。") },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = feedCardStyleExpanded,
+                            onExpandedChange = { feedCardStyleExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = feedCardStyleOptions.find { it.first == feedCardStyle.value }?.second ?: "卡片样式",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = feedCardStyleExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = feedCardStyleExpanded,
+                                onDismissRequest = { feedCardStyleExpanded = false },
+                            ) {
+                                feedCardStyleOptions.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            feedCardStyle.value = mode
+                                            preferences.edit { putString("feedCardStyle", mode) }
+                                            feedCardStyleExpanded = false
+                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            // ── 回答页 ──────────────────────────────────────────────────────────
+            val buttonSkipAnswer = remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
+            SettingItemGroup(
+                title = "回答页",
+            ) {
+                val articleUseWebview = remember {
+                    mutableStateOf(preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
+                    title = { Text("使用 WebView 显示文章") },
+                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。") },
+                    checked = articleUseWebview.value,
+                    onCheckedChange = {
+                        articleUseWebview.value = it
+                        preferences.edit { putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it) }
+                    },
+                    settingKey = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
+                )
+
+                if (articleUseWebview.value) {
+                    var customFontName by remember {
+                        mutableStateOf(preferences.getString("webviewCustomFontName", null))
+                    }
+                    val fontFilePicker = rememberLauncherForActivityResult(
+                        ActivityResultContracts.OpenDocument(),
+                    ) { uri ->
+                        if (uri == null) return@rememberLauncherForActivityResult
+                        val name = uri.lastPathSegment?.substringAfterLast('/') ?: uri.toString()
+                        val destFile = java.io.File(context.filesDir, "custom_font")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            destFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        preferences.edit {
+                            putString("webviewCustomFontName", name)
+                        }
+                        customFontName = name
+                        Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
+                    }
+                    Column(
+                        modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_OPTIONS_TAG),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        SettingItem(
+                            modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                            title = {
+                                Text(
+                                    "WebView 自定义字体",
+                                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_WEBVIEW_FONT_TAG),
+                                )
+                            },
+                            description = { Text(customFontName ?: "未设置") },
+                            bottomAction = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            fontFilePicker.launch(arrayOf("font/ttf", "font/otf", "application/octet-stream"))
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Icon(Icons.Default.FolderOpen, contentDescription = null)
+                                        Text("选择", modifier = Modifier.padding(start = 4.dp))
+                                    }
+                                    if (customFontName != null) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                java.io.File(context.filesDir, "custom_font").delete()
+                                                preferences.edit { remove("webviewCustomFontName") }
+                                                customFontName = null
+                                                Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Icon(Icons.Default.Clear, contentDescription = null)
+                                            Text("清除", modifier = Modifier.padding(start = 4.dp))
+                                        }
+                                    }
+                                }
+                            },
+                        )
+
+                        val useHardwareAcceleration = remember { mutableStateOf(preferences.getBoolean("webviewHardwareAcceleration", true)) }
+                        SettingItemWithSwitch(
+                            title = { Text("WebView 硬件加速") },
+                            description = { Text("提高渲染性能，可能导致兼容性问题。") },
+                            checked = useHardwareAcceleration.value,
+                            onCheckedChange = {
+                                useHardwareAcceleration.value = it
+                                preferences.edit { putBoolean("webviewHardwareAcceleration", it) }
+                            },
+                        )
+                    }
+                }
+
+                val isTitleAutoHide = remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("自动隐藏回答标题") },
+                    description = { Text("滚动时自动隐藏回答标题栏。") },
+                    checked = isTitleAutoHide.value,
+                    onCheckedChange = {
+                        isTitleAutoHide.value = it
+                        preferences.edit { putBoolean("titleAutoHide", it) }
+                    },
+                )
+
+                val autoHideArticleBottomBar = remember {
+                    mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("自动隐藏回答底部按钮") },
+                    description = { Text("上划时隐藏回答底部操作按钮，下划时重新显示。") },
+                    checked = autoHideArticleBottomBar.value,
+                    onCheckedChange = {
+                        autoHideArticleBottomBar.value = it
+                        preferences.edit { putBoolean("autoHideArticleBottomBar", it) }
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("显示跳转下一个回答按钮") },
+                    description = { Text("在回答页面显示可拖动的快速跳转按钮。") },
+                    checked = buttonSkipAnswer.value,
+                    onCheckedChange = {
+                        buttonSkipAnswer.value = it
+                        preferences.edit { putBoolean("buttonSkipAnswer", it) }
+                    },
+                )
+
+                val autoHideSkipAnswerButton = remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
+                AnimatedVisibility(buttonSkipAnswer.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("滚动时自动隐藏跳转按钮") },
+                        description = { Text("上划时淡出「下一个回答」按钮，下划时淡入显示。") },
+                        checked = autoHideSkipAnswerButton.value,
+                        onCheckedChange = {
+                            autoHideSkipAnswerButton.value = it
+                            preferences.edit { putBoolean("autoHideSkipAnswerButton", it) }
+                        },
+                    )
+                }
+
+                val pinAnswerDate = remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("置顶回答日期") },
+                    description = { Text("将回答的发布日期和编辑日期移动到内容最前面显示。") },
+                    checked = pinAnswerDate.value,
+                    onCheckedChange = {
+                        pinAnswerDate.value = it
+                        preferences.edit { putBoolean("pinAnswerDate", it) }
+                    },
+                )
+
+                var answerSwitchExpanded by remember { mutableStateOf(false) }
+                val answerSwitchMode = remember {
+                    mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
+                }
+                val answerSwitchOptions = listOf(
+                    "off" to "关闭",
+                    "vertical" to "上下滑动",
+                    "horizontal" to "左右滑动",
+                )
+                SettingItem(
+                    title = { Text("回答切换手势") },
+                    description = { Text("在回答页面通过手势切换同一问题下的其他回答。") },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = answerSwitchExpanded,
+                            onExpandedChange = { answerSwitchExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = answerSwitchOptions.find { it.first == answerSwitchMode.value }?.second ?: "上下滑动切换",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerSwitchExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = answerSwitchExpanded,
+                                onDismissRequest = { answerSwitchExpanded = false },
+                            ) {
+                                answerSwitchOptions.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            answerSwitchMode.value = mode
+                                            preferences.edit { putString("answerSwitchMode", mode) }
+                                            answerSwitchExpanded = false
+                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                var answerDoubleTapExpanded by remember { mutableStateOf(false) }
+                val answerDoubleTapAction = remember {
+                    mutableStateOf(
+                        AnswerDoubleTapAction.fromPreference(
+                            preferences.getString(
+                                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                                AnswerDoubleTapAction.Ask.preferenceValue,
+                            ),
+                        ),
+                    )
+                }
+                SettingItem(
+                    title = { Text("双击回答动作") },
+                    description = { Text("双击回答正文时执行的动作。默认弹窗询问。") },
+                    settingKey = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY),
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = answerDoubleTapExpanded,
+                            onExpandedChange = { answerDoubleTapExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = answerDoubleTapAction.value.label,
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = answerDoubleTapExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp)
+                                    .testTag(APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = answerDoubleTapExpanded,
+                                onDismissRequest = { answerDoubleTapExpanded = false },
+                            ) {
+                                AnswerDoubleTapAction.entries.forEach { action ->
+                                    DropdownMenuItem(
+                                        text = { Text(action.label) },
+                                        onClick = {
+                                            answerDoubleTapAction.value = action
+                                            preferences.edit {
+                                                putString(
+                                                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
+                                                    action.preferenceValue,
+                                                )
+                                            }
+                                            answerDoubleTapExpanded = false
+                                            Toast.makeText(context, "已设置为：${action.label}", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            // ── 底部导航栏 ──────────────────────────────────────────────────────
+            val allBottomBarItems = listOf(
+                Home.name to "主页",
+                Follow.name to "关注",
+                HotList.name to "热榜",
+                Daily.name to "日报",
+                OnlineHistory.name to "历史",
+                Account.name to "账号设置",
+            )
+            var startDestinationExpanded by remember { mutableStateOf(false) }
+            var startDestinationKey by remember {
+                mutableStateOf(
+                    resolveValidStartDestinationKey(
+                        preferences.getString(START_DESTINATION_PREFERENCE_KEY, Home.name),
+                        allBottomBarItems.map { it.first }.filter { it in selectedBottomBarItemKeys.value },
+                    ),
+                )
+            }
+
+            fun persistBottomBarSelection(
+                currentSet: Set<String>,
+                duo3HomeAccountEnabled: Boolean = duo3HomeAccount.value,
+            ) {
+                val normalizedSet = normalizeBottomBarSelection(
+                    currentSet,
+                    duo3HomeAccountEnabled,
+                    enforceMinimumSelection = true,
+                )
+                val availableKeys = allBottomBarItems.map { it.first }.filter { it in normalizedSet }
+                val resolvedStartDestination = resolveValidStartDestinationKey(startDestinationKey, availableKeys)
+                selectedBottomBarItemKeys.value = normalizedSet
+                startDestinationKey = resolvedStartDestination
+                preferences.edit {
+                    putStringSet(BOTTOM_BAR_ITEMS_PREFERENCE_KEY, normalizedSet)
+                    putString(START_DESTINATION_PREFERENCE_KEY, resolvedStartDestination)
+                }
+            }
+
+            SettingItemGroup(
+                title = "底部导航栏",
+                settingKey = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
+                highlightedKey = setting,
+                bringIntoViewRequester = requesterFor(APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY),
+            ) {
+                val startDestinationItems = allBottomBarItems.filter { it.first in selectedBottomBarItemKeys.value }
+
+                SettingItem(
+                    title = { Text("应用启动默认页面") },
+                    description = { Text("仅可选择已在底部导航栏中显示的页面。") },
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = startDestinationExpanded,
+                            onExpandedChange = {
+                                if (startDestinationItems.isNotEmpty()) {
+                                    startDestinationExpanded = it
+                                }
+                            },
+                        ) {
+                            OutlinedTextField(
+                                value = startDestinationItems.find { it.first == startDestinationKey }?.second ?: "主页",
+                                onValueChange = {},
+                                readOnly = true,
+                                enabled = startDestinationItems.isNotEmpty(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = startDestinationExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp)
+                                    .testTag(APPEARANCE_SETTINGS_START_DESTINATION_TAG),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = startDestinationExpanded,
+                                onDismissRequest = { startDestinationExpanded = false },
+                            ) {
+                                startDestinationItems.forEach { (key, label) ->
+                                    DropdownMenuItem(
+                                        modifier = Modifier.testTag(appearanceSettingsStartDestinationOptionTag(key)),
+                                        text = { Text(label) },
+                                        onClick = {
+                                            startDestinationKey = key
+                                            preferences.edit { putString(START_DESTINATION_PREFERENCE_KEY, key) }
+                                            startDestinationExpanded = false
+                                            Toast.makeText(context, "已设置启动页：$label，重启后生效", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                SettingItem(
+                    title = { Text("选择要在底部栏显示的页面") },
+                    description = {
+                        Text("建议选择 3-5 项。")
+                    },
+                    bottomAction = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            allBottomBarItems.forEach { (key, label) ->
+                                val isChecked = selectedBottomBarItemKeys.value.contains(key)
+                                val candidateSet = normalizeBottomBarSelection(
+                                    selectedBottomBarItemKeys.value.toMutableSet().apply {
+                                        if (isChecked) remove(key) else add(key)
+                                    },
+                                    duo3HomeAccount.value,
+                                )
+                                val isEnabled = key != Account.name
+
+                                Row(
+                                    modifier = Modifier
+                                        .testTag(appearanceSettingsBottomBarItemTag(key))
+                                        .fillMaxWidth()
+                                        .clickable(enabled = isEnabled) {
+                                            when {
+                                                candidateSet.size < 3 -> {
+                                                    Toast.makeText(context, "至少保留3项", Toast.LENGTH_SHORT).show()
+                                                }
+
+                                                candidateSet.size > 5 -> {
+                                                    Toast.makeText(context, "最多选择5项", Toast.LENGTH_SHORT).show()
+                                                }
+
+                                                else -> persistBottomBarSelection(candidateSet)
+                                            }
+                                        }.padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                                    )
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = null,
+                                        enabled = isEnabled,
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+
+                val tapToRefresh = remember { mutableStateOf(preferences.getBoolean("bottomBarTapScrollToTop", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("点击底部导航栏回到顶部/刷新") },
+                    description = { Text("点击底部导航栏当前页面按钮回到顶部，已在顶部时则刷新页面。双击可直接刷新。") },
+                    checked = tapToRefresh.value,
+                    onCheckedChange = {
+                        tapToRefresh.value = it
+                        preferences.edit { putBoolean("bottomBarTapScrollToTop", it) }
+                    },
+                )
+
+                val autoHideBottomBar = remember { mutableStateOf(preferences.getBoolean("autoHideBottomBar", false)) }
+                SettingItemWithSwitch(
+                    title = { Text("滚动时自动隐藏底部导航栏") },
+                    description = { Text("上划时隐藏底部导航栏，下划时重新显示。") },
+                    checked = autoHideBottomBar.value,
+                    onCheckedChange = {
+                        autoHideBottomBar.value = it
+                        preferences.edit { putBoolean("autoHideBottomBar", it) }
+                    },
+                )
+            }
+
+            // ── 交互 ────────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = "交互",
+            ) {
+                var shareActionExpanded by remember { mutableStateOf(false) }
+                val shareActionMode = remember {
+                    mutableStateOf(preferences.getString("shareActionMode", "ask") ?: "ask")
+                }
+                val shareActionOptions = listOf(
+                    "ask" to "询问",
+                    "copy" to "复制链接",
+                    "share" to "Android分享",
+                )
+                SettingItem(
+                    title = { Text("分享操作") },
+                    description = { Text("点击分享按钮时的默认行为。") },
+                    settingKey = "shareAction",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("shareAction"),
+                    endAction = {
+                        ExposedDropdownMenuBox(
+                            expanded = shareActionExpanded,
+                            onExpandedChange = { shareActionExpanded = it },
+                        ) {
+                            OutlinedTextField(
+                                value = shareActionOptions.find { it.first == shareActionMode.value }?.second ?: "询问",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = shareActionExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .width(160.dp),
+                                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            )
+                            ExposedDropdownMenu(
+                                expanded = shareActionExpanded,
+                                onDismissRequest = { shareActionExpanded = false },
+                            ) {
+                                shareActionOptions.forEach { (mode, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = {
+                                            shareActionMode.value = mode
+                                            preferences.edit { putString("shareActionMode", mode) }
+                                            shareActionExpanded = false
+                                            Toast.makeText(context, "已设置为：$label", Toast.LENGTH_SHORT).show()
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+
+            // ── 搜索 ────────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = "搜索",
+            ) {
+                val showSearchHotSearch = remember { mutableStateOf(preferences.getBoolean("showSearchHotSearch", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("搜索界面显示热搜") },
+                    description = { Text("在搜索界面空白时显示知乎热搜关键词。") },
+                    checked = showSearchHotSearch.value,
+                    onCheckedChange = {
+                        showSearchHotSearch.value = it
+                        preferences.edit { putBoolean("showSearchHotSearch", it) }
+                    },
+                    settingKey = "showSearchHotSearch",
+                    highlightedKey = setting,
+                    bringIntoViewRequester = requesterFor("showSearchHotSearch"),
+                )
+            }
+
+            // ── 导航 ────────────────────────────────────────────────────────────
+            SettingItemGroup(
+                title = "技术性导航设置",
+            ) {
+                val useCustomNavHost = remember { mutableStateOf(preferences.getBoolean("use_custom_nav_host", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("使用自定义导航") },
+                    description = { Text("使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。") },
+                    checked = useCustomNavHost.value,
+                    onCheckedChange = {
+                        useCustomNavHost.value = it
+                        preferences.edit { putBoolean("use_custom_nav_host", it) }
+                        Toast.makeText(context, "需要重启应用生效", Toast.LENGTH_SHORT).show()
+                    },
+                )
+
+                val enablePredictiveBack = remember { mutableStateOf(preferences.getBoolean("enable_predictive_back", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("启用预测性返回") },
+                    description = { Text("开启 Android 14+ 的预测性返回手势动画。") },
+                    checked = enablePredictiveBack.value,
+                    onCheckedChange = {
+                        enablePredictiveBack.value = it
+                        preferences.edit { putBoolean("enable_predictive_back", it) }
+                    },
+                )
+            }
+            // ── 123duo3 UI 改进 ─────────────────────────────────────────────────
+
+            // 先声明所有子开关状态，以便主开关可以批量操作
+            val duo3All = remember { mutableStateOf(preferences.getBoolean("duo3_all", false)) }
+            val duo3NavStyle = remember { mutableStateOf(preferences.getBoolean("duo3_nav_style", false)) }
+            val duo3CardAppearance = remember { mutableStateOf(preferences.getBoolean("duo3_card_appearance", false)) }
+            val duo3CardLayout = remember { mutableStateOf(preferences.getBoolean("duo3_card_layout", false)) }
+            val duo3CardLargeTitle = remember {
+                mutableStateOf(preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true))
+            }
+            val duo3ArticleBar = remember { mutableStateOf(preferences.getBoolean("duo3_article_bar", false)) }
+            val duo3ArticleActions = remember { mutableStateOf(preferences.getBoolean("duo3_article_actions", false)) }
+
+            fun enableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", true)
+                    putBoolean("duo3_nav_style", true)
+                    putBoolean("duo3_card_appearance", true)
+                    putBoolean("duo3_card_layout", true)
+                    putBoolean("duo3_article_bar", true)
+                    putBoolean("duo3_article_actions", true)
+                    putBoolean("showRefreshFab", false)
+                    putBoolean("buttonSkipAnswer", false)
+                }
+                duo3HomeAccount.value = true
+                duo3NavStyle.value = true
+                duo3CardAppearance.value = true
+                duo3CardLayout.value = true
+                duo3ArticleBar.value = true
+                duo3ArticleActions.value = true
+                // in 123duo3 changes, FABs are removed.
+                showRefreshFab.value = false
+                buttonSkipAnswer.value = false
+                val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {
+                    selectedBottomBarItemKeys.value + Account.name
+                } else {
+                    selectedBottomBarItemKeys.value
+                }
+                persistBottomBarSelection(updatedSelection, duo3HomeAccountEnabled = true)
+            }
+
+            fun disableAllSubs() {
+                preferences.edit {
+                    putBoolean("duo3_home_account", false)
+                    putBoolean("duo3_nav_style", false)
+                    putBoolean("duo3_card_appearance", false)
+                    putBoolean("duo3_card_layout", false)
+                    putBoolean("duo3_article_bar", false)
+                    putBoolean("duo3_article_actions", false)
+                }
+                duo3HomeAccount.value = false
+                duo3NavStyle.value = false
+                duo3CardAppearance.value = false
+                duo3CardLayout.value = false
+                duo3ArticleBar.value = false
+                duo3ArticleActions.value = false
+                persistBottomBarSelection(selectedBottomBarItemKeys.value, duo3HomeAccountEnabled = false)
+            }
+
+            SettingItemGroup(
+                title = "123Duo3 的 UI/UX 改进（beta）",
+                settingKey = "123Duo3",
+                highlightedKey = setting,
+                bringIntoViewRequester = requesterFor("123Duo3"),
+                header = {
+                    SettingItemOverall(
+                        title = { Text("启用所有修改并关闭浮动按钮") },
+                        checked = duo3All.value,
+                        onCheckedChange = {
+                            duo3All.value = it
+                            preferences.edit { putBoolean("duo3_all", it) }
+                            if (it) {
+                                enableAllSubs()
+                            } else {
+                                disableAllSubs()
+                            }
+                        },
+                    )
+                },
+                footer = {
+                    Text(
+                        text = buildAnnotatedString {
+                            append("以上设置项可能随时更改，或并入主线。\n欢迎")
+                            withLink(LinkAnnotation.Url("https://github.com/zly2006/zhihu-plus-plus/issues")) {
+                                withStyle(
+                                    MaterialTheme.typography.bodyMedium
+                                        .copy(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            textDecoration = TextDecoration.Underline,
+                                            fontWeight = FontWeight.Medium,
+                                        ).toSpanStyle(),
+                                ) {
+                                    append("提交 Issue")
+                                }
+                            }
+                            append(" 讨论本次 UI/UX 修改和反馈问题。")
+                        },
+                    )
+                },
+            ) {
+                SettingItemWithSwitch(
+                    title = { Text("主页：账号入口迁移至顶部头像") },
+                    description = { Text("搜索栏样式变更；点击头像弹出账号与设置；「历史」入口可挪入账号设置页。") },
+                    checked = duo3HomeAccount.value,
+                    onCheckedChange = {
+                        duo3HomeAccount.value = it
+                        preferences.edit { putBoolean("duo3_home_account", it) }
+                        val updatedSelection = if (it && Home.name !in selectedBottomBarItemKeys.value) {
+                            selectedBottomBarItemKeys.value + Account.name
+                        } else {
+                            selectedBottomBarItemKeys.value
+                        }
+                        persistBottomBarSelection(updatedSelection, it)
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("底部导航栏：改为 Material 样式") },
+                    description = { Text("移除自定义样式；更改「关注」按钮图标。") },
+                    checked = duo3NavStyle.value,
+                    onCheckedChange = {
+                        duo3NavStyle.value = it
+                        preferences.edit { putBoolean("duo3_nav_style", it) }
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("信息流卡片：外观更改") },
+                    description = { Text("卡片圆角增大，移除阴影；修改背景与卡片颜色。") },
+                    checked = duo3CardAppearance.value,
+                    onCheckedChange = {
+                        duo3CardAppearance.value = it
+                        preferences.edit { putBoolean("duo3_card_appearance", it) }
+                    },
+                )
+
+                SettingItemWithSwitch(
+                    title = { Text("信息流卡片：更改内容排版") },
+                    description = { Text("作者移至底部；图片不与底部小字并列；摘要最多显示 4 行（原 3 行），规范字体样式。") },
+                    checked = duo3CardLayout.value,
+                    onCheckedChange = {
+                        duo3CardLayout.value = it
+                        preferences.edit { putBoolean("duo3_card_layout", it) }
+                    },
+                )
+
+                AnimatedVisibility(visible = duo3CardLayout.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("信息流卡片：使用更大的标题字体") },
+                        description = { Text("默认启用；关闭后标题会缩小一档。") },
+                        checked = duo3CardLargeTitle.value,
+                        onCheckedChange = {
+                            duo3CardLargeTitle.value = it
+                            preferences.edit { putBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, it) }
+                        },
+                    )
+                }
+
+                SettingItemWithSwitch(
+                    title = { Text("文章阅读页：更改整体顶/底栏框架") },
+                    description = { Text("更改标题栏样式；优化顶/底栏隐藏逻辑。") },
+                    checked = duo3ArticleBar.value,
+                    onCheckedChange = {
+                        duo3ArticleBar.value = it
+                        preferences.edit { putBoolean("duo3_article_bar", it) }
+                    },
+                )
+
+                AnimatedVisibility(visible = duo3ArticleBar.value) {
+                    SettingItemWithSwitch(
+                        title = { Text("文章阅读页：更改操作栏样式") },
+                        description = { Text("底栏操作按钮用药丸包裹；分隔赞同/反对按钮并添加动画。") },
+                        checked = duo3ArticleActions.value,
+                        onCheckedChange = {
+                            duo3ArticleActions.value = it
+                            preferences.edit { putBoolean("duo3_article_actions", it) }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
