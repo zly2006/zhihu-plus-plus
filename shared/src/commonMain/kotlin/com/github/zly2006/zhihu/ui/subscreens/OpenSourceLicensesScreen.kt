@@ -34,22 +34,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.R
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
-import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
-private data class ManualLicenseEntry(
+data class ManualLicenseEntry(
     val name: String,
     val license: String,
     val summary: String,
@@ -57,7 +50,7 @@ private data class ManualLicenseEntry(
     val icon: @Composable () -> Unit,
 )
 
-private val fullVariantManualLibraries = listOf(
+val fullVariantManualLibraries = listOf(
     ManualLicenseEntry(
         name = "Sentence-Embeddings-Android",
         license = "Apache-2.0",
@@ -102,14 +95,24 @@ private val fullVariantManualLibraries = listOf(
     ),
 )
 
+@Composable
+expect fun OpenSourceLicensesContent(
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues,
+    manualLibraries: List<ManualLicenseEntry>,
+    onOpenUrl: (String) -> Unit,
+)
+
+@Composable
+expect fun rememberShowFullVariantLicenses(): Boolean
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun OpenSourceLicensesScreen() {
-    val context = LocalContext.current
+fun OpenSourceLicensesScreen() {
     val navigator = LocalNavigator.current
-    val libraries by produceLibraries(R.raw.aboutlibraries)
+    val uriHandler = LocalUriHandler.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val manualLibraries = if (BuildConfig.IS_LITE) emptyList() else fullVariantManualLibraries
+    val manualLibraries = if (rememberShowFullVariantLicenses()) fullVariantManualLibraries else emptyList()
 
     Scaffold(
         modifier = Modifier
@@ -138,31 +141,33 @@ actual fun OpenSourceLicensesScreen() {
             )
         },
     ) { innerPadding ->
-        LibrariesContainer(
-            libraries = libraries,
+        OpenSourceLicensesContent(
+            contentPadding = PaddingValues(16.dp),
+            manualLibraries = manualLibraries,
+            onOpenUrl = uriHandler::openUri,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
-            showDescription = false,
-            header = {
-                if (manualLibraries.isNotEmpty()) {
-                    item {
-                        SettingItemGroup(title = "Full 版本特有组件") {
-                            manualLibraries.forEach { entry ->
-                                SettingItem(
-                                    title = { Text(entry.name) },
-                                    description = { Text("${entry.license} · ${entry.summary}") },
-                                    icon = entry.icon,
-                                    onClick = {
-                                        luoTianYiUrlLauncher(context, entry.url.toUri())
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-            },
         )
+    }
+}
+
+@Composable
+fun ManualLicenseEntryGroup(
+    manualLibraries: List<ManualLicenseEntry>,
+    onOpenUrl: (String) -> Unit,
+) {
+    if (manualLibraries.isEmpty()) {
+        return
+    }
+    SettingItemGroup(title = "Full 版本特有组件") {
+        manualLibraries.forEach { entry ->
+            SettingItem(
+                title = { Text(entry.name) },
+                description = { Text("${entry.license} · ${entry.summary}") },
+                icon = entry.icon,
+                onClick = { onOpenUrl(entry.url) },
+            )
+        }
     }
 }

@@ -13,9 +13,6 @@ actual fun ContentFilterSettingsScreen(setting: String?) = UnsupportedDesktopSub
 actual fun DeveloperSettingsScreen() = UnsupportedDesktopSubscreen()
 
 @Composable
-actual fun OpenSourceLicensesScreen() = UnsupportedDesktopSubscreen()
-
-@Composable
 actual fun SystemAndUpdateSettingsScreen() = UnsupportedDesktopSubscreen()
 
 @Composable

@@ -15,7 +15,7 @@
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
 - Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
 - Generic paging state uses shared `ZhihuPaging`; `PaginationViewModel` is still Android-side only because signed fetch, login-expired handling, Toast/Dialog/clipboard, Activity navigation, preferences, and lifecycle effects have not yet been split into small platform adapters. The target is to move `PaginationViewModel` itself to `shared/commonMain`, not to replace it with a separate `ZhihuPageLoader`.
-- `DailyScreen`、`CollectionScreen`、`NotificationScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
+- `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo

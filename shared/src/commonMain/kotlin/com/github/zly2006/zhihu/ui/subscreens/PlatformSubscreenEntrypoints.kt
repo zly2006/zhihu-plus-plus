@@ -12,7 +12,4 @@ expect fun ContentFilterSettingsScreen(setting: String? = null)
 expect fun DeveloperSettingsScreen()
 
 @Composable
-expect fun OpenSourceLicensesScreen()
-
-@Composable
 expect fun SystemAndUpdateSettingsScreen()
