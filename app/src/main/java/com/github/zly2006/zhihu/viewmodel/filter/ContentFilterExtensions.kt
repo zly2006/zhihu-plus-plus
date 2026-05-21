@@ -46,7 +46,7 @@ object ContentFilterExtensions {
     /** 检查是否启用了 feed 已读/低质过滤总开关。 */
     fun isContentFilterEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("enableContentFilter", true)
+        return preferences.toFeedFilterSettings().enableContentFilter
     }
 
     /**
@@ -54,7 +54,7 @@ object ContentFilterExtensions {
      */
     fun isKeywordBlockingEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("enableKeywordBlocking", true)
+        return preferences.toFeedFilterSettings().enableKeywordBlocking
     }
 
     /**
@@ -62,7 +62,7 @@ object ContentFilterExtensions {
      */
     fun isNLPBlockingEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("enableNLPBlocking", true)
+        return preferences.toFeedFilterSettings().enableNlpBlocking
     }
 
     /**
@@ -70,7 +70,7 @@ object ContentFilterExtensions {
      */
     fun getNLPSimilarityThreshold(context: Context): Double {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getFloat("nlpSimilarityThreshold", 0.8f).toDouble()
+        return preferences.toFeedFilterSettings().nlpSimilarityThreshold
     }
 
     /**
@@ -78,7 +78,7 @@ object ContentFilterExtensions {
      */
     fun isUserBlockingEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("enableUserBlocking", true)
+        return preferences.toFeedFilterSettings().enableUserBlocking
     }
 
     /**
@@ -86,7 +86,7 @@ object ContentFilterExtensions {
      */
     fun isTopicBlockingEnabled(context: Context): Boolean {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("enableTopicBlocking", true)
+        return preferences.toFeedFilterSettings().enableTopicBlocking
     }
 
     /**
@@ -94,7 +94,7 @@ object ContentFilterExtensions {
      */
     fun getTopicBlockingThreshold(context: Context): Int {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getInt("topicBlockingThreshold", 1)
+        return preferences.toFeedFilterSettings().topicBlockingThreshold
     }
 
     /**
@@ -157,7 +157,8 @@ object ContentFilterExtensions {
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            if (preferences.getBoolean("reverseBlock", false) || !isContentFilterEnabled(context)) {
+            val settings = preferences.toFeedFilterSettings()
+            if (settings.reverseBlock || !settings.enableContentFilter) {
                 return@withContext items
             }
 
@@ -214,11 +215,12 @@ object ContentFilterExtensions {
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+            val settings = preferences.toFeedFilterSettings()
 
             var filteredItems = items
 
             // 1. 应用关注用户过滤逻辑
-            val shouldFilterFollowed = preferences.getBoolean("filterFollowedUserContent", false)
+            val shouldFilterFollowed = settings.filterFollowedUserContent
 
             val (followedUserItems, otherItems) = if (!shouldFilterFollowed) {
                 // 分离已关注用户的内容
@@ -256,7 +258,7 @@ object ContentFilterExtensions {
 
             // 3. 过滤广告和付费内容
             val adBlockedContents = mutableListOf<Pair<FilterableContent, String>>()
-            if (preferences.getBoolean("reverseBlock", false)) {
+            if (settings.reverseBlock) {
                 val ads = filterableContents.filter { content -> isFeedAdOrPaidContent(content) }
                 val ids = ads.map { it.contentId }
                 return@withContext items.filter { item ->
@@ -264,16 +266,15 @@ object ContentFilterExtensions {
                     contentId in ids
                 } + items.filter { it.feed is AdvertisementFeed }
             }
-            val adBlockSettings = preferences.toFeedAdBlockSettings()
             val nonAdContents = filterableContents.filter { content ->
-                val blockReason = getFeedAdBlockReason(content, adBlockSettings)
+                val blockReason = getFeedAdBlockReason(content, settings.adBlockSettings)
                 if (blockReason != null) adBlockedContents.add(content to blockReason)
                 blockReason == null
             }
 
             // 4. 应用关键词和NLP过滤
             val blockedContents = mutableListOf<Pair<FilterableContent, String>>()
-            val filteredContents = filterContents(context, nonAdContents, blockedContents)
+            val filteredContents = filterContents(context, nonAdContents, blockedContents, settings)
             val filteredContentIds = filteredContents.map { it.contentId }.toSet()
 
             // 5. 根据过滤结果重新构建FeedDisplayItem，并附带raw信息
@@ -325,11 +326,12 @@ object ContentFilterExtensions {
         context: Context,
         contents: List<FilterableContent>,
         blocked: MutableList<Pair<FilterableContent, String>>,
+        settings: FeedFilterSettings,
     ): List<FilterableContent> {
         var filteredContents = contents
 
         // 应用作者屏蔽
-        if (isUserBlockingEnabled(context)) {
+        if (settings.enableUserBlocking) {
             val blocklistManager = BlocklistManager.getInstance(context)
             val (kept, removed) = filteredContents.partition { !blocklistManager.isUserBlocked(it.authorId) }
             removed.forEach { blocked.add(it to "屏蔽作者：${it.authorName ?: it.authorId}") }
@@ -337,7 +339,7 @@ object ContentFilterExtensions {
         }
 
         // 应用关键词屏蔽
-        if (isKeywordBlockingEnabled(context)) {
+        if (settings.enableKeywordBlocking) {
             val blocklistManager = BlocklistManager.getInstance(context)
             val (kept, removed) = filteredContents.partition { content ->
                 !blocklistManager.containsBlockedKeyword(content.title) &&
@@ -349,10 +351,9 @@ object ContentFilterExtensions {
         }
 
         // 应用NLP语义屏蔽
-        if (isNLPBlockingEnabled(context)) {
+        if (settings.enableNlpBlocking) {
             val blockedThisRound = mutableListOf<FilterableContent>()
             val nlpRepository = BlockedKeywordRepository(context, NlpServiceKeywordSemanticMatcher)
-            val threshold = getNLPSimilarityThreshold(context)
             val finalFilteredContents = mutableListOf<FilterableContent>()
 
             for (content in filteredContents) {
@@ -360,7 +361,7 @@ object ContentFilterExtensions {
                     title = content.title,
                     excerpt = content.summary,
                     content = content.content?.let { Jsoup.parse(it).text() },
-                    threshold = threshold,
+                    threshold = settings.nlpSimilarityThreshold,
                 )
 
                 if (!shouldBlock) {
@@ -393,13 +394,12 @@ object ContentFilterExtensions {
         }
 
         // 应用主题屏蔽
-        if (isTopicBlockingEnabled(context)) {
+        if (settings.enableTopicBlocking) {
             val blocklistManager = BlocklistManager.getInstance(context)
-            val threshold = getTopicBlockingThreshold(context)
 
             filteredContents = filteredContents.filter { content ->
                 val topicIds = extractTopicIds(content.raw)
-                val kept = blocklistManager.countBlockedTopics(topicIds) < threshold
+                val kept = blocklistManager.countBlockedTopics(topicIds) < settings.topicBlockingThreshold
                 if (!kept) {
                     val topicName = topicIds
                         ?.first { topicId ->
@@ -445,9 +445,20 @@ object ContentFilterExtensions {
 
 }
 
-private fun SharedPreferences.toFeedAdBlockSettings(): FeedAdBlockSettings = FeedAdBlockSettings(
-    blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
-    blockZhihuSchool = getBoolean("blockZhihuSchool", true),
-    blockWeChatOfficialAccount = getBoolean("blockWeChatOfficialAccount", true),
-    blockPaidContent = getBoolean("blockPaidContent", true),
+private fun SharedPreferences.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSettings(
+    enableContentFilter = getBoolean("enableContentFilter", true),
+    reverseBlock = getBoolean("reverseBlock", false),
+    filterFollowedUserContent = getBoolean("filterFollowedUserContent", false),
+    enableKeywordBlocking = getBoolean("enableKeywordBlocking", true),
+    enableNlpBlocking = getBoolean("enableNLPBlocking", true),
+    nlpSimilarityThreshold = getFloat("nlpSimilarityThreshold", 0.8f).toDouble(),
+    enableUserBlocking = getBoolean("enableUserBlocking", true),
+    enableTopicBlocking = getBoolean("enableTopicBlocking", true),
+    topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
+    adBlockSettings = FeedAdBlockSettings(
+        blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
+        blockZhihuSchool = getBoolean("blockZhihuSchool", true),
+        blockWeChatOfficialAccount = getBoolean("blockWeChatOfficialAccount", true),
+        blockPaidContent = getBoolean("blockPaidContent", true),
+    ),
 )
