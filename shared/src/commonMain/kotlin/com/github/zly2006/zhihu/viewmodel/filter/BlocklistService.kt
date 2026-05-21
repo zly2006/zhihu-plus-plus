@@ -17,39 +17,22 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import android.content.Context
-import android.net.Uri
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.github.zly2006.zhihu.shared.filter.BlocklistBackup
+import com.github.zly2006.zhihu.shared.filter.KeywordBackup
+import com.github.zly2006.zhihu.shared.filter.NlpKeywordBackup
+import com.github.zly2006.zhihu.shared.filter.TopicBackup
+import com.github.zly2006.zhihu.shared.filter.UserBackup
 import kotlinx.serialization.json.Json
-import java.io.File
 
 /**
- * 屏蔽列表管理器
- * 负责管理屏蔽关键词和屏蔽用户
+ * 屏蔽列表核心服务。
+ * 只负责关键词、用户、主题屏蔽的本地数据语义，不处理平台上下文、URI 或文件路径。
  */
-class BlocklistManager private constructor(
-    context: Context,
+class BlocklistService(
+    private val keywordDao: BlockedKeywordDao,
+    private val userDao: BlockedUserDao,
+    private val topicDao: BlockedTopicDao,
 ) {
-    private val database = getContentFilterDatabase(context)
-    private val keywordDao = database.blockedKeywordDao()
-    private val userDao = database.blockedUserDao()
-    private val topicDao = database.blockedTopicDao()
-
-    companion object {
-        @Volatile
-        @Suppress("ktlint")
-        private var INSTANCE: BlocklistManager? = null
-
-        fun getInstance(context: Context): BlocklistManager = INSTANCE ?: synchronized(this) {
-            val instance = BlocklistManager(context.applicationContext)
-            INSTANCE = instance
-            instance
-        }
-    }
-
-    // ==================== 关键词屏蔽 ====================
-
     /**
      * 添加屏蔽关键词
      */
@@ -57,52 +40,46 @@ class BlocklistManager private constructor(
         keyword: String,
         caseSensitive: Boolean = false,
         isRegex: Boolean = false,
-    ): Long = withContext(Dispatchers.IO) {
+    ): Long {
         val blockedKeyword = BlockedKeyword(
             keyword = keyword.trim(),
-            keywordType = com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH.name,
+            keywordType = KeywordType.EXACT_MATCH.name,
             caseSensitive = caseSensitive,
             isRegex = isRegex,
         )
-        keywordDao.insertKeyword(blockedKeyword)
+        return keywordDao.insertKeyword(blockedKeyword)
     }
 
     /**
      * 删除屏蔽关键词
      */
     suspend fun removeBlockedKeyword(keywordId: Long) {
-        withContext(Dispatchers.IO) {
-            keywordDao.deleteKeywordById(keywordId)
-        }
+        keywordDao.deleteKeywordById(keywordId)
     }
 
     /**
      * 获取所有屏蔽关键词
      */
-    suspend fun getAllBlockedKeywords(): List<BlockedKeyword> = withContext(Dispatchers.IO) {
-        keywordDao.getAllKeywords()
-    }
+    suspend fun getAllBlockedKeywords(): List<BlockedKeyword> = keywordDao.getAllKeywords()
 
     /**
      * 清空所有屏蔽关键词
      */
     suspend fun clearAllBlockedKeywords() {
-        withContext(Dispatchers.IO) {
-            keywordDao.clearAllKeywords()
-        }
+        keywordDao.clearAllKeywords()
     }
 
     /**
      * 检查文本是否包含屏蔽关键词（仅精确匹配）
      */
-    suspend fun containsBlockedKeyword(text: String?): Boolean = withContext(Dispatchers.IO) {
-        if (text.isNullOrBlank()) return@withContext false
+    suspend fun containsBlockedKeyword(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
 
         val keywords = keywordDao
             .getAllKeywords()
-            .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
+            .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
 
-        keywords.any { blockedKeyword ->
+        return keywords.any { blockedKeyword ->
             try {
                 when {
                     blockedKeyword.isRegex -> {
@@ -128,8 +105,6 @@ class BlocklistManager private constructor(
         }
     }
 
-    // ==================== 用户屏蔽 ====================
-
     /**
      * 添加屏蔽用户
      */
@@ -139,73 +114,60 @@ class BlocklistManager private constructor(
         urlToken: String? = null,
         avatarUrl: String? = null,
     ) {
-        withContext(Dispatchers.IO) {
-            val blockedUser = BlockedUser(
-                userId = userId,
-                userName = userName,
-                urlToken = urlToken,
-                avatarUrl = avatarUrl,
-            )
-            userDao.insertUser(blockedUser)
-        }
+        val blockedUser = BlockedUser(
+            userId = userId,
+            userName = userName,
+            urlToken = urlToken,
+            avatarUrl = avatarUrl,
+        )
+        userDao.insertUser(blockedUser)
     }
 
     /**
      * 删除屏蔽用户
      */
     suspend fun removeBlockedUser(userId: String) {
-        withContext(Dispatchers.IO) {
-            userDao.deleteUserById(userId)
-        }
+        userDao.deleteUserById(userId)
     }
 
     /**
      * 获取所有屏蔽用户
      */
-    suspend fun getAllBlockedUsers(): List<BlockedUser> = withContext(Dispatchers.IO) {
-        userDao.getAllUsers()
-    }
+    suspend fun getAllBlockedUsers(): List<BlockedUser> = userDao.getAllUsers()
 
     /**
      * 清空所有屏蔽用户
      */
     suspend fun clearAllBlockedUsers() {
-        withContext(Dispatchers.IO) {
-            userDao.clearAllUsers()
-        }
+        userDao.clearAllUsers()
     }
 
     /**
      * 检查用户是否被屏蔽
      */
-    suspend fun isUserBlocked(userId: String?): Boolean = withContext(Dispatchers.IO) {
-        if (userId.isNullOrBlank()) return@withContext false
-        userDao.isUserBlocked(userId)
+    suspend fun isUserBlocked(userId: String?): Boolean {
+        if (userId.isNullOrBlank()) return false
+        return userDao.isUserBlocked(userId)
     }
 
     /**
      * 获取屏蔽统计信息
      */
-    suspend fun getBlocklistStats(): BlocklistStats = withContext(Dispatchers.IO) {
+    suspend fun getBlocklistStats(): BlocklistStats =
         BlocklistStats(
             keywordCount = keywordDao.getKeywordCount(),
             userCount = userDao.getUserCount(),
             topicCount = topicDao.getTopicCount(),
         )
-    }
 
     /**
      * 清空所有屏蔽数据
      */
     suspend fun clearAllBlocklists() {
-        withContext(Dispatchers.IO) {
-            keywordDao.clearAllKeywords()
-            userDao.clearAllUsers()
-            topicDao.clearAllTopics()
-        }
+        keywordDao.clearAllKeywords()
+        userDao.clearAllUsers()
+        topicDao.clearAllTopics()
     }
-
-    // ==================== 主题屏蔽 ====================
 
     /**
      * 添加屏蔽主题
@@ -213,53 +175,47 @@ class BlocklistManager private constructor(
     suspend fun addBlockedTopic(
         topicId: String,
         topicName: String,
-    ): Long = withContext(Dispatchers.IO) {
+    ): Long {
         val blockedTopic = BlockedTopic(
             topicId = topicId,
             topicName = topicName,
         )
-        topicDao.insertTopic(blockedTopic)
+        return topicDao.insertTopic(blockedTopic)
     }
 
     /**
      * 删除屏蔽主题
      */
     suspend fun removeBlockedTopic(topicId: String) {
-        withContext(Dispatchers.IO) {
-            topicDao.deleteTopicById(topicId)
-        }
+        topicDao.deleteTopicById(topicId)
     }
 
     /**
      * 获取所有屏蔽主题
      */
-    suspend fun getAllBlockedTopics(): List<BlockedTopic> = withContext(Dispatchers.IO) {
-        topicDao.getAllTopics()
-    }
+    suspend fun getAllBlockedTopics(): List<BlockedTopic> = topicDao.getAllTopics()
 
     /**
      * 清空所有屏蔽主题
      */
     suspend fun clearAllBlockedTopics() {
-        withContext(Dispatchers.IO) {
-            topicDao.clearAllTopics()
-        }
+        topicDao.clearAllTopics()
     }
 
     /**
      * 检查主题是否被屏蔽
      */
-    suspend fun isTopicBlocked(topicId: String?): Boolean = withContext(Dispatchers.IO) {
-        if (topicId.isNullOrBlank()) return@withContext false
-        topicDao.isTopicBlocked(topicId)
+    suspend fun isTopicBlocked(topicId: String?): Boolean {
+        if (topicId.isNullOrBlank()) return false
+        return topicDao.isTopicBlocked(topicId)
     }
 
     /**
      * 批量检查主题是否被屏蔽，返回被屏蔽的主题数量
      */
-    suspend fun countBlockedTopics(topicIds: List<String>?): Int = withContext(Dispatchers.IO) {
-        if (topicIds.isNullOrEmpty()) return@withContext 0
-        topicDao.getBlockedTopicIds(topicIds).size
+    suspend fun countBlockedTopics(topicIds: List<String>?): Int {
+        if (topicIds.isNullOrEmpty()) return 0
+        return topicDao.getBlockedTopicIds(topicIds).size
     }
 
     private val json = Json {
@@ -267,11 +223,7 @@ class BlocklistManager private constructor(
         prettyPrint = true
     }
 
-    /**
-     * 导出所有屏蔽数据（关键词、NLP短语、用户、主题）到 Downloads/zhihu_blocklist.json
-     * @return 导出文件，失败时返回 null
-     */
-    suspend fun exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
+    suspend fun encodeAllBlocklistToJson(): String {
         val allKeywords = keywordDao.getAllKeywords()
         val users = userDao.getAllUsers()
         val topics = topicDao.getAllTopics()
@@ -287,22 +239,10 @@ class BlocklistManager private constructor(
             topics = topics.map { TopicBackup(it.topicId, it.topicName) },
         )
 
-        val dir = context.getExternalFilesDir(null) ?: context.filesDir
-        val file = File(dir, "zhihupp_blocklist.json")
-        file.writeText(json.encodeToString(BlocklistBackup.serializer(), backup))
-        file
+        return json.encodeToString(BlocklistBackup.serializer(), backup)
     }
 
-    /**
-     * 从 URI 导入所有屏蔽数据（追加，不清空已有数据）
-     * @return 各类导入数量的摘要字符串
-     */
-    suspend fun importAllBlocklistFromJson(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-        val text = context.contentResolver
-            .openInputStream(uri)
-            ?.bufferedReader()
-            ?.readText()
-            ?: return@withContext "读取文件失败"
+    suspend fun importAllBlocklistFromJsonText(text: String): String {
         val backup = json.decodeFromString(BlocklistBackup.serializer(), text)
 
         backup.keywords.filter { it.keyword.isNotBlank() }.forEach { kw ->
@@ -334,7 +274,7 @@ class BlocklistManager private constructor(
             topicDao.insertTopic(BlockedTopic(topicId = t.topicId, topicName = t.topicName))
         }
 
-        "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
+        return "关键词 ${backup.keywords.size} · NLP ${backup.nlpKeywords.size} · 用户 ${backup.users.size} · 主题 ${backup.topics.size}"
     }
 
     suspend fun getTopicName(topicId: String): String = topicDao.getTopicNameById(topicId)
