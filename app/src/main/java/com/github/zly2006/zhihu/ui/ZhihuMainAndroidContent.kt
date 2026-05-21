@@ -31,6 +31,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
 @Composable
@@ -53,13 +54,13 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
             null
         }
         when (sharedData?.answerTransitionDirection) {
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+            ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                 slideInVertically(tween(300)) { it } + fadeIn(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
                 slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
                 slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
                 slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
             else -> slideInHorizontally(tween(300)) { it }
         }
@@ -71,13 +72,13 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
             null
         }
         when (sharedData?.answerTransitionDirection) {
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT ->
+            ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
                 slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS ->
+            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
                 slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT ->
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
                 slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
                 slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
             else -> ExitTransition.None
         }

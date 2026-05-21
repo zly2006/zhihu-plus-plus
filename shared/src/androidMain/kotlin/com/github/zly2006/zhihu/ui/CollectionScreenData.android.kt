@@ -14,7 +14,7 @@ actual fun rememberCollectionScreenData(
 ): CollectionScreenData {
     val context = LocalContext.current
     val useTestCollections = testCollections != null || urlToken == null
-    val viewModel = viewModel(urlToken) {
+    val viewModel: CollectionsViewModel = viewModel(key = urlToken) {
         CollectionsViewModel(urlToken.orEmpty())
     }
 

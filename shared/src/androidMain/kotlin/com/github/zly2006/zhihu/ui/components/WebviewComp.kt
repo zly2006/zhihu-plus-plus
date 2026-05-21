@@ -20,7 +20,9 @@
 package com.github.zly2006.zhihu.ui.components
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Rect
@@ -60,10 +62,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -97,9 +98,33 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
+private const val MAIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.MainActivity"
+private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
+
 // HTML 点击事件监听器接口
 fun interface HtmlClickListener {
     fun onElementClick(element: Element)
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun Context.navigateInMainActivity(destination: NavDestination, fallbackUri: android.net.Uri? = null) {
+    val activity = findActivity()
+    if (activity?.javaClass?.name == MAIN_ACTIVITY_CLASS) {
+        runCatching {
+            activity.javaClass
+                .getMethod("navigate", NavDestination::class.java, Boolean::class.javaPrimitiveType)
+                .invoke(activity, destination, false)
+        }.onSuccess {
+            return
+        }
+    }
+    val intent = Intent(Intent.ACTION_VIEW, fallbackUri).setClassName(this, MAIN_ACTIVITY_CLASS)
+    startActivity(intent)
 }
 
 /**
@@ -298,7 +323,7 @@ class CustomWebView : WebView {
         } else if (clicked.tagName() == "a" && clicked.hasClass("video-box")) {
             // 处理视频链接点击
             val videoId = clicked.attr("data-lens-id")
-            (context as? MainActivity)?.navigate(Video(videoId.toLong()))
+            context.navigateInMainActivity(Video(videoId.toLong()))
         }
     }
 
@@ -693,20 +718,20 @@ fun WebView.setupUpWebviewClient(onPageFinished: ((String) -> Unit)? = null) {
             } else if (request.url.host == "www.zhihu.com" || request.url.host == "zhuanlan.zhihu.com" || request.url.scheme == "zhihu") {
                 val destination = resolveContent(request.url.toString())
                 if (destination != null) {
-                    if (context is MainActivity) {
-                        context.navigate(destination)
-                    } else {
-                        val intent = Intent(Intent.ACTION_VIEW, request.url, context, MainActivity::class.java)
-                        context.startActivity(intent)
-                    }
+                    context.navigateInMainActivity(destination, request.url)
                 } else {
-                    val intent = Intent(Intent.ACTION_VIEW, request.url, context, WebviewActivity::class.java)
+                    val intent = Intent(Intent.ACTION_VIEW, request.url).setClassName(context, WEBVIEW_ACTIVITY_CLASS)
                     context.startActivity(intent)
                 }
                 return true
             }
-            if (request.url.host!!.endsWith("zhihu.com") && view.context !is WebviewActivity) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, request.url, context, WebviewActivity::class.java))
+            if (request.url.host!!.endsWith("zhihu.com") &&
+                view.context
+                    .findActivity()
+                    ?.javaClass
+                    ?.name != WEBVIEW_ACTIVITY_CLASS
+            ) {
+                context.startActivity(Intent(Intent.ACTION_VIEW, request.url).setClassName(context, WEBVIEW_ACTIVITY_CLASS))
                 return true
             }
             if (!request.url.host!!.endsWith("zhihu.com")) {

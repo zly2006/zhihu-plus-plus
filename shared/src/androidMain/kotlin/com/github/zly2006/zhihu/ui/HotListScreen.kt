@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -35,9 +33,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.MainActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -73,8 +72,8 @@ private fun HotListScreenContent(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalActivity.current as MainActivity
-    val viewModel: HotListViewModel by context.viewModels()
+    val context = LocalContext.current
+    val viewModel: HotListViewModel = viewModel()
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
 

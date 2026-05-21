@@ -19,8 +19,6 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.Context
 import android.widget.Toast
-import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -70,9 +69,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
@@ -255,7 +255,7 @@ private fun FollowTabRow(
 
 @Composable
 fun FollowingUsersRow() {
-    val context = LocalActivity.current as MainActivity
+    val context = LocalContext.current
     val navigator = LocalNavigator.current
     val viewModel: RecentMomentsViewModel = viewModel()
 
@@ -338,8 +338,8 @@ fun FollowRecommendScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalActivity.current as MainActivity
-    val viewModel: FollowRecommendViewModel by context.viewModels()
+    val context = LocalContext.current
+    val viewModel: FollowRecommendViewModel = viewModel()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }
@@ -449,8 +449,8 @@ fun FollowDynamicScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalActivity.current as MainActivity
-    val viewModel: FollowViewModel by context.viewModels()
+    val context = LocalContext.current
+    val viewModel: FollowViewModel = viewModel()
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
     }

@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,7 +56,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -68,9 +66,14 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
+import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
+
+private val collectionContentYmdhms = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 /**
  * Instrumented tests inject a prefilled ViewModel plus side-effect stubs here so the screen can
@@ -104,27 +107,25 @@ private fun CollectionContentScreenContent(
     val navigator = LocalNavigator.current
     val context = LocalContext.current
     val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
+    val collectionEnvironment = remember(context, screenViewModel) {
+        screenViewModel.paginationEnvironment(context) as CollectionContentEnvironment
+    }
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
     val isEnd = testOverrides?.let { { it.isEnd } } ?: { screenViewModel.isEnd }
-    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(context) }
+    val onLoadMore = testOverrides?.onLoadMore ?: { screenViewModel.loadMore(collectionEnvironment) }
     val onExportAllToHtmlZip = testOverrides?.onExportAllToHtmlZip ?: { includeImages ->
         screenViewModel.exportAllToHtmlZip(
-            context = context,
+            environment = collectionEnvironment,
             includeImages = includeImages,
         )
     }
-    val sharedData = if (context is MainActivity) {
-        val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>()
-        sd
-    } else {
-        null
-    }
+    val sharedData = context.articleHost()?.articleAnswerSwitchState
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
-            screenViewModel.refresh(context)
+            screenViewModel.refresh(collectionEnvironment)
         }
     }
 
@@ -216,7 +217,7 @@ private fun CollectionContentScreenContent(
                             "${screenViewModel.collection?.itemCount} 条收藏",
                             "${screenViewModel.collection?.likeCount} 个赞同",
                             "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${YMDHMS.format(Date(it * 1000))} 更新" },
+                            screenViewModel.collection?.updatedTime?.let { "${collectionContentYmdhms.format(Date(it * 1000))} 更新" },
                         ).fastJoinToString(" · "),
                         modifier = Modifier.testTag("collection_content_stats"),
                     )

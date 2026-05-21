@@ -34,7 +34,6 @@ import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,7 +48,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
@@ -73,7 +71,11 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.ArticleExportComment
@@ -210,24 +212,19 @@ class ArticleViewModel(
         ActivityCompat.requestPermissions(activity, permissions, 1001) // 使用请求码1001
     }
 
-    enum class AnswerTransitionDirection {
-        DEFAULT,
-        VERTICAL_NEXT,
-        VERTICAL_PREVIOUS,
-        HORIZONTAL_NEXT,
-        HORIZONTAL_PREVIOUS,
-    }
-
     // todo: replace this with sqlite
-    class ArticlesSharedData : ViewModel() {
+    class ArticlesSharedData :
+        ViewModel(),
+        ArticleAnswerSwitchState,
+        ArticlePreviewWebViewStore {
         /** 活跃的导航器：管理来源、历史记录和预取 */
-        var navigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
+        override var navigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
 
         /**
          * 导航前由来源界面设置（如 CollectionContentScreen）。
          * [reset] 时会将其应用到 [navigator]。
          */
-        var pendingNavigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? = null
+        override var pendingNavigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? = null
 
         // 缓存的三个 WebView 实例，跨导航存活，避免重建闪动
         var mainWebView: CustomWebView? = null
@@ -269,9 +266,9 @@ class ArticleViewModel(
          * NEXT: prev→destroy, main→prev, next→main
          * PREVIOUS: next→destroy, main→next, prev→main
          */
-        fun promoteForNavigation(direction: AnswerTransitionDirection) {
+        override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
             when (direction) {
-                AnswerTransitionDirection.HORIZONTAL_NEXT, AnswerTransitionDirection.VERTICAL_NEXT -> {
+                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT, ArticleAnswerTransitionDirection.VERTICAL_NEXT -> {
                     previousPreviewWebView?.destroy()
                     previousPreviewWebView = mainWebView
                     prevTag = mainTag
@@ -280,7 +277,7 @@ class ArticleViewModel(
                     nextPreviewWebView = null
                     nextTag = null
                 }
-                AnswerTransitionDirection.HORIZONTAL_PREVIOUS, AnswerTransitionDirection.VERTICAL_PREVIOUS -> {
+                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS, ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS -> {
                     nextPreviewWebView?.destroy()
                     nextPreviewWebView = mainWebView
                     nextTag = mainTag
@@ -293,7 +290,7 @@ class ArticleViewModel(
             }
         }
 
-        fun getOrCreatePreviewWebView(context: Context, isNext: Boolean, answerId: Long): CustomWebView {
+        override fun getOrCreatePreviewWebView(context: Context, isNext: Boolean, answerId: Long): CustomWebView {
             val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
             if (existing != null) return existing
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -320,16 +317,16 @@ class ArticleViewModel(
         }
 
         // 用于消除切换闪动：导航前设置，新页面用它初始化
-        var pendingInitialContent: CachedAnswerContent? = null
+        override var pendingInitialContent: CachedAnswerContent? = null
 
         // 标记是否从回答切换导航进入（避免被 LaunchedEffect 重置方向后误判）
         @Volatile
-        var navigatingFromAnswerSwitch = false
+        override var navigatingFromAnswerSwitch = false
 
         // 导航动画方向
-        var answerTransitionDirection = AnswerTransitionDirection.DEFAULT
+        override var answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
-        fun reset() {
+        override fun reset() {
             navigator = pendingNavigator
             pendingNavigator = null
             pendingInitialContent = null
@@ -361,7 +358,8 @@ class ArticleViewModel(
             withContext(Dispatchers.IO) {
                 try {
                     if (article.type == ArticleType.Answer) {
-                        val sharedData by (context as MainActivity).viewModels<ArticlesSharedData>()
+                        val articleHost = context.articleHost()
+                        val sharedData = articleHost?.articleAnswerSwitchState
                         val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
@@ -393,7 +391,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
 
-                            context.postHistory(
+                            articleHost?.postHistoryDestination(
                                 Article(
                                     id = answer.id,
                                     type = ArticleType.Answer,
@@ -408,27 +406,28 @@ class ArticleViewModel(
                                 context = context,
                                 destination = article,
                                 questionId = answer.question.id,
-                                openFrom = context.consumePendingContentOpenFrom(article),
+                                openFrom = articleHost?.consumePendingContentOpenFrom(article)
+                                    ?: ContentOpenFrom.UNKNOWN,
                             )
                             // 设置问题回答导航器（如果当前不是收藏夹导航器）
-                            if (sharedData.navigator !is CollectionAnswerNavigator) {
-                                val existingNav = sharedData.navigator
+                            if (sharedData?.navigator !is CollectionAnswerNavigator) {
+                                val existingNav = sharedData?.navigator
                                 val isSameQuestion = when (existingNav) {
                                     is QuestionAnswerNavigator -> existingNav.questionId == questionId
                                     is PaginationInfoNavigator -> existingNav.questionId == questionId
                                     else -> false
                                 }
                                 if (!isSameQuestion) {
-                                    sharedData.navigator = QuestionAnswerNavigator(
+                                    sharedData?.navigator = QuestionAnswerNavigator(
                                         questionId = questionId,
                                         repository = AndroidAnswerNavigatorRepository(context),
                                     )
                                 }
                             }
-                            sharedData.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
+                            sharedData?.navigator?.pushAnswer(toCachedContent(sourceLabel = sharedData.navigator?.sourceName ?: "此问题"))
 
                             // 仅在无前向历史时预取下一个回答
-                            sharedData.navigator?.let { nav ->
+                            sharedData?.navigator?.let { nav ->
                                 if (nav.currentAnswerIndex >= nav.answerHistory.size - 1) {
                                     nav.prefetchNext(article.id)
                                 }
@@ -468,7 +467,8 @@ class ArticleViewModel(
                             createdAt = article.created
                             ipInfo = article.ipInfo
 
-                            (context as? MainActivity)?.postHistory(
+                            val articleHost = context.articleHost()
+                            articleHost?.postHistoryDestination(
                                 Article(
                                     id = article.id,
                                     type = ArticleType.Article,
@@ -482,7 +482,7 @@ class ArticleViewModel(
                             ContentOpenEventSupport.recordOpenEvent(
                                 context = context,
                                 destination = this@ArticleViewModel.article,
-                                openFrom = (context as? MainActivity)?.consumePendingContentOpenFrom(this@ArticleViewModel.article)
+                                openFrom = articleHost?.consumePendingContentOpenFrom(this@ArticleViewModel.article)
                                     ?: ContentOpenFrom.UNKNOWN,
                             )
                         } else {

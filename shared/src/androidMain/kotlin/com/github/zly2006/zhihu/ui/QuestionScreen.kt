@@ -78,8 +78,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
@@ -103,6 +101,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+
+private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 /**
  * Instrumented tests inject fixed state and side-effect callbacks here so QuestionScreen can be
@@ -203,7 +203,7 @@ private fun QuestionScreenContent(
                 "question",
             )
         }
-        val activity = context as? MainActivity
+        val articleHost = context.articleHost()
         withContext(Dispatchers.IO) {
             try {
                 if (viewModel.displayItems.isEmpty()) {
@@ -220,7 +220,7 @@ private fun QuestionScreenContent(
                     commentCount = questionData.commentCount
                     followerCount = questionData.followerCount
                     isFollowing = questionData.relationship.isFollowing
-                    activity?.postHistory(
+                    articleHost?.postHistoryDestination(
                         Question(
                             question.questionId,
                             title,
@@ -230,7 +230,7 @@ private fun QuestionScreenContent(
                         context = context,
                         destination = question,
                         questionId = question.questionId,
-                        openFrom = activity?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
+                        openFrom = articleHost?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
                     )
                 } else {
                     context.mainExecutor.execute {
@@ -456,7 +456,7 @@ private fun QuestionScreenContent(
                                         try {
                                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                                 data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
-                                                setClass(context, WebviewActivity::class.java)
+                                                setClassName(context, WEBVIEW_ACTIVITY_CLASS)
                                             }
                                             context.startActivity(intent)
                                         } catch (e: Exception) {

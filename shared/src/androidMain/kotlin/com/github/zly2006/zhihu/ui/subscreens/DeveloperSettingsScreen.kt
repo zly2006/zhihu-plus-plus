@@ -69,12 +69,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.util.PowerSaveModeCompat
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -104,16 +104,16 @@ actual fun DeveloperSettingsScreen() {
     }
     val dataState by AccountData.asState()
     val data = dataState
-    val mainActivity = context as? MainActivity
+    val runtimeInfoProvider = context as? DeveloperRuntimeInfoProvider
     var developerModeEnabled by remember {
         mutableStateOf(preferences.getBoolean("developer", false))
     }
     val continuousUsageDurationMs by produceState(
-        initialValue = mainActivity?.currentContinuousUsageDurationMs() ?: 0L,
-        key1 = mainActivity,
+        initialValue = runtimeInfoProvider?.developerRuntimeInfo?.continuousUsageDurationMs ?: 0L,
+        key1 = runtimeInfoProvider,
     ) {
         while (true) {
-            value = mainActivity?.currentContinuousUsageDurationMs() ?: 0L
+            value = runtimeInfoProvider?.developerRuntimeInfo?.continuousUsageDurationMs ?: 0L
             delay(1_000L)
         }
     }
@@ -270,12 +270,7 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            when (mainActivity?.ttsEngine) {
-                                MainActivity.TtsEngine.Pico -> "Pico TTS"
-                                MainActivity.TtsEngine.Google -> "Google TTS"
-                                MainActivity.TtsEngine.Sherpa -> "Sherpa TTS"
-                                else -> "未初始化"
-                            },
+                            runtimeInfoProvider?.developerRuntimeInfo?.currentTtsEngineLabel ?: "未初始化",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -291,17 +286,17 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            if (mainActivity?.isSpeaking() == true) {
+                            if (runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true) {
                                 "正在朗读"
-                            } else if (mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized) {
+                            } else if (runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized) {
                                 "就绪"
                             } else {
                                 "未就绪"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
-                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true -> MaterialTheme.colorScheme.tertiary
+                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
                             },
                         )
@@ -317,11 +312,15 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            (context as? MainActivity)?.textToSpeech?.engines?.joinToString { it.name } ?: "",
+                            runtimeInfoProvider
+                                ?.developerRuntimeInfo
+                                ?.availableTtsEngineLabels
+                                ?.joinToString()
+                                .orEmpty(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
-                                mainActivity?.isSpeaking() == true -> MaterialTheme.colorScheme.tertiary
-                                mainActivity?.ttsEngine != MainActivity.TtsEngine.Uninitialized -> MaterialTheme.colorScheme.primary
+                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true -> MaterialTheme.colorScheme.tertiary
+                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
                             },
                         )

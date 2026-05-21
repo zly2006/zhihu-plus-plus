@@ -56,7 +56,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -65,6 +64,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
 
 /**
@@ -88,7 +88,7 @@ fun handleShareAction(
         }
         "copy" -> {
             // 直接复制链接
-            (context as? MainActivity)?.sharedData?.clipboardDestination = content
+            context.articleHost()?.clipboardDestination = content
             context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content)))
             Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
         }
@@ -231,7 +231,7 @@ fun ShareDialog(
                             text = "复制链接",
                             onClick = {
                                 onDismissRequest()
-                                (context as? MainActivity)?.sharedData?.clipboardDestination = content
+                                context.articleHost()?.clipboardDestination = content
                                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
                                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
                             },

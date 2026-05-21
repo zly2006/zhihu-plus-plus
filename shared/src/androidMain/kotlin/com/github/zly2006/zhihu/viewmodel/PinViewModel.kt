@@ -26,11 +26,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
@@ -71,7 +71,7 @@ class PinViewModel(
                     ContentOpenEventSupport.recordOpenEvent(
                         context = context,
                         destination = pin,
-                        openFrom = (context as? MainActivity)?.consumePendingContentOpenFrom(pin) ?: ContentOpenFrom.UNKNOWN,
+                        openFrom = context.articleHost()?.consumePendingContentOpenFrom(pin) ?: ContentOpenFrom.UNKNOWN,
                     )
                 } else {
                     errorMessage = "无法加载想法详情"

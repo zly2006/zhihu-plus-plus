@@ -24,8 +24,6 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.LocalActivity
-import androidx.activity.viewModels
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,13 +72,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.LoginActivity
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -92,6 +90,8 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
+import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
 import com.github.zly2006.zhihu.ui.components.AnnouncementCardDefaults
 import com.github.zly2006.zhihu.ui.components.BlockByKeywordsDialog
@@ -197,7 +197,7 @@ interface IHomeFeedViewModel {
 @Composable
 actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
-    val context = LocalActivity.current as MainActivity
+    val context = LocalContext.current
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
@@ -213,11 +213,11 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         } ?: RecommendationMode.MIXED
 
     // 根据设置选择对应的ViewModel
-    val viewModel: BaseFeedViewModel by when (currentRecommendationMode) {
-        RecommendationMode.WEB -> context.viewModels<HomeFeedViewModel>()
-        RecommendationMode.ANDROID -> context.viewModels<AndroidHomeFeedViewModel>()
-        RecommendationMode.LOCAL -> context.viewModels<LocalHomeFeedViewModel>()
-        RecommendationMode.MIXED -> context.viewModels<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
+    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
+        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>()
+        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
+        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>()
+        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
     }
     val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
 
@@ -285,7 +285,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         if (!AccountData.data.login &&
             preferences.getBoolean("loginForRecommendation", true)
         ) {
-            val myIntent = Intent(context, LoginActivity::class.java)
+            val myIntent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
             context.startActivity(myIntent)
         } else if (viewModel.displayItems.isEmpty()) {
             // 只在第一次加载时刷新，这样可以避免在返回时刷新
@@ -506,7 +506,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
                             accept = { Text("查看更新") },
                             onAccept = {
-                                context.navigate(Account.SystemAndUpdateSettings)
+                                navigator.onNavigate(Account.SystemAndUpdateSettings)
                             },
                             dismiss = { Text("以后") },
                             onDismiss = {

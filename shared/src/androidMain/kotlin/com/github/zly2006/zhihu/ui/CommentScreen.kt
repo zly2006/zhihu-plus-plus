@@ -103,7 +103,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1223,7 +1222,6 @@ private fun isSameYear(date1: Date, date2: Date): Boolean {
     return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
 }
 
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true)
 @Composable
 @Suppress("SpellCheckingInspection")
 private fun CommentItemPreview() {
@@ -1289,7 +1287,6 @@ fun AuthorTag(authorTag: String) {
     }
 }
 
-@Preview(backgroundColor = 0xFFFFFF, showBackground = true)
 @Composable
 fun CommentAuthorTagPreview() {
     Row(

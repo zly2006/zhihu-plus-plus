@@ -28,10 +28,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.shared.data.CollectionItem
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
+import com.github.zly2006.zhihu.util.buildArticleExportFileName
+import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
+import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -39,11 +48,14 @@ import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
@@ -52,7 +64,8 @@ interface AndroidContextPaginationEnvironment : PaginationEnvironment {
 open class SharedAndroidPaginationEnvironment(
     override val context: Context,
     private val allowGuestAccess: Boolean,
-) : AndroidContextPaginationEnvironment {
+) : AndroidContextPaginationEnvironment,
+    CollectionContentEnvironment {
     override fun httpClient(): HttpClient {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
@@ -105,6 +118,94 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()
+    }
+
+    override suspend fun fetchCollection(collectionId: String): Collection {
+        val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
+            signFetchRequest()
+        } ?: throw IllegalStateException("收藏夹信息加载失败")
+        return AccountData.decodeJson(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+    }
+
+    override suspend fun exportCollectionItemsToHtmlZip(
+        collectionTitle: String,
+        items: List<CollectionItem>,
+        includeImages: Boolean,
+        onProgress: suspend (CollectionHtmlExportProgress) -> Unit,
+    ): CollectionHtmlExportResult {
+        val outputDir = context.getExternalFilesDir(null)
+            ?: throw IllegalStateException("外部文件目录不可用")
+        val exportHttpClient = httpClient()
+        val result = withContext(Dispatchers.IO) {
+            exportCollectionItemsToZip(
+                collectionTitle = collectionTitle,
+                items = items,
+                cacheDir = context.cacheDir,
+                outputDir = outputDir,
+                displayTitle = { item ->
+                    item.content.title.ifBlank { item.content.description() }
+                },
+                resolveItem = { item ->
+                    resolveCollectionItemForHtmlExport(
+                        item = item,
+                        exportHttpClient = exportHttpClient,
+                        includeImages = includeImages,
+                    )
+                },
+                onProgress = { progress ->
+                    withContext(Dispatchers.Main) {
+                        onProgress(
+                            CollectionHtmlExportProgress(
+                                totalCount = progress.totalCount,
+                                processedCount = progress.processedCount,
+                                successCount = progress.successCount,
+                                skippedCount = progress.skippedCount,
+                                failedCount = progress.failedCount,
+                                currentTitle = progress.currentTitle,
+                            ),
+                        )
+                    }
+                },
+            )
+        }
+        return CollectionHtmlExportResult(
+            totalCount = result.totalCount,
+            successCount = result.successCount,
+            skippedCount = result.skippedCount,
+            failedCount = result.failedCount,
+            zipFilePath = result.zipFile?.absolutePath,
+        )
+    }
+
+    override suspend fun handleCollectionExportFailure(error: Exception) {
+        Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)
+        context.mainExecutor.execute {
+            Toast.makeText(context, "导出失败: ${error.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private suspend fun resolveCollectionItemForHtmlExport(
+        item: CollectionItem,
+        exportHttpClient: HttpClient,
+        includeImages: Boolean,
+    ): ResolvedCollectionHtmlExportItem? {
+        val navDestination = item.content.navDestination as? ArticleDestination ?: return null
+        val content = ContentDetailCache.getOrFetch(context, navDestination)
+            ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
+        if (content !is DataHolder.Answer && content !is DataHolder.Article) {
+            return null
+        }
+
+        return ResolvedCollectionHtmlExportItem(
+            htmlFileName = buildArticleExportFileName(content, "html"),
+            htmlContent = buildOfflineArticleExportHtml(
+                context = context,
+                content = content,
+                includeAppAttribution = true,
+                httpClient = exportHttpClient,
+                includeImages = includeImages,
+            ),
+        )
     }
 
     private fun tryShowLoginExpiredDialog(error: HttpStatusException): Boolean {

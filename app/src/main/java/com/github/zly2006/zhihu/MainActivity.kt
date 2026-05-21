@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -68,12 +69,18 @@ import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.nlp.NlpServiceKeywordSemanticMatcher
 import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
+import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.ArticleHost
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperRuntimeInfo
+import com.github.zly2006.zhihu.ui.subscreens.DeveloperRuntimeInfoProvider
 import com.github.zly2006.zhihu.updater.UpdateManager
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
 import com.github.zly2006.zhihu.util.EmojiManager
@@ -84,6 +91,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
+import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
@@ -99,12 +107,26 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class MainActivity : ComponentActivity() {
+class MainActivity :
+    ComponentActivity(),
+    ArticleHost,
+    DeveloperRuntimeInfoProvider {
     class SharedData : ViewModel() {
         var clipboardDestination: NavDestination? = null
     }
 
     val sharedData by viewModels<SharedData>()
+    override val articleNavController: NavHostController
+        get() = navController
+    override val articleAnswerSwitchState: ArticleAnswerSwitchState
+        get() = ViewModelProvider(this)[ArticleViewModel.ArticlesSharedData::class.java]
+    override val articleTtsState: TtsState
+        get() = ttsState
+    override var clipboardDestination: NavDestination?
+        get() = sharedData.clipboardDestination
+        set(value) {
+            sharedData.clipboardDestination = value
+        }
     lateinit var history: HistoryStorage
     val httpClient by lazy {
         AccountData.httpClient(this)
@@ -118,20 +140,6 @@ class MainActivity : ComponentActivity() {
         Pico,
         Google,
         Sherpa,
-    }
-
-    @Suppress("unused")
-    enum class TtsState(
-        val isSpeaking: Boolean = false,
-    ) {
-        Uninitialized, // 未初始化
-        Initializing, // 初始化中
-        Ready, // 已初始化
-        Error, // 失败，需要重新初始化
-        LoadingText, // 正在加载文本
-        Speaking(true), // 正在朗读
-        Paused, // 暂停朗读
-        SwitchingChunk(true), // 切换朗读段落
     }
 
     private val _ttsState = mutableStateOf(TtsState.Uninitialized)
@@ -190,7 +198,9 @@ class MainActivity : ComponentActivity() {
         AccountData.loadData(this)
         AndroidThemeSettings.initialize(this)
         AndroidContentFilterRuntime.semanticMatcher = NlpServiceKeywordSemanticMatcher
-        AndroidContentFilterRuntime.keywordWeightExtractor = NLPService::extractKeywordsWithWeight
+        AndroidContentFilterRuntime.keywordWeightExtractor = KeywordWeightExtractor { text, topN ->
+            NLPService.extractKeywordsWithWeight(text, topN)
+        }
 
         val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
         val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
@@ -380,6 +390,19 @@ class MainActivity : ComponentActivity() {
 
     fun currentContinuousUsageDurationMs(): Long = continuousUsageReminderManager.currentElapsedForegroundMs()
 
+    override val developerRuntimeInfo: DeveloperRuntimeInfo
+        get() = DeveloperRuntimeInfo(
+            continuousUsageDurationMs = currentContinuousUsageDurationMs(),
+            ttsState = ttsState,
+            currentTtsEngineLabel = when (ttsEngine) {
+                TtsEngine.Pico -> "Pico TTS"
+                TtsEngine.Google -> "Google TTS"
+                TtsEngine.Sherpa -> "Sherpa TTS"
+                TtsEngine.Uninitialized -> "未初始化"
+            },
+            availableTtsEngineLabels = textToSpeech?.engines?.map { it.name }.orEmpty(),
+        )
+
     private fun initializeTtsSettings() {
         // 设置语言
         val result = textToSpeech?.setLanguage(Locale.CHINESE)
@@ -511,8 +534,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun consumePendingContentOpenFrom(target: NavDestination): String {
-        val identity = ContentOpenEventSupport.toTrackedContentIdentity(target) ?: return ContentOpenFrom.UNKNOWN
+    override fun consumePendingContentOpenFrom(destination: NavDestination): String {
+        val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
         if (identity != pendingContentOpenIdentity) {
             return ContentOpenFrom.UNKNOWN
         }
@@ -586,6 +609,21 @@ class MainActivity : ComponentActivity() {
 
     fun postHistory(dest: NavDestination) {
         history.add(dest)
+    }
+
+    override fun postHistoryDestination(destination: NavDestination) {
+        postHistory(destination)
+    }
+
+    override fun speakArticleText(
+        text: String,
+        title: String,
+    ) {
+        speakText(text, title)
+    }
+
+    override fun stopArticleSpeaking() {
+        stopSpeaking()
     }
 
     override fun onDestroy() {

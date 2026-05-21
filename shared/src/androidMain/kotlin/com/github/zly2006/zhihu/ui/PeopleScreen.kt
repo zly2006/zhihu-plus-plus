@@ -69,8 +69,6 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -111,6 +109,8 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import kotlin.reflect.typeOf
+
+private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -329,8 +329,7 @@ class PersonViewModel(
     )
 
     suspend fun toggleFollow(context: Context) {
-        context as MainActivity
-        val client = context.httpClient
+        val client = AccountData.httpClient(context)
         if (isFollowing) {
             val jojo = client
                 .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
@@ -351,8 +350,7 @@ class PersonViewModel(
     }
 
     suspend fun toggleBlock(context: Context) {
-        context as MainActivity
-        val client = context.httpClient
+        val client = AccountData.httpClient(context)
         if (isBlocking) {
             // unblock
             val response = client
@@ -391,7 +389,6 @@ class PersonViewModel(
     }
 
     suspend fun load(context: Context) {
-        context as MainActivity
         val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
             url {
                 // todo question_count pins_count
@@ -420,7 +417,7 @@ class PersonViewModel(
         val blocklistManager = BlocklistManager.getInstance(context)
         this.isBlockedInRecommendations = blocklistManager.isUserBlocked(person.id)
 
-        context.postHistory(
+        (context as? ArticleHost)?.postHistoryDestination(
             Person(
                 id = person.id,
                 name = person.name,
@@ -1395,7 +1392,7 @@ private fun DataHolder.Column.webUrl(): String = when {
 
 private fun openInWebview(context: Context, url: String) {
     context.startActivity(
-        Intent(Intent.ACTION_VIEW, url.toUri(), context, WebviewActivity::class.java),
+        Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS),
     )
 }
 

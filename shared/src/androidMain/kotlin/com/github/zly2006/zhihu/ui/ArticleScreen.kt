@@ -25,7 +25,6 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -132,8 +131,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.MainActivity.TtsState
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
@@ -171,11 +168,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+private val ArticleDateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 @Composable
 private fun rememberBottomBarAvoidingBringIntoViewSpec(
@@ -303,7 +303,8 @@ fun ArticleActionsMenu(
 
     @Composable
     fun Content() {
-        val ttsState = (context as? MainActivity)?.ttsState ?: TtsState.Uninitialized
+        val articleHost = context.articleHost()
+        val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
         MenuActionButton(
             icon = {
                 when (ttsState) {
@@ -323,9 +324,8 @@ fun ArticleActionsMenu(
             enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
             onClick = {
                 onDismissRequest()
-                val mainActivity = context as? MainActivity
                 if (ttsState.isSpeaking) {
-                    mainActivity?.stopSpeaking()
+                    articleHost?.stopArticleSpeaking()
                 } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
                     // 使用协程在后台处理文本提取，避免UI阻塞
                     viewModel.viewModelScope.launch {
@@ -351,7 +351,7 @@ fun ArticleActionsMenu(
                                 // 回到主线程执行TTS
                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                     if (textToRead.isNotBlank()) {
-                                        mainActivity?.speakText(textToRead, viewModel.title)
+                                        articleHost?.speakArticleText(textToRead, viewModel.title)
                                     }
                                 }
                             }
@@ -423,7 +423,7 @@ fun ArticleActionsMenu(
                         "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                     }
                 }
-                (context as? MainActivity)?.sharedData?.clipboardDestination = article
+                context.articleHost()?.clipboardDestination = article
                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
             },
@@ -595,7 +595,8 @@ fun ArticleScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
-    val backStackEntry by (context as? MainActivity)?.navController?.currentBackStackEntryAsState()
+    val articleHost = context.articleHost()
+    val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
@@ -862,7 +863,7 @@ fun ArticleScreen(
             }
         }
     }
-    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+    val showBottomBarSlot = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
     val navigationBarsPadding = WindowInsets.navigationBars.asPaddingValues()
     val bottomBarObscuredHeightPx by remember(
         showBottomBarSlot,
@@ -890,11 +891,22 @@ fun ArticleScreen(
     val articleBringIntoViewSpec = rememberBottomBarAvoidingBringIntoViewSpec(bottomBarObscuredHeightPx)
 
     // 回答切换手势系统
-    val sharedData = if (context is MainActivity && article.type == ArticleType.Answer) {
-        val sd by context.viewModels<ArticleViewModel.ArticlesSharedData>()
-        sd
+    val sharedData = if (articleHost != null && article.type == ArticleType.Answer) {
+        articleHost.articleAnswerSwitchState
     } else {
         null
+    }
+    val previewWebViewStore = sharedData as? ArticlePreviewWebViewStore
+
+    fun popCurrentAnswerRouteIfNeeded() {
+        val navController = articleHost?.articleNavController ?: return
+        if (navController.currentBackStackEntry?.hasRoute(Article::class) == true &&
+            navController.currentBackStackEntry
+                ?.toRoute<Article>()
+                ?.type == ArticleType.Answer
+        ) {
+            navController.popBackStack()
+        }
     }
 
     LaunchedEffect(article.id) {
@@ -904,7 +916,7 @@ fun ArticleScreen(
                 sharedData.reset()
             }
             sharedData.navigatingFromAnswerSwitch = false
-            sharedData.answerTransitionDirection = ArticleViewModel.AnswerTransitionDirection.DEFAULT
+            sharedData.answerTransitionDirection = ArticleAnswerTransitionDirection.DEFAULT
 
             // 从 pendingInitialContent 预填充 viewModel，消除空白帧
             val pending = sharedData.pendingInitialContent
@@ -925,9 +937,9 @@ fun ArticleScreen(
 
     val navigateToPrevious: () -> Unit = {
         sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_PREVIOUS
+            ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
         } else {
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_PREVIOUS
+            ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
@@ -936,15 +948,8 @@ fun ArticleScreen(
         if (prev != null) {
             sharedData.pendingInitialContent = prev
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
-                }
+            if (articleHost != null) {
+                popCurrentAnswerRouteIfNeeded()
                 navigator.onNavigate(prev.article)
             }
         } else {
@@ -955,15 +960,8 @@ fun ArticleScreen(
                 val prevCached = sharedData?.navigator?.loadPrevious()
                 if (prevCached != null) {
                     sharedData.pendingInitialContent = prevCached
-                    val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
+                    if (articleHost != null) {
+                        popCurrentAnswerRouteIfNeeded()
                         navigator.onNavigate(prevCached.article)
                     }
                 }
@@ -973,9 +971,9 @@ fun ArticleScreen(
 
     val navigateToNext: () -> Unit = {
         sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
-            ArticleViewModel.AnswerTransitionDirection.HORIZONTAL_NEXT
+            ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
         } else {
-            ArticleViewModel.AnswerTransitionDirection.VERTICAL_NEXT
+            ArticleAnswerTransitionDirection.VERTICAL_NEXT
         }
         sharedData?.navigatingFromAnswerSwitch = true
         // 更新当前回答内容到历史
@@ -985,15 +983,8 @@ fun ArticleScreen(
         if (historyNext != null) {
             sharedData.pendingInitialContent = historyNext
             sharedData.promoteForNavigation(sharedData.answerTransitionDirection)
-            val activity = context as? MainActivity
-            if (activity != null) {
-                if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                    activity.navController.currentBackStackEntry
-                        ?.toRoute<Article>()
-                        ?.type == ArticleType.Answer
-                ) {
-                    activity.navController.popBackStack()
-                }
+            if (articleHost != null) {
+                popCurrentAnswerRouteIfNeeded()
                 navigator.onNavigate(historyNext.article)
             }
         } else {
@@ -1003,15 +994,8 @@ fun ArticleScreen(
             coroutineScope.launch {
                 val nextArticle = sharedData?.navigator?.loadNext()
                 if (nextArticle != null) {
-                    val activity = context as? MainActivity
-                    if (activity != null) {
-                        if (activity.navController.currentBackStackEntry.hasRoute(Article::class) &&
-                            activity.navController.currentBackStackEntry
-                                ?.toRoute<Article>()
-                                ?.type == ArticleType.Answer
-                        ) {
-                            activity.navController.popBackStack()
-                        }
+                    if (articleHost != null) {
+                        popCurrentAnswerRouteIfNeeded()
                         navigator.onNavigate(nextArticle)
                     }
                 }
@@ -1048,8 +1032,7 @@ fun ArticleScreen(
                         navigationIcon = {
                             IconButton(
                                 onClick = {
-                                    val activity = context as? MainActivity
-                                    activity?.navController?.popBackStack()
+                                    articleHost?.articleNavController?.popBackStack()
                                 },
                                 colors = IconButtonDefaults.iconButtonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -1168,7 +1151,7 @@ fun ArticleScreen(
             },
             bottomBar = {
                 // 防止在导航动画和预测性返回手势的过程中，bottom bar闪烁
-                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || context !is MainActivity
+                val showBottomBarCondition = backStackEntry?.hasRoute(Article::class) == true || articleHost == null
 
                 // Shared composable for the action bar content (gated by useDuo3ArticleActions)
                 @Composable
@@ -1260,12 +1243,11 @@ fun ArticleScreen(
                                 ) {
                                     Icon(if (viewModel.isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
                                 }
-                                val mainActivity = context as? MainActivity
-                                val ttsState = mainActivity?.ttsState
+                                val ttsState = articleHost?.articleTtsState
                                 if (ttsState?.isSpeaking == true) {
                                     IconButton(
                                         onClick = {
-                                            mainActivity.stopSpeaking()
+                                            articleHost.stopArticleSpeaking()
                                             Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
                                         },
                                     ) {
@@ -1424,15 +1406,19 @@ fun ArticleScreen(
                                     )
                                 }
 
-                                val mainActivity = context as? MainActivity
-                                val ttsState = mainActivity?.ttsState
+                                val ttsState = articleHost?.articleTtsState
                                 AnimatedVisibility(visible = ttsState?.isSpeaking == true) {
                                     IconButton(
                                         onClick = {
-                                            mainActivity?.stopSpeaking()
+                                            articleHost?.stopArticleSpeaking()
                                             Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
                                         },
-                                        enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing, null),
+                                        enabled = ttsState !in listOf(
+                                            TtsState.Error,
+                                            TtsState.Uninitialized,
+                                            TtsState.Initializing,
+                                            null,
+                                        ),
                                         colors = IconButtonDefaults.iconButtonColors(
                                             containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
                                             contentColor = Color.White,
@@ -1486,13 +1472,13 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.DateTexts() {
                             Text(
-                                "发布于 " + YMDHMS.format(viewModel.createdAt * 1000),
+                                "发布于 " + ArticleDateTimeFormat.format(viewModel.createdAt * 1000),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "编辑于 " + YMDHMS.format(viewModel.updatedAt * 1000),
+                                    "编辑于 " + ArticleDateTimeFormat.format(viewModel.updatedAt * 1000),
                                     color = Color.Gray,
                                     fontSize = 11.sp,
                                 )
@@ -1681,7 +1667,8 @@ fun ArticleScreen(
             // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
             LaunchedEffect(nav?.nextAnswer) {
                 val cached = nav?.nextAnswer ?: return@LaunchedEffect
-                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = true, cached.article.id)
+                val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id)
+                    ?: return@LaunchedEffect
                 val articleId = cached.article.id.toString()
                 if (wv.contentId != articleId) {
                     wv.contentId = articleId
@@ -1695,7 +1682,8 @@ fun ArticleScreen(
             }
             LaunchedEffect(nav?.previousAnswer) {
                 val cached = nav?.previousAnswer ?: return@LaunchedEffect
-                val wv = sharedData.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
+                val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
+                    ?: return@LaunchedEffect
                 val articleId = cached.article.id.toString()
                 if (wv.contentId != articleId) {
                     wv.contentId = articleId

@@ -8,13 +8,18 @@
 - Android login uses shared QR login; Android WebView stays in app.
 - JVM login uses shared QR login and stores cookies under `~/.zhihu-plus-plus/account.json`.
 - KMP Room is used for content filter and local content databases.
-- 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 app 适配层。
+- 共享导航语义应由 `shared/commonMain` 拥有；`NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared。`AnswerNavigator` 的 Android 数据访问通过 `AndroidAnswerNavigatorRepository` 留在 Android 平台适配层。
 - `ZhihuMain.kt` 主导航壳已通过 `git mv` 迁入 `shared/commonMain`；但 route 注册仍需按 `master` 的大函数形状收回 shared。Android 只应保留具体页面实现、`MainActivity`、偏好读取、ViewModel 创建等运行时副作用 adapter。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 `shared/commonMain`；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 `shared/androidMain` adapter。
 - Bottom navigation preference keys and normalization rules are shared in `shared/commonMain`; Android preference screens and `ZhihuMain` adapters reuse that common rule set.
 - Account session data and JSON persistence rules have a shared repository; Android and JVM desktop storage are thin file-path adapters over that repository.
 - Feed display mapping is shared via `Feed.toDisplayItem`; Android feed view models only pass platform preferences into the shared mapper.
 - `PaginationViewModel.kt` 本体已通过 `git mv` 迁入 `shared/commonMain`，当前 common API 依赖 `PaginationEnvironment` 而不是 Android `Context`。Android 侧仍有临时 `Context -> PaginationEnvironment` 薄适配，feed/comment/list 子类还在 Android source set；下一步继续把子类的状态和纯分页流程迁入 shared，并把登录过期 Dialog、Toast/clipboard、Activity 导航、偏好读取、history repository 等副作用压缩到平台 adapter。不得用 `ZhihuPageLoader` 替代本体迁移。
+- `CollectionsViewModel` 和 `CollectionContentViewModel` 已迁入 `shared/commonMain`。收藏夹分页、展示状态、导出进度状态和 item 映射属于 shared；收藏夹信息 fetch、详情解析、HTML/ZIP 文件导出、Toast/log、Android 文件路径和 cacheDir 由 `SharedAndroidPaginationEnvironment` 实现为平台 adapter。`CollectionContentScreen` 当前仍在 `shared/androidMain`，后续应继续迁入 common 并删除整页 `expect/actual` 债务。
+- `FollowScreen`、`HomeScreen`、`HotListScreen`、`PeopleScreen`、`QuestionScreen`、`SearchScreen` 当前已去掉对 app `MainActivity` / `LoginActivity` / `WebviewActivity` / app `TopLevelReselectAction` typealias 的直接依赖。`HomeScreen` 和这些页面主体仍多在 `shared/androidMain`，后续应继续拆 `Context`、settings、message、WebView、history/openFrom、feed display/filter environment 后迁入 common；本地推荐相关 Android 实现已先移入 `shared/androidMain` 作为临时桥，后续仍需拆 DB/client/connectivity/message/log environment 并迁 shared。
+- `CommentScreen.kt` 和 `PinViewModel.kt` 已通过 `git mv` 进入 `shared/androidMain`，清掉 shared 对 app UI/ViewModel 的反向依赖；它们的状态机、评论/想法 UI 和 route/openFrom 语义仍应继续拆副作用后迁 common。
+- `WebviewComp` 保持 Android-only WebView 实现留在 `shared/androidMain`，但已去掉 app `MainActivity` / `WebviewActivity` 类型依赖，改用 className 启动和最小 runtime navigation adapter；WebView 本体不得迁 common，URL 到 `NavDestination` 的语义后续可继续抽 shared policy。
+- `DeveloperSettingsScreen` 已去掉 app `MainActivity` 直接依赖，改走 common `DeveloperRuntimeInfoProvider` / `DeveloperRuntimeInfo`。TTS 状态语义继续使用 common `TtsState`；Android `TextToSpeech` engine/runtime 细节由 `MainActivity` 平台 adapter 转成展示信息。
 - `HistoryViewModel`、`OnlineHistoryViewModel` 和 `OnlineHistoryScreen` 的本地历史读取/清理已改为直接使用 `shared/androidMain` 的 `HistoryStorage`，不再 cast `MainActivity.history`。
 - `ContentFilterManager` is in `shared/commonMain`. `ContentFilterExtensions` has moved from app into `shared/androidMain` as the current Android wrapper over shared filter pipelines; its remaining Android `Context`/preferences/Room/log/Toast/detail-fetch dependencies are adapter seams, not ownership. Continue moving the orchestration and strategy into `shared/commonMain` instead of replacing or bypassing filtering logic.
 - `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
@@ -44,8 +49,16 @@
 - Continue shrinking the Android `ZhihuMain` adapter only where it removes real platform side effects; do not rewrite the shared main shell.
 - Split account fetch/token refresh orchestration from Android `AccountData`.
 - Continue migrating `PaginationViewModel` subclasses and Android-only pagination call sites into shared after splitting their remaining platform side effects into small adapters.
+- Move `CollectionContentScreen` body into `shared/commonMain`; keep only export, article host, answer navigator repository, and Android back-handler/runtime pieces as small platform adapters.
 - Move `ContentFilterManager` and `ContentFilterExtensions` into shared after splitting preferences, database builder, logging/toast, and content-detail fetch side effects into adapters.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
 - Move local recommendation orchestration behind platform adapters.
 - Move pure HTML/text parsing only after replacing Jsoup with Ksoup-compatible shared code.
 - Run Android AVD and JVM QR login runtime validation before final completion.
+
+## Latest Verification
+
+- 2026-05-21：`./gradlew :shared:compileAndroidMain --continue` 通过。
+- 2026-05-21：`./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin --continue` 通过。
+- 2026-05-21：`./gradlew assembleLiteDebug` 通过。
+- 2026-05-21：`./gradlew ktlintFormat` 已执行 app/main、desktop、shared/commonMain、shared/androidMain 格式化任务，但最终被 iOS 编译任务拦下；失败点仍是本迁移期已知的 iOS/common 不兼容项（`JvmInline`、`Integer`、`System`、`java`、`String.format` 等）。本阶段仍不执行 iOS 修复。

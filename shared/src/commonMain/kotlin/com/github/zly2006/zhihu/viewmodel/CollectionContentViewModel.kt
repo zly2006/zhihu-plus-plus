@@ -17,38 +17,54 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.Context
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.shared.data.CollectionItem
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
-import com.github.zly2006.zhihu.util.buildArticleExportFileName
-import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
-import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
-import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
-import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
+
+data class CollectionHtmlExportProgress(
+    val totalCount: Int,
+    val processedCount: Int,
+    val successCount: Int,
+    val skippedCount: Int,
+    val failedCount: Int,
+    val currentTitle: String = "",
+)
+
+data class CollectionHtmlExportResult(
+    val totalCount: Int,
+    val successCount: Int,
+    val skippedCount: Int,
+    val failedCount: Int,
+    val zipFilePath: String?,
+)
+
+interface CollectionContentEnvironment : PaginationEnvironment {
+    suspend fun fetchCollection(collectionId: String): Collection
+
+    suspend fun exportCollectionItemsToHtmlZip(
+        collectionTitle: String,
+        items: List<CollectionItem>,
+        includeImages: Boolean,
+        onProgress: suspend (CollectionHtmlExportProgress) -> Unit,
+    ): CollectionHtmlExportResult
+
+    suspend fun handleCollectionExportFailure(error: Exception)
+}
 
 class CollectionContentViewModel(
     val collectionId: String,
@@ -77,7 +93,7 @@ class CollectionContentViewModel(
         feed = null,
         avatarSrc = when (item.content) {
             is Feed.AnswerTarget -> item.content.author?.avatarUrl
-            is Feed.ArticleTarget -> item.content.author?.avatarUrl
+            is Feed.ArticleTarget -> item.content.author.avatarUrl
             is Feed.QuestionTarget -> item.content.author?.avatarUrl
             else -> null
         },
@@ -88,17 +104,18 @@ class CollectionContentViewModel(
     }
 
     override fun refresh(environment: PaginationEnvironment) {
-        val context = environment.androidContext()
         if (isLoading) return
         displayItems.clear()
-        viewModelScope.launch {
-            loadCollectionInfo(context)
+        if (environment is CollectionContentEnvironment) {
+            viewModelScope.launch {
+                loadCollectionInfo(environment)
+            }
         }
         super.refresh(environment)
     }
 
     fun exportAllToHtmlZip(
-        context: Context,
+        environment: CollectionContentEnvironment,
         includeImages: Boolean,
     ) {
         if (exportDialogState?.isCompleted == false) return
@@ -115,7 +132,7 @@ class CollectionContentViewModel(
             )
 
             try {
-                val items = ensureAllCollectionItemsLoaded(context)
+                val items = ensureAllCollectionItemsLoaded(environment)
                 if (items.isEmpty()) {
                     exportDialogState = CollectionHtmlExportDialogState(
                         phaseText = "没有可导出的内容",
@@ -130,44 +147,25 @@ class CollectionContentViewModel(
                     return@launch
                 }
 
-                val outputDir = context.getExternalFilesDir(null)
-                    ?: throw IllegalStateException("外部文件目录不可用")
-                val exportHttpClient = httpClient(context)
                 val exportTitle = title
-                val result = withContext(Dispatchers.IO) {
-                    exportCollectionItemsToZip(
-                        collectionTitle = exportTitle,
-                        items = items,
-                        cacheDir = context.cacheDir,
-                        outputDir = outputDir,
-                        displayTitle = { item ->
-                            item.content.title.ifBlank { item.content.description() }
-                        },
-                        resolveItem = { item ->
-                            resolveCollectionItemForHtmlExport(
-                                context = context,
-                                item = item,
-                                exportHttpClient = exportHttpClient,
-                                includeImages = includeImages,
-                            )
-                        },
-                        onProgress = { progress ->
-                            withContext(Dispatchers.Main) {
-                                exportDialogState = CollectionHtmlExportDialogState(
-                                    phaseText = "正在导出 ${progress.processedCount} / ${progress.totalCount}",
-                                    totalCount = progress.totalCount,
-                                    processedCount = progress.processedCount,
-                                    successCount = progress.successCount,
-                                    skippedCount = progress.skippedCount,
-                                    failedCount = progress.failedCount,
-                                    currentTitle = progress.currentTitle,
-                                )
-                            }
-                        },
-                    )
-                }
+                val result = environment.exportCollectionItemsToHtmlZip(
+                    collectionTitle = exportTitle,
+                    items = items,
+                    includeImages = includeImages,
+                    onProgress = { progress ->
+                        exportDialogState = CollectionHtmlExportDialogState(
+                            phaseText = "正在导出 ${progress.processedCount} / ${progress.totalCount}",
+                            totalCount = progress.totalCount,
+                            processedCount = progress.processedCount,
+                            successCount = progress.successCount,
+                            skippedCount = progress.skippedCount,
+                            failedCount = progress.failedCount,
+                            currentTitle = progress.currentTitle,
+                        )
+                    },
+                )
 
-                val resultMessage = if (result.zipFile != null) {
+                val resultMessage = if (result.zipFilePath != null) {
                     "已导出 ${result.successCount} 篇，跳过 ${result.skippedCount} 条，失败 ${result.failedCount} 条。"
                 } else {
                     "没有可导出的回答或文章，已跳过 ${result.skippedCount} 条，失败 ${result.failedCount} 条。"
@@ -182,11 +180,10 @@ class CollectionContentViewModel(
                     currentTitle = "",
                     isCompleted = true,
                     resultMessage = resultMessage,
-                    zipFilePath = result.zipFile?.absolutePath,
+                    zipFilePath = result.zipFilePath,
                 )
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", e)
                 exportDialogState = CollectionHtmlExportDialogState(
                     phaseText = "导出失败",
                     totalCount = exportDialogState?.totalCount ?: 0,
@@ -198,28 +195,25 @@ class CollectionContentViewModel(
                     isCompleted = true,
                     resultMessage = e.message ?: "未知错误",
                 )
-                Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                environment.handleCollectionExportFailure(e)
             }
         }
     }
 
-    private suspend fun loadCollectionInfo(context: Context) {
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
-            signFetchRequest()
-        } ?: throw IllegalStateException("收藏夹信息加载失败")
-        collection = AccountData.decodeJson<Collection>(jojo["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+    private suspend fun loadCollectionInfo(environment: CollectionContentEnvironment) {
+        collection = environment.fetchCollection(collectionId)
     }
 
-    private suspend fun ensureAllCollectionItemsLoaded(context: Context): List<CollectionItem> {
+    private suspend fun ensureAllCollectionItemsLoaded(environment: CollectionContentEnvironment): List<CollectionItem> {
         if (collection == null) {
-            loadCollectionInfo(context)
+            loadCollectionInfo(environment)
         }
 
         while (allData.isEmpty() || !isEnd) {
             val beforeCount = allData.size
             val beforePaging = lastPaging
             isLoading = true
-            fetchFeeds(paginationEnvironment(context))
+            fetchFeeds(environment)
 
             val pagingAdvanced = hasPagingProgress(beforePaging, lastPaging)
             val itemCountAdvanced = allData.size > beforeCount
@@ -238,30 +232,5 @@ class CollectionContentViewModel(
         if (afterPaging == null) return false
         if (beforePaging == null) return true
         return beforePaging.next != afterPaging.next || beforePaging.page != afterPaging.page || beforePaging.isEnd != afterPaging.isEnd
-    }
-
-    private suspend fun resolveCollectionItemForHtmlExport(
-        context: Context,
-        item: CollectionItem,
-        exportHttpClient: io.ktor.client.HttpClient,
-        includeImages: Boolean,
-    ): ResolvedCollectionHtmlExportItem? {
-        val navDestination = item.content.navDestination as? ArticleDestination ?: return null
-        val content = ContentDetailCache.getOrFetch(context, navDestination)
-            ?: throw IllegalStateException("无法加载「${item.content.title}」详情")
-        if (content !is DataHolder.Answer && content !is DataHolder.Article) {
-            return null
-        }
-
-        return ResolvedCollectionHtmlExportItem(
-            htmlFileName = buildArticleExportFileName(content, "html"),
-            htmlContent = buildOfflineArticleExportHtml(
-                context = context,
-                content = content,
-                includeAppAttribution = true,
-                httpClient = exportHttpClient,
-                includeImages = includeImages,
-            ),
-        )
     }
 }

@@ -61,6 +61,7 @@
 - `fd313cd refactor: 收紧 shared 平台边界` 的根本误解：把“代码当前放在 Android app、由 Android UI 调用、或 import 名字看起来像 androidx”误当成“代码所有权属于 Android”。已纠正的方向：`NavDestination`、`FeedNavigation`、`ArticleState`、`CommentRoutes`、`ContentOpenEventSupport`、`CommentItem` 等语义应在 shared。
 - `ZhihuPageLoader` 的根本错误：把“迁移分页 ViewModel”误解成“绕开现有 ViewModel 新建 loader”。正确方向是拆 Android 副作用，让 `PaginationViewModel` 本体迁入 shared。
 - `ThemeManager` / `ZhihuTheme` 的根本误判：把“主题状态当前从 Android preference/system dark 读取”误当成“主题状态属于 Android”。正确方向是主题模式、自定义色、深浅色状态、Material 主题壳进 shared；平台只提供持久化、系统深色探测和 dynamic color adapter。
+- `ArticleHost` / `ArticleAnswerSwitchState` / `TtsState` 的根本误判：把“desktop 暂时没有 TTS 或预览 WebView 实现”误当成“文章 host 和 TTS 状态属于 Android”，并且只看一个缺能力的平台，没有同时检查 Android/iOS 等其他目标的真实能力。正确方向是 TTS 状态、朗读请求语义、回答切换方向、pending 内容、历史/openFrom/复制目标语义进 shared；Android/iOS 提供各自 TTS 和平台副作用 adapter，desktop 暂缺能力不能反向决定 shared 边界。
 - `ContentFilterManager` / `ContentFilterExtensions` 的根本边界：它们是核心过滤器，不是 Android-only 工具类。不能把“当前从 Android `Context` 取 SharedPreferences/Room/Toast/log”误判成“过滤所有权属于 Android”。正确方向是过滤编排、曝光/交互记录、前台已读过滤、广告/付费/关键词/用户/主题过滤策略、统计清理、去重和屏蔽记录保存算法进 shared；平台只提供数据库 builder/文件路径、偏好存取、Toast/Dialog/log、平台生命周期和内容详情 fetch/provider。
 - 内容过滤设置页混合 adapter 的根本错误：为了让设置页先编译到 common，把偏好读写、过滤统计/清理/重置、Toast/消息提示塞进一个页面专用聚合对象，等于把三种不同所有权和变化频率的能力糊成“页面平台适配”，还按页面命名，妨碍后续复用。正确方向是拆成三块通用能力：`SettingsStore` 只负责设置存取；`ContentFilterMaintenance` 只负责统计/清理/重置，并在 `ContentFilterManager` 迁入 shared 后委托 shared 核心；`UserMessageSink` 只负责平台提示。不要在设置页 adapter 里复制或替代过滤核心逻辑。
 - 通用 adapter 抽出后不复用也是错误：每次新增或拆出 shared 能力后，必须同步 grep 同类调用并替换低风险重复点，例如 `Toast.makeText` -> `UserMessageSink`、`getSharedPreferences` -> `SettingsStore`、过滤统计/清理 -> `ContentFilterMaintenance`。若暂不替换，必须在当前切片说明原因，不能默认让重复平台调用继续扩散。
@@ -78,13 +79,13 @@
 - QR 登录核心和 QR UI 已在 shared；Android 风控 WebView 留在 app。
 - JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
 - KMP Room 已用于内容过滤和本地内容数据库。
-- `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 app adapter 留在平台侧。
+- `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 Android 平台 adapter 留在平台侧。
 - `ZhihuMain.kt` 主导航壳已迁入 shared；但 route 注册仍需按 `master` 的大函数结构继续收回 shared。Android 只应保留具体页面实现、偏好读取、`MainActivity`、ViewModel 创建和其他平台副作用 adapter。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 shared；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 androidMain adapter。
 - bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
 - Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
-- 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel` 本体仍待迁移。
+- 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel`、`CollectionsViewModel`、`CollectionContentViewModel` 本体已迁入 `shared/commonMain`。
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 只保留必要 data/runtime adapter。
 - `ContentFilterManager` / `ContentFilterExtensions` 仍在 app 或 Android 调用链中，但目标必须迁入 shared；迁移 ContentFilter 设置页、feed ViewModel 或 PaginationViewModel 时不得弱化、绕开或空实现过滤功能。
 
@@ -161,8 +162,10 @@ rg -n "ThemeManager|ZhihuTheme|dynamic|isSystemInDarkTheme|SharedPreferences|Con
 
 - 2026-05-21：`PaginationViewModel.kt` 本体已通过 `git mv` 进入 `shared/commonMain`，并改为依赖 common `PaginationEnvironment`。`./gradlew :shared:jvmTest :desktopApp:compileKotlin` 已通过。
 - 2026-05-21：`HistoryViewModel`、`OnlineHistoryViewModel` 和 `OnlineHistoryScreen` 已改为使用 `shared/androidMain` 的 `HistoryStorage`，去掉对 `MainActivity.history` 的直接依赖。
-- 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；需要继续拆 `ContentFilterExtensions`、history repository、notification preferences、comment HTML/request helper、collection export 等平台副作用后再迁子类。
-- 注意：`:app:compileLiteDebugKotlin` 当前仍因既有 `shared/androidMain` 迁移债失败，包括 `AccountSettingScreen`、`ArticleScreen`、`WebviewComp`、`ContentFilterExtensions`、`MainActivity`/`BuildConfig`/`R` 访问等；不能把这个 slice 说成 Android 编译通过。
+- 2026-05-21：`CollectionsViewModel` 和 `CollectionContentViewModel` 已迁入 `shared/commonMain`；收藏夹信息 fetch、详情解析、HTML/ZIP 导出、Toast/log、Android 文件路径和 cacheDir 已拆到 `SharedAndroidPaginationEnvironment` 平台 adapter。`./gradlew :shared:compileKotlinMetadata`、`:shared:compileKotlinJvm`、`:desktopApp:compileKotlin` 已通过；`:shared:compileAndroidMain --continue` 的首个 blocker 已后移到 `FollowScreen` 的既有 `MainActivity` 依赖。
+- 2026-05-21：`FollowScreen`、`HomeScreen`、`HotListScreen`、`PeopleScreen`、`QuestionScreen`、`SearchScreen` 已去掉 app `MainActivity` / `LoginActivity` / `WebviewActivity` / app reselect typealias 依赖；`CommentScreen.kt` 和 `PinViewModel.kt` 已通过 `git mv` 进入 `shared/androidMain`；`WebviewComp` 保持 Android-only WebView 但去掉 app Activity 类型依赖；`DeveloperSettingsScreen` 改走 common `DeveloperRuntimeInfoProvider`，TTS 状态继续使用 common `TtsState`。本地推荐 Android 实现已先移入 `shared/androidMain` 作为临时桥，仍需继续拆 environment 后迁 common。`./gradlew :shared:compileAndroidMain --continue`、`:shared:compileKotlinJvm :desktopApp:compileKotlin --continue` 已通过。
+- 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；需要继续拆 `ContentFilterExtensions`、history repository、notification preferences、comment HTML/request helper、collection/home screen platform hooks 等平台副作用后再迁子类或页面。
+- 注意：`:app:compileLiteDebugKotlin` 当前仍因既有 `shared/androidMain` 迁移债失败，包括 `AccountSettingScreen`、`WebviewComp`、`ContentFilterExtensions`、`MainActivity`/`BuildConfig`/`R` 访问等；不能把这个 slice 说成 Android 编译通过。
 
 目标：
 
