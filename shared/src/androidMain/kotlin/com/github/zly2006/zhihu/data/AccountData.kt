@@ -36,7 +36,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuAccount
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
-import com.github.zly2006.zhihu.ui.raiseForStatus
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient

@@ -31,8 +31,8 @@ import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_REL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.raiseForStatus
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
 import io.ktor.client.call.body
 import io.ktor.client.request.get

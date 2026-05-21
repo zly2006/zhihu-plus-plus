@@ -69,7 +69,6 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.WebviewActivity
 import com.github.zly2006.zhihu.data.AccountData
@@ -91,6 +90,7 @@ import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
 import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
@@ -104,13 +104,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
-import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.client.statement.request
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -432,47 +427,6 @@ class PersonViewModel(
                 urlToken = person.urlToken ?: "",
             ),
         )
-    }
-}
-
-class HttpStatusException(
-    val status: HttpStatusCode,
-    val requestUrl: Url,
-    val bodyText: String,
-) : Exception() {
-    override val message: String
-        get() = "HTTP error: ${status.value} ${status.description} on $requestUrl: \n $bodyText"
-
-    var dumpedCurlRequest: String? = null
-
-    constructor(
-        response: HttpResponse,
-        dumpRequest: Boolean = false,
-    ) : this(
-        status = response.status,
-        requestUrl = response.request.url,
-        bodyText = runBlocking { response.bodyAsText() },
-    ) {
-        if (dumpRequest) {
-            dumpedCurlRequest = dumpCurlRequest(response)
-        }
-    }
-}
-
-fun dumpCurlRequest(response: HttpResponse): String {
-    val sb = StringBuilder()
-    sb.append("curl -X ${response.request.method.value} '${response.request.url}' ")
-    response.request.headers.forEach { key, values ->
-        values.forEach { value ->
-            sb.append("\\\n  -H '$key: $value' ")
-        }
-    }
-    return sb.toString()
-}
-
-suspend fun HttpResponse.raiseForStatus() = apply {
-    if (status.value >= 400) {
-        throw HttpStatusException(this, dumpRequest = BuildConfig.DEBUG)
     }
 }
 
