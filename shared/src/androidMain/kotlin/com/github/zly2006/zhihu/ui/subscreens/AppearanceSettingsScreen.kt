@@ -46,7 +46,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -93,11 +92,11 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.shared.theme.ThemeMode
+import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.START_DESTINATION_PREFERENCE_KEY
@@ -129,12 +128,13 @@ internal fun appearanceSettingsStartDestinationOptionTag(key: String): String =
 internal fun appearanceSettingsBottomBarItemTag(key: String): String =
     "appearanceSettings.bottomBarItem.$key"
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 actual fun AppearanceSettingsScreen(
-    setting: String = "",
-    onExit: () -> Unit = {},
+    setting: String?,
+    onExit: () -> Unit,
 ) {
+    val settingKey = setting.orEmpty()
     val context = LocalContext.current
     val preferences = remember {
         context.getSharedPreferences(
@@ -174,10 +174,10 @@ actual fun AppearanceSettingsScreen(
         }
     }
 
-    LaunchedEffect(setting, bringIntoViewRequesters[setting]) {
-        if (setting.isNotEmpty() && scrolledSetting != setting) {
-            bringIntoViewRequesters[setting]?.let { requester ->
-                scrolledSetting = setting
+    LaunchedEffect(settingKey, bringIntoViewRequesters[settingKey]) {
+        if (settingKey.isNotEmpty() && scrolledSetting != settingKey) {
+            bringIntoViewRequesters[settingKey]?.let { requester ->
+                scrolledSetting = settingKey
                 delay(200.milliseconds)
                 // 收缩 LargeTopAppBar（programmatic scroll 不触发 nestedScroll）
                 scrollBehavior.state.heightOffset = scrollBehavior.state.heightOffsetLimit
@@ -231,7 +231,7 @@ actual fun AppearanceSettingsScreen(
                     title = { Text("主题模式") },
                     description = { Text("设置应用的显示主题。") },
                     settingKey = "nightMode",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("nightMode"),
                     bottomAction = {
                         Row(
@@ -280,7 +280,7 @@ actual fun AppearanceSettingsScreen(
                         Toast.makeText(context, "已${if (it) "启用" else "禁用"}动态取色", Toast.LENGTH_SHORT).show()
                     },
                     settingKey = "dynamicColor",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("dynamicColor"),
                 )
 
@@ -409,7 +409,7 @@ actual fun AppearanceSettingsScreen(
                     title = { Text("字号") },
                     description = { Text("调整内容文字大小 ($fontSize%)") },
                     settingKey = "fontScale",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("fontScale"),
                     bottomAction = {
                         Slider(
@@ -535,7 +535,7 @@ actual fun AppearanceSettingsScreen(
                         preferences.edit { putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, it) }
                     },
                     settingKey = ARTICLE_USE_WEBVIEW_PREFERENCE_KEY,
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY),
                 )
 
@@ -736,7 +736,7 @@ actual fun AppearanceSettingsScreen(
                     title = { Text("双击回答动作") },
                     description = { Text("双击回答正文时执行的动作。默认弹窗询问。") },
                     settingKey = ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY),
                     endAction = {
                         ExposedDropdownMenuBox(
@@ -821,7 +821,7 @@ actual fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "底部导航栏",
                 settingKey = APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY,
-                highlightedKey = setting,
+                highlightedKey = settingKey,
                 bringIntoViewRequester = requesterFor(APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY),
             ) {
                 val startDestinationItems = allBottomBarItems.filter { it.first in selectedBottomBarItemKeys.value }
@@ -967,7 +967,7 @@ actual fun AppearanceSettingsScreen(
                     title = { Text("分享操作") },
                     description = { Text("点击分享按钮时的默认行为。") },
                     settingKey = "shareAction",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("shareAction"),
                     endAction = {
                         ExposedDropdownMenuBox(
@@ -1019,7 +1019,7 @@ actual fun AppearanceSettingsScreen(
                         preferences.edit { putBoolean("showSearchHotSearch", it) }
                     },
                     settingKey = "showSearchHotSearch",
-                    highlightedKey = setting,
+                    highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("showSearchHotSearch"),
                 )
             }
@@ -1113,7 +1113,7 @@ actual fun AppearanceSettingsScreen(
             SettingItemGroup(
                 title = "123Duo3 的 UI/UX 改进（beta）",
                 settingKey = "123Duo3",
-                highlightedKey = setting,
+                highlightedKey = settingKey,
                 bringIntoViewRequester = requesterFor("123Duo3"),
                 header = {
                     SettingItemOverall(
