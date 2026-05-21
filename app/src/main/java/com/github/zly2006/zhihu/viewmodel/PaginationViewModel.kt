@@ -24,17 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.MainActivity
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.UserAgent
-import io.ktor.client.plugins.cache.HttpCache
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
@@ -64,7 +57,7 @@ abstract class PaginationViewModel<T : Any>(
     private var currentJob: Job? = null
 
     protected open fun paginationEnvironment(context: Context): PaginationEnvironment =
-        AndroidPaginationEnvironment(context)
+        AndroidPaginationEnvironment(context, allowGuestAccess)
 
     /**
      * Generally used fields to include in the API request.
@@ -83,26 +76,7 @@ abstract class PaginationViewModel<T : Any>(
         loadMore(context)
     }
 
-    open fun httpClient(context: Context): HttpClient {
-        // 检查是否启用推荐内容时登录设置
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
-        if (allowGuestAccess && !loginForRecommendation) {
-            return HttpClient {
-                install(HttpCache)
-                install(ContentNegotiation) {
-                    json(json)
-                }
-                install(UserAgent) {
-                    agent = AccountData.data.userAgent
-                }
-            }
-        }
-        if (context is MainActivity) {
-            return context.httpClient
-        }
-        return AccountData.httpClient(context)
-    }
+    open fun httpClient(context: Context): HttpClient = paginationEnvironment(context).httpClient()
 
     protected open fun processResponse(context: Context, data: List<T>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON

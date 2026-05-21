@@ -28,12 +28,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.LoginActivity
+import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
+import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.cache.HttpCache
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
@@ -42,7 +49,28 @@ import kotlinx.serialization.json.jsonPrimitive
 
 internal class AndroidPaginationEnvironment(
     private val context: Context,
+    private val allowGuestAccess: Boolean,
 ) : PaginationEnvironment {
+    override fun httpClient(): HttpClient {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+        if (allowGuestAccess && !loginForRecommendation) {
+            return HttpClient {
+                install(HttpCache)
+                install(ContentNegotiation) {
+                    json(json)
+                }
+                install(UserAgent) {
+                    agent = AccountData.data.userAgent
+                }
+            }
+        }
+        if (context is MainActivity) {
+            return context.httpClient
+        }
+        return AccountData.httpClient(context)
+    }
+
     override suspend fun fetchJson(
         url: String,
         include: String,

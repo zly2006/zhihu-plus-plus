@@ -17,10 +17,13 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import io.ktor.client.HttpClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 interface PaginationEnvironment {
+    fun httpClient(): HttpClient
+
     suspend fun fetchJson(
         url: String,
         include: String,
