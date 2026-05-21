@@ -22,7 +22,6 @@ import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
-import com.github.zly2006.zhihu.BuildConfig
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
@@ -98,6 +97,12 @@ object UpdateManager {
         return preferences.getBoolean("checkNightlyUpdates", false)
     }
 
+    private fun Context.isLiteVariant(): Boolean = packageName.endsWith(".lite")
+
+    private fun Context.versionName(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull() ?: "0.0.0"
+
     /**
      * 获取跳过的版本
      */
@@ -141,12 +146,12 @@ object UpdateManager {
         preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
     }
 
-    private fun GithubRelease.extractDownloadInfo(): DownloadInfo {
+    private fun GithubRelease.extractDownloadInfo(context: Context): DownloadInfo {
         val apkAssets = assets.filter {
             it.contentType == ANDROID_APK_CONTENT_TYPE
         }
 
-        val selectedAsset = selectApkAsset(apkAssets, BuildConfig.IS_LITE) ?: apkAssets.first()
+        val selectedAsset = selectApkAsset(apkAssets, context.isLiteVariant()) ?: apkAssets.first()
         return DownloadInfo(
             browserDownloadUrl = selectedAsset.browserDownloadUrl,
             cnDownloadUrl = selectedAsset.cnDownloadUrl,
@@ -181,7 +186,7 @@ object UpdateManager {
             updateState.value = UpdateState.Checking
             updateLastCheckTime(context)
 
-            val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
+            val currentVersion = SchematicVersion.fromString(context.versionName())
             val skippedVersion = getSkippedVersion(context)
 
             var latestVersion: SchematicVersion?
@@ -190,7 +195,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             Log.i("UpdateManager", "Latest version response: $latestResponse")
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
-            val latestDownloadInfo = latestResponse.extractDownloadInfo()
+            val latestDownloadInfo = latestResponse.extractDownloadInfo(context)
 
             if (latestVersion != null && latestVersion > currentVersion) {
                 val versionString = latestVersion.toString()
@@ -224,7 +229,7 @@ object UpdateManager {
             updateLastCheckTime(context)
 
             val client = AccountData.httpClient(context)
-            val currentVersion = SchematicVersion.fromString(BuildConfig.VERSION_NAME)
+            val currentVersion = SchematicVersion.fromString(context.versionName())
             val checkNightly = shouldCheckNightly(context)
 
             var latestVersion: SchematicVersion?
@@ -235,7 +240,7 @@ object UpdateManager {
             val latestResponse = getLatestVersion(context)
             latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
             releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
-            var downloadInfo = latestResponse.extractDownloadInfo()
+            var downloadInfo = latestResponse.extractDownloadInfo(context)
 
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
@@ -258,7 +263,7 @@ object UpdateManager {
                         )
                         isNightly = true
                         releaseNotes = nightlyResponse.body?.let(::extractGithubReleaseNotes)
-                        downloadInfo = nightlyResponse.extractDownloadInfo()
+                        downloadInfo = nightlyResponse.extractDownloadInfo(context)
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
