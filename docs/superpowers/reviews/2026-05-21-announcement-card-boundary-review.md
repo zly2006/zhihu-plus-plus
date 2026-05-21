@@ -12,7 +12,7 @@
 
 `AnnouncementCard` 主体语义属于 shared，当前文件准确边界是“需拆分”：主体是纯 Compose UI，可迁 `shared/commonMain`；尾部 `@Preview` 是 Android tooling，应留 androidMain 或后续删除/单独拆文件。
 
-当前最小正确切片不是把组件退回 app，而是移除 experimental Material3 motion API 依赖，改用稳定 animation spec，降低 KMP 编译风险。
+当前最小正确切片不是把组件退回 app，而是移除 experimental Material3 motion API 依赖，改用稳定 animation spec，降低 KMP 编译风险。后续执行中已删除 Android tooling preview 尾巴，并将运行时主体迁入 `shared/commonMain`。
 
 ## 证据
 
@@ -25,7 +25,8 @@
 
 1. 删除 `ExperimentalMaterial3ExpressiveApi` import 和 opt-in。
 2. 将 `expandVertically` / `shrinkVertically` 的 `MaterialTheme.motionScheme.defaultSpatialSpec()` 改为稳定 `tween(...)` 或默认动画 spec。
-3. 后续再把主体和 `AnnouncementCardDefaults` / `AnnouncementCardColors` 移入 commonMain，preview 单独留 androidMain。
+3. 删除或单独拆分 Android preview；当前切片选择删除无运行时意义的 preview。
+4. 把主体和 `AnnouncementCardDefaults` / `AnnouncementCardColors` 移入 commonMain。
 
 ## 风险
 
