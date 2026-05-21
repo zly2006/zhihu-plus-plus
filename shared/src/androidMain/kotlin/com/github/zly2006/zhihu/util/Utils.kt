@@ -22,10 +22,9 @@ import android.net.Uri
 import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.BuildConfig
-import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
@@ -50,7 +49,7 @@ fun HttpRequestBuilder.signFetchRequest() {
         null
     }
     signZhihuFetchRequest(
-        zse93 = MainActivity.ZSE93,
+        zse93 = ZHIHU_WEB_ZSE93,
         dc0 = AccountData.data.cookies["d_c0"] ?: "",
         body = body,
     )
@@ -64,6 +63,9 @@ fun telemetry(context: Context, usage: String) {
     val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
     val data = AccountData.loadData(context)
     if (preferences.getBoolean("allowTelemetry", true)) {
+        val versionName = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "unknown"
         GlobalScope.launch {
             @OptIn(ExperimentalStdlibApi::class)
             runCatching {
@@ -85,7 +87,7 @@ fun telemetry(context: Context, usage: String) {
                         contentType(ContentType.Application.Json)
                         header(
                             HttpHeaders.UserAgent,
-                            "Zhihu++/${BuildConfig.VERSION_NAME}",
+                            "Zhihu++/$versionName",
                         )
                     }
             }
