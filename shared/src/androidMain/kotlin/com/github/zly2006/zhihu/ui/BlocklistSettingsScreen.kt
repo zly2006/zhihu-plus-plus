@@ -24,7 +24,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -127,8 +126,6 @@ object BlocklistSettingsTestTags {
     fun topicDelete(topicId: String) = "blocklistSettings:topics:delete:$topicId"
 }
 
-typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
-
 data class BlocklistSettingsTestConfig(
     val blockedKeywords: List<BlockedKeyword> = emptyList(),
     val blockedUsers: List<BlockedUser> = emptyList(),
@@ -149,7 +146,9 @@ data class BlocklistSettingsTestConfig(
 )
 
 @Composable
-actual fun BlocklistSettingsScreen(): Unit = BlocklistSettingsScreenContent(testConfig = null)
+actual fun BlocklistSettingsScreen(
+    nlpContent: BlocklistSettingsNlpContent?,
+): Unit = BlocklistSettingsScreenContent(testConfig = null, nlpContent = nlpContent)
 
 @Composable
 fun BlocklistSettingsScreen(
@@ -159,6 +158,7 @@ fun BlocklistSettingsScreen(
 @Composable
 private fun BlocklistSettingsScreenContent(
     testConfig: BlocklistSettingsTestConfig? = null,
+    nlpContent: BlocklistSettingsNlpContent? = null,
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
@@ -426,14 +426,11 @@ private fun BlocklistSettingsScreenContent(
                     },
                 )
                 1 -> {
-                    val nlpContent = testConfig?.nlpContent
-                    if (nlpContent != null) {
-                        nlpContent(navigator.onNavigateBack)
+                    val actualNlpContent = testConfig?.nlpContent ?: nlpContent
+                    if (actualNlpContent != null) {
+                        actualNlpContent(navigator.onNavigateBack)
                     } else {
-                        NLPKeywordManagementScreen(
-                            innerPadding = PaddingValues(0.dp),
-                            onNavigateBack = navigator.onNavigateBack,
-                        )
+                        Text("AI features are not available on this platform.")
                     }
                 }
                 2 -> BlockedUsersList(

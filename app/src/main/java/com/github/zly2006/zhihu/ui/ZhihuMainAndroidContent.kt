@@ -25,6 +25,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -89,5 +90,11 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
     },
     sentenceSimilarityTest = {
         SentenceSimilarityTestScreen()
+    },
+    blocklistSettingsNlpContent = { onNavigateBack ->
+        NLPKeywordManagementScreen(
+            innerPadding = PaddingValues(),
+            onNavigateBack = onNavigateBack,
+        )
     },
 )

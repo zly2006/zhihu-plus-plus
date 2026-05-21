@@ -51,7 +51,7 @@ actual fun PeopleScreen(person: Person) = UnsupportedDesktopScreen()
 actual fun PinScreen(pin: Pin) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun BlocklistSettingsScreen() = UnsupportedDesktopScreen()
+actual fun BlocklistSettingsScreen(nlpContent: BlocklistSettingsNlpContent?) = UnsupportedDesktopScreen()
 
 @Composable
 private fun UnsupportedDesktopScreen() {

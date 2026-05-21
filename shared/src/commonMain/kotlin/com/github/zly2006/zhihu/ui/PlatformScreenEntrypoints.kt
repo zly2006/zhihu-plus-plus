@@ -7,6 +7,8 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.Search
 
+typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
+
 @Composable
 expect fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
 
@@ -50,4 +52,4 @@ expect fun PeopleScreen(person: Person)
 expect fun PinScreen(pin: Pin)
 
 @Composable
-expect fun BlocklistSettingsScreen()
+expect fun BlocklistSettingsScreen(nlpContent: BlocklistSettingsNlpContent? = null)

@@ -141,6 +141,7 @@ data class ZhihuMainPlatformAdapter(
     val sentenceSimilarityTest: @Composable () -> Unit = {
         Text("Sentence similarity test is not available on this platform.")
     },
+    val blocklistSettingsNlpContent: BlocklistSettingsNlpContent? = null,
     val articleEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition?)? = null,
     val articleExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition?)? = null,
 )
@@ -460,7 +461,7 @@ fun ZhihuMain(
                     PinScreen(pin)
                 }
                 composable<Account.RecommendSettings.Blocklist> {
-                    BlocklistSettingsScreen()
+                    BlocklistSettingsScreen(platformAdapter.blocklistSettingsNlpContent)
                 }
                 composable<Account.RecommendSettings.BlockedFeedHistory> {
                     BlockedFeedHistoryScreen()
