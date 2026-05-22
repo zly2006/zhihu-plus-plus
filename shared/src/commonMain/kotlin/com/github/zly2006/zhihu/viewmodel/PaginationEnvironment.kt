@@ -72,6 +72,9 @@ interface PaginationEnvironment {
     }
 
     suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
+
+    suspend fun clearAllHistory() {
+    }
 }
 
 data class FeedDisplaySettings(

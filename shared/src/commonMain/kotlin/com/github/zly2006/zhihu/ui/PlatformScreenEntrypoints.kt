@@ -24,9 +24,6 @@ expect fun FollowTopLevelPage(
 expect fun FollowScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
 
 @Composable
-expect fun OnlineHistoryScreen()
-
-@Composable
 expect fun AccountSettingScreen(innerPadding: PaddingValues)
 
 @Composable

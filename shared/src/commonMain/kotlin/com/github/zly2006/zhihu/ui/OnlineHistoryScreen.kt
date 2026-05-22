@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -41,40 +39,34 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.OnlineHistoryViewModel
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 internal const val ONLINE_HISTORY_OVERFLOW_TAG = "online_history_overflow"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun OnlineHistoryScreen() {
+fun OnlineHistoryScreen() {
     val navigator = LocalNavigator.current
     val viewModel: OnlineHistoryViewModel = viewModel()
-    val context = LocalContext.current
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
     var showClearHistoryDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
         }
     }
 
@@ -85,7 +77,7 @@ actual fun OnlineHistoryScreen() {
                 title = { Text("历史记录") },
                 actions = {
                     var showActionsMenu by remember { mutableStateOf(false) }
-                    BackHandler(enabled = showActionsMenu) {
+                    PlatformBackHandler(enabled = showActionsMenu) {
                         showActionsMenu = false
                     }
                     IconButton(
@@ -130,19 +122,9 @@ actual fun OnlineHistoryScreen() {
                     TextButton(onClick = {
                         showClearHistoryDialog = false
                         coroutineScope.launch {
-                            HistoryStorage(context).clearAndSave()
-                            AccountData.fetchPost(context, "https://api.zhihu.com/read_history/batch_del") {
-                                signFetchRequest()
-                                contentType(ContentType.Application.Json)
-                                setBody(
-                                    buildJsonObject {
-                                        put("pairs", JsonArray(emptyList()))
-                                        put("clear", true)
-                                    },
-                                )
-                            }
+                            paginationEnvironment.clearAllHistory()
                             viewModel.displayItems.clear()
-                            Toast.makeText(context, "已清除所有历史记录", Toast.LENGTH_SHORT).show()
+                            userMessages.showShortMessage("已清除所有历史记录")
                         }
                     }) {
                         Text("确认")
@@ -155,14 +137,14 @@ actual fun OnlineHistoryScreen() {
                 },
             )
         }
-        FeedPullToRefresh(viewModel, padding = innerPadding) {
+        FeedPullToRefresh(viewModel, paginationEnvironment, padding = innerPadding) {
             PaginatedList(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .testTag("online_history_list"),
                 items = viewModel.displayItems,
-                onLoadMore = { viewModel.loadMore(context) },
+                onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 isEnd = { viewModel.isEnd },
             ) { item ->
                 FeedCard(

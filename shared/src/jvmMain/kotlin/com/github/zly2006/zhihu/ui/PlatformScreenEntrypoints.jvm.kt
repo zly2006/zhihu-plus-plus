@@ -23,9 +23,6 @@ actual fun FollowTopLevelPage(
 actual fun FollowScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun OnlineHistoryScreen() = UnsupportedDesktopScreen()
-
-@Composable
 actual fun AccountSettingScreen(innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable
