@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,8 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -76,32 +72,27 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.core.net.toUri
 import com.github.zly2006.zhihu.navigation.LocalNavigator
-import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
-import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.ContinuousUsageReminderManager
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_discord_24dp
+import zhihu.shared.generated.resources.ic_github_24dp
+import zhihu.shared.generated.resources.ic_telegram_24dp
+
+internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousUsageReminderIntervalMinutes"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun SystemAndUpdateSettingsScreen() {
-    val context = LocalContext.current
+fun SystemAndUpdateSettingsScreen() {
+    val runtime = rememberSystemAndUpdateSettingsRuntime()
+    val settings = runtime.settings
+    val updates = runtime.updates
     val navigator = LocalNavigator.current
-    val preferences = remember {
-        context.getSharedPreferences(
-            PREFERENCE_NAME,
-            Context.MODE_PRIVATE,
-        )
-    }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -138,18 +129,18 @@ actual fun SystemAndUpdateSettingsScreen() {
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
-            val updateState by UpdateManager.updateState.collectAsState()
+            val updateState by updates.state.collectAsState()
             val coroutineScope = rememberCoroutineScope()
-            val showUpdateBanner = updateState is UpdateState.UpdateAvailable ||
-                updateState is UpdateState.Downloading ||
-                updateState is UpdateState.Downloaded
+            val showUpdateBanner = updateState is SystemUpdateState.UpdateAvailable ||
+                updateState is SystemUpdateState.Downloading ||
+                updateState is SystemUpdateState.Downloaded
 
             var updateVersion: String by remember { mutableStateOf("") }
             var releaseNotes: String? by remember { mutableStateOf(null) }
             LaunchedEffect(updateState) {
                 val state = updateState
-                if (state is UpdateState.UpdateAvailable) {
-                    updateVersion = state.version.toString()
+                if (state is SystemUpdateState.UpdateAvailable) {
+                    updateVersion = state.version
                     releaseNotes = state.releaseNotes
                 }
             }
@@ -214,7 +205,7 @@ actual fun SystemAndUpdateSettingsScreen() {
                                     }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     TextButton(
-                                        onClick = { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/releases".toUri()) },
+                                        onClick = { runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/releases") },
                                         modifier = Modifier.align(Alignment.End),
                                     ) {
                                         Text("查看完整更新日志")
@@ -229,14 +220,14 @@ actual fun SystemAndUpdateSettingsScreen() {
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        val cnDownloadUrl = (updateState as? UpdateState.UpdateAvailable)?.cnDownloadUrl
+                        val cnDownloadUrl = (updateState as? SystemUpdateState.UpdateAvailable)?.cnDownloadUrl
                         if (!cnDownloadUrl.isNullOrBlank()) {
                             Button(
                                 onClick = {
                                     runCatching {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, cnDownloadUrl.toUri()))
+                                        runtime.openExternalUrl(cnDownloadUrl)
                                     }.onFailure {
-                                        UpdateManager.updateState.value = UpdateState.Error(it.message ?: "无法打开浏览器")
+                                        updates.setError(it.message ?: "无法打开浏览器")
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -257,9 +248,8 @@ actual fun SystemAndUpdateSettingsScreen() {
                             androidx.compose.material3.OutlinedButton(
                                 onClick = {
                                     val state = updateState
-                                    if (state is UpdateState.UpdateAvailable) {
-                                        UpdateManager.skipVersion(context, state.version.toString())
-                                        UpdateManager.updateState.value = UpdateState.Latest
+                                    if (state is SystemUpdateState.UpdateAvailable) {
+                                        updates.skipVersion(state.version)
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
@@ -271,8 +261,8 @@ actual fun SystemAndUpdateSettingsScreen() {
                                 onClick = {
                                     coroutineScope.launch {
                                         when (val state = updateState) {
-                                            is UpdateState.UpdateAvailable -> UpdateManager.downloadUpdate(context, state.downloadUrl)
-                                            is UpdateState.Downloaded -> UpdateManager.installUpdate(context, state.file)
+                                            is SystemUpdateState.UpdateAvailable -> updates.downloadUpdate(state.downloadUrl)
+                                            is SystemUpdateState.Downloaded -> updates.installDownloadedUpdate()
                                             else -> {}
                                         }
                                     }
@@ -281,9 +271,9 @@ actual fun SystemAndUpdateSettingsScreen() {
                             ) {
                                 Text(
                                     when (updateState) {
-                                        is UpdateState.UpdateAvailable -> "下载更新"
-                                        is UpdateState.Downloading -> "下载中..."
-                                        is UpdateState.Downloaded -> "安装更新"
+                                        is SystemUpdateState.UpdateAvailable -> "下载更新"
+                                        is SystemUpdateState.Downloading -> "下载中..."
+                                        is SystemUpdateState.Downloaded -> "安装更新"
                                         else -> "下载更新"
                                     },
                                     Modifier.padding(0.dp, 4.dp),
@@ -295,7 +285,7 @@ actual fun SystemAndUpdateSettingsScreen() {
             }
 
             // Github Token
-            var githubToken by remember { mutableStateOf(preferences.getString("githubToken", "") ?: "") }
+            var githubToken by remember { mutableStateOf(settings.getString("githubToken", "")) }
             var showGithubToken by remember { mutableStateOf(false) }
 
             SettingItemGroup {
@@ -311,7 +301,7 @@ actual fun SystemAndUpdateSettingsScreen() {
                             value = githubToken,
                             onValueChange = {
                                 githubToken = it
-                                preferences.edit { putString("githubToken", it) }
+                                settings.putString("githubToken", it)
                             },
                             visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
                             trailingIcon = {
@@ -328,39 +318,36 @@ actual fun SystemAndUpdateSettingsScreen() {
                     },
                 )
 
-                var autoCheckUpdates by remember { mutableStateOf(UpdateManager.isAutoCheckEnabled(context)) }
+                var autoCheckUpdates by remember { mutableStateOf(updates.autoCheckEnabled()) }
                 SettingItemWithSwitch(
                     title = { Text("自动检查更新") },
                     description = { Text("应用启动后后台检查新版本，并在首页显示更新提醒") },
                     checked = autoCheckUpdates,
                     onCheckedChange = {
                         autoCheckUpdates = it
-                        UpdateManager.setAutoCheckEnabled(context, it)
-                        if (!it) {
-                            UpdateManager.updateState.value = UpdateState.NoUpdate
-                        }
+                        updates.setAutoCheckEnabled(it)
                     },
                 )
 
-                var checkNightlyUpdates by remember { mutableStateOf(preferences.getBoolean("checkNightlyUpdates", false)) }
+                var checkNightlyUpdates by remember { mutableStateOf(settings.getBoolean("checkNightlyUpdates", false)) }
                 SettingItemWithSwitch(
                     title = { Text("检查 Nightly 版本更新") },
                     description = { Text("检查每日构建版本 (可能不稳定)") },
                     checked = checkNightlyUpdates,
                     onCheckedChange = {
                         checkNightlyUpdates = it
-                        preferences.edit { putBoolean("checkNightlyUpdates", it) }
+                        settings.putBoolean("checkNightlyUpdates", it)
                     },
                 )
 
-                var allowTelemetry by remember { mutableStateOf(preferences.getBoolean("allowTelemetry", true)) }
+                var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
                 SettingItemWithSwitch(
                     title = { Text("允许发送遥测统计数据") },
                     description = { Text("仅用于统计使用人数，不包含个人隐私") },
                     checked = allowTelemetry,
                     onCheckedChange = {
                         allowTelemetry = it
-                        preferences.edit { putBoolean("allowTelemetry", it) }
+                        settings.putBoolean("allowTelemetry", it)
                     },
                 )
             }
@@ -370,14 +357,14 @@ actual fun SystemAndUpdateSettingsScreen() {
                     onClick = {
                         coroutineScope.launch {
                             when (updateState) {
-                                is UpdateState.NoUpdate, is UpdateState.Error -> {
-                                    UpdateManager.checkForUpdate(context)
-                                    if (UpdateManager.updateState.value is UpdateState.UpdateAvailable) {
+                                is SystemUpdateState.NoUpdate, is SystemUpdateState.Error -> {
+                                    updates.checkForUpdate()
+                                    if (updates.state.value is SystemUpdateState.UpdateAvailable) {
                                         scrollState.animateScrollTo(0)
                                     }
                                 }
-                                UpdateState.Latest -> {
-                                    UpdateManager.updateState.value = UpdateState.NoUpdate
+                                SystemUpdateState.Latest -> {
+                                    updates.resetToNoUpdate()
                                 }
                                 else -> { /* NOOP */ }
                             }
@@ -387,10 +374,10 @@ actual fun SystemAndUpdateSettingsScreen() {
                 ) {
                     Text(
                         when (updateState) {
-                            is UpdateState.NoUpdate -> "检查更新"
-                            is UpdateState.Checking -> "检查中..."
-                            is UpdateState.Latest -> "已经是最新版本"
-                            is UpdateState.Error -> "检查更新失败，点击重试"
+                            is SystemUpdateState.NoUpdate -> "检查更新"
+                            is SystemUpdateState.Checking -> "检查中..."
+                            is SystemUpdateState.Latest -> "已经是最新版本"
+                            is SystemUpdateState.Error -> "检查更新失败，点击重试"
                             else -> ""
                         },
                         Modifier.padding(0.dp, 4.dp),
@@ -402,8 +389,8 @@ actual fun SystemAndUpdateSettingsScreen() {
             var reminderIntervalMinutes by remember {
                 mutableIntStateOf(
                     ContinuousUsageReminderPolicy.normalizeIntervalMinutes(
-                        preferences.getInt(
-                            ContinuousUsageReminderManager.KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
+                        settings.getInt(
+                            CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY,
                             0,
                         ),
                     ),
@@ -450,13 +437,7 @@ actual fun SystemAndUpdateSettingsScreen() {
                                         text = { Text(label) },
                                         onClick = {
                                             reminderIntervalMinutes = minutes
-                                            preferences.edit {
-                                                putInt(
-                                                    ContinuousUsageReminderManager
-                                                        .KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES,
-                                                    minutes,
-                                                )
-                                            }
+                                            settings.putInt(CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY, minutes)
                                             reminderExpanded = false
                                         },
                                     )
@@ -474,7 +455,7 @@ actual fun SystemAndUpdateSettingsScreen() {
                 SettingItem(
                     title = { Text("Discord 频道") },
                     description = { Text("请在 my-other-apps/zhihu-plus-plus 频道讨论") },
-                    icon = { Icon(painterResource(R.drawable.ic_discord_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_discord_24dp), null) },
                     endAction = {
                         Icon(
                             Icons.Default.ArrowOutward,
@@ -482,13 +463,13 @@ actual fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { luoTianYiUrlLauncher(context, "https://discord.gg/YCPFZV5XSA".toUri()) },
+                    onClick = { runtime.openExternalUrl("https://discord.gg/YCPFZV5XSA") },
                 )
 
                 SettingItem(
                     title = { Text("Telegram 群组 (Hydrogen)") },
                     description = { Text("另一个知乎客户端 Hydrogen 的群组，也可以在里面讨论知乎++哦") },
-                    icon = { Icon(painterResource(R.drawable.ic_telegram_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_telegram_24dp), null) },
                     endAction = {
                         Icon(
                             Icons.Default.ArrowOutward,
@@ -496,13 +477,13 @@ actual fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { luoTianYiUrlLauncher(context, "https://t.me/+_A1Yto6EpyIyODA1".toUri()) },
+                    onClick = { runtime.openExternalUrl("https://t.me/+_A1Yto6EpyIyODA1") },
                 )
 
                 SettingItem(
                     title = { Text("Github issue") },
                     description = { Text("欢迎提交 issue 讨论功能和反馈问题") },
-                    icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
                     endAction = {
                         Icon(
                             Icons.Default.ArrowOutward,
@@ -510,7 +491,7 @@ actual fun SystemAndUpdateSettingsScreen() {
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    onClick = { luoTianYiUrlLauncher(context, "https://github.com/zly2006/zhihu-plus-plus/issues".toUri()) },
+                    onClick = { runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/issues") },
                 )
             }
         }
