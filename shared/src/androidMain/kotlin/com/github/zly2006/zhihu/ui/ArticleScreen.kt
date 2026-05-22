@@ -82,7 +82,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -104,7 +103,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -175,70 +173,10 @@ fun ArticleActionsMenu(
     val coroutineScope = rememberCoroutineScope()
 
     @Composable
-    fun MenuActionButton(
-        icon: @Composable () -> Unit,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { onClick() },
-            shape = RoundedCornerShape(12.dp),
-            color = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(modifier = Modifier.size(24.dp)) {
-                    icon()
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
-                )
-            }
-        }
-    }
-
-    @Composable
-    fun MenuActionButton(
-        icon: ImageVector,
-        text: String,
-        enabled: Boolean = true,
-        backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-        onClick: () -> Unit,
-    ) {
-        MenuActionButton(
-            icon = {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                )
-            },
-            text = text,
-            enabled = enabled,
-            backgroundColor = backgroundColor,
-            contentColor = contentColor,
-            onClick = onClick,
-        )
-    }
-
-    @Composable
     fun Content() {
         val articleHost = context.articleHost()
         val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = {
                 when (ttsState) {
                     TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
@@ -303,7 +241,7 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         // 分享按钮
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = Icons.Filled.Share,
             text = "分享",
             onClick = {
@@ -330,7 +268,7 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = Icons.AutoMirrored.Filled.Comment,
             text = "总结本文",
             onClick = {
@@ -342,7 +280,7 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         // 复制链接按钮
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = Icons.Filled.ContentCopy,
             text = "复制链接",
             onClick = {
@@ -365,7 +303,7 @@ fun ArticleActionsMenu(
         Spacer(modifier = Modifier.height(12.dp))
 
         // 导出按钮
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = Icons.Filled.GetApp,
             text = "导出文章 (Markdown、图片、HTML、PDF)",
             onClick = {
@@ -376,7 +314,7 @@ fun ArticleActionsMenu(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        MenuActionButton(
+        ArticleMenuActionButton(
             icon = Icons.Outlined.DesktopWindows,
             text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
             onClick = {
