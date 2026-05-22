@@ -33,7 +33,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -43,7 +42,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -88,10 +86,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -122,7 +117,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
@@ -144,7 +138,6 @@ import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -176,57 +169,6 @@ import kotlin.math.max
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 private val ArticleDateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
-
-@Composable
-private fun rememberBottomBarAvoidingBringIntoViewSpec(
-    obscuredBottomPx: Float,
-): BringIntoViewSpec {
-    val density = LocalDensity.current
-    return remember(obscuredBottomPx) {
-        object : BringIntoViewSpec {
-            override fun calculateScrollDistance(
-                offset: Float,
-                size: Float,
-                containerSize: Float,
-            ): Float {
-                val effectiveContainerSize = (containerSize - obscuredBottomPx).coerceAtLeast(0f)
-                val effectiveContainerTop = density.run { 110.dp.toPx() }
-                val trailingEdge = offset + size
-                return when {
-                    offset >= effectiveContainerTop && trailingEdge <= effectiveContainerSize -> 0f
-                    offset < effectiveContainerTop && trailingEdge > effectiveContainerSize -> 0f
-                    abs(offset) < abs(trailingEdge + effectiveContainerTop - effectiveContainerSize) -> offset - effectiveContainerTop
-                    else -> trailingEdge + effectiveContainerTop - effectiveContainerSize
-                }
-            }
-        }
-    }
-}
-
-private val VoteUpNeutralContent = Color(0xFF3671EE)
-private val VoteUpNeutralContentDark = Color(0xFF628DF7)
-
-@Composable
-fun voteUpNeutralContent() = if (ThemeManager.isDarkTheme()) VoteUpNeutralContentDark else VoteUpNeutralContent
-
-@Composable
-fun voteUpNeutralContentDuo3() = if (ThemeManager.isDarkTheme()) {
-    VoteUpNeutralContentDark.harmonize(MaterialTheme.colorScheme.primary)
-} else {
-    VoteUpNeutralContent.harmonize(MaterialTheme.colorScheme.primary)
-}
-
-@Composable
-fun voteUpActiveButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = voteUpNeutralContent(),
-    contentColor = Color.White,
-)
-
-@Composable
-fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
-    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1994,36 +1936,4 @@ private fun CachedAnswerPreview(
             Spacer(modifier = Modifier.height((16 + 36).dp))
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ArticleTopAppBar(
-    title: @Composable (expanded: Boolean) -> Unit,
-    subtitle: (@Composable (expanded: Boolean) -> Unit)?,
-    navigationIcon: @Composable () -> Unit,
-    actions: @Composable RowScope.() -> Unit,
-    titleHorizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    collapsedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
-    expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
-    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-) {
-    TopAppBar(
-        title = {
-            Column(
-                horizontalAlignment = titleHorizontalAlignment,
-            ) {
-                title(false)
-                subtitle?.invoke(false)
-            }
-        },
-        navigationIcon = navigationIcon,
-        actions = actions,
-        expandedHeight = maxOf(collapsedHeight, expandedHeight),
-        windowInsets = windowInsets,
-        colors = colors,
-        scrollBehavior = scrollBehavior,
-    )
 }
