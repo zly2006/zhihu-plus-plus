@@ -158,14 +158,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.text.SimpleDateFormat
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
-
-private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
-private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
-private val ArticleDateTimeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1339,13 +1333,13 @@ fun ArticleScreen(
                         @Composable
                         fun ColumnScope.DateTexts() {
                             Text(
-                                "发布于 " + ArticleDateTimeFormat.format(viewModel.createdAt * 1000),
+                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
                                 color = Color.Gray,
                                 fontSize = 11.sp,
                             )
                             if (viewModel.createdAt != viewModel.updatedAt) {
                                 Text(
-                                    "编辑于 " + ArticleDateTimeFormat.format(viewModel.updatedAt * 1000),
+                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
                                     color = Color.Gray,
                                     fontSize = 11.sp,
                                 )

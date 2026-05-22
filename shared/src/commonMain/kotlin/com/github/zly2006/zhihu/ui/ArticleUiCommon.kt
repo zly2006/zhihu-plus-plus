@@ -37,10 +37,34 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.materialkolor.ktx.harmonize
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 private const val SCROLL_THRESHOLD = 10
 val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+
+@OptIn(ExperimentalTime::class)
+fun formatArticleDateTime(seconds: Long): String {
+    val dateTime = Instant
+        .fromEpochSeconds(seconds)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return buildString {
+        append(dateTime.year.toString().padStart(4, '0'))
+        append('-')
+        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append('-')
+        append(dateTime.day.toString().padStart(2, '0'))
+        append(' ')
+        append(dateTime.hour.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.minute.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.second.toString().padStart(2, '0'))
+    }
+}
 
 @Composable
 fun rememberBottomBarAvoidingBringIntoViewSpec(
