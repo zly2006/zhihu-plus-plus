@@ -74,7 +74,7 @@ class PinScreenInstrumentedTest {
          * 2. An error-only injected state should render the visible error message contract exactly
          *    where PinScreen normally reports load failures.
          * 3. Switching between those injected states inside tests must remain completely offline and
-         *    deterministic because the screen never instantiates the production PinViewModel path.
+         *    deterministic because the screen never enters the production runtime loading path.
          */
         composeRule.setScreenContent {
             PinScreen(

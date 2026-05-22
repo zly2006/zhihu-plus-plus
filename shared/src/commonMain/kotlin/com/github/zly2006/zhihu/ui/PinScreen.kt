@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,17 +60,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -86,19 +80,11 @@ import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.components.ShareDialog
-import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
-import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.viewmodel.PinViewModel
-import org.jsoup.Jsoup
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import androidx.compose.material.icons.outlined.ThumbUp as OutlinedThumbUp
 
 const val PIN_SCREEN_BACK_BUTTON_TAG = "pin_screen_back_button"
@@ -129,7 +115,7 @@ data class PinScreenTestOverrides(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun PinScreen(
+fun PinScreen(
     pin: Pin,
 ): Unit = PinScreenContent(pin, testOverrides = null)
 
@@ -146,31 +132,24 @@ private fun PinScreenContent(
     testOverrides: PinScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val httpClient = remember { AccountData.httpClient(context) }
-
-    val viewModel = if (testOverrides == null) {
-        viewModel<PinViewModel> {
-            PinViewModel(pin, httpClient)
-        }
-    } else {
-        null
+    val runtime = rememberPinScreenRuntime()
+    var screenState by remember(pin.id, testOverrides) {
+        mutableStateOf(
+            testOverrides?.state ?: PinScreenUiState(isLoading = true),
+        )
     }
 
     LaunchedEffect(pin.id, testOverrides) {
         if (testOverrides == null) {
-            viewModel?.loadPinDetail(context)
-            AccountData.addReadHistory(context, pin.id.toString(), "pin")
+            screenState = PinScreenUiState(isLoading = true)
+            screenState = try {
+                runtime.loadPinDetail(pin)
+            } catch (e: Exception) {
+                PinScreenUiState(isLoading = false, errorMessage = e.message ?: "未知错误")
+            }
         }
     }
 
-    val screenState = testOverrides?.state ?: PinScreenUiState(
-        isLoading = viewModel?.isLoading ?: false,
-        errorMessage = viewModel?.errorMessage,
-        pinContent = viewModel?.pinContent,
-        isLiked = viewModel?.isLiked ?: false,
-        likeCount = viewModel?.likeCount ?: 0,
-    )
     var showShareDialog by remember { mutableStateOf(false) }
     var showComments by remember { mutableStateOf(false) }
 
@@ -210,7 +189,7 @@ private fun PinScreenContent(
                             val shareText = getShareText(pin)
                             if (shareText != null) {
                                 testOverrides?.onShareAction?.invoke { showShareDialog = true }
-                                    ?: handleShareAction(context, pin) {
+                                    ?: runtime.handleShareAction(pin) {
                                         showShareDialog = true
                                     }
                             }
@@ -260,7 +239,12 @@ private fun PinScreenContent(
                         isLiked = screenState.isLiked,
                         likeCount = screenState.likeCount,
                         onLikeClick = {
-                            testOverrides?.onLikeClick?.invoke() ?: viewModel?.toggleLike(context)
+                            testOverrides?.onLikeClick?.invoke() ?: runtime.toggleLike(pin, screenState.isLiked) { result ->
+                                screenState = screenState.copy(
+                                    isLiked = result.isLiked,
+                                    likeCount = result.likeCount,
+                                )
+                            }
                         },
                         onCommentClick = {
                             showComments = true
@@ -275,7 +259,7 @@ private fun PinScreenContent(
                             pin,
                         )
                     } else if (showComments) {
-                        CommentScreenComponent(
+                        PinCommentsSheet(
                             showComments = showComments,
                             onDismiss = { showComments = false },
                             content = pin,
@@ -292,12 +276,11 @@ private fun PinScreenContent(
                                 shareText,
                             )
                         } else {
-                            ShareDialog(
+                            PinShareDialog(
                                 content = pin,
                                 shareText = shareText,
                                 showDialog = showShareDialog,
                                 onDismissRequest = { showShareDialog = false },
-                                context = context,
                             )
                         }
                     }
@@ -317,9 +300,7 @@ private fun PinContent(
     linkCardPreviewOverride: PinLinkCardPreview? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    val runtime = rememberPinScreenRuntime()
 
     Column(
         modifier = Modifier
@@ -411,10 +392,10 @@ private fun PinContent(
         Text(
             buildString {
                 append("发布于")
-                append(dateFormat.format(Date(pin.created * 1000)))
+                append(formatPinDateTime(pin.created))
                 if (pin.updated > pin.created) {
                     append(" · 编辑于")
-                    append(dateFormat.format(Date(pin.updated * 1000)))
+                    append(formatPinDateTime(pin.updated))
                 }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -439,25 +420,7 @@ private fun PinContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Content
-        if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-            WebviewComp {
-                it.isVerticalScrollBarEnabled = false
-                it.setupUpWebviewClient()
-                val document = Jsoup.parse(pin.contentHtml)
-                it.loadZhihu(
-                    "https://www.zhihu.com",
-                    document,
-                )
-            }
-        } else {
-            Spacer(Modifier.height(10.dp))
-            RenderMarkdown(
-                html = pin.contentHtml,
-                modifier = Modifier.fuckHonorService(),
-                selectable = true,
-                enableScroll = false,
-            )
-        }
+        PinHtmlContent(pin.contentHtml)
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -481,7 +444,7 @@ private fun PinContent(
                     return@LaunchedEffect
                 }
                 isRelatedLoading = true
-                val preview = fetchLinkCardPreview(context, linkCard)
+                val preview = runtime.fetchLinkCardPreview(linkCard)
                 relatedTitle = preview?.title
                 relatedPreview = preview?.preview
                 isRelatedLoading = false
@@ -499,7 +462,7 @@ private fun PinContent(
                             navigator.onNavigate(destination)
                         } else {
                             targetUrl?.let {
-                                luoTianYiUrlLauncher(context, it.toUri())
+                                runtime.openExternalUrl(it)
                             }
                         }
                     },
@@ -619,7 +582,7 @@ private fun PinContent(
     }
 }
 
-private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase(Locale.ROOT)) {
+private fun linkCardTypeLabel(dataContentType: String): String = when (dataContentType.lowercase()) {
     "answer" -> "回答"
     "article" -> "文章"
     "question" -> "问题"
@@ -629,58 +592,14 @@ private fun linkCardTypeLabel(dataContentType: String): String = when (dataConte
     else -> dataContentType
 }
 
-private suspend fun fetchLinkCardPreview(
-    context: Context,
-    linkCard: DataHolder.Pin.ContentLinkCard,
-): PinLinkCardPreview? {
-    val destination = resolveLinkCardDestination(linkCard) ?: return null
-    return when (destination) {
-        is Article -> {
-            when (val detail = DataHolder.getContentDetail(context, destination)) {
-                is DataHolder.Article -> PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-
-                is DataHolder.Answer -> PinLinkCardPreview(
-                    title = compactTitle(detail.question.title),
-                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
-                )
-
-                else -> null
-            }
-        }
-
-        is Question -> {
-            DataHolder.getContentDetail(context, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = compactTitle(detail.title),
-                    preview = compactPreview(detail.detail),
-                )
-            }
-        }
-
-        is Pin -> {
-            DataHolder.getContentDetail(context, destination)?.let { detail ->
-                PinLinkCardPreview(
-                    title = "${detail.author.name} 的想法",
-                    preview = compactPreview(detail.contentHtml),
-                )
-            }
-        }
-
-        else -> null
-    }
-}
-
-private fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {
+internal fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard): NavDestination? {
     val byUrl = linkCard.url
         .takeIf { it.isNotBlank() }
         ?.let(::resolveContent)
     if (byUrl != null) return byUrl
 
     val contentId = linkCard.dataContentId
-    return when (linkCard.dataContentType.lowercase(Locale.ROOT)) {
+    return when (linkCard.dataContentType.lowercase()) {
         "answer" -> contentId.toLongOrNull()?.let { Article(type = ArticleType.Answer, id = it) }
         "article" -> contentId.toLongOrNull()?.let { Article(type = ArticleType.Article, id = it) }
         "question" -> contentId.toLongOrNull()?.let { Question(questionId = it) }
@@ -689,8 +608,8 @@ private fun resolveLinkCardDestination(linkCard: DataHolder.Pin.ContentLinkCard)
     }
 }
 
-private fun compactPreview(raw: String, maxLength: Int = 120): String {
-    val plainText = Jsoup
+internal fun compactPreview(raw: String, maxLength: Int = 120): String {
+    val plainText = Ksoup
         .parse(raw)
         .text()
         .replace(Regex("\\s+"), " ")
@@ -699,4 +618,22 @@ private fun compactPreview(raw: String, maxLength: Int = 120): String {
     return plainText.take(maxLength).trimEnd() + "..."
 }
 
-private fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
+internal fun compactTitle(raw: String, maxLength: Int = 56): String = compactPreview(raw, maxLength)
+
+@OptIn(ExperimentalTime::class)
+private fun formatPinDateTime(seconds: Long): String {
+    val dateTime = Instant
+        .fromEpochSeconds(seconds)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return buildString {
+        append(dateTime.year.toString().padStart(4, '0'))
+        append('-')
+        append((dateTime.month.ordinal + 1).toString().padStart(2, '0'))
+        append('-')
+        append(dateTime.day.toString().padStart(2, '0'))
+        append(' ')
+        append(dateTime.hour.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.minute.toString().padStart(2, '0'))
+    }
+}
