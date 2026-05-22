@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -28,24 +26,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-import kotlinx.coroutines.launch
 
 @Composable
-fun BlockUserConfirmDialog(
+fun BlockUserConfirmDialogContent(
     showDialog: Boolean,
     userToBlock: Pair<String, String>?, // Pair of userId and userName
     displayItems: List<FeedDisplayItem>,
-    context: Context,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
+    onConfirmBlock: (BlockedFeedAuthor) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
     if (showDialog && userToBlock != null) {
         AlertDialog(
             onDismissRequest = onDismiss,
@@ -65,33 +58,23 @@ fun BlockUserConfirmDialog(
                 Button(
                     onClick = {
                         userToBlock.let { (userId, userName) ->
-                            coroutineScope.launch {
-                                try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    displayItems
-                                        .find { item ->
-                                            item.feed
-                                                ?.target
-                                                ?.author
-                                                ?.id == userId
-                                        }?.feed
+                            val author = displayItems
+                                .find { item ->
+                                    item.feed
                                         ?.target
                                         ?.author
-                                        ?.let { author ->
-                                            blocklistManager.addBlockedUser(
-                                                userId = author.id,
-                                                userName = author.name,
-                                                urlToken = author.urlToken,
-                                                avatarUrl = author.avatarUrl,
-                                            )
-                                            onConfirm()
-                                            Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
-                                        }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                    Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                                        ?.id == userId
+                                }?.feed
+                                ?.target
+                                ?.author
+                            onConfirmBlock(
+                                BlockedFeedAuthor(
+                                    id = author?.id ?: userId,
+                                    name = author?.name ?: userName,
+                                    urlToken = author?.urlToken,
+                                    avatarUrl = author?.avatarUrl,
+                                ),
+                            )
                         }
                     },
                 ) {
@@ -106,3 +89,10 @@ fun BlockUserConfirmDialog(
         )
     }
 }
+
+data class BlockedFeedAuthor(
+    val id: String,
+    val name: String,
+    val urlToken: String?,
+    val avatarUrl: String?,
+)

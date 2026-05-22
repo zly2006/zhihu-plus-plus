@@ -18,6 +18,13 @@ actual fun BlockUserConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
+    BlockUserConfirmDialogContent(
+        showDialog = showDialog,
+        userToBlock = userToBlock,
+        displayItems = displayItems,
+        onDismiss = onDismiss,
+        onConfirmBlock = { onConfirm() },
+    )
 }
 
 @Composable

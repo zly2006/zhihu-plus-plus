@@ -4,6 +4,7 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
@@ -68,14 +69,34 @@ actual fun BlockUserConfirmDialog(
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-) = BlockUserConfirmDialog(
-    showDialog = showDialog,
-    userToBlock = userToBlock,
-    displayItems = displayItems,
-    context = LocalContext.current,
-    onDismiss = onDismiss,
-    onConfirm = onConfirm,
-)
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    BlockUserConfirmDialogContent(
+        showDialog = showDialog,
+        userToBlock = userToBlock,
+        displayItems = displayItems,
+        onDismiss = onDismiss,
+        onConfirmBlock = { author ->
+            coroutineScope.launch {
+                try {
+                    val blocklistManager = BlocklistManager.getInstance(context)
+                    blocklistManager.addBlockedUser(
+                        userId = author.id,
+                        userName = author.name,
+                        urlToken = author.urlToken,
+                        avatarUrl = author.avatarUrl,
+                    )
+                    onConfirm()
+                    Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
+    )
+}
 
 private suspend fun ensureAuthorInfo(
     context: Context,
