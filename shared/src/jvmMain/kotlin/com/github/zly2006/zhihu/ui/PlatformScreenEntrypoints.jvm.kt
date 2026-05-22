@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.navigation.Search
 
 @Composable
 actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
@@ -31,9 +30,6 @@ actual fun AccountSettingScreen(innerPadding: PaddingValues) = UnsupportedDeskto
 
 @Composable
 actual fun QuestionScreen(question: Question) = UnsupportedDesktopScreen()
-
-@Composable
-actual fun SearchScreen(search: Search) = UnsupportedDesktopScreen()
 
 @Composable
 actual fun CollectionContentScreen(collectionId: String) = UnsupportedDesktopScreen()

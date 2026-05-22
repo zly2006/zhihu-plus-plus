@@ -61,16 +61,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Search
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -80,6 +79,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -93,7 +93,7 @@ private data class HotSearchItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun SearchScreen(
+fun SearchScreen(
     search: Search,
 ): Unit = SearchScreenContent(search, testHotSearchQueries = null, onTestHotSearchRefresh = null)
 
@@ -112,10 +112,10 @@ private fun SearchScreenContent(
     onTestHotSearchRefresh: (() -> Unit)? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
     val viewModel = viewModel { SearchViewModel(search.query) }
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val keyboardController = LocalSoftwareKeyboardController.current
     var searchText by remember { mutableStateOf(search.query) }
     val coroutineScope = rememberCoroutineScope()
@@ -130,11 +130,11 @@ private fun SearchScreenContent(
     val useTestHotSearchQueries = testHotSearchQueries != null
 
     suspend fun fetchHotSearch() {
-        val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/search/hot_search") ?: return
+        val json = paginationEnvironment.fetchJson("https://www.zhihu.com/api/v4/search/hot_search", "") ?: return
         val queries = json["hot_search_queries"] as? JsonArray ?: return
         hotSearchItems.clear()
         queries.take(15).forEach { item ->
-            hotSearchItems.add(AccountData.decodeJson(item))
+            hotSearchItems.add(ZhihuJson.decodeJson(item))
         }
     }
 
@@ -147,7 +147,7 @@ private fun SearchScreenContent(
     // Load search results when query is not empty
     LaunchedEffect(search.query) {
         if (search.query.isNotEmpty() && viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
         }
     }
 
@@ -356,10 +356,10 @@ private fun SearchScreenContent(
                     )
                 }
             } else {
-                FeedPullToRefresh(viewModel) {
+                FeedPullToRefresh(viewModel, paginationEnvironment) {
                     PaginatedList(
                         items = viewModel.displayItems,
-                        onLoadMore = { viewModel.loadMore(context) },
+                        onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                         topContent = {
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -374,7 +374,7 @@ private fun SearchScreenContent(
                     if (showRefreshFab) {
                         DraggableRefreshButton(
                             onClick = {
-                                viewModel.refresh(context)
+                                viewModel.refresh(paginationEnvironment)
                             },
                         ) {
                             if (viewModel.isLoading) {
