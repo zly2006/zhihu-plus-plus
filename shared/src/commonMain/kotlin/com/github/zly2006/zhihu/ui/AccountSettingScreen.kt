@@ -17,14 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
-import android.content.ContextWrapper
-import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -81,34 +73,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Collections
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.Person
-import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.R
-import com.github.zly2006.zhihu.ui.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
-import com.github.zly2006.zhihu.ui.defaultBottomBarSelectionKeys
-import com.github.zly2006.zhihu.ui.normalizeBottomBarSelection
-import com.github.zly2006.zhihu.ui.shouldShowAccountHistoryShortcut
-import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState
-import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.http.Url
-import kotlinx.coroutines.DelicateCoroutinesApi
+import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
+import org.jetbrains.compose.resources.painterResource
+import zhihu.shared.generated.resources.Res
+import zhihu.shared.generated.resources.ic_github_24dp
+import zhihu.shared.generated.resources.ic_launcher_foreground
+import zhihu.shared.generated.resources.ic_license_24dp
 
 internal const val ACCOUNT_SETTINGS_SCROLL_TAG = "accountSettings.scroll"
 internal const val ACCOUNT_SETTINGS_LOGIN_ITEM_TAG = "accountSettings.loginItem"
@@ -124,14 +105,9 @@ internal const val ACCOUNT_SETTINGS_SYSTEM_TAG = "accountSettings.system"
 internal const val ACCOUNT_SETTINGS_DEVELOPER_TAG = "accountSettings.developer"
 internal const val ACCOUNT_SETTINGS_LICENSES_TAG = "accountSettings.licenses"
 
-private const val LOGIN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.LoginActivity"
-private const val QR_CODE_SCAN_ACTIVITY_CLASS = "com.github.zly2006.zhihu.QRCodeScanActivity"
-private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
-private const val QR_SCAN_RESULT_EXTRA = "scan_result"
-
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun AccountSettingScreen(innerPadding: PaddingValues) {
+fun AccountSettingScreen(innerPadding: PaddingValues) {
     AccountSettingScreen(
         innerPadding = innerPadding,
         unreadCount = 0,
@@ -141,46 +117,39 @@ actual fun AccountSettingScreen(innerPadding: PaddingValues) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, DelicateCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountSettingScreen(
     innerPadding: PaddingValues,
     unreadCount: Int,
     onDismissRequest: () -> Unit,
     refreshAccountProfileOnEnter: Boolean = true,
-    testAccountData: AccountData.Data? = null,
+    testAccountData: AccountSettingsAccountState? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val versionInfo = remember(context) { context.zhihuVersionInfo() }
-    val preferences = remember {
-        context.getSharedPreferences(
-            PREFERENCE_NAME,
-            Context.MODE_PRIVATE,
-        )
-    }
+    val runtime = rememberCommonAccountSettingsRuntime()
+    val settings = runtime.settings
+    val userMessages = runtime.userMessages
+    val versionInfo = remember(runtime) { runtime.appVersionInfo() }
 
-    val useDuo3HomeAccount = remember { preferences.getBoolean("duo3_home_account", false) }
+    val useDuo3HomeAccount = remember { settings.getBoolean("duo3_home_account", false) }
     val selectedBottomBarItemKeys = remember {
         normalizeBottomBarSelection(
-            preferences
-                .getStringSet(
-                    BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
-                    defaultBottomBarSelectionKeys(useDuo3HomeAccount),
-                )?.toSet() ?: defaultBottomBarSelectionKeys(useDuo3HomeAccount),
+            settings.getStringSet(
+                BOTTOM_BAR_ITEMS_PREFERENCE_KEY,
+                defaultBottomBarSelectionKeys(useDuo3HomeAccount),
+            ),
             useDuo3HomeAccount,
             enforceMinimumSelection = true,
         )
     }
-    var isDeveloper by remember { mutableStateOf(preferences.getBoolean("developer", false)) }
+    var isDeveloper by remember { mutableStateOf(settings.getBoolean("developer", false)) }
     var clickTimes by remember { mutableIntStateOf(0) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     LaunchedEffect(isDeveloper) {
-        preferences.edit {
-            putBoolean("developer", isDeveloper)
-        }
+        settings.putBoolean("developer", isDeveloper)
     }
-    val liveData by AccountData.asState()
+    val liveData by runtime.accountState
     val data = testAccountData ?: liveData
 
     Scaffold(
@@ -198,17 +167,10 @@ fun AccountSettingScreen(
             LaunchedEffect(data.login, refreshAccountProfileOnEnter) {
                 if (refreshAccountProfileOnEnter && data.login) {
                     try {
-                        val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
-                            signFetchRequest()
-                        }!!
-                        val self = AccountData.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
-                        AccountData.saveData(
-                            context,
-                            data.copy(self = self),
-                        )
+                        runtime.refreshProfile()
                     } catch (e: Exception) {
                         e.printStackTrace()
-                        Toast.makeText(context, "获取用户信息失败", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("获取用户信息失败")
                     }
                 }
             }
@@ -221,8 +183,8 @@ fun AccountSettingScreen(
                         .clickable {
                             navigator.onNavigate(
                                 Person(
-                                    id = data.self?.id ?: "",
-                                    urlToken = data.self?.urlToken ?: "",
+                                    id = data.id,
+                                    urlToken = data.urlToken ?: "",
                                     name = data.username,
                                 ),
                             )
@@ -230,7 +192,7 @@ fun AccountSettingScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     AsyncImage(
-                        model = data.self?.avatarUrl,
+                        model = data.avatarUrl,
                         contentDescription = "头像",
                         modifier = Modifier
                             .size(64.dp)
@@ -244,23 +206,9 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_PROFILE_NAME_TAG),
                     )
                     Spacer(Modifier.weight(1f))
-                    val scanActivityLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.StartActivityForResult(),
-                    ) scan@{ result ->
-                        if (result.resultCode == android.app.Activity.RESULT_OK) {
-                            val scanResult = result.data?.getStringExtra(QR_SCAN_RESULT_EXTRA) ?: return@scan
-                            val url = Url(scanResult)
-                            if (url.rawSegments.dropLast(1).lastOrNull() != "login") {
-                                Toast.makeText(context, "二维码内容不正确", Toast.LENGTH_SHORT).show()
-                                return@scan
-                            }
-                            Toast.makeText(context, "扫描成功，正在处理登录请求...", Toast.LENGTH_SHORT).show()
-                            context.startActivity(context.webviewActivityIntent(scanResult))
-                        }
-                    }
                     FilledTonalIconButton(
                         onClick = {
-                            scanActivityLauncher.launch(context.qrCodeScanActivityIntent())
+                            runtime.requestQrLoginScan()
                         },
                         modifier = Modifier.size(40.dp),
                     ) {
@@ -295,7 +243,7 @@ fun AccountSettingScreen(
                         icon = { Icon(Icons.AutoMirrored.Filled.Login, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_LOGIN_ITEM_TAG),
                         onClick = {
-                            context.startActivity(context.loginActivityIntent())
+                            runtime.requestLogin()
                         },
                     )
                 }
@@ -317,7 +265,7 @@ fun AccountSettingScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .clickable {
-                                    data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                                    data.urlToken?.let { navigator.onNavigate(Collections(it)) }
                                 }.padding(8.dp, 16.dp),
                             verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -343,8 +291,8 @@ fun AccountSettingScreen(
                                 .clickable {
                                     navigator.onNavigate(
                                         Person(
-                                            id = data.self?.id ?: "",
-                                            urlToken = data.self?.urlToken ?: "",
+                                            id = data.id,
+                                            urlToken = data.urlToken ?: "",
                                             name = data.username,
                                             jumpTo = "关注订阅",
                                         ),
@@ -407,7 +355,7 @@ fun AccountSettingScreen(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                                     .clickable {
                                         onDismissRequest()
-                                        context.navigateMainTab(OnlineHistory)
+                                        runtime.selectMainTab(OnlineHistory)
                                     }.padding(8.dp, 16.dp),
                                 verticalArrangement = Arrangement.Center,
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -435,7 +383,7 @@ fun AccountSettingScreen(
                             title = { Text("查看收藏夹") },
                             icon = { Icon(Icons.Default.BookmarkBorder, null) },
                             onClick = {
-                                data.self?.urlToken?.let { navigator.onNavigate(Collections(it)) }
+                                data.urlToken?.let { navigator.onNavigate(Collections(it)) }
                             },
                         )
                         SettingItem(
@@ -446,8 +394,8 @@ fun AccountSettingScreen(
                             onClick = {
                                 navigator.onNavigate(
                                     Person(
-                                        id = data.self?.id ?: "",
-                                        urlToken = data.self?.urlToken ?: "",
+                                        id = data.id,
+                                        urlToken = data.urlToken ?: "",
                                         name = data.username,
                                         jumpTo = "关注订阅",
                                     ),
@@ -493,15 +441,15 @@ fun AccountSettingScreen(
                 }
             }
 
-            val updateState by UpdateManager.updateState.collectAsState()
+            val updateState by runtime.updateState.collectAsState()
             LaunchedEffect(updateState) {
-                if (updateState is UpdateState.UpdateAvailable) {
-                    val state = updateState as UpdateState.UpdateAvailable
+                if (updateState is SystemUpdateState.UpdateAvailable) {
+                    val state = updateState as SystemUpdateState.UpdateAvailable
                     val versionType = if (state.isNightly) "Nightly版本" else "正式版本"
-                    Toast.makeText(context, "发现新$versionType ${state.version}", Toast.LENGTH_SHORT).show()
+                    userMessages.showShortMessage("发现新$versionType ${state.version}")
                 }
-                if (updateState is UpdateState.Error) {
-                    Toast.makeText(context, "检查更新失败: ${(updateState as UpdateState.Error).message}", Toast.LENGTH_LONG).show()
+                if (updateState is SystemUpdateState.Error) {
+                    userMessages.showLongMessage("检查更新失败: ${(updateState as SystemUpdateState.Error).message}")
                 }
             }
 
@@ -514,7 +462,7 @@ fun AccountSettingScreen(
                     description = { Text("版本号：$versionInfo") },
                     icon = {
                         Image(
-                            painterResource(R.drawable.ic_launcher_foreground),
+                            painterResource(Res.drawable.ic_launcher_foreground),
                             contentDescription = null,
                             modifier = Modifier
                                 .clip(CircleShape)
@@ -528,23 +476,21 @@ fun AccountSettingScreen(
                             if (clickTimes == 5) {
                                 clickTimes = 0
                                 isDeveloper = true
-                                Toast.makeText(context, "You are now a developer", Toast.LENGTH_SHORT).show()
+                                userMessages.showShortMessage("You are now a developer")
                             }
                         },
                         onLongClick = {
-                            val clip = android.content.ClipData.newPlainText("version", versionInfo)
-                            context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制版本号", Toast.LENGTH_SHORT).show()
+                            runtime.copyText("version", versionInfo)
+                            userMessages.showShortMessage("已复制版本号")
                         },
                     ),
                 )
                 SettingItem(
                     title = { Text("GitHub 项目地址") },
                     description = { Text("https://github.com/zly2006/zhihu-plus-plus") },
-                    icon = { Icon(painterResource(R.drawable.ic_github_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_github_24dp), null) },
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus".toUri())
-                        context.startActivity(intent)
+                        runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus")
                     },
                     endAction = {
                         Icon(
@@ -558,10 +504,9 @@ fun AccountSettingScreen(
                 SettingItem(
                     title = { Text("项目协议") },
                     description = { Text("AGPL-3.0-only") },
-                    icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
                     onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, "https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE".toUri())
-                        context.startActivity(intent)
+                        runtime.openExternalUrl("https://github.com/zly2006/zhihu-plus-plus/blob/master/LICENSE")
                     },
                     endAction = {
                         Icon(
@@ -574,7 +519,7 @@ fun AccountSettingScreen(
                 SettingItem(
                     title = { Text("开源许可") },
                     description = { Text("查看第三方组件许可证") },
-                    icon = { Icon(painterResource(R.drawable.ic_license_24dp), null) },
+                    icon = { Icon(painterResource(Res.drawable.ic_license_24dp), null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_LICENSES_TAG),
                     onClick = { navigator.onNavigate(Account.OpenSourceLicenses) },
                 )
@@ -590,7 +535,7 @@ fun AccountSettingScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        AccountData.delete(context)
+                        runtime.logout()
                         showLogoutDialog = false
                     },
                 ) {
@@ -604,51 +549,4 @@ fun AccountSettingScreen(
             },
         )
     }
-}
-
-private fun Context.zhihuVersionInfo(): String {
-    val versionName = runCatching {
-        packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull() ?: "unknown"
-    val appInfo = runCatching {
-        packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
-    }.getOrNull()
-    val metaData = appInfo?.metaData
-    val buildType = metaData?.getString("com.github.zly2006.zhihu.BUILD_TYPE")
-        ?: if ((applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) "debug" else "release"
-    val gitHash = metaData?.getString("com.github.zly2006.zhihu.GIT_HASH") ?: "unknown"
-    return "$versionName $buildType, $gitHash"
-}
-
-private fun Context.loginActivityIntent(): Intent = Intent().setClassName(
-    packageName,
-    LOGIN_ACTIVITY_CLASS,
-)
-
-private fun Context.qrCodeScanActivityIntent(): Intent = Intent().setClassName(
-    packageName,
-    QR_CODE_SCAN_ACTIVITY_CLASS,
-)
-
-private fun Context.webviewActivityIntent(url: String): Intent = Intent().apply {
-    setClassName(packageName, WEBVIEW_ACTIVITY_CLASS)
-    data = url.toUri()
-}
-
-private fun Context.navigateMainTab(destination: TopLevelDestination) {
-    val activity = findActivity() ?: return
-    activity
-        .javaClass
-        ?.methods
-        ?.firstOrNull { method ->
-            method.name == "navigateMainTab" &&
-                method.parameterTypes.size == 1 &&
-                method.parameterTypes.first().isAssignableFrom(destination::class.java)
-        }?.invoke(activity, destination)
-}
-
-private fun Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }

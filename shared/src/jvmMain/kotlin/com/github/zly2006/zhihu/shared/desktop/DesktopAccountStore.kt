@@ -26,6 +26,8 @@ class DesktopAccountStore(
 
     fun save(data: DesktopAccountData) = repository.save(data)
 
+    fun clear() = repository.clear()
+
     fun createHttpClient(cookies: MutableMap<String, String>): HttpClient = HttpClient(CIO) {
         val savedData = load()
         installZhihuCommonClientConfig(
