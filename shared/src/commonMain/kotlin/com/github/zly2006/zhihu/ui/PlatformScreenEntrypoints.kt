@@ -12,18 +12,6 @@ typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit)
 expect fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
 
 @Composable
-expect fun FollowTopLevelPage(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    scrollToTopTrigger: Int,
-    innerPadding: PaddingValues,
-    isActive: Boolean,
-)
-
-@Composable
-expect fun FollowScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
-
-@Composable
 expect fun AccountSettingScreen(innerPadding: PaddingValues)
 
 @Composable

@@ -11,18 +11,6 @@ import com.github.zly2006.zhihu.navigation.Question
 actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun FollowTopLevelPage(
-    selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    scrollToTopTrigger: Int,
-    innerPadding: PaddingValues,
-    isActive: Boolean,
-) = UnsupportedDesktopScreen()
-
-@Composable
-actual fun FollowScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
-
-@Composable
 actual fun AccountSettingScreen(innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable

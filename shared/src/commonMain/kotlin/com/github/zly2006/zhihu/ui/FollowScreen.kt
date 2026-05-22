@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +68,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
@@ -79,11 +79,10 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
-import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
@@ -109,7 +108,7 @@ fun followDynamicItemTag(stableKey: String) = "follow_dynamic_item_$stableKey"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-actual fun FollowScreen(
+fun FollowScreen(
     scrollToTopTrigger: Int,
     innerPadding: PaddingValues,
 ): Unit = FollowScreenContent(
@@ -204,7 +203,7 @@ private fun FollowScreenContent(
 }
 
 @Composable
-actual fun FollowTopLevelPage(
+fun FollowTopLevelPage(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     scrollToTopTrigger: Int,
@@ -341,12 +340,12 @@ fun FollowRecommendScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
     val viewModel: FollowRecommendViewModel = viewModel()
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    }
-    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val feedBlockActions = rememberFeedBlockActions()
+    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -357,7 +356,7 @@ fun FollowRecommendScreen(
         )
         if (isActive) {
             when (action) {
-                TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+                TopLevelReselectAction.Refresh -> viewModel.refresh(environment)
                 TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
                 null -> {}
             }
@@ -367,13 +366,13 @@ fun FollowRecommendScreen(
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(environment)
         }
     }
 
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
 
@@ -382,7 +381,7 @@ fun FollowRecommendScreen(
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
-        FeedPullToRefresh(viewModel) {
+        FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
@@ -392,20 +391,20 @@ fun FollowRecommendScreen(
                         FollowingUsersRow()
                     }
                 },
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
                 footer = ProgressIndicatorFooter,
             ) { item ->
                 FeedCard(
                     item = item,
                     modifier = Modifier.testTag(followRecommendItemTag(item.stableKey)),
                     onBlockUser = { feedItem ->
-                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                        feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
                             showBlockUserDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        viewModel.handleBlockTopic(context, topicId, topicName)
+                        feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
                     },
                 )
             }
@@ -414,7 +413,7 @@ fun FollowRecommendScreen(
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(FOLLOW_RECOMMEND_REFRESH_BUTTON_TAG),
                     onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(environment)
                     },
                 ) {
                     if (viewModel.isLoading) {
@@ -431,13 +430,12 @@ fun FollowRecommendScreen(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,
             displayItems = viewModel.displayItems,
-            context = context,
             onDismiss = {
                 showBlockUserDialog = false
                 userToBlock = null
             },
             onConfirm = {
-                viewModel.refresh(context)
+                viewModel.refresh(environment)
                 showBlockUserDialog = false
                 userToBlock = null
             },
@@ -452,12 +450,12 @@ fun FollowDynamicScreen(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
     val viewModel: FollowViewModel = viewModel()
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    }
-    val showRefreshFab = remember { preferences.getBoolean("showRefreshFab", true) }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = viewModel.allowGuestAccess)
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
+    val feedBlockActions = rememberFeedBlockActions()
+    val showRefreshFab = remember { settings.getBoolean("showRefreshFab", true) }
     val listState = rememberLazyListState()
     var cachedScrollToTopTrigger by remember { mutableIntStateOf(scrollToTopTrigger) }
 
@@ -468,7 +466,7 @@ fun FollowDynamicScreen(
         )
         if (isActive) {
             when (action) {
-                TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+                TopLevelReselectAction.Refresh -> viewModel.refresh(environment)
                 TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
                 null -> {}
             }
@@ -478,13 +476,13 @@ fun FollowDynamicScreen(
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(environment)
         }
     }
 
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
 
@@ -493,12 +491,12 @@ fun FollowDynamicScreen(
     var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Column {
-        FeedPullToRefresh(viewModel) {
+        FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
                 listState = listState,
                 modifier = Modifier.testTag(FOLLOW_DYNAMIC_LIST_TAG),
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
                 topContent = {
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -510,19 +508,19 @@ fun FollowDynamicScreen(
                     item = item,
                     modifier = Modifier.testTag(followDynamicItemTag(item.stableKey)),
                     onLike = {
-                        Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("收到喜欢，功能正在优化")
                     },
                     onDislike = {
-                        Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("收到反馈，功能正在优化")
                     },
                     onBlockUser = { feedItem ->
-                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                        feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
                             showBlockUserDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        viewModel.handleBlockTopic(context, topicId, topicName)
+                        feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
                     },
                 )
             }
@@ -531,7 +529,7 @@ fun FollowDynamicScreen(
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(FOLLOW_DYNAMIC_REFRESH_BUTTON_TAG),
                     onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(environment)
                     },
                 ) {
                     if (viewModel.isLoading) {
@@ -548,13 +546,12 @@ fun FollowDynamicScreen(
             showDialog = showBlockUserDialog,
             userToBlock = userToBlock,
             displayItems = viewModel.displayItems,
-            context = context,
             onDismiss = {
                 showBlockUserDialog = false
                 userToBlock = null
             },
             onConfirm = {
-                viewModel.refresh(context)
+                viewModel.refresh(environment)
                 showBlockUserDialog = false
                 userToBlock = null
             },
