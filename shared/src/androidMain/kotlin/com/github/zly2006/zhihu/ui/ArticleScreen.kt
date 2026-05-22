@@ -246,15 +246,7 @@ fun ArticleActionsMenu(
             text = "分享",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
+                val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
                 val shareIntent = Intent().apply {
                     action = Intent.ACTION_SEND
                     type = "text/plain"
@@ -285,15 +277,7 @@ fun ArticleActionsMenu(
             text = "复制链接",
             onClick = {
                 onDismissRequest()
-                val text = when (article.type) {
-                    ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
-                    }
-
-                    ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
-                    }
-                }
+                val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
                 context.articleHost()?.clipboardDestination = article
                 context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
                 Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()

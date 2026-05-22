@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.materialkolor.ktx.harmonize
@@ -51,6 +53,22 @@ import kotlin.time.Instant
 
 private const val SCROLL_THRESHOLD = 10
 val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+
+fun articleActionText(
+    article: Article,
+    questionId: Long,
+    title: String,
+    authorName: String,
+): String =
+    when (article.type) {
+        ArticleType.Answer -> {
+            "https://www.zhihu.com/question/$questionId/answer/${article.id}\n【$title - $authorName 的回答】"
+        }
+
+        ArticleType.Article -> {
+            "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
+        }
+    }
 
 @OptIn(ExperimentalTime::class)
 fun formatArticleDateTime(seconds: Long): String {
