@@ -6,7 +6,4 @@ import androidx.compose.runtime.Composable
 expect fun AppearanceSettingsScreen(setting: String? = null, onExit: () -> Unit = {})
 
 @Composable
-expect fun DeveloperSettingsScreen()
-
-@Composable
 expect fun SystemAndUpdateSettingsScreen()

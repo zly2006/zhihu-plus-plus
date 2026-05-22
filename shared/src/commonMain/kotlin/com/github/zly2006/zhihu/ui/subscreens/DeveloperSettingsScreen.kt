@@ -17,11 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.content.ClipData
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -63,25 +58,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SentenceSimilarityTest
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
-import com.github.zly2006.zhihu.util.PowerSaveModeCompat
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
-import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -92,28 +77,19 @@ internal const val DEVELOPER_SETTINGS_COLOR_SCHEME_TAG = "developerSettings/colo
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-actual fun DeveloperSettingsScreen() {
+fun DeveloperSettingsScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val runtime = rememberDeveloperSettingsRuntime()
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember {
-        context.getSharedPreferences(
-            PREFERENCE_NAME,
-            Context.MODE_PRIVATE,
-        )
-    }
-    val dataState by AccountData.asState()
-    val data = dataState
-    val runtimeInfoProvider = context as? DeveloperRuntimeInfoProvider
     var developerModeEnabled by remember {
-        mutableStateOf(preferences.getBoolean("developer", false))
+        mutableStateOf(runtime.isDeveloperModeEnabled())
     }
     val continuousUsageDurationMs by produceState(
-        initialValue = runtimeInfoProvider?.developerRuntimeInfo?.continuousUsageDurationMs ?: 0L,
-        key1 = runtimeInfoProvider,
+        initialValue = runtime.runtimeInfo().continuousUsageDurationMs,
+        key1 = runtime,
     ) {
         while (true) {
-            value = runtimeInfoProvider?.developerRuntimeInfo?.continuousUsageDurationMs ?: 0L
+            value = runtime.runtimeInfo().continuousUsageDurationMs
             delay(1_000L)
         }
     }
@@ -162,9 +138,7 @@ actual fun DeveloperSettingsScreen() {
                 checked = developerModeEnabled,
                 onCheckedChange = {
                     developerModeEnabled = it
-                    preferences.edit {
-                        putBoolean("developer", it)
-                    }
+                    runtime.setDeveloperModeEnabled(it)
                     if (!it) {
                         navigator.onNavigateBack()
                     }
@@ -172,32 +146,8 @@ actual fun DeveloperSettingsScreen() {
             )
             SelectionContainer {
                 Column {
-                    val networkStatus = remember {
-                        buildString {
-                            val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-                            val activeNetwork = connectivityManager.activeNetwork
-                            append("网络状态：")
-                            if (activeNetwork != null) {
-                                append("已连接")
-                                if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                                    append(" (移动数据)")
-                                } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                                    append(" (Wi-Fi)")
-                                } else if (connectivityManager.getNetworkCapabilities(activeNetwork)!!.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                                    append(" (VPN)")
-                                }
-                            } else {
-                                append("未连接")
-                            }
-                        }
-                    }
-                    Text(networkStatus)
-
-                    when (PowerSaveModeCompat.getPowerSaveMode(context)) {
-                        PowerSaveModeCompat.POWER_SAVE -> Text("省电模式：已开启")
-                        PowerSaveModeCompat.HUAWEI_POWER_SAVE -> Text("省电模式：华为傻逼模式已开启")
-                        else -> {}
-                    }
+                    Text(runtime.networkStatus())
+                    runtime.powerSaveModeText()?.let { Text(it) }
                     Text("连续使用时长：${formatContinuousUsageDuration(continuousUsageDurationMs)}")
 
                     Spacer(Modifier.height(16.dp))
@@ -206,19 +156,18 @@ actual fun DeveloperSettingsScreen() {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     coroutineScope.launch {
-                        if (AccountData.verifyLogin(context, data.cookies)) {
-                            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+                        if (runtime.verifyLogin(runtime.cookies())) {
+                            runtime.showShortMessage("登录成功")
                         } else {
-                            Toast.makeText(context, "登录失败", Toast.LENGTH_SHORT).show()
+                            runtime.showShortMessage("登录失败")
                         }
                     }
                 }) { Text("验证登录") }
 
                 Button(onClick = {
                     coroutineScope.launch {
-                        val httpClient = AccountData.httpClient(context)
-                        ZhihuCredentialRefresher.refreshZhihuToken(ZhihuCredentialRefresher.fetchRefreshToken(httpClient), httpClient)
-                        Toast.makeText(context, "刷新成功", Toast.LENGTH_SHORT).show()
+                        runtime.refreshToken()
+                        runtime.showShortMessage("刷新成功")
                     }
                 }) { Text("刷新Token") }
 
@@ -270,7 +219,7 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            runtimeInfoProvider?.developerRuntimeInfo?.currentTtsEngineLabel ?: "未初始化",
+                            runtime.runtimeInfo().currentTtsEngineLabel,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -286,17 +235,17 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            if (runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true) {
+                            if (runtime.runtimeInfo().ttsState.isSpeaking) {
                                 "正在朗读"
-                            } else if (runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized) {
+                            } else if (runtime.runtimeInfo().ttsState != TtsState.Uninitialized) {
                                 "就绪"
                             } else {
                                 "未就绪"
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
-                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
+                                runtime.runtimeInfo().ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
+                                runtime.runtimeInfo().ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
                             },
                         )
@@ -312,15 +261,11 @@ actual fun DeveloperSettingsScreen() {
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            runtimeInfoProvider
-                                ?.developerRuntimeInfo
-                                ?.availableTtsEngineLabels
-                                ?.joinToString()
-                                .orEmpty(),
+                            runtime.runtimeInfo().availableTtsEngineLabels.joinToString(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = when {
-                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState?.isSpeaking == true -> MaterialTheme.colorScheme.tertiary
-                                runtimeInfoProvider?.developerRuntimeInfo?.ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
+                                runtime.runtimeInfo().ttsState.isSpeaking -> MaterialTheme.colorScheme.tertiary
+                                runtime.runtimeInfo().ttsState != TtsState.Uninitialized -> MaterialTheme.colorScheme.primary
                                 else -> MaterialTheme.colorScheme.error
                             },
                         )
@@ -382,26 +327,18 @@ actual fun DeveloperSettingsScreen() {
                                 }
 
                                 if (cookies.isNotEmpty()) {
-                                    // 保存cookie数据
-                                    val currentData = AccountData.data
-                                    AccountData.saveData(
-                                        context,
-                                        currentData.copy(
-                                            cookies = cookies,
-                                            login = true,
-                                        ),
-                                    )
+                                    runtime.saveCookies(cookies)
 
                                     // 验证登录状态
                                     coroutineScope.launch {
                                         try {
-                                            if (AccountData.verifyLogin(context, cookies)) {
-                                                Toast.makeText(context, "Cookie设置成功并验证登录状态", Toast.LENGTH_SHORT).show()
+                                            if (runtime.verifyLogin(cookies)) {
+                                                runtime.showShortMessage("Cookie设置成功并验证登录状态")
                                             } else {
-                                                Toast.makeText(context, "Cookie设置成功，但验证登录失败，请检查Cookie是否有效", Toast.LENGTH_LONG).show()
+                                                runtime.showShortMessage("Cookie设置成功，但验证登录失败，请检查Cookie是否有效")
                                             }
                                         } catch (e: Exception) {
-                                            Toast.makeText(context, "验证登录时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                            runtime.showShortMessage("验证登录时发生错误：${e.message}")
                                         }
                                     }
 
@@ -409,13 +346,13 @@ actual fun DeveloperSettingsScreen() {
                                     cookieInputText = ""
                                     showCookieText = false
                                 } else {
-                                    Toast.makeText(context, "未能解析有效的Cookie数据", Toast.LENGTH_SHORT).show()
+                                    runtime.showShortMessage("未能解析有效的Cookie数据")
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "解析Cookie时发生错误：${e.message}", Toast.LENGTH_LONG).show()
+                                runtime.showShortMessage("解析Cookie时发生错误：${e.message}")
                             }
                         } else {
-                            Toast.makeText(context, "请输入Cookie字符串", Toast.LENGTH_SHORT).show()
+                            runtime.showShortMessage("请输入Cookie字符串")
                         }
                     },
                 ) {
@@ -491,27 +428,18 @@ actual fun DeveloperSettingsScreen() {
                             isLoading = true
                             coroutineScope.launch {
                                 try {
-                                    val httpClient = AccountData.httpClient(context)
-                                    val response = httpClient.get(urlInput) {
-                                        signFetchRequest()
-                                    }
-                                    val body = response.bodyAsText()
+                                    val body = runtime.signedGetAndCopy(urlInput)
                                     responseText = body
-
-                                    // 复制到剪贴板
-                                    val clip = ClipData.newPlainText("Signed Request Response", body)
-                                    context.clipboardManager.setPrimaryClip(clip)
-
-                                    Toast.makeText(context, "响应已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                                    runtime.showShortMessage("响应已复制到剪贴板")
                                 } catch (e: Exception) {
                                     responseText = "错误: ${e.message}"
-                                    Toast.makeText(context, "请求失败: ${e.message}", Toast.LENGTH_LONG).show()
+                                    runtime.showShortMessage("请求失败: ${e.message}")
                                 } finally {
                                     isLoading = false
                                 }
                             }
                         } else {
-                            Toast.makeText(context, "请输入有效的URL", Toast.LENGTH_SHORT).show()
+                            runtime.showShortMessage("请输入有效的URL")
                         }
                     },
                     enabled = !isLoading,
