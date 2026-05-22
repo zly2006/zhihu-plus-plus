@@ -17,10 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
-import android.content.Intent
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -61,15 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionContent
@@ -88,29 +82,17 @@ import com.github.zly2006.zhihu.shared.people.PeopleListUiState
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.people.PeopleScreenUiState
 import com.github.zly2006.zhihu.shared.people.PeopleSortedListUiState
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.FeedCard
-import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.ui.components.officialBadgeIconModel
-import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
-import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
-import io.ktor.client.statement.bodyAsText
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
 import kotlin.reflect.typeOf
-
-private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 class PeopleAnswersViewModel(
     val person: Person,
@@ -126,10 +108,10 @@ class PeopleAnswersViewModel(
     override val include: String
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp,author.badge_v2"
 
-    fun changeSortBy(newSort: String, context: Context) {
+    fun changeSortBy(newSort: String, environment: PaginationEnvironment) {
         if (sortBy != newSort) {
             sortBy = newSort
-            refresh(context)
+            refresh(environment)
         }
     }
 }
@@ -148,10 +130,10 @@ class PeopleArticlesViewModel(
     override val include: String
         get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info,author.badge_v2;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
 
-    fun changeSortBy(newSort: String, context: Context) {
+    fun changeSortBy(newSort: String, environment: PaginationEnvironment) {
         if (sortBy != newSort) {
             sortBy = newSort
-            refresh(context)
+            refresh(environment)
         }
     }
 }
@@ -328,102 +310,47 @@ class PersonViewModel(
         followingFeedModel,
     )
 
-    suspend fun toggleFollow(context: Context) {
-        val client = AccountData.httpClient(context)
-        if (isFollowing) {
-            val jojo = client
-                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest()
-                }.raiseForStatus()
-                .body<JsonObject>()
-            this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount - 1)
-            isFollowing = false
-        } else {
-            val jojo = client
-                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                    signFetchRequest()
-                }.raiseForStatus()
-                .body<JsonObject>()
-            this.followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (this.followerCount + 1)
-            isFollowing = true
-        }
+    suspend fun toggleFollow(runtime: PeopleScreenRuntime) {
+        val result = runtime.toggleFollow(person, isFollowing, followerCount)
+        followerCount = result.followerCount
+        isFollowing = result.isFollowing
     }
 
-    suspend fun toggleBlock(context: Context) {
-        val client = AccountData.httpClient(context)
-        if (isBlocking) {
-            // unblock
-            val response = client
-                .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest()
-                }.raiseForStatus()
-            Log.d("PersonViewModel", "Unblock response: ${response.bodyAsText()}")
-            isBlocking = false
-        } else {
-            // block
-            val response = client
-                .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                    signFetchRequest()
-                }.raiseForStatus()
-            Log.d("PersonViewModel", "Block response: ${response.bodyAsText()}")
-            isBlocking = true
-        }
+    suspend fun toggleBlock(runtime: PeopleScreenRuntime) {
+        isBlocking = runtime.toggleBlock(person, isBlocking)
     }
 
-    suspend fun toggleRecommendationBlock(context: Context) {
-        val blocklistManager = BlocklistManager.getInstance(context)
-        if (isBlockedInRecommendations) {
-            // Remove from blocklist
-            blocklistManager.removeBlockedUser(person.id)
-            isBlockedInRecommendations = false
-        } else {
-            // Add to blocklist
-            blocklistManager.addBlockedUser(
+    suspend fun toggleRecommendationBlock(runtime: PeopleScreenRuntime) {
+        isBlockedInRecommendations = runtime.toggleRecommendationBlock(
+            PeopleRecommendationBlockRequest(
                 userId = person.id,
                 userName = name,
                 urlToken = person.urlToken,
                 avatarUrl = avatar,
-            )
-            isBlockedInRecommendations = true
-        }
+                isBlocked = isBlockedInRecommendations,
+            ),
+        )
     }
 
-    suspend fun load(context: Context) {
-        val jojo = AccountData.fetchGet(context, peopleProfileUrl(person)) {
-            url {
-                // todo question_count pins_count
-                parameters["include"] = "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count"
-            }
-            signFetchRequest()
-        }!!
-        val person = AccountData.decodeJson<DataHolder.People>(jojo)
-        this.avatar = person.avatarUrl
-        this.name = person.name
-        this.headline = person.headline
-        this.officialBadge = person.badgeV2.officialBadge()
-        this.officialBadgeDetails = person.badgeV2.officialBadgeDetails()
-        this.followerCount = person.followerCount
-        this.followingCount = person.followingCount
-        this.answerCount = person.answerCount
-        this.articleCount = person.articlesCount
-        this.isFollowing = person.isFollowing
-        this.isBlocking = person.isBlocking
-        val urlToken = person.urlToken
+    suspend fun load(runtime: PeopleScreenRuntime) {
+        val result = runtime.loadProfile(person)
+        val profile = result.profile
+        this.avatar = profile.avatar
+        this.name = profile.name
+        this.headline = profile.headline
+        this.officialBadge = profile.officialBadge
+        this.officialBadgeDetails = profile.officialBadgeDetails
+        this.followerCount = profile.followerCount
+        this.followingCount = profile.followingCount
+        this.answerCount = profile.answerCount
+        this.articleCount = profile.articleCount
+        this.isFollowing = profile.isFollowing
+        this.isBlocking = profile.isBlocking
+        this.isBlockedInRecommendations = profile.isBlockedInRecommendations
+        val urlToken = result.urlToken
         if (urlToken != null) {
             this.person.urlToken = urlToken
         }
-
-        // Check if user is blocked in recommendations
-        val blocklistManager = BlocklistManager.getInstance(context)
-        this.isBlockedInRecommendations = blocklistManager.isUserBlocked(person.id)
-
-        (context as? ArticleHost)?.postHistoryDestination(
-            Person(
-                id = person.id,
-                name = person.name,
-                urlToken = person.urlToken ?: "",
-            ),
-        )
     }
 }
 
@@ -615,7 +542,7 @@ private fun PersonViewModel.toUiState(): PeopleScreenUiState = PeopleScreenUiSta
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-actual fun PeopleScreen(
+fun PeopleScreen(
     person: Person,
 ): Unit = PeopleScreenContent(person, testOverrides = null)
 
@@ -632,7 +559,8 @@ private fun PeopleScreenContent(
     testOverrides: PeopleScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val runtime = rememberPeopleScreenRuntime()
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val viewModel = viewModel { PersonViewModel(person) }
     val coroutineScope = rememberCoroutineScope()
     var testUiState by remember(person.id, person.urlToken, testOverrides?.initialUiState) {
@@ -650,16 +578,9 @@ private fun PeopleScreenContent(
             return@LaunchedEffect
         }
         try {
-            viewModel.load(context)
-            AccountData.addReadHistory(context, person.id, "profile")
+            viewModel.load(runtime)
         } catch (e: Exception) {
-            Log.e("PeopleScreen", "Error loading person data", e)
-            Toast
-                .makeText(
-                    context,
-                    "加载用户信息失败: ${e.message}",
-                    Toast.LENGTH_LONG,
-                ).show()
+            runtime.showShortMessage("加载用户信息失败: ${e.message}")
         }
     }
     LaunchedEffect(pagerState.currentPage, testOverrides) {
@@ -667,15 +588,9 @@ private fun PeopleScreenContent(
             return@LaunchedEffect
         }
         try {
-            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(context)
+            viewModel.subFeedModels.getOrNull(pagerState.currentPage)?.loadMore(paginationEnvironment)
         } catch (e: Exception) {
-            Log.e("PeopleScreen", "Error loading page data", e)
-            Toast
-                .makeText(
-                    context,
-                    "加载页面内容失败: ${e.message}",
-                    Toast.LENGTH_LONG,
-                ).show()
+            runtime.showShortMessage("加载页面内容失败: ${e.message}")
         }
     }
 
@@ -689,7 +604,7 @@ private fun PeopleScreenContent(
             }
             return
         }
-        viewModel.answersFeedModel.changeSortBy(newSort, context)
+        viewModel.answersFeedModel.changeSortBy(newSort, paginationEnvironment)
     }
 
     fun updateArticlesSort(newSort: String) {
@@ -700,7 +615,7 @@ private fun PeopleScreenContent(
             }
             return
         }
-        viewModel.articlesFeedModel.changeSortBy(newSort, context)
+        viewModel.articlesFeedModel.changeSortBy(newSort, paginationEnvironment)
     }
 
     Scaffold(
@@ -730,9 +645,9 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleFollow(context)
+                                        viewModel.toggleFollow(runtime)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        runtime.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
@@ -745,9 +660,9 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleBlock(context)
+                                        viewModel.toggleBlock(runtime)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        runtime.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
@@ -762,15 +677,10 @@ private fun PeopleScreenContent(
                             } else {
                                 coroutineScope.launch {
                                     try {
-                                        viewModel.toggleRecommendationBlock(context)
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐",
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        viewModel.toggleRecommendationBlock(runtime)
+                                        runtime.showShortMessage(if (viewModel.isBlockedInRecommendations) "已屏蔽推荐" else "已取消屏蔽推荐")
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        runtime.showShortMessage("操作失败: ${e.message}")
                                     }
                                 }
                             }
@@ -837,7 +747,7 @@ private fun PeopleScreenContent(
                                 items = uiState.answers.items,
                                 onLoadMore = {
                                     testOverrides?.onAnswersLoadMore?.invoke()
-                                        ?: viewModel.answersFeedModel.loadMore(context)
+                                        ?: viewModel.answersFeedModel.loadMore(paginationEnvironment)
                                 },
                                 isEnd = { uiState.answers.isEnd },
                                 footer = ProgressIndicatorFooter,
@@ -886,7 +796,7 @@ private fun PeopleScreenContent(
                                 items = uiState.articles.items,
                                 onLoadMore = {
                                     testOverrides?.onArticlesLoadMore?.invoke()
-                                        ?: viewModel.articlesFeedModel.loadMore(context)
+                                        ?: viewModel.articlesFeedModel.loadMore(paginationEnvironment)
                                 },
                                 isEnd = { uiState.articles.isEnd },
                                 footer = ProgressIndicatorFooter,
@@ -924,7 +834,7 @@ private fun PeopleScreenContent(
                             items = uiState.activities.items,
                             onLoadMore = {
                                 testOverrides?.onActivitiesLoadMore?.invoke()
-                                    ?: viewModel.activitiesFeedModel.loadMore(context)
+                                    ?: viewModel.activitiesFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.activities.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -946,7 +856,7 @@ private fun PeopleScreenContent(
                             items = uiState.collections.items,
                             onLoadMore = {
                                 testOverrides?.onCollectionsLoadMore?.invoke()
-                                    ?: viewModel.collectionsFeedModel.loadMore(context)
+                                    ?: viewModel.collectionsFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.collections.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -968,7 +878,7 @@ private fun PeopleScreenContent(
                             items = uiState.questions.items,
                             onLoadMore = {
                                 testOverrides?.onQuestionsLoadMore?.invoke()
-                                    ?: viewModel.questionsFeedModel.loadMore(context)
+                                    ?: viewModel.questionsFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.questions.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -990,7 +900,7 @@ private fun PeopleScreenContent(
                             items = uiState.pins.items,
                             onLoadMore = {
                                 testOverrides?.onPinsLoadMore?.invoke()
-                                    ?: viewModel.pinsFeedModel.loadMore(context)
+                                    ?: viewModel.pinsFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.pins.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -1012,7 +922,7 @@ private fun PeopleScreenContent(
                             items = uiState.columns.items,
                             onLoadMore = {
                                 testOverrides?.onColumnsLoadMore?.invoke()
-                                    ?: viewModel.columnsFeedModel.loadMore(context)
+                                    ?: viewModel.columnsFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.columns.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -1034,7 +944,7 @@ private fun PeopleScreenContent(
                             items = uiState.followers.items,
                             onLoadMore = {
                                 testOverrides?.onFollowersLoadMore?.invoke()
-                                    ?: viewModel.followersFeedModel.loadMore(context)
+                                    ?: viewModel.followersFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.followers.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -1057,7 +967,7 @@ private fun PeopleScreenContent(
                             items = uiState.following.items,
                             onLoadMore = {
                                 testOverrides?.onFollowingLoadMore?.invoke()
-                                    ?: viewModel.followingFeedModel.loadMore(context)
+                                    ?: viewModel.followingFeedModel.loadMore(paginationEnvironment)
                             },
                             isEnd = { uiState.following.isEnd },
                             footer = ProgressIndicatorFooter,
@@ -1087,10 +997,10 @@ private fun PeopleScreenContent(
                                     }
                                 } else {
                                     when (subscriptionPage) {
-                                        0 -> viewModel.followingColumnsFeedModel.loadMore(context)
-                                        1 -> viewModel.followingTopicsFeedModel.loadMore(context)
-                                        2 -> viewModel.followingQuestionsFeedModel.loadMore(context)
-                                        3 -> viewModel.followingCollectionsFeedModel.loadMore(context)
+                                        0 -> viewModel.followingColumnsFeedModel.loadMore(paginationEnvironment)
+                                        1 -> viewModel.followingTopicsFeedModel.loadMore(paginationEnvironment)
+                                        2 -> viewModel.followingQuestionsFeedModel.loadMore(paginationEnvironment)
+                                        3 -> viewModel.followingCollectionsFeedModel.loadMore(paginationEnvironment)
                                     }
                                 }
                             },
@@ -1276,7 +1186,7 @@ private fun PinListItem(
                 navigator.onNavigate(Pin(pin.id.toLong()))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
     ) {
-        val text = remember { Jsoup.parse(pin.excerptTitle).text() }
+        val text = remember { Ksoup.parse(pin.excerptTitle).text() }
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
@@ -1297,13 +1207,13 @@ private fun ColumnListItem(
     column: DataHolder.Column,
     itemTag: String? = null,
 ) {
-    val context = LocalContext.current
+    val runtime = rememberPeopleScreenRuntime()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (itemTag != null) Modifier.testTag(itemTag) else Modifier)
             .clickable {
-                openInWebview(context, column.webUrl())
+                runtime.openWebUrl(column.webUrl())
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1354,13 +1264,13 @@ private fun FollowedQuestionListItem(question: FollowedQuestion) {
 
 @Composable
 private fun FollowedTopicListItem(topic: FollowedTopic) {
-    val context = LocalContext.current
+    val runtime = rememberPeopleScreenRuntime()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .testTag(peopleScreenFollowedTopicItemTag(topic.displayId))
             .clickable {
-                openInWebview(context, "https://www.zhihu.com/topic/${topic.displayId}")
+                runtime.openWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1388,12 +1298,6 @@ private fun DataHolder.Column.webUrl(): String = when {
 
     url.startsWith("http") && !url.contains("/api/") -> url.replace("http://", "https://")
     else -> "https://www.zhihu.com/column/$id"
-}
-
-private fun openInWebview(context: Context, url: String) {
-    context.startActivity(
-        Intent(Intent.ACTION_VIEW, url.toUri()).setClassName(context, WEBVIEW_ACTIVITY_CLASS),
-    )
 }
 
 @Composable
@@ -1598,7 +1502,7 @@ private fun UserInfoHeader(
     onRecommendationBlockToggle: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val runtime = rememberPeopleScreenRuntime()
     Column(
         modifier = modifier.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1616,11 +1520,7 @@ private fun UserInfoHeader(
                     .size(80.dp)
                     .clip(CircleShape)
                     .clickable {
-                        OpenImageDialog(
-                            context,
-                            AccountData.httpClient(context),
-                            profile.avatar.substringBefore("_") + ".jpg",
-                        ).show()
+                        runtime.openImage(profile.avatar.substringBefore("_") + ".jpg")
                     },
             )
             Column(modifier = Modifier.weight(1f)) {
