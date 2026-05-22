@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.LinkInteractionListener
@@ -65,25 +64,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
+import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.shared.util.SegmentTextPart
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.request.delete
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 
 /**
  * 在可选中的 Markdown 子树外承载划线交互弹窗。
@@ -108,6 +97,14 @@ internal val LocalSegmentActionSheetHost = staticCompositionLocalOf<(SegmentActi
     error("LocalSegmentActionSheetHost is not provided")
 }
 
+data class SegmentedTextRuntime(
+    val copyText: (label: String, text: String) -> Unit,
+    val toggleSegmentLike: suspend (SegmentHighlightSpan) -> SegmentInfoMeta,
+)
+
+@Composable
+expect fun rememberSegmentedTextRuntime(): SegmentedTextRuntime
+
 @Composable
 fun SegmentedText(
     parts: List<SegmentTextPart>,
@@ -116,7 +113,7 @@ fun SegmentedText(
     overflow: TextOverflow = TextOverflow.Clip,
     style: TextStyle = segmentedTextStyle(),
 ) {
-    val context = LocalContext.current
+    val runtime = rememberSegmentedTextRuntime()
     val coroutineScope = rememberCoroutineScope()
     val metaStates = remember(parts) { mutableStateMapOf<String, SegmentInfoMeta>() }
     var selectedHighlight by remember(parts) { mutableStateOf<SegmentHighlightSpan?>(null) }
@@ -152,10 +149,7 @@ fun SegmentedText(
                 onLikeClick = {
                     coroutineScope.launch {
                         val updatedMeta = runCatching {
-                            toggleSegmentLike(
-                                context = context,
-                                highlight = selected.copy(meta = selectedMeta),
-                            )
+                            runtime.toggleSegmentLike(selected.copy(meta = selectedMeta))
                         }.getOrElse { selectedMeta }
                         metaStates[selectedKey] = updatedMeta
                     }
@@ -168,9 +162,7 @@ fun SegmentedText(
                     }
                 },
                 onCopyClick = {
-                    context.clipboardManager.setPrimaryClip(
-                        android.content.ClipData.newPlainText("segment_text", selected.text),
-                    )
+                    runtime.copyText("segment_text", selected.text)
                     selectedHighlight = null
                     showSegmentActionSheet(null)
                 },
@@ -339,13 +331,9 @@ private fun buildSegmentAnnotatedText(
 }
 
 @Composable
-fun segmentedTextStyle(): TextStyle {
-    val context = LocalContext.current
-    val preferences = remember(context) {
-        context.getSharedPreferences(PREFERENCE_NAME, android.content.Context.MODE_PRIVATE)
-    }
-    val fontSizePercent = preferences.getInt(PREF_FONT_SIZE, 100)
-    val lineHeightPercent = preferences.getInt(PREF_LINE_HEIGHT, 160)
+fun segmentedTextStyle(settings: SettingsStore = rememberSettingsStore()): TextStyle {
+    val fontSizePercent = settings.getInt(PREF_FONT_SIZE, 100)
+    val lineHeightPercent = settings.getInt(PREF_LINE_HEIGHT, 160)
     return MaterialTheme.typography.bodyLarge.copy(
         fontSize = 16.sp * fontSizePercent / 100,
         lineHeight = 16.sp * fontSizePercent / 100 * lineHeightPercent / 100,
@@ -402,75 +390,4 @@ private fun highlightedLineRects(
     }
     current?.let(result::add)
     return result
-}
-
-private suspend fun toggleSegmentLike(
-    context: android.content.Context,
-    highlight: SegmentHighlightSpan,
-): SegmentInfoMeta {
-    val contentId = highlight.contentId ?: return highlight.meta
-    val targetType = highlight.contentType ?: return highlight.meta
-    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
-
-    return if (highlight.meta.isLike) {
-        AccountData.httpClient(context).delete(url) {
-            signFetchRequest()
-            contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("seg_ids", highlight.meta.segIds.joinToString(","))
-                }.toString(),
-            )
-        }
-        highlight.meta.copy(
-            isLike = false,
-            likeCount = (highlight.meta.likeCount - 1).coerceAtLeast(0),
-        )
-    } else {
-        val response = AccountData.fetchPost(context, url) {
-            signFetchRequest()
-            contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    if (highlight.meta.segIds.isNotEmpty()) {
-                        put("seg_id", highlight.meta.segIds.joinToString(","))
-                    }
-                    put("content", highlight.text)
-                    put(
-                        "position",
-                        buildJsonObject {
-                            put(
-                                "start",
-                                buildJsonObject {
-                                    put("paragraph_id", highlight.paragraphId.orEmpty())
-                                    put("offset", highlight.startOffset ?: 0)
-                                },
-                            )
-                            put(
-                                "end",
-                                buildJsonObject {
-                                    put("paragraph_id", highlight.paragraphId.orEmpty())
-                                    put("offset", highlight.endOffset ?: 0)
-                                },
-                            )
-                        },
-                    )
-                }.toString(),
-            )
-        }
-        val segId = response
-            ?.get("payload")
-            ?.jsonObject
-            ?.get("segId")
-            ?.jsonPrimitive
-            ?.content
-            ?.split(',')
-            ?.filter(String::isNotEmpty)
-            ?: highlight.meta.segIds
-        highlight.meta.copy(
-            segIds = segId,
-            isLike = true,
-            likeCount = highlight.meta.likeCount + 1,
-        )
-    }
 }
