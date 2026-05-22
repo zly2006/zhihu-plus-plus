@@ -17,19 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import android.content.Context
-import androidx.core.text.htmlEncode
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
-import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.comment.submitCommentUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.HttpClient
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -41,25 +36,23 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-class RootCommentViewModel(
+/**
+ * 注意：此view model不按照正常VM生命期管理，不要使用viewModel()函数创建
+ */
+class ChildCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
-    override val initialUrl: String
-        get() {
-            val baseUrl = article.rootCommentUrl
-            // 添加排序参数
-            val orderParam = when (sortOrder) {
-                CommentSortOrder.SCORE -> "score"
-                CommentSortOrder.TIME -> "ts"
-            }
-            val separator = if ('?' in baseUrl) "&" else "?"
-            return "$baseUrl${separator}order_by=$orderParam"
+    override val initialUrl: String = when (content) {
+        is CommentHolder -> {
+            "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
         }
 
-    override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
-        val clickTarget = CommentHolder(comment.id, article)
+        else -> ""
+    }
 
-        val commentItem = CommentItem(comment, clickTarget)
+    override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
+        // 子评论通常不需要可点击的目标
+        val commentItem = CommentItem(comment, null)
         commentsMap[comment.id] = commentItem
         return commentItem
     }
@@ -67,33 +60,33 @@ class RootCommentViewModel(
     override fun submitComment(
         content: NavDestination,
         commentText: String,
-        httpClient: HttpClient,
-        context: Context,
+        environment: PaginationEnvironment,
         replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {
+        val commentHolder = content as CommentHolder
         if (commentText.isBlank()) return
 
         viewModelScope.launch {
             try {
                 // Escape HTML special characters to prevent HTML injection
-                val escapedText = commentText.htmlEncode()
+                val escapedText = commentText.escapeCommentHtml()
 
                 // Use buildJsonObject to properly escape JSON special characters
                 val requestBody = buildJsonObject {
                     put("content", "<p>$escapedText</p>")
-                    replyToCommentId?.let { put("reply_comment_id", it) }
+                    put("reply_comment_id", replyToCommentId ?: commentHolder.commentId)
                 }
 
-                val response = httpClient.post(content.submitCommentUrl) {
-                    signFetchRequest()
+                val response = environment.httpClient().post(commentHolder.article.submitCommentUrl) {
+                    environment.configureSignedRequest(this)
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }
 
                 if (response.status.isSuccess()) {
                     // 评论成功后，把它添加到第一个。
-                    val model = AccountData.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
+                    val model = ZhihuJson.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
                     allData.add(0, model)
                     onSuccess()
                 } else {

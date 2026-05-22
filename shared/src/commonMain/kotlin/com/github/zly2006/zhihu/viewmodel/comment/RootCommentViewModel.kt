@@ -17,17 +17,16 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import android.content.Context
-import androidx.core.text.htmlEncode
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
+import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.comment.submitCommentUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.util.signFetchRequest
-import io.ktor.client.HttpClient
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -39,23 +38,25 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-/**
- * 注意：此view model不按照正常VM生命期管理，不要使用viewModel()函数创建
- */
-class ChildCommentViewModel(
+class RootCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
-    override val initialUrl: String = when (content) {
-        is CommentHolder -> {
-            "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
+    override val initialUrl: String
+        get() {
+            val baseUrl = article.rootCommentUrl
+            // 添加排序参数
+            val orderParam = when (sortOrder) {
+                CommentSortOrder.SCORE -> "score"
+                CommentSortOrder.TIME -> "ts"
+            }
+            val separator = if ('?' in baseUrl) "&" else "?"
+            return "$baseUrl${separator}order_by=$orderParam"
         }
 
-        else -> ""
-    }
-
     override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem {
-        // 子评论通常不需要可点击的目标
-        val commentItem = CommentItem(comment, null)
+        val clickTarget = CommentHolder(comment.id, article)
+
+        val commentItem = CommentItem(comment, clickTarget)
         commentsMap[comment.id] = commentItem
         return commentItem
     }
@@ -63,34 +64,32 @@ class ChildCommentViewModel(
     override fun submitComment(
         content: NavDestination,
         commentText: String,
-        httpClient: HttpClient,
-        context: Context,
+        environment: PaginationEnvironment,
         replyToCommentId: String?,
         onSuccess: () -> Unit,
     ) {
-        val commentHolder = content as CommentHolder
         if (commentText.isBlank()) return
 
         viewModelScope.launch {
             try {
                 // Escape HTML special characters to prevent HTML injection
-                val escapedText = commentText.htmlEncode()
+                val escapedText = commentText.escapeCommentHtml()
 
                 // Use buildJsonObject to properly escape JSON special characters
                 val requestBody = buildJsonObject {
                     put("content", "<p>$escapedText</p>")
-                    put("reply_comment_id", replyToCommentId ?: commentHolder.commentId)
+                    replyToCommentId?.let { put("reply_comment_id", it) }
                 }
 
-                val response = httpClient.post(commentHolder.article.submitCommentUrl) {
-                    signFetchRequest()
+                val response = environment.httpClient().post(content.submitCommentUrl) {
+                    environment.configureSignedRequest(this)
                     contentType(ContentType.Application.Json)
                     setBody(requestBody)
                 }
 
                 if (response.status.isSuccess()) {
                     // 评论成功后，把它添加到第一个。
-                    val model = AccountData.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
+                    val model = ZhihuJson.decodeJson<DataHolder.Comment>(response.body<JsonObject>())
                     allData.add(0, model)
                     onSuccess()
                 } else {
@@ -102,3 +101,17 @@ class ChildCommentViewModel(
         }
     }
 }
+
+internal fun String.escapeCommentHtml(): String =
+    buildString(length) {
+        for (char in this@escapeCommentHtml) {
+            when (char) {
+                '&' -> append("&amp;")
+                '<' -> append("&lt;")
+                '>' -> append("&gt;")
+                '"' -> append("&quot;")
+                '\'' -> append("&#39;")
+                else -> append(char)
+            }
+        }
+    }

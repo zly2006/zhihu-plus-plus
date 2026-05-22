@@ -17,8 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.comment
 
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -27,17 +25,12 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
-import io.ktor.client.HttpClient
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
 import io.ktor.http.isSuccess
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
@@ -68,18 +61,17 @@ abstract class BaseCommentViewModel(
 
     fun getCommentById(id: String): CommentItem? = commentsMap[id]
 
-    fun changeSortOrder(newSortOrder: CommentSortOrder, context: Context) {
+    fun changeSortOrder(newSortOrder: CommentSortOrder, environment: PaginationEnvironment) {
         if (sortOrder != newSortOrder) {
             sortOrder = newSortOrder
-            refresh(paginationEnvironment(context))
+            refresh(environment)
         }
     }
 
     abstract fun submitComment(
         content: NavDestination,
         commentText: String,
-        httpClient: HttpClient,
-        context: Context,
+        environment: PaginationEnvironment,
         replyToCommentId: String? = null,
         onSuccess: () -> Unit,
     )
@@ -88,8 +80,7 @@ abstract class BaseCommentViewModel(
 
     fun toggleLikeComment(
         commentData: DataHolder.Comment,
-        httpClient: HttpClient,
-        context: Context,
+        environment: PaginationEnvironment,
         onSuccess: () -> Unit,
     ) {
         if (isLikeLoading) return
@@ -99,33 +90,28 @@ abstract class BaseCommentViewModel(
         val newLikeState = !commentData.liked
         viewModelScope.launch {
             try {
+                val httpClient = environment.httpClient()
                 val response = if (newLikeState) {
                     // 点赞
                     httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest()
+                        environment.configureSignedRequest(this)
                     }
                 } else {
                     // 取消点赞
                     httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
-                        signFetchRequest()
+                        environment.configureSignedRequest(this)
                     }
                 }
 
                 if (response.status.isSuccess()) {
-                    withContext(Dispatchers.Main) {
-                        onSuccess()
-                    }
+                    onSuccess()
                 } else {
-                    Toast.makeText(context, "操作失败：${response.status}", Toast.LENGTH_SHORT).show()
+                    errorMessage = "操作失败：${response.status}"
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "操作失败：${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                errorMessage = "操作失败：${e.message}"
             } finally {
-                withContext(Dispatchers.Main) {
-                    isLikeLoading = false
-                }
+                isLikeLoading = false
             }
         }
     }

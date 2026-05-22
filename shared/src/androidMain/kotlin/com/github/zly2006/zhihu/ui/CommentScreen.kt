@@ -131,6 +131,7 @@ import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
@@ -432,6 +433,7 @@ fun CommentScreen(
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
     val context = LocalContext.current
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -474,7 +476,7 @@ fun CommentScreen(
     // 监控滚动加载更多
     LaunchedEffect(loadMore.value) {
         if (loadMore.value && viewModel.errorMessage == null) {
-            viewModel.loadMore(context)
+            viewModel.loadMore(paginationEnvironment)
         }
     }
 
@@ -484,7 +486,7 @@ fun CommentScreen(
             error("Internal Error: Detected content mismatch")
         }
         if (!(testOverrides?.skipInitialLoad ?: false) && viewModel.errorMessage == null) {
-            viewModel.loadMore(context)
+            viewModel.loadMore(paginationEnvironment)
         }
     }
     val coroutineScope = rememberCoroutineScope()
@@ -497,8 +499,7 @@ fun CommentScreen(
         viewModel.submitComment(
             content = content(),
             commentText = commentInput,
-            httpClient = httpClient,
-            context = context,
+            environment = paginationEnvironment,
             replyToCommentId = replyToComment?.item?.id,
         ) {
             commentInput = ""
@@ -570,9 +571,8 @@ fun CommentScreen(
                                         isLikeLoading = isLikeLoading,
                                         toggleLike = {
                                             viewModel.toggleLikeComment(
-                                                httpClient = httpClient,
                                                 commentData = commentItem.item,
-                                                context = context,
+                                                environment = paginationEnvironment,
                                             ) {
                                                 val newLikeState = !isLiked
                                                 isLiked = newLikeState
@@ -609,8 +609,7 @@ fun CommentScreen(
                                                         toggleLike = {
                                                             viewModel.toggleLikeComment(
                                                                 commentData = childCommentItem.item,
-                                                                httpClient = httpClient,
-                                                                context = context,
+                                                                environment = paginationEnvironment,
                                                             ) {
                                                                 val newLikeState = !liked
                                                                 liked = newLikeState
@@ -724,7 +723,7 @@ fun CommentScreen(
                                                     )
                                                 },
                                                 onClick = {
-                                                    viewModel.changeSortOrder(CommentSortOrder.SCORE, context)
+                                                    viewModel.changeSortOrder(CommentSortOrder.SCORE, paginationEnvironment)
                                                 },
                                             )
                                             Spacer(Modifier.width(12.dp))
@@ -746,7 +745,7 @@ fun CommentScreen(
                                                     )
                                                 },
                                                 onClick = {
-                                                    viewModel.changeSortOrder(CommentSortOrder.TIME, context)
+                                                    viewModel.changeSortOrder(CommentSortOrder.TIME, paginationEnvironment)
                                                 },
                                             )
                                         }
