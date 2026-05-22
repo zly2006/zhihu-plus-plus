@@ -17,9 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -68,7 +65,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -76,34 +72,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.ui.components.ShareDialog
-import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.getShareText
-import com.github.zly2006.zhihu.ui.components.handleShareAction
-import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-
-private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActivity"
 
 /**
  * Instrumented tests inject fixed state and side-effect callbacks here so QuestionScreen can be
@@ -139,7 +118,7 @@ fun questionFeedItemTag(stableKey: String) = "question_feed_item_$stableKey"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-actual fun QuestionScreen(
+fun QuestionScreen(
     question: Question,
 ): Unit = QuestionScreenContent(question, testOverrides = null)
 
@@ -155,8 +134,7 @@ private fun QuestionScreenContent(
     question: Question,
     testOverrides: QuestionScreenTestOverrides? = null,
 ) {
-    val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val runtime = rememberQuestionScreenRuntime()
     val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
@@ -190,7 +168,7 @@ private fun QuestionScreenContent(
     var isQuestionDetailExpanded by rememberSaveable(question.questionId, initialUiState.isQuestionDetailExpanded) {
         mutableStateOf(initialUiState.isQuestionDetailExpanded)
     }
-    val questionContentPreview = remember(questionContent) { Jsoup.parse(questionContent).text().trim() }
+    val questionContentPreview = remember(questionContent) { questionDetailPreview(questionContent) }
     val shareText = getShareText(question, title)
 
     // 加载问题详情和答案
@@ -198,52 +176,27 @@ private fun QuestionScreenContent(
         if (testOverrides != null) {
             return@LaunchedEffect
         }
-        launch {
-            AccountData.addReadHistory(
-                context,
-                question.questionId.toString(),
-                "question",
-            )
-        }
-        val articleHost = context.articleHost()
-        withContext(Dispatchers.IO) {
-            try {
-                if (viewModel.displayItems.isEmpty()) {
-                    launch {
-                        viewModel.refresh(paginationEnvironment)
-                    }
-                }
-                val questionData = DataHolder.getContentDetail(context, question)
-                if (questionData != null) {
-                    questionContent = questionData.detail
-                    title = questionData.title
-                    answerCount = questionData.answerCount
-                    visitCount = questionData.visitCount
-                    commentCount = questionData.commentCount
-                    followerCount = questionData.followerCount
-                    isFollowing = questionData.relationship.isFollowing
-                    articleHost?.postHistoryDestination(
-                        Question(
-                            question.questionId,
-                            title,
-                        ),
-                    )
-                    ContentOpenEventSupport.recordOpenEvent(
-                        context = context,
-                        destination = question,
-                        questionId = question.questionId,
-                        openFrom = articleHost?.consumePendingContentOpenFrom(question) ?: ContentOpenFrom.UNKNOWN,
-                    )
-                } else {
-                    context.mainExecutor.execute {
-                        Toast.makeText(context, "获取问题详情失败", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                context.mainExecutor.execute {
-                    Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+        if (viewModel.displayItems.isEmpty()) {
+            launch {
+                viewModel.refresh(paginationEnvironment)
             }
+        }
+        try {
+            val loaded = runtime.loadQuestion(question)
+            if (loaded != null) {
+                val questionData = loaded.uiState
+                questionContent = questionData.questionContent
+                title = questionData.title
+                answerCount = questionData.answerCount
+                visitCount = questionData.visitCount
+                commentCount = questionData.commentCount
+                followerCount = questionData.followerCount
+                isFollowing = questionData.isFollowing
+            } else {
+                runtime.showShortMessage("获取问题详情失败")
+            }
+        } catch (e: Exception) {
+            runtime.showShortMessage("加载失败: ${e.message}")
         }
     }
 
@@ -252,7 +205,7 @@ private fun QuestionScreenContent(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
             topBar = {
                 SelectionContainer(
-                    modifier = Modifier.fuckHonorService(),
+                    modifier = Modifier.questionSelectionWorkaround(),
                 ) {
                     Row {
                         Text(
@@ -315,21 +268,10 @@ private fun QuestionScreenContent(
                                             modifier = Modifier.testTag(QUESTION_DETAIL_CONTENT_TAG),
                                         ) {
                                             Spacer(Modifier.height(10.dp))
-                                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                                                WebviewComp {
-                                                    it.loadZhihu(
-                                                        "https://www.zhihu.com/question/${question.questionId}",
-                                                        Jsoup.parse(questionContent),
-                                                    )
-                                                }
-                                            } else {
-                                                RenderMarkdown(
-                                                    html = questionContent,
-                                                    modifier = Modifier.fuckHonorService(),
-                                                    selectable = true,
-                                                    enableScroll = false,
-                                                )
-                                            }
+                                            QuestionDetailContent(
+                                                questionId = question.questionId,
+                                                html = questionContent,
+                                            )
                                         }
                                     }
                                     AnimatedVisibility(
@@ -417,12 +359,7 @@ private fun QuestionScreenContent(
                                         isFollowing = nextFollowing
                                         followerCount += if (isFollowing) 1 else -1
                                         if (testOverrides == null) {
-                                            Toast
-                                                .makeText(
-                                                    context,
-                                                    if (isFollowing) "已关注问题" else "已取消关注问题",
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
+                                            runtime.showShortMessage(if (isFollowing) "已关注问题" else "已取消关注问题")
                                         }
                                     }
                                 },
@@ -456,13 +393,9 @@ private fun QuestionScreenContent(
                                 onClick = {
                                     testOverrides?.onOpenLog?.invoke() ?: run {
                                         try {
-                                            val intent = Intent(Intent.ACTION_VIEW).apply {
-                                                data = "https://www.zhihu.com/question/${question.questionId}/log".toUri()
-                                                setClassName(context, WEBVIEW_ACTIVITY_CLASS)
-                                            }
-                                            context.startActivity(intent)
+                                            runtime.openLog(question)
                                         } catch (e: Exception) {
-                                            Toast.makeText(context, "打开日志失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                            runtime.showShortMessage("打开日志失败: ${e.message}")
                                         }
                                     }
                                 },
@@ -480,7 +413,7 @@ private fun QuestionScreenContent(
                                             testOverrides.onShareAction?.invoke()
                                             showShareDialog = true
                                         } else {
-                                            handleShareAction(context, question) {
+                                            runtime.handleShareAction(question) {
                                                 showShareDialog = true
                                             }
                                         }
@@ -533,7 +466,7 @@ private fun QuestionScreenContent(
         if (showComments) {
             content { showComments = false }
         }
-    } ?: CommentScreenComponent(
+    } ?: QuestionCommentsSheet(
         showComments = showComments,
         onDismiss = { showComments = false },
         content = question,
@@ -545,12 +478,11 @@ private fun QuestionScreenContent(
             if (showShareDialog) {
                 content { showShareDialog = false }
             }
-        } ?: ShareDialog(
+        } ?: QuestionShareDialog(
             content = question,
             shareText = shareText,
             showDialog = showShareDialog,
             onDismissRequest = { showShareDialog = false },
-            context = context,
         )
     }
 }
