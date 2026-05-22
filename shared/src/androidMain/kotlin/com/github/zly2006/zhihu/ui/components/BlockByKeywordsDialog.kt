@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
  * 从Feed内容中提取关键词，让用户选择要屏蔽的关键词
  */
 @Composable
-fun BlockByKeywordsDialog(
+actual fun BlockByKeywordsDialog(
     showDialog: Boolean,
     feedTitle: String,
     feedExcerpt: String?,

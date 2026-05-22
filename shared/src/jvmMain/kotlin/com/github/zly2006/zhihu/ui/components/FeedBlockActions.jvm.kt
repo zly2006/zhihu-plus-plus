@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 actual fun rememberFeedBlockActions(): FeedBlockActions = FeedBlockActions(
     handleBlockUser = { _, _, _ -> },
     handleBlockTopic = { _, _, _ -> },
+    handleBlockByKeywords = { _, _, _ -> },
 )
 
 @Composable
@@ -14,6 +15,16 @@ actual fun BlockUserConfirmDialog(
     showDialog: Boolean,
     userToBlock: Pair<String, String>?,
     displayItems: List<FeedDisplayItem>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+}
+
+@Composable
+actual fun BlockByKeywordsDialog(
+    showDialog: Boolean,
+    feedTitle: String,
+    feedExcerpt: String?,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {

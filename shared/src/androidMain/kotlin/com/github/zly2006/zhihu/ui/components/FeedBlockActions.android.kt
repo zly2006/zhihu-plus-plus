@@ -12,6 +12,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,6 +53,9 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
+            },
+            handleBlockByKeywords = { viewModel, feedItem, onShowDialog ->
+                viewModel.handleBlockByKeywords(context, feedItem, onShowDialog)
             },
         )
     }

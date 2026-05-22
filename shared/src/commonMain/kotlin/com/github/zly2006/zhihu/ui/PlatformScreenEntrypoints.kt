@@ -9,9 +9,6 @@ import com.github.zly2006.zhihu.navigation.Question
 typealias BlocklistSettingsNlpContent = @Composable (onNavigateBack: () -> Unit) -> Unit
 
 @Composable
-expect fun HomeScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
-
-@Composable
 expect fun AccountSettingScreen(innerPadding: PaddingValues)
 
 @Composable

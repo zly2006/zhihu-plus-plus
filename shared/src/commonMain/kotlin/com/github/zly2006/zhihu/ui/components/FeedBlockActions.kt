@@ -15,6 +15,11 @@ data class FeedBlockActions(
         topicId: String,
         topicName: String,
     ) -> Unit,
+    val handleBlockByKeywords: (
+        viewModel: BaseFeedViewModel,
+        feedItem: FeedDisplayItem,
+        onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
+    ) -> Unit,
 )
 
 @Composable
@@ -25,6 +30,15 @@ expect fun BlockUserConfirmDialog(
     showDialog: Boolean,
     userToBlock: Pair<String, String>?,
     displayItems: List<FeedDisplayItem>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+)
+
+@Composable
+expect fun BlockByKeywordsDialog(
+    showDialog: Boolean,
+    feedTitle: String,
+    feedExcerpt: String?,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 )

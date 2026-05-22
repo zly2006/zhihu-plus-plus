@@ -8,9 +8,6 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 
 @Composable
-actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
-
-@Composable
 actual fun AccountSettingScreen(innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable

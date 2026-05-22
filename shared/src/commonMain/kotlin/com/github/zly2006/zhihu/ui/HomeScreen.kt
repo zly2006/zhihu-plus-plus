@@ -17,11 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
-import android.content.Context.MODE_PRIVATE
-import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -60,7 +55,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -70,14 +64,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import androidx.core.net.toUri
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
@@ -87,6 +76,9 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.TopLevelReselectAction
 import com.github.zly2006.zhihu.shared.ui.topLevelReselectAction
 import com.github.zly2006.zhihu.ui.components.AnnouncementCard
@@ -99,20 +91,10 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
-import com.github.zly2006.zhihu.updater.UpdateManager
-import com.github.zly2006.zhihu.util.clipboardManager
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.ui.components.rememberFeedBlockActions
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
-import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
-import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import kotlinx.serialization.json.Json
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
@@ -127,58 +109,37 @@ const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
+fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-    }
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
 
-    val duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
-    val showRefreshFab = preferences.getBoolean("showRefreshFab", true)
+    val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
+    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     var showAccountBottomSheet by remember { mutableStateOf(false) }
 
     // 获取当前推荐算法设置
     val currentRecommendationMode =
         RecommendationMode.entries.find {
-            it.key == preferences.getString("recommendationMode", RecommendationMode.MIXED.key)
+            it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
 
-    // 根据设置选择对应的ViewModel
-    val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
-        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>()
-        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
-        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>()
-        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>() // 暂时使用在线推荐，因为相似度推荐还未实现
-    }
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
+    val runtime = rememberHomeScreenRuntime(currentRecommendationMode)
+    val feedBlockActions = rememberFeedBlockActions()
+    val viewModel: BaseFeedViewModel = runtime.viewModel
 
     val keySurveyDone = "survey_feedback_done"
-    var installed3Hours by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (!preferences.getBoolean(keySurveyDone, false)) {
-            val installTime = try {
-                context.packageManager.getPackageInfo(context.packageName, 0).firstInstallTime
-            } catch (_: Exception) {
-                System.currentTimeMillis()
-            }
-            if (System.currentTimeMillis() - installTime >= 3 * 60 * 60 * 1000L) {
-                installed3Hours = true
-            }
-        }
-    }
-
-    val updateState by UpdateManager.updateState.collectAsState()
+    val installed3Hours = !settings.getBoolean(keySurveyDone, false) && runtime.installedAtLeastThreeHours
     var dismissedUpdateVersion by remember { mutableStateOf<String?>(null) }
 
     // 首次启动提示
     var showFilterExplainDialog by remember {
-        mutableStateOf(!preferences.getBoolean("filterExplainDialogShown", false))
+        mutableStateOf(!settings.getBoolean("filterExplainDialogShown", false))
     }
     var showQQGroup by remember {
         mutableStateOf(
-            !preferences.getBoolean(
+            !settings.getBoolean(
                 QQ_GROUP_DISMISSED_PREFERENCE_KEY,
                 false,
             ),
@@ -205,8 +166,8 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     var unreadCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
         try {
-            unreadCount = fetchZhihuUnreadNotificationCount(AccountData.httpClient(context)) {
-                signFetchRequest()
+            unreadCount = fetchZhihuUnreadNotificationCount(paginationEnvironment.httpClient()) {
+                paginationEnvironment.configureSignedRequest(this)
             }
         } catch (_: Exception) {
             // 忽略错误
@@ -214,12 +175,11 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     }
 
     // 初始加载
-    LaunchedEffect(currentRecommendationMode, AccountData.data.login) {
-        if (!AccountData.data.login &&
-            preferences.getBoolean("loginForRecommendation", true)
+    LaunchedEffect(currentRecommendationMode, runtime.account.isLoggedIn) {
+        if (!runtime.account.isLoggedIn &&
+            settings.getBoolean("loginForRecommendation", true)
         ) {
-            val myIntent = Intent().setClassName(context.packageName, "com.github.zly2006.zhihu.LoginActivity")
-            context.startActivity(myIntent)
+            runtime.requestLogin()
         } else if (viewModel.displayItems.isEmpty()) {
             // 只在第一次加载时刷新，这样可以避免在返回时刷新
             viewModel.refresh(paginationEnvironment)
@@ -229,7 +189,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     // 显示错误信息
     LaunchedEffect(viewModel.errorMessage) {
         viewModel.errorMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            userMessages.showMessage(it, UserMessageDuration.Long)
         }
     }
 
@@ -313,7 +273,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                                 }
                                             },
                                         ) {
-                                            val avatarUrl = AccountData.data.self?.avatarUrl
+                                            val avatarUrl = runtime.account.avatarUrl
                                             if (avatarUrl != null) {
                                                 AsyncImage(
                                                     model = avatarUrl,
@@ -409,7 +369,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 onDismissRequest = { showAccountBottomSheet = false },
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                AccountSettingScreen(
+                HomeAccountSettingSheetContent(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
                     onDismissRequest = { showAccountBottomSheet = false },
@@ -431,10 +391,10 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 key = { item -> item.stableKey },
                 topContent = {
                     item {
-                        val availableUpdate = updateState as? UpdateManager.UpdateState.UpdateAvailable
+                        val availableUpdate = runtime.updateAnnouncement
 
                         AnnouncementCard(
-                            visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version.toString(),
+                            visible = availableUpdate != null && dismissedUpdateVersion != availableUpdate.version,
                             title = "发现新版本：${availableUpdate?.version}${if (availableUpdate?.isNightly == true) " (Nightly)" else ""}",
                             leadingIcon = { Icon(Icons.Default.ArrowCircleUp, contentDescription = null) },
                             accept = { Text("查看更新") },
@@ -443,7 +403,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             },
                             dismiss = { Text("以后") },
                             onDismiss = {
-                                availableUpdate?.version?.toString()?.let { versionStr ->
+                                availableUpdate?.version?.let { versionStr ->
                                     dismissedUpdateVersion = versionStr
                                 }
                             },
@@ -456,13 +416,11 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                             content = "欢迎加入 Zhihu++ QQ 群",
                             accept = { Text("加入") },
                             onAccept = {
-                                luoTianYiUrlLauncher(context, "https://qm.qq.com/q/A95uVsTTWM".toUri())
+                                runtime.openExternalUrl("https://qm.qq.com/q/A95uVsTTWM")
                             },
                             dismiss = { Text("关闭") },
                             onDismiss = {
-                                preferences.edit {
-                                    putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
-                                }
+                                settings.putBoolean(QQ_GROUP_DISMISSED_PREFERENCE_KEY, true)
                                 showQQGroup = false
                             },
                             colors = AnnouncementCardDefaults.colorsVariant(),
@@ -476,7 +434,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                                 "由于我们需要更详细的数据来精准屏蔽，而获取数据需要时间，所以他们会闪一下然后消失。",
                             dismiss = { Text("好") },
                             onDismiss = {
-                                preferences.edit { putBoolean("filterExplainDialogShown", true) }
+                                settings.putBoolean("filterExplainDialogShown", true)
                                 showFilterExplainDialog = false
                             },
                         )
@@ -490,35 +448,33 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                         else -> null
                     },
                     onLike = {
-                        if (localHomeViewModel != null && it.localContentId != null) {
-                            localHomeViewModel.onLocalItemFeedback(context, it, 1.0)
-                            Toast.makeText(context, "已记录喜欢，本地推荐会逐步学习", Toast.LENGTH_SHORT).show()
+                        if (runtime.recordLocalItemFeedback(it, 1.0)) {
+                            userMessages.showShortMessage("已记录喜欢，本地推荐会逐步学习")
                         } else {
-                            Toast.makeText(context, "收到喜欢，功能正在优化", Toast.LENGTH_SHORT).show()
+                            userMessages.showShortMessage("收到喜欢，功能正在优化")
                         }
                     },
                     onDislike = {
-                        if (localHomeViewModel != null && it.localContentId != null) {
-                            localHomeViewModel.onLocalItemFeedback(context, it, -1.0)
-                            Toast.makeText(context, "已降低这类本地推荐的优先级", Toast.LENGTH_SHORT).show()
+                        if (runtime.recordLocalItemFeedback(it, -1.0)) {
+                            userMessages.showShortMessage("已降低这类本地推荐的优先级")
                         } else {
-                            Toast.makeText(context, "收到反馈，功能正在优化", Toast.LENGTH_SHORT).show()
+                            userMessages.showShortMessage("收到反馈，功能正在优化")
                         }
                     },
                     onBlockUser = { feedItem ->
-                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                        feedBlockActions.handleBlockUser(viewModel, feedItem) { authorInfo ->
                             userToBlock = authorInfo
                             showBlockUserDialog = true
                         }
                     },
                     onBlockByKeywords = { feedItem ->
-                        viewModel.handleBlockByKeywords(context, feedItem) { (item, contentInfo) ->
+                        feedBlockActions.handleBlockByKeywords(viewModel, feedItem) { (_, contentInfo) ->
                             feedToBlockByKeywords = contentInfo.first to contentInfo.second
                             showBlockByKeywordsDialog = true
                         }
                     },
                     onBlockTopic = { topicId, topicName ->
-                        viewModel.handleBlockTopic(context, topicId, topicName)
+                        feedBlockActions.handleBlockTopic(viewModel, topicId, topicName)
                     },
                 ) {
                     val feed = this.feed
@@ -526,8 +482,8 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     if (feed != null) {
 //                            DataHolder.putFeed(feed)
                         (viewModel as HomeFeedInteractionViewModel).onUiContentClick(paginationEnvironment, feed, item)
-                    } else if (localHomeViewModel != null && item.localContentId != null) {
-                        localHomeViewModel.onLocalItemOpened(context, item)
+                    } else if (item.localContentId != null) {
+                        runtime.recordLocalItemOpened(item)
                     }
                     if (destination != null) {
                         navigator.onNavigate(destination)
@@ -536,13 +492,12 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
             }
 
             if (showRefreshFab) {
-                if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                if (runtime.isDebuggable) {
                     DraggableRefreshButton(
                         onClick = {
                             val data = Json.encodeToString(viewModel.debugData)
-                            val clip = ClipData.newPlainText("data", data)
-                            context.clipboardManager.setPrimaryClip(clip)
-                            Toast.makeText(context, "已复制调试数据", Toast.LENGTH_SHORT).show()
+                            runtime.copyDebugData(data)
+                            userMessages.showShortMessage("已复制调试数据")
                         },
                         preferenceName = "copyAll",
                     ) {
@@ -568,7 +523,6 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
         showDialog = showBlockUserDialog,
         userToBlock = userToBlock,
         displayItems = viewModel.displayItems,
-        context = context,
         onDismiss = {
             showBlockUserDialog = false
             userToBlock = null
