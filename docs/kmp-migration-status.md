@@ -25,6 +25,7 @@
 - `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
 - Newly extracted generic adapters must be reused in the same migration slice where reasonable. Grep for duplicate `Toast.makeText`, `getSharedPreferences`, and filter maintenance logic; replace low-risk call sites with `UserMessageSink`, `SettingsStore`, and `ContentFilterMaintenance`, or record why a remaining Android-only call site is deliberately left alone.
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
+- `shared/src/androidMain` 中现存任何完整 Compose UI 页面、整页导航壳或整页 `expect/actual` 都只是迁移债务，不是可接受终态。Android source set 只能保留小粒度平台 adapter/provider/slot；页面主体、screen 结构、导航图和跨平台 UI 运行语义必须继续迁入 `shared/commonMain`。
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
 ## Do Not Redo
@@ -32,6 +33,7 @@
 - 不得留下仍存活的 subagent 继续自行决策。只要本轮启动、接手上下文、摘要或环境中列出的任何 subagent 仍然存活，主 agent 必须继续 `wait_agent` 等待完成；subagent 是前台阻塞任务，不是可遗留后台任务。在此之前不能提交、不能宣布完成、不能发送最终回复、不能把本地判断当成最终结论，不能修改代码或文档，也不能继续推进任何实现或迁移工作。等待完成并消费结论是唯一默认路径，且优先级高于并行推进、节省时间、本地判断、继续实现或提交切片；不能因为本地判断似乎足够、等待较久、或认为待返回结论大概率不重要而绕过。`wait_agent` 超时、返回空状态、或没有明确 `completed` 结论时，一律按 subagent 仍存活处理，应继续等待、补充输入或调整任务，不能一边等待一边做会影响结论的本地工作。主动关闭不是常规退路；只有用户明确取消、任务已作废、或书面说明该结果已不再可能影响当前工作时才能关闭，并必须记录原因。
 - Do not keep navigation semantics or the main navigation shell Android-only. Move shared route/destination semantics plus `ZhihuMain.kt`, `LocalNavigator.kt`, and `AnswerNavigator.kt` toward `shared/commonMain`; keep only Android runtime side effects (`Context`, `Intent`, WebView, APK/update/install semantics, platform-only callbacks) in app.
 - Do not move `ZhihuMain` route registration into an Android-only helper such as `androidZhihuMainRouteContent`. Match `master`: the shared `ZhihuMain` big function owns `NavHost` and all `composable<...>` route registrations; platforms inject page implementations and runtime side effects only.
+- Do not keep complete UI code in `shared/src/androidMain`. Full screens, complete Compose page bodies, whole navigation shells, and page-level `expect/actual` implementations must be moved to `shared/commonMain`; `expect/actual` is only for small platform capabilities such as Context/Intent/WebView/Activity, Toast/Dialog/notifications, file pickers, link opening, database builders/file paths, settings persistence, dynamic color/system dark, and TTS engines.
 - Use `org.jetbrains.androidx.navigation:navigation-compose` as the preferred KMP navigation runtime. The current Android module already depends on `org.jetbrains.androidx.navigation:navigation-compose:2.9.2`; continue by moving that dependency to shared/commonMain and validating JVM/desktop compilation before introducing any custom route adapter.
 - Do not assume desktop needs a separate route model. Desktop should reuse the shared Android UI/navigation semantics for this migration; only introduce a thin runtime adapter if the current Navigation Compose dependency cannot compile for JVM/desktop.
 - Do not recreate `Time.android.kt` / `Time.jvm.kt`; use `Clock.System`.
@@ -47,6 +49,7 @@
 ## Remaining Work
 
 - Continue shrinking the Android `ZhihuMain` adapter only where it removes real platform side effects; do not rewrite the shared main shell.
+- Audit and eliminate all remaining complete UI bodies in `shared/src/androidMain`, including page-level `expect/actual` bridges; move UI bodies to `shared/commonMain` and leave only minimal platform capability adapters.
 - Split account fetch/token refresh orchestration from Android `AccountData`.
 - Continue migrating `PaginationViewModel` subclasses and Android-only pagination call sites into shared after splitting their remaining platform side effects into small adapters.
 - Move `CollectionContentScreen` body into `shared/commonMain`; keep only export, article host, answer navigator repository, and Android back-handler/runtime pieces as small platform adapters.
