@@ -22,27 +22,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.viewmodel.feed.HistoryViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
 @Composable
-actual fun LegacyLocalHistoryScreen(
+fun LegacyLocalHistoryScreen(
     innerPadding: PaddingValues,
 ) {
     val viewModel: HistoryViewModel = viewModel()
-    val context = LocalContext.current
+    val environment = rememberPaginationEnvironment(allowGuestAccess = true)
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(environment)
         }
     }
 
-    FeedPullToRefresh(viewModel) {
+    FeedPullToRefresh(viewModel, environment) {
         PaginatedList(
             modifier = Modifier.padding(innerPadding),
             items = viewModel.displayItems,
