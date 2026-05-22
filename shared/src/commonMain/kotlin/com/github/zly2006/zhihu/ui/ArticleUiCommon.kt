@@ -1,24 +1,41 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.materialkolor.ktx.harmonize
 import kotlin.math.abs
 
@@ -75,6 +92,78 @@ fun voteUpNeutralButtonColors() = ButtonDefaults.buttonColors(
     containerColor = MaterialTheme.colorScheme.secondaryContainer,
     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ArticleSummarySheet(
+    showDialog: Boolean,
+    summaryText: String,
+    loading: Boolean,
+    errorMessage: String?,
+    onDismissRequest: () -> Unit,
+    onRetryRequest: () -> Unit,
+) {
+    if (!showDialog) return
+    val scrollState = rememberScrollState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    MyModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+        ) {
+            Text("总结本文", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (loading && summaryText.isBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text("正在生成总结...")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (summaryText.isNotBlank()) {
+                    SelectionContainer {
+                        Text(summaryText)
+                    }
+                }
+
+                if (!errorMessage.isNullOrBlank()) {
+                    if (summaryText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    Text(errorMessage, color = MaterialTheme.colorScheme.error)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("关闭")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (!loading) {
+                    TextButton(onClick = onRetryRequest) {
+                        Text("重新总结")
+                    }
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
