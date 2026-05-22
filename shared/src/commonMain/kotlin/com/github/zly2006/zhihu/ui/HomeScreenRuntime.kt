@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
@@ -31,10 +30,3 @@ data class HomeScreenRuntime(
 
 @Composable
 expect fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime
-
-@Composable
-expect fun HomeAccountSettingSheetContent(
-    innerPadding: PaddingValues,
-    unreadCount: Int,
-    onDismissRequest: () -> Unit,
-)

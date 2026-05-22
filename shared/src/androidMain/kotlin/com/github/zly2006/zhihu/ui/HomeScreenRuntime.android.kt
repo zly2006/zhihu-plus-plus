@@ -3,7 +3,6 @@ package com.github.zly2006.zhihu.ui
 import android.content.ClipData
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,18 +77,5 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                 false
             }
         },
-    )
-}
-
-@Composable
-actual fun HomeAccountSettingSheetContent(
-    innerPadding: PaddingValues,
-    unreadCount: Int,
-    onDismissRequest: () -> Unit,
-) {
-    AccountSettingScreen(
-        innerPadding = innerPadding,
-        unreadCount = unreadCount,
-        onDismissRequest = onDismissRequest,
     )
 }

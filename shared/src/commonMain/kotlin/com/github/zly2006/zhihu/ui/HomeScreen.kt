@@ -369,7 +369,7 @@ fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 onDismissRequest = { showAccountBottomSheet = false },
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
             ) {
-                HomeAccountSettingSheetContent(
+                AccountSettingScreen(
                     innerPadding = PaddingValues(0.dp),
                     unreadCount = unreadCount,
                     onDismissRequest = { showAccountBottomSheet = false },
