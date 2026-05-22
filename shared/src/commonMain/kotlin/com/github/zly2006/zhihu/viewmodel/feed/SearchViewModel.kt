@@ -21,15 +21,15 @@ import com.github.zly2006.zhihu.shared.data.SearchResult
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.ZhihuPaging
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
-import java.net.URLEncoder
 
 class SearchViewModel(
     val searchQuery: String,
 ) : BaseFeedViewModel() {
     override val initialUrl: String
         get() {
-            val encodedQuery = URLEncoder.encode(searchQuery, "UTF-8")
+            val encodedQuery = searchQuery.encodeURLParameter(spaceToPlus = true)
             return "https://www.zhihu.com/api/v4/search_v3?gk_version=gz-gaokao&t=general&q=$encodedQuery&correction=1&search_source=Normal&limit=10"
         }
 
