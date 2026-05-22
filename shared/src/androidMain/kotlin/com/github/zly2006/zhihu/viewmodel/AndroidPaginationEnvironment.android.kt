@@ -37,7 +37,10 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -47,15 +50,25 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
+import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
@@ -144,6 +157,85 @@ open class SharedAndroidPaginationEnvironment(
         AccountData.fetch(context, url) {
             signFetchRequest()
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
+        }
+    }
+
+    override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
+        val settings = feedDisplaySettings()
+        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(context, items)
+        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, foregroundItems)
+        return HomeFeedFilterResult(
+            foregroundItems = foregroundItems,
+            filteredItems = filteredItems,
+            reverseBlock = settings.reverseBlock,
+        )
+    }
+
+    override suspend fun sendFeedReadStatus(feed: Feed) {
+        val target = feed.target
+        val payloadItem = when (target) {
+            is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
+            is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
+            is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
+            else -> return
+        }
+        AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
+            header("x-requested-with", "fetch")
+            signFetchRequest()
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append("items", Json.encodeToString(listOf(payloadItem)))
+                    },
+                ),
+            )
+        }
+    }
+
+    override suspend fun recordContentInteraction(feed: Feed) {
+        when (val target = feed.target) {
+            is Feed.AnswerTarget -> ContentFilterExtensions.recordContentInteraction(
+                context,
+                ContentType.ANSWER,
+                target.id.toString(),
+            )
+            is Feed.ArticleTarget -> ContentFilterExtensions.recordContentInteraction(
+                context,
+                ContentType.ARTICLE,
+                target.id.toString(),
+            )
+            is Feed.QuestionTarget -> ContentFilterExtensions.recordContentInteraction(
+                context,
+                ContentType.QUESTION,
+                target.id.toString(),
+            )
+            else -> {}
+        }
+    }
+
+    override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
+        if (items.isEmpty()) return emptySet()
+        val response = AccountData
+            .httpClient(context)
+            .post("https://www.zhihu.com/lastread/touch") {
+                header("x-requested-with", "fetch")
+                signFetchRequest()
+                setBody(
+                    MultiPartFormDataContent(
+                        formData {
+                            val payload = items.map { (type, id) ->
+                                listOf(type, id, "touch")
+                            }
+                            append("items", Json.encodeToString(payload))
+                        },
+                    ),
+                )
+            }
+        return if (response.status.isSuccess()) {
+            items
+        } else {
+            Log.e("Browse-Touch", response.bodyAsText())
+            emptySet()
         }
     }
 

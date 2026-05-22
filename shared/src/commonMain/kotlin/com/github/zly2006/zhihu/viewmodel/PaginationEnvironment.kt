@@ -19,6 +19,8 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
@@ -55,11 +57,32 @@ interface PaginationEnvironment {
         follow: Boolean,
     ) {
     }
+
+    suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult =
+        HomeFeedFilterResult(
+            foregroundItems = items,
+            filteredItems = items,
+            reverseBlock = feedDisplaySettings().reverseBlock,
+        )
+
+    suspend fun sendFeedReadStatus(feed: Feed) {
+    }
+
+    suspend fun recordContentInteraction(feed: Feed) {
+    }
+
+    suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
 }
 
 data class FeedDisplaySettings(
     val enableQualityFilter: Boolean = true,
     val reverseBlock: Boolean = false,
+)
+
+data class HomeFeedFilterResult(
+    val foregroundItems: List<FeedDisplayItem>,
+    val filteredItems: List<FeedDisplayItem>,
+    val reverseBlock: Boolean,
 )
 
 @Composable

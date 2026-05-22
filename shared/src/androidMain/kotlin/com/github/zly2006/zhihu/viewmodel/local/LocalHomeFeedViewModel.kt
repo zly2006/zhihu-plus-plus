@@ -24,10 +24,10 @@ import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
 
 class LocalHomeFeedViewModel :
     BaseFeedViewModel(),
-    IHomeFeedViewModel {
+    HomeFeedInteractionViewModel {
     private lateinit var recommendationEngine: LocalRecommendationEngine
 
     override val initialUrl: String
@@ -149,11 +149,11 @@ class LocalHomeFeedViewModel :
     }
 
     override suspend fun recordContentInteraction(
-        context: Context,
+        environment: PaginationEnvironment,
         feed: Feed,
     ) {
     }
 
-    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
+    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
     }
 }

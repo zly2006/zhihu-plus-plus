@@ -18,11 +18,9 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
-import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -85,7 +83,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Search
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.data.fetchZhihuUnreadNotificationCount
 import com.github.zly2006.zhihu.shared.data.navDestination
@@ -107,20 +104,16 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.header
-import io.ktor.client.request.setBody
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.add
-import kotlinx.serialization.json.buildJsonArray
 
 const val PREFERENCE_NAME = "com.github.zly2006.zhihu_preferences"
 const val ARTICLE_USE_WEBVIEW_PREFERENCE_KEY = "webviewRender"
@@ -132,70 +125,6 @@ const val HOME_ACCOUNT_BUTTON_TAG = "home_account_button"
 const val HOME_FEED_LIST_TAG = "home_feed_list"
 const val HOME_REFRESH_BUTTON_TAG = "home_refresh_button"
 
-interface IHomeFeedViewModel {
-    suspend fun recordContentInteraction(context: Context, feed: Feed)
-
-    fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem)
-
-    /**
-     * 发送"已读"状态到知乎服务器的通用实现
-     */
-    suspend fun sendReadStatusToServer(context: Context, feed: Feed) {
-        try {
-            AccountData.fetchPost(context, "https://www.zhihu.com/lastread/touch") {
-                header("x-requested-with", "fetch")
-                signFetchRequest()
-                setBody(
-                    MultiPartFormDataContent(
-                        formData {
-                            append(
-                                "items",
-                                buildJsonArray {
-                                    when (val target = feed.target) {
-                                        is Feed.AnswerTarget -> {
-                                            add(
-                                                buildJsonArray {
-                                                    add("answer")
-                                                    add(target.id.toString())
-                                                    add("read")
-                                                },
-                                            )
-                                        }
-
-                                        is Feed.ArticleTarget -> {
-                                            add(
-                                                buildJsonArray {
-                                                    add("article")
-                                                    add(target.id.toString())
-                                                    add("read")
-                                                },
-                                            )
-                                        }
-
-                                        is Feed.PinTarget -> {
-                                            add(
-                                                buildJsonArray {
-                                                    add("pin")
-                                                    add(target.id.toString())
-                                                    add("read")
-                                                },
-                                            )
-                                        }
-
-                                        else -> {}
-                                    }
-                                }.toString(),
-                            )
-                        },
-                    ),
-                )
-            }
-        } catch (e: Exception) {
-            Log.e("IHomeFeedViewModel", "Failed to send read status", e)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
@@ -204,6 +133,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
     val preferences = remember {
         context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
     }
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
 
     val duo3HomeAccount = preferences.getBoolean("duo3_home_account", false)
     val showRefreshFab = preferences.getBoolean("showRefreshFab", true)
@@ -264,7 +194,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 isAtTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0,
             )
         ) {
-            TopLevelReselectAction.Refresh -> viewModel.refresh(context)
+            TopLevelReselectAction.Refresh -> viewModel.refresh(paginationEnvironment)
             TopLevelReselectAction.ScrollToTop -> listState.animateScrollToItem(0)
             null -> {}
         }
@@ -292,7 +222,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
             context.startActivity(myIntent)
         } else if (viewModel.displayItems.isEmpty()) {
             // 只在第一次加载时刷新，这样可以避免在返回时刷新
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
         }
     }
 
@@ -496,7 +426,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     top = scaffoldPadding.calculateTopPadding() + 8.dp,
                     bottom = innerPadding.calculateBottomPadding(),
                 ),
-                onLoadMore = { viewModel.loadMore(context) },
+                onLoadMore = { viewModel.loadMore(paginationEnvironment) },
                 footer = ProgressIndicatorFooter,
                 key = { item -> item.stableKey },
                 topContent = {
@@ -595,7 +525,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                     val destination = navDestination
                     if (feed != null) {
 //                            DataHolder.putFeed(feed)
-                        (viewModel as IHomeFeedViewModel).onUiContentClick(context, feed, item)
+                        (viewModel as HomeFeedInteractionViewModel).onUiContentClick(paginationEnvironment, feed, item)
                     } else if (localHomeViewModel != null && item.localContentId != null) {
                         localHomeViewModel.onLocalItemOpened(context, item)
                     }
@@ -621,7 +551,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 }
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(HOME_REFRESH_BUTTON_TAG),
-                    onClick = { viewModel.refresh(context) },
+                    onClick = { viewModel.refresh(paginationEnvironment) },
                 ) {
                     if (viewModel.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(30.dp))
@@ -644,7 +574,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
             userToBlock = null
         },
         onConfirm = {
-            viewModel.refresh(context)
+            viewModel.refresh(paginationEnvironment)
             showBlockUserDialog = false
             userToBlock = null
         },
@@ -661,7 +591,7 @@ actual fun HomeScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) {
                 feedToBlockByKeywords = null
             },
             onConfirm = {
-                viewModel.refresh(context)
+                viewModel.refresh(paginationEnvironment)
                 showBlockByKeywordsDialog = false
                 feedToBlockByKeywords = null
             },

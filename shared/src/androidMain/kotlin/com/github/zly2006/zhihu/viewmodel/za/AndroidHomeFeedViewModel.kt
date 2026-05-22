@@ -29,11 +29,11 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
-import com.github.zly2006.zhihu.ui.IHomeFeedViewModel
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -64,7 +64,7 @@ private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders
 
 class AndroidHomeFeedViewModel :
     BaseFeedViewModel(),
-    IHomeFeedViewModel {
+    HomeFeedInteractionViewModel {
     override val initialUrl: String
         get() = "https://api.zhihu.com/topstory/recommend"
 
@@ -218,13 +218,13 @@ class AndroidHomeFeedViewModel :
         }
     }
 
-    override suspend fun recordContentInteraction(context: Context, feed: Feed) {
+    override suspend fun recordContentInteraction(environment: PaginationEnvironment, feed: Feed) {
         // Android 版本暂不记录交互
     }
 
-    override fun onUiContentClick(context: Context, feed: Feed, item: FeedDisplayItem) {
+    override fun onUiContentClick(environment: PaginationEnvironment, feed: Feed, item: FeedDisplayItem) {
         viewModelScope.launch(Dispatchers.IO) {
-            sendReadStatusToServer(context, feed)
+            environment.sendFeedReadStatus(feed)
         }
     }
 }
