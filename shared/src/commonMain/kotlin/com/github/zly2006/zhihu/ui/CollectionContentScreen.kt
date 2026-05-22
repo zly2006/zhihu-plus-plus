@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,29 +50,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastJoinToString
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.CollectionHtmlExportDialogState
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.CollectionContentEnvironment
 import com.github.zly2006.zhihu.viewmodel.CollectionContentViewModel
-import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
-private val collectionContentYmdhms = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
+private fun formatCollectionUpdatedTime(seconds: Long): String {
+    val dateTime = Instant
+        .fromEpochSeconds(seconds)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+    return buildString {
+        append(dateTime.year.toString().padStart(4, '0'))
+        append('-')
+        append(dateTime.monthNumber.toString().padStart(2, '0'))
+        append('-')
+        append(dateTime.dayOfMonth.toString().padStart(2, '0'))
+        append(' ')
+        append(dateTime.hour.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.minute.toString().padStart(2, '0'))
+        append(':')
+        append(dateTime.second.toString().padStart(2, '0'))
+    }
+}
 
 /**
  * Instrumented tests inject a prefilled ViewModel plus side-effect stubs here so the screen can
@@ -88,7 +103,7 @@ data class CollectionContentScreenTestOverrides(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun CollectionContentScreen(
+fun CollectionContentScreen(
     collectionId: String,
 ): Unit = CollectionContentScreenContent(collectionId, testOverrides = null)
 
@@ -105,11 +120,8 @@ private fun CollectionContentScreenContent(
     testOverrides: CollectionContentScreenTestOverrides? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
     val screenViewModel = testOverrides?.viewModel ?: viewModel { CollectionContentViewModel(collectionId) }
-    val collectionEnvironment = remember(context, screenViewModel) {
-        screenViewModel.paginationEnvironment(context) as CollectionContentEnvironment
-    }
+    val collectionEnvironment = rememberPaginationEnvironment(allowGuestAccess = false) as CollectionContentEnvironment
     val listState = rememberLazyListState()
     var showActionsMenu by remember { mutableStateOf(false) }
     var showExportOptionsDialog by remember { mutableStateOf(false) }
@@ -121,7 +133,7 @@ private fun CollectionContentScreenContent(
             includeImages = includeImages,
         )
     }
-    val sharedData = context.articleHost()?.articleAnswerSwitchState
+    val sharedData = rememberArticleHost()?.articleAnswerSwitchState
 
     LaunchedEffect(testOverrides) {
         if (testOverrides == null && screenViewModel.allData.isEmpty()) {
@@ -129,11 +141,11 @@ private fun CollectionContentScreenContent(
         }
     }
 
-    BackHandler(enabled = showActionsMenu) {
+    PlatformBackHandler(enabled = showActionsMenu) {
         showActionsMenu = false
     }
 
-    BackHandler(enabled = showExportOptionsDialog) {
+    PlatformBackHandler(enabled = showExportOptionsDialog) {
         showExportOptionsDialog = false
     }
 
@@ -217,7 +229,7 @@ private fun CollectionContentScreenContent(
                             "${screenViewModel.collection?.itemCount} 条收藏",
                             "${screenViewModel.collection?.likeCount} 个赞同",
                             "${screenViewModel.collection?.commentCount} 条评论",
-                            screenViewModel.collection?.updatedTime?.let { "${collectionContentYmdhms.format(Date(it * 1000))} 更新" },
+                            screenViewModel.collection?.updatedTime?.let { "${formatCollectionUpdatedTime(it)} 更新" },
                         ).fastJoinToString(" · "),
                         modifier = Modifier.testTag("collection_content_stats"),
                     )
@@ -232,7 +244,8 @@ private fun CollectionContentScreenContent(
                     .testTag("collection_content_item_${item.stableKey}"),
             ) {
                 val dest = navDestination
-                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null) {
+                val repository = collectionEnvironment.answerNavigatorRepository()
+                if (dest is Article && dest.type == ArticleType.Answer && sharedData != null && repository != null) {
                     val idx = screenViewModel.displayItems.indexOf(item)
                     val nextItems = if (idx >= 0) screenViewModel.allData.drop(idx + 1) else emptyList()
                     val prevItems = if (idx > 0) screenViewModel.allData.take(idx).reversed() else emptyList()
@@ -241,7 +254,7 @@ private fun CollectionContentScreenContent(
                         collectionTitle = screenViewModel.title,
                         initialNextItems = nextItems,
                         initialPreviousItems = prevItems,
-                        repository = AndroidAnswerNavigatorRepository(context),
+                        repository = repository,
                     )
                 }
                 dest?.let { navigator.onNavigate(it) }

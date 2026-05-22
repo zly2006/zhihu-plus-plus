@@ -30,9 +30,6 @@ expect fun AccountSettingScreen(innerPadding: PaddingValues)
 expect fun QuestionScreen(question: Question)
 
 @Composable
-expect fun CollectionContentScreen(collectionId: String)
-
-@Composable
 expect fun PeopleScreen(person: Person)
 
 @Composable

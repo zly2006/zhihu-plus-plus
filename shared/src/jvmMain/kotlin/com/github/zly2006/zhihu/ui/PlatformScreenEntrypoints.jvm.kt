@@ -29,9 +29,6 @@ actual fun AccountSettingScreen(innerPadding: PaddingValues) = UnsupportedDeskto
 actual fun QuestionScreen(question: Question) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun CollectionContentScreen(collectionId: String) = UnsupportedDesktopScreen()
-
-@Composable
 actual fun PeopleScreen(person: Person) = UnsupportedDesktopScreen()
 
 @Composable

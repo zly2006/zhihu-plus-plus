@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -75,6 +76,8 @@ interface PaginationEnvironment {
 
     suspend fun clearAllHistory() {
     }
+
+    fun answerNavigatorRepository(): AnswerNavigatorRepository? = null
 }
 
 data class FeedDisplaySettings(

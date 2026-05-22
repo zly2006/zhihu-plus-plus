@@ -33,6 +33,8 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
+import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
@@ -257,6 +259,8 @@ open class SharedAndroidPaginationEnvironment(
             )
         }
     }
+
+    override fun answerNavigatorRepository(): AnswerNavigatorRepository = AndroidAnswerNavigatorRepository(context)
 
     override suspend fun fetchCollection(collectionId: String): Collection {
         val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {
