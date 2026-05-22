@@ -18,9 +18,6 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.ui.CommentScreen
 
@@ -30,9 +27,6 @@ fun CommentScreenComponent(
     onDismiss: () -> Unit,
     content: NavDestination,
 ) {
-    val context = LocalContext.current
-    val httpClient = remember { AccountData.httpClient(context) }
-
     CommentScreenSheetContent(
         showComments = showComments,
         onDismiss = onDismiss,
@@ -40,13 +34,11 @@ fun CommentScreenComponent(
     ) { target, activeCommentItem, onChildCommentClick ->
         if (activeCommentItem == null) {
             CommentScreen(
-                httpClient = httpClient,
                 content = { target },
                 onChildCommentClick = onChildCommentClick,
             )
         } else {
             CommentScreen(
-                httpClient = httpClient,
                 content = { target },
                 activeCommentItem = activeCommentItem,
                 onChildCommentClick = onChildCommentClick,

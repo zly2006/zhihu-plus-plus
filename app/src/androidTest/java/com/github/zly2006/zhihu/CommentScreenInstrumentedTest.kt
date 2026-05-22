@@ -34,7 +34,6 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.test.espresso.Espresso.pressBack
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CommentHolder
@@ -71,8 +70,8 @@ import com.github.zly2006.zhihu.ui.commentLikeButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyButtonTag
 import com.github.zly2006.zhihu.ui.commentReplyToAuthorTag
 import com.github.zly2006.zhihu.ui.commentRowTag
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
-import io.ktor.client.HttpClient
 import io.ktor.http.HttpMethod
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -316,15 +315,12 @@ class CommentScreenInstrumentedTest {
         testOverrides: CommentScreenTestOverrides,
     ): RecordingNavigator = composeRule.setScreenContent {
         CommentScreen(
-            httpClient = httpClient(),
             content = { viewModel.article },
             activeCommentItem = activeCommentItem,
             onChildCommentClick = onChildCommentClick,
             testOverrides = testOverrides,
         )
     }
-
-    private fun httpClient(): HttpClient = AccountData.httpClient(composeRule.activity)
 
     private class SeededRootCommentViewModel(
         article: NavDestination,
@@ -348,19 +344,18 @@ class CommentScreenInstrumentedTest {
         override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem =
             CommentItem(comment, CommentHolder(comment.id, article))
 
-        override fun loadMore(context: android.content.Context) {
+        override fun loadMore(environment: PaginationEnvironment) {
             loadMoreCount += 1
         }
 
-        override fun refresh(context: android.content.Context) {
+        override fun refresh(environment: PaginationEnvironment) {
             refreshHistory += sortOrder
         }
 
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            httpClient: HttpClient,
-            context: android.content.Context,
+            environment: PaginationEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
         ) = Unit
@@ -388,13 +383,12 @@ class CommentScreenInstrumentedTest {
         override fun createCommentItem(comment: DataHolder.Comment, article: NavDestination): CommentItem =
             CommentItem(comment, null)
 
-        override fun loadMore(context: android.content.Context) = Unit
+        override fun loadMore(environment: PaginationEnvironment) = Unit
 
         override fun submitComment(
             content: NavDestination,
             commentText: String,
-            httpClient: HttpClient,
-            context: android.content.Context,
+            environment: PaginationEnvironment,
             replyToCommentId: String?,
             onSuccess: () -> Unit,
         ) {

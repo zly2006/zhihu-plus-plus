@@ -56,6 +56,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Reply
@@ -96,19 +97,26 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.Node
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.DummyLocalNavigator
@@ -118,37 +126,26 @@ import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
+import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
-import com.github.zly2006.zhihu.ui.components.OpenImageDialog
-import com.github.zly2006.zhihu.util.createEmojiInlineContent
-import com.github.zly2006.zhihu.util.dfsSimple
-import com.github.zly2006.zhihu.util.fuckHonorService
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.viewmodel.comment.BaseCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.ChildCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.comment.RootCommentViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Clock
 
 typealias CommentModel = CommentItem
-
-private val HMS = SimpleDateFormat("HH:mm:ss", Locale.ENGLISH)
-private val MDHMS = SimpleDateFormat("MM-dd HH:mm:ss", Locale.ENGLISH)
-val YMDHMS = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
 
 const val COMMENT_SCREEN_LIST_TAG = "comment_screen_list"
 const val COMMENT_REPLY_BANNER_TAG = "comment_reply_banner"
@@ -340,14 +337,12 @@ fun SwipeToReplyContainer(
 @Composable
 private fun ClickableImageWithMenu(
     imageUrl: String,
-    httpClient: HttpClient,
+    runtime: CommentScreenRuntime,
     modifier: Modifier = Modifier,
     contentDescription: String = "图片",
     onAction: ((CommentImageMenuAction, String) -> Unit)? = null,
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
     fun handleAction(action: CommentImageMenuAction) {
         if (onAction != null) {
@@ -355,19 +350,10 @@ private fun ClickableImageWithMenu(
             return
         }
         when (action) {
-            CommentImageMenuAction.Open -> OpenImageDialog(context, httpClient, imageUrl).show()
-            CommentImageMenuAction.OpenInBrowser -> luoTianYiUrlLauncher(context, imageUrl.toUri())
-            CommentImageMenuAction.Save -> {
-                coroutineScope.launch {
-                    saveImageToGallery(context, httpClient, imageUrl)
-                }
-            }
-
-            CommentImageMenuAction.Share -> {
-                coroutineScope.launch {
-                    shareImage(context, httpClient, imageUrl)
-                }
-            }
+            CommentImageMenuAction.Open -> runtime.openImage(imageUrl)
+            CommentImageMenuAction.OpenInBrowser -> runtime.openImageInBrowser(imageUrl)
+            CommentImageMenuAction.Save -> runtime.saveImage(imageUrl)
+            CommentImageMenuAction.Share -> runtime.shareImage(imageUrl)
         }
     }
 
@@ -426,14 +412,13 @@ private fun ClickableImageWithMenu(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentScreen(
-    httpClient: HttpClient,
     content: () -> NavDestination,
     activeCommentItem: CommentModel? = null,
     onChildCommentClick: (CommentModel) -> Unit,
     testOverrides: CommentScreenTestOverrides? = null,
 ) {
-    val context = LocalContext.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
+    val runtime = rememberCommentScreenRuntime()
     var commentInput by remember { mutableStateOf("") }
     var isSending by remember { mutableStateOf(false) }
     var replyToComment by remember { mutableStateOf<CommentModel?>(null) }
@@ -565,7 +550,7 @@ fun CommentScreen(
                                 Column(modifier = modifier) {
                                     CommentItem(
                                         comment = commentItem,
-                                        httpClient = httpClient,
+                                        runtime = runtime,
                                         isLiked = isLiked,
                                         likeCount = likeCount,
                                         isLikeLoading = isLikeLoading,
@@ -602,7 +587,7 @@ fun CommentScreen(
                                                     )
                                                     CommentItem(
                                                         comment = childCommentItem,
-                                                        httpClient = httpClient,
+                                                        runtime = runtime,
                                                         modifier = Modifier.testTag(commentRowTag(childComment.id)),
                                                         isLiked = liked,
                                                         likeCount = likeCount,
@@ -951,7 +936,7 @@ private fun commentViewModelKey(content: NavDestination): String = when (content
 @Composable
 private fun CommentItem(
     comment: CommentModel,
-    httpClient: HttpClient,
+    runtime: CommentScreenRuntime,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
     likeCount: Int = 0,
@@ -1042,13 +1027,11 @@ private fun CommentItem(
                     }
                 }
 
-                val document = Jsoup.parse(commentData.content)
+                val document = Ksoup.parseBodyFragment(commentData.content)
                 val commentImg =
                     document.selectFirst("a.comment_img")?.attr("href")
                         ?: document.selectFirst("a.comment_gif")?.attr("href")
                         ?: document.selectFirst("a.comment_sticker")?.attr("href")
-                val context = LocalContext.current
-
                 // 收集所有使用的emoji
                 val emojisUsed = remember { mutableSetOf<String>() }
                 val string = remember(commentData.content) {
@@ -1058,18 +1041,21 @@ private fun CommentItem(
                         stripped.select("a.comment_img").forEach { it.remove() }
                         stripped.select("a.comment_gif").forEach { it.remove() }
                         stripped.select("a.comment_sticker").forEach { it.remove() }
-                        dfsSimple(stripped, navigator.onNavigate, context, emojisUsed)
+                        dfsSimple(
+                            node = stripped,
+                            onNavigate = navigator.onNavigate,
+                            openExternalUrl = runtime::openExternalUrl,
+                            componentUsed = emojisUsed,
+                        )
                     }
                 }
 
                 // 创建inlineContent映射
-                val inlineContent = remember(emojisUsed.size) {
-                    createEmojiInlineContent(emojisUsed)
-                }
+                val inlineContent = rememberCommentEmojiInlineContent(emojisUsed)
 
                 Column {
                     SelectionContainer(
-                        modifier = Modifier.fuckHonorService(),
+                        modifier = Modifier.commentSelectionWorkaround(),
                     ) {
                         Text(
                             text = string,
@@ -1079,7 +1065,7 @@ private fun CommentItem(
                     if (commentImg != null) {
                         ClickableImageWithMenu(
                             imageUrl = commentImg,
-                            httpClient = httpClient,
+                            runtime = runtime,
                             modifier = Modifier
                                 .testTag(commentImageTag(commentData.id))
                                 .padding(top = 8.dp)
@@ -1102,16 +1088,7 @@ private fun CommentItem(
         ) {
             // 时间
             val formattedTime = remember(commentData.createdTime) {
-                val time = commentData.createdTime * 1000
-                val now = System.currentTimeMillis()
-                val dateTime = Date(time)
-                val nowDate = Date(now)
-
-                when {
-                    isSameDay(dateTime, nowDate) -> HMS.format(time)
-                    isSameYear(dateTime, nowDate) -> MDHMS.format(time)
-                    else -> YMDHMS.format(time)
-                }
+                formatCommentTime(commentData.createdTime)
             }
 
             Text(
@@ -1208,17 +1185,107 @@ private fun CommentItem(
     }
 }
 
-private fun isSameDay(date1: Date, date2: Date): Boolean {
-    val cal1 = Calendar.getInstance().apply { time = date1 }
-    val cal2 = Calendar.getInstance().apply { time = date2 }
-    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-        cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
+private fun formatCommentTime(createdTimeSeconds: Long): String {
+    val zone = TimeZone.currentSystemDefault()
+    val dateTime = Instant.fromEpochSeconds(createdTimeSeconds).toLocalDateTime(zone)
+    val now = Clock.System.now().toLocalDateTime(zone)
+    return when {
+        dateTime.date == now.date -> dateTime.formatHms()
+        dateTime.year == now.year -> "${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
+        else -> "${dateTime.year}-${dateTime.monthNumber.twoDigits()}-${dateTime.day.twoDigits()} ${dateTime.formatHms()}"
+    }
 }
 
-private fun isSameYear(date1: Date, date2: Date): Boolean {
-    val cal1 = Calendar.getInstance().apply { time = date1 }
-    val cal2 = Calendar.getInstance().apply { time = date2 }
-    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
+private fun LocalDateTime.formatHms(): String =
+    "${hour.twoDigits()}:${minute.twoDigits()}:${second.twoDigits()}"
+
+private fun Int.twoDigits(): String = if (this < 10) "0$this" else toString()
+
+private fun AnnotatedString.Builder.processTextWithEmoji(
+    text: String,
+    componentUsed: MutableSet<String>?,
+) {
+    var buffer = StringBuilder()
+    var emojiBuffer = StringBuilder()
+    var isEmoji = false
+
+    for (ch in text) {
+        if (ch == '[') {
+            if (buffer.isNotEmpty()) {
+                append(buffer.toString())
+                buffer = StringBuilder()
+            }
+            isEmoji = true
+            emojiBuffer.append(ch)
+        } else if (ch == ']') {
+            if (isEmoji) {
+                emojiBuffer.append(ch)
+                val placeholder = emojiBuffer.toString()
+                val emojiKey = commentEmojiInlineKey(placeholder)
+                if (emojiKey != null) {
+                    appendInlineContent(emojiKey, placeholder)
+                    componentUsed?.add(emojiKey)
+                } else {
+                    append(placeholder)
+                }
+                emojiBuffer = StringBuilder()
+                isEmoji = false
+            } else {
+                buffer.append(ch)
+            }
+        } else {
+            if (isEmoji) {
+                emojiBuffer.append(ch)
+            } else {
+                buffer.append(ch)
+            }
+        }
+    }
+
+    if (buffer.isNotEmpty()) {
+        append(buffer.toString())
+    }
+    if (isEmoji && emojiBuffer.isNotEmpty()) {
+        append(emojiBuffer.toString())
+    }
+}
+
+private fun AnnotatedString.Builder.dfsSimple(
+    node: Node,
+    onNavigate: (NavDestination) -> Unit,
+    openExternalUrl: (String) -> Unit,
+    componentUsed: MutableSet<String>? = null,
+) {
+    when (node) {
+        is Element -> {
+            when (node.tagName()) {
+                "br" -> append("\n")
+                "a" -> {
+                    val href = node.attr("href")
+                    val linkText = node.text()
+                    if (linkText.isNotEmpty()) {
+                        withLink(
+                            LinkAnnotation.Clickable(
+                                href,
+                                TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
+                            ) {
+                                resolveContent(href)?.let(onNavigate) ?: openExternalUrl(href)
+                            },
+                        ) {
+                            append(linkText)
+                        }
+                    }
+                }
+
+                else -> node.childNodes().forEach {
+                    dfsSimple(it, onNavigate, openExternalUrl, componentUsed)
+                }
+            }
+        }
+
+        is TextNode -> processTextWithEmoji(node.text(), componentUsed)
+        else -> append(node.outerHtml())
+    }
 }
 
 @Composable
@@ -1259,9 +1326,10 @@ private fun CommentItemPreview() {
         clickTarget = null,
     )
     DummyLocalNavigator {
+        val runtime = rememberCommentScreenRuntime()
         CommentItem(
             comment,
-            httpClient = HttpClient(),
+            runtime = runtime,
             onChildCommentClick = { },
         )
     }
