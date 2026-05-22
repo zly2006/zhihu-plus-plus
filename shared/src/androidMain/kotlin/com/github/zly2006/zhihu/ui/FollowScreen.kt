@@ -84,6 +84,7 @@ import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
 class FollowScreenData : ViewModel() {
@@ -257,12 +258,12 @@ private fun FollowTabRow(
 
 @Composable
 fun FollowingUsersRow() {
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
     val viewModel: RecentMomentsViewModel = viewModel()
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
 
     LaunchedEffect(Unit) {
-        viewModel.load(context)
+        viewModel.load(environment)
     }
 
     when {
