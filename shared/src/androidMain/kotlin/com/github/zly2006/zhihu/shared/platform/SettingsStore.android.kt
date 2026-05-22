@@ -18,10 +18,14 @@ actual fun rememberSettingsStore(): SettingsStore {
             putBoolean = { key, value -> preferences.edit { putBoolean(key, value) } },
             getString = { key, defaultValue -> preferences.getString(key, defaultValue) ?: defaultValue },
             putString = { key, value -> preferences.edit { putString(key, value) } },
+            getStringOrNull = { key -> preferences.getString(key, null) },
+            putStringSet = { key, value -> preferences.edit { putStringSet(key, value) } },
+            getStringSet = { key, defaultValue -> preferences.getStringSet(key, defaultValue)?.toSet() ?: defaultValue },
             getInt = { key, defaultValue -> preferences.getInt(key, defaultValue) },
             putInt = { key, value -> preferences.edit { putInt(key, value) } },
             getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
             putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
+            remove = { key -> preferences.edit { remove(key) } },
         )
     }
 }

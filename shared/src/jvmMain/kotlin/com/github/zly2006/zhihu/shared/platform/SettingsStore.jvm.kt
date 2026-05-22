@@ -40,6 +40,20 @@ actual fun rememberSettingsStore(): SettingsStore = remember {
             properties.setProperty(key, value)
             save()
         },
+        getStringOrNull = { key ->
+            properties.getProperty(key)
+        },
+        putStringSet = { key, value ->
+            properties.setProperty(key, value.joinToString("\u001F"))
+            save()
+        },
+        getStringSet = { key, defaultValue ->
+            properties
+                .getProperty(key)
+                ?.split("\u001F")
+                ?.filter { it.isNotEmpty() }
+                ?.toSet() ?: defaultValue
+        },
         getInt = { key, defaultValue ->
             properties.getProperty(key)?.toIntOrNull() ?: defaultValue
         },
@@ -52,6 +66,10 @@ actual fun rememberSettingsStore(): SettingsStore = remember {
         },
         putFloat = { key, value ->
             properties.setProperty(key, value.toString())
+            save()
+        },
+        remove = { key ->
+            properties.remove(key)
             save()
         },
     )

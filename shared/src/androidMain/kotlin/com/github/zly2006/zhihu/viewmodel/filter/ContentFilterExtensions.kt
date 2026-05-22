@@ -184,10 +184,14 @@ private fun SharedPreferences.toSettingsStore(): SettingsStore = SettingsStore(
     putBoolean = { key, value -> edit().putBoolean(key, value).apply() },
     getString = ::getStringValue,
     putString = { key, value -> edit().putString(key, value).apply() },
+    getStringOrNull = { key -> getString(key, null) },
+    putStringSet = { key, value -> edit().putStringSet(key, value).apply() },
+    getStringSet = { key, defaultValue -> getStringSet(key, defaultValue)?.toSet() ?: defaultValue },
     getInt = ::getInt,
     putInt = { key, value -> edit().putInt(key, value).apply() },
     getFloat = ::getFloat,
     putFloat = { key, value -> edit().putFloat(key, value).apply() },
+    remove = { key -> edit().remove(key).apply() },
 )
 
 private fun SharedPreferences.getStringValue(key: String, defaultValue: String): String =

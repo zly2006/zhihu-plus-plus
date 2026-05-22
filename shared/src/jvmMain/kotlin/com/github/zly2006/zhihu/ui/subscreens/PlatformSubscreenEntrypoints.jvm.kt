@@ -4,9 +4,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 
 @Composable
-actual fun AppearanceSettingsScreen(setting: String?, onExit: () -> Unit) = UnsupportedDesktopSubscreen()
-
-@Composable
 actual fun SystemAndUpdateSettingsScreen() = UnsupportedDesktopSubscreen()
 
 @Composable
