@@ -52,6 +52,7 @@ import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.http.HttpMethod
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,6 +135,17 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
+
+    override suspend fun followQuestion(
+        questionId: Long,
+        follow: Boolean,
+    ) {
+        val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+        AccountData.fetch(context, url) {
+            signFetchRequest()
+            method = if (follow) HttpMethod.Post else HttpMethod.Delete
+        }
+    }
 
     override suspend fun fetchCollection(collectionId: String): Collection {
         val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {

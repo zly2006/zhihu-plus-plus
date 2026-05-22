@@ -49,6 +49,12 @@ interface PaginationEnvironment {
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 
     fun localHistory(): List<NavDestination> = emptyList()
+
+    suspend fun followQuestion(
+        questionId: Long,
+        follow: Boolean,
+    ) {
+    }
 }
 
 data class FeedDisplaySettings(

@@ -17,18 +17,13 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import android.content.Context
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import io.ktor.http.HttpMethod
 
 class QuestionFeedViewModel(
     private val questionId: Long,
@@ -60,15 +55,11 @@ class QuestionFeedViewModel(
         return super.createDisplayItem(environment, feed)
     }
 
-    suspend fun followQuestion(context: Context, questionId: Long, follow: Boolean) {
+    suspend fun followQuestion(environment: PaginationEnvironment, questionId: Long, follow: Boolean) {
         try {
-            val url = "https://www.zhihu.com/api/v4/questions/$questionId/followers"
-            AccountData.fetch(context, url) {
-                signFetchRequest()
-                method = if (follow) HttpMethod.Post else HttpMethod.Delete
-            }
+            environment.followQuestion(questionId, follow)
         } catch (e: Exception) {
-            Log.e("QuestionFeedViewModel", "Failed to follow/unfollow question: $questionId", e)
+            environment.handleFetchFailure("QuestionFeedViewModel", e)
         }
     }
 }

@@ -97,6 +97,7 @@ import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -159,10 +160,11 @@ private fun QuestionScreenContent(
     val viewModel: QuestionFeedViewModel = testOverrides?.viewModel ?: viewModel(key = "question_${question.questionId}") {
         QuestionFeedViewModel(question.questionId)
     }
+    val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val initialUiState = testOverrides?.initialUiState ?: QuestionScreenUiState(title = question.title)
     val initialTitle = initialUiState.title.ifEmpty { question.title }
-    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(context) }
-    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(context) }
+    val onRefreshAnswers = testOverrides?.onRefreshAnswers ?: { viewModel.refresh(paginationEnvironment) }
+    val onLoadMore = testOverrides?.onLoadMore ?: { viewModel.loadMore(paginationEnvironment) }
     val isEnd = testOverrides?.let { { it.isEnd } } ?: { viewModel.isEnd }
     var questionContent by remember(question.questionId, initialUiState.questionContent) {
         mutableStateOf(initialUiState.questionContent)
@@ -208,7 +210,7 @@ private fun QuestionScreenContent(
             try {
                 if (viewModel.displayItems.isEmpty()) {
                     launch {
-                        viewModel.refresh(context)
+                        viewModel.refresh(paginationEnvironment)
                     }
                 }
                 val questionData = DataHolder.getContentDetail(context, question)
@@ -408,7 +410,7 @@ private fun QuestionScreenContent(
                                     scope.launch {
                                         val nextFollowing = !isFollowing
                                         testOverrides?.onFollowQuestion?.invoke(nextFollowing) ?: viewModel.followQuestion(
-                                            context,
+                                            paginationEnvironment,
                                             question.questionId,
                                             nextFollowing,
                                         )
