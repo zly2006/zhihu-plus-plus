@@ -17,10 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.Intent
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -68,18 +64,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.BlocklistStats
+import com.github.zly2006.zhihu.viewmodel.filter.KeywordType
 import kotlinx.coroutines.launch
 
 object BlocklistSettingsTestTags {
@@ -146,7 +140,7 @@ data class BlocklistSettingsTestConfig(
 )
 
 @Composable
-actual fun BlocklistSettingsScreen(
+fun BlocklistSettingsScreen(
     nlpContent: BlocklistSettingsNlpContent?,
 ): Unit = BlocklistSettingsScreenContent(testConfig = null, nlpContent = nlpContent)
 
@@ -161,7 +155,7 @@ private fun BlocklistSettingsScreenContent(
     nlpContent: BlocklistSettingsNlpContent? = null,
 ) {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
+    val runtime = rememberBlocklistSettingsRuntime()
     val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -185,36 +179,16 @@ private fun BlocklistSettingsScreenContent(
     fun loadData() {
         coroutineScope.launch {
             try {
-                val blocklistManager = BlocklistManager.getInstance(context)
                 // 只获取精确匹配的关键词
-                loadedBlockedKeywords = blocklistManager
-                    .getAllBlockedKeywords()
-                    .filter { it.getKeywordTypeEnum() == com.github.zly2006.zhihu.viewmodel.filter.KeywordType.EXACT_MATCH }
-                loadedBlockedUsers = blocklistManager.getAllBlockedUsers()
-                loadedBlockedTopics = blocklistManager.getAllBlockedTopics()
-                loadedStats = blocklistManager.getBlocklistStats()
+                loadedBlockedKeywords = runtime
+                    .loadKeywords()
+                    .filter { it.getKeywordTypeEnum() == KeywordType.EXACT_MATCH }
+                loadedBlockedUsers = runtime.loadUsers()
+                loadedBlockedTopics = runtime.loadTopics()
+                loadedStats = runtime.loadStats()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "加载数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // 导入文件选择器
-    val importLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) {
-            coroutineScope.launch {
-                try {
-                    val blocklistManager = BlocklistManager.getInstance(context)
-                    val summary = blocklistManager.importAllBlocklistFromJson(context, uri)
-                    Toast.makeText(context, "导入成功：$summary", Toast.LENGTH_LONG).show()
-                    loadData()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    Toast.makeText(context, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                runtime.userMessages.showShortMessage("加载数据失败: ${e.message}")
             }
         }
     }
@@ -327,7 +301,10 @@ private fun BlocklistSettingsScreenContent(
                         if (importAction != null) {
                             importAction()
                         } else {
-                            importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                            runtime.requestImport { summary ->
+                                runtime.userMessages.showLongMessage("导入成功：$summary")
+                                loadData()
+                            }
                         }
                     },
                 ) {
@@ -342,24 +319,10 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    val file = blocklistManager.exportAllBlocklistToJson(context)
-                                    val intent = Intent().apply {
-                                        action = Intent.ACTION_VIEW
-                                        setDataAndType(
-                                            FileProvider.getUriForFile(
-                                                context,
-                                                "${context.packageName}.provider",
-                                                file,
-                                            ),
-                                            "application/json",
-                                        )
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, "查看屏蔽规则"))
-                                    Toast.makeText(context, "已导出到 ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                                    runtime.userMessages.showLongMessage(runtime.exportRules())
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("导出失败: ${e.message}")
                                 }
                             }
                         }
@@ -395,13 +358,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.removeBlockedKeyword(keyword.id)
-                                    Toast.makeText(context, "已删除关键词", Toast.LENGTH_SHORT).show()
+                                    runtime.deleteKeyword(keyword.id)
+                                    runtime.userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -413,13 +375,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.clearAllBlockedKeywords()
-                                    Toast.makeText(context, "已清空所有关键词", Toast.LENGTH_SHORT).show()
+                                    runtime.clearKeywords()
+                                    runtime.userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -442,13 +403,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.removeBlockedUser(user.userId)
-                                    Toast.makeText(context, "已删除用户", Toast.LENGTH_SHORT).show()
+                                    runtime.deleteUser(user.userId)
+                                    runtime.userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -460,13 +420,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.clearAllBlockedUsers()
-                                    Toast.makeText(context, "已清空所有用户", Toast.LENGTH_SHORT).show()
+                                    runtime.clearUsers()
+                                    runtime.userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -490,13 +449,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.removeBlockedTopic(topic.topicId)
-                                    Toast.makeText(context, "已删除主题", Toast.LENGTH_SHORT).show()
+                                    runtime.deleteTopic(topic.topicId)
+                                    runtime.userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
                         }
@@ -508,13 +466,12 @@ private fun BlocklistSettingsScreenContent(
                         } else {
                             coroutineScope.launch {
                                 try {
-                                    val blocklistManager = BlocklistManager.getInstance(context)
-                                    blocklistManager.clearAllBlockedTopics()
-                                    Toast.makeText(context, "已清空所有主题", Toast.LENGTH_SHORT).show()
+                                    runtime.clearTopics()
+                                    runtime.userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
                                     e.printStackTrace()
-                                    Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
                         }
@@ -536,14 +493,13 @@ private fun BlocklistSettingsScreenContent(
                 } else {
                     coroutineScope.launch {
                         try {
-                            val blocklistManager = BlocklistManager.getInstance(context)
-                            blocklistManager.addBlockedKeyword(keyword, caseSensitive, isRegex)
-                            Toast.makeText(context, "已添加关键词", Toast.LENGTH_SHORT).show()
+                            runtime.addKeyword(keyword, caseSensitive, isRegex)
+                            runtime.userMessages.showShortMessage("已添加关键词")
                             loadData()
                             showAddKeywordDialog = false
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }
@@ -563,14 +519,13 @@ private fun BlocklistSettingsScreenContent(
                 } else {
                     coroutineScope.launch {
                         try {
-                            val blocklistManager = BlocklistManager.getInstance(context)
-                            blocklistManager.addBlockedTopic(topicId, topicName)
-                            Toast.makeText(context, "已添加主题", Toast.LENGTH_SHORT).show()
+                            runtime.addTopic(topicId, topicName)
+                            runtime.userMessages.showShortMessage("已添加主题")
                             loadData()
                             showAddTopicDialog = false
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }
@@ -590,14 +545,13 @@ private fun BlocklistSettingsScreenContent(
                 } else {
                     coroutineScope.launch {
                         try {
-                            val blocklistManager = BlocklistManager.getInstance(context)
-                            blocklistManager.addBlockedUser(userId, userName)
-                            Toast.makeText(context, "已添加用户", Toast.LENGTH_SHORT).show()
+                            runtime.addUser(userId, userName)
+                            runtime.userMessages.showShortMessage("已添加用户")
                             loadData()
                             showAddUserDialog = false
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
                 }
