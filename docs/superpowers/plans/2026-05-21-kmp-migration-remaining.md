@@ -41,6 +41,7 @@
 
 - route/model/helper、导航语义、主导航 UI 壳。
 - Compose UI 结构、跨平台页面壳、主题状态、展示模型。
+- 完整 UI 页面、完整 Compose screen、整页导航壳、页面 route 注册和跨平台 UI 运行语义；这些不得以完整实现形式留在 `androidMain`。
 - URL/JSON 映射、纯数据模型、序列化、分页状态、列表状态。
 - 过滤、去重、内容打开记录、推荐评分、排序、纯策略。
 - KMP 可用的数据库 entity/DAO/database 定义。
@@ -66,8 +67,9 @@
 - 内容过滤设置页混合 adapter 的根本错误：为了让设置页先编译到 common，把偏好读写、过滤统计/清理/重置、Toast/消息提示塞进一个页面专用聚合对象，等于把三种不同所有权和变化频率的能力糊成“页面平台适配”，还按页面命名，妨碍后续复用。正确方向是拆成三块通用能力：`SettingsStore` 只负责设置存取；`ContentFilterMaintenance` 只负责统计/清理/重置，并在 `ContentFilterManager` 迁入 shared 后委托 shared 核心；`UserMessageSink` 只负责平台提示。不要在设置页 adapter 里复制或替代过滤核心逻辑。
 - 通用 adapter 抽出后不复用也是错误：每次新增或拆出 shared 能力后，必须同步 grep 同类调用并替换低风险重复点，例如 `Toast.makeText` -> `UserMessageSink`、`getSharedPreferences` -> `SettingsStore`、过滤统计/清理 -> `ContentFilterMaintenance`。若暂不替换，必须在当前切片说明原因，不能默认让重复平台调用继续扩散。
 - `ZhihuMainScreens`/大注入表方向错误：不要重写 `ZhihuMain`；优先保留 Android UI 结构，用小 platform slot/adapter 拆具体平台副作用。
-- `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入具体页面实现、Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用。
-- 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。页面级 `expect` 只能作为极短期编译桥，必须在后续切片中优先删除；长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择等具体副作用。
+- `androidZhihuMainRouteContent`/Android route graph adapter 方向错误：不要把 route 注册从 `ZhihuMain` 大函数里拆到 app。应参考 `master` 的写法，`ZhihuMain` 本体在 shared 内直接负责 `NavHost` 和所有 `composable<...>` 路由注册；Android/desktop 只注入 Activity/ViewModel 创建、偏好读取、Toast/Dialog/WebView 等平台副作用，不注入完整页面实现。
+- `androidMain` 保留完整 UI 方向错误：`shared/src/androidMain` 不得保留完整 Compose UI 页面、完整 screen、整页导航壳、完整 route graph 或完整页面运行时。现有整页 `expect/actual` 只是迁移债务，必须全部移到 `shared/commonMain`；不得继续新增整页 `expect/actual` 来包住 UI。
+- 整页 `expect/actual` 方向错误：当前任务的主线是把所有 Compose UI 页面从 Android source set 推进 `shared/commonMain`，而不是在 `commonMain` 声明整页 `expect`、再让 Android/JVM 各自实现。长期允许的 `expect/actual` 只能是最小平台能力，例如偏好读写、数据库 builder、系统打开链接、Toast/通知、Activity/WebView/文件选择、动态色/系统深色、TTS engine 等具体副作用；不能用于整个 UI、整个 Screen、整个导航图或完整页面运行时。
 - `SentenceSimilarityTestScreen` 的根本边界：它不是普通可共享页面，而是 full/lite 变体页面。full 变体承载 `sentence_embeddings` 真实模型测试，lite 变体提供 fallback；不能迁入 `shared/commonMain` 做占位实现。shared 只能保留一个最小平台 slot，由 Android app 的当前 variant 注入真实页面。
 - `.codex/hooks.json` 在当前 worktree 中是有意删除，不要恢复。
 
@@ -80,13 +82,14 @@
 - JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
 - KMP Room 已用于内容过滤和本地内容数据库。
 - `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 Android 平台 adapter 留在平台侧。
-- `ZhihuMain.kt` 主导航壳已迁入 shared；但 route 注册仍需按 `master` 的大函数结构继续收回 shared。Android 只应保留具体页面实现、偏好读取、`MainActivity`、ViewModel 创建和其他平台副作用 adapter。
+- `ZhihuMain.kt` 主导航壳已迁入 shared；但 route 注册仍需按 `master` 的大函数结构继续收回 shared。Android 只应保留偏好读取、`MainActivity`、ViewModel 创建和其他平台副作用 adapter，不得保留完整页面实现。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 shared；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 androidMain adapter。
 - bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
 - Feed 展示映射已通过 `Feed.toDisplayItem` 共享。
 - 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel`、`CollectionsViewModel`、`CollectionContentViewModel` 本体已迁入 `shared/commonMain`。
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 只保留必要 data/runtime adapter。
+- `shared/src/androidMain` 中剩余完整 UI 页面、完整 screen、整页导航壳和整页 `expect/actual` 都是待清理债务；Android 只能保留小粒度平台 adapter/provider/slot。
 - `ContentFilterManager` / `ContentFilterExtensions` 仍在 app 或 Android 调用链中，但目标必须迁入 shared；迁移 ContentFilter 设置页、feed ViewModel 或 PaginationViewModel 时不得弱化、绕开或空实现过滤功能。
 
 ## 剩余任务顺序
@@ -112,16 +115,17 @@ git diff --check
 
 - `ZhihuMain.kt` 本体位于 `shared/commonMain`。
 - shared `ZhihuMain` 继续保持 `master` 的大函数形状：同一个函数内负责底栏、pager、`NavHost` 和全部 `composable<...>` route 注册。
-- UI 页面主体必须进入 `shared/commonMain`。不能把整页 screen 当成平台实现注入，也不能长期保留整页 `expect/actual`；Android/desktop 只提供最小平台能力 adapter，如 Activity、ViewModelProvider、WebView、Toast/Dialog、偏好读写和文件/Intent 副作用。例外是真实 variant-owned 页面，例如 `SentenceSimilarityTestScreen`：full/lite 变体代码本身就是发行能力边界，shared 只保留最小调用 slot。
+- UI 页面主体必须进入 `shared/commonMain`。不能把整页 screen 当成平台实现注入，也不能保留或新增整页 `expect/actual`；Android/desktop 只提供最小平台能力 adapter，如 Activity、ViewModelProvider、WebView、Toast/Dialog、偏好读写和文件/Intent 副作用。例外是真实 variant-owned 页面，例如 `SentenceSimilarityTestScreen`：full/lite 变体代码本身就是发行能力边界，shared 只保留最小调用 slot。
 - shared 主导航壳保留 Android 当前 UI 结构：底栏、pager、MainTabs、route 注册语义、导航动画语义。
 - 不引入独立 desktop route model。
 - 不用大而全 screen table 重写 Android UI。
-- 当前临时整页 entrypoint `expect` 是迁移债务，消除优先级高于继续新增页面级 `expect`。每迁移一个页面，应先尝试 `git mv` 到 `commonMain`，再把实际平台触点拆成小 adapter/provider。
+- 当前临时整页 entrypoint `expect` 是迁移债务，必须全部消除；消除优先级高于继续新增页面级 `expect`。每迁移一个页面，应先尝试 `git mv` 到 `commonMain`，再把实际平台触点拆成小 adapter/provider。
 
 迁移前审查：
 
 ```bash
 rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog|ViewModelProvider|LocalActivity|LocalContext" shared/src/commonMain/kotlin app/src/main/java/com/github/zly2006/zhihu/ui -g '*.kt'
+rg -n "expect fun .*Screen|actual fun .*Screen|expect fun .*Content|actual fun .*Content|@Composable" shared/src/androidMain/kotlin/com/github/zly2006/zhihu/ui -g '*.kt'
 rg -n "navigation-compose|androidx.navigation|org.jetbrains.androidx.navigation" build.gradle.kts app/build.gradle.kts shared/build.gradle.kts desktopApp/build.gradle.kts
 ```
 
@@ -130,6 +134,7 @@ rg -n "navigation-compose|androidx.navigation|org.jetbrains.androidx.navigation"
 ```bash
 ./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin
 rg -n "android\\.|Context|Intent|WebView|FileProvider|APK|lite|full|MainActivity|Toast|AlertDialog|ViewModelProvider|LocalActivity|LocalContext" shared/src/commonMain/kotlin/com/github/zly2006/zhihu/ui shared/src/commonMain/kotlin/com/github/zly2006/zhihu/navigation -g '*.kt'
+rg -n "expect fun .*Screen|actual fun .*Screen|expect fun .*Content|actual fun .*Content|@Composable" shared/src/androidMain/kotlin/com/github/zly2006/zhihu/ui -g '*.kt'
 ```
 
 ### 任务 3：迁移 shared theme core

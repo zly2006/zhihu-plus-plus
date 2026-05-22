@@ -6,7 +6,7 @@
 
 - 目标文件：`shared/src/androidMain/kotlin/com/github/zly2006/zhihu/ui/ArticleScreen.kt`
 - 目标问题：`:shared:compileAndroidMain` 当前首先在 `ArticleScreen.kt` 报错，包括 internal Material3 expressive API、Preview tooling、app `MainActivity`、app markdown、`ArticleViewModel`、TTS、share/export/webview、`AnswerDoubleTapAction` alias 等。
-- 目标迁移方向：页面 UI 主体进入 `shared/commonMain`；整页 `expect/actual` 只是临时债；Android/desktop 只保留最小平台能力 adapter。
+- 目标迁移方向：页面 UI 主体进入 `shared/commonMain`；整页 `expect/actual` 是必须消除的迁移债务；Android/desktop 只保留最小平台能力 adapter。
 
 ## 结论
 
@@ -39,7 +39,7 @@
 
 - 用公开 `TopAppBar` 替代 internal `TwoRowsTopAppBar` 会暂时弱化折叠两行标题/副标题的表现；这是编译债清理，不应被误当成最终 UI 迁移完成。
 - 如果先迁 `ArticleViewModel`，会把 WebView、导出、权限、TTS 等平台副作用一起拖入 shared，风险高且方向错误。
-- 如果把整页放回 app，会违反当前“页面主体进 shared，整页 expect 只是临时债”的关键约束。
+- 如果把整页放回 app，或继续把完整 UI 留在 `androidMain`，会违反当前“页面主体进 shared，整页 expect/actual 必须消除”的关键约束。
 
 ## 验证命令
 
