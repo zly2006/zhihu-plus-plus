@@ -82,6 +82,8 @@ import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.FollowRecommendViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.FollowViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.RecentMomentsViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import kotlinx.coroutines.launch
 
 class FollowScreenData : ViewModel() {

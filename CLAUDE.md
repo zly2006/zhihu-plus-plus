@@ -56,6 +56,7 @@
 注意：
 1. 必须使用avd验证，不要使用真机。
 2. 时刻注意你是一个LLM，延迟很高。所以大多数情况下不需要你执行sleep指令，你本身的反应就很慢，足够程序响应了。这也是说，如果需要执行双击等复杂手势，必须用&&来串联多个adb指令，不然你的反应太慢就不是双击了。
+3. UI 验证时如果启动后看到“下载官方App”“查看协议”“查看设置”这类官方 App/协议确认页，或进入知乎网页登录/安全验证页，不要当成普通业务 UI 问题；这表示当前 AVD 登录态缺失或失效。应先按 `.agents/skills/launch-on-device/SKILL.md` 的 Login JSON Backup and Restore 流程恢复/覆盖 `files/account.json`，确认已登录后再继续 UI 验证；不要反复卡在登录流程里。
 
 ### 应用启动与验证
 ```bash
@@ -91,6 +92,8 @@ adb shell monkey -p com.github.zly2006.zhplus.lite -c android.intent.category.LA
 ### UI 双代理复检
 
 只要修改内容涉及 Compose、布局、样式、导航、交互、可见文案或任何用户可见 UI，主 agent 在完成上面的基础验证后，**必须**再执行以下流程：
+
+例外：在 `codex/kmp-migration` worktree 执行本轮 KMP 迁移重构期间，只有当所有迁移工作全部完成、准备做最终整体 UI 验证时，才允许启动 `$ui-voyager` 和 `$picky-user` 两个 UI 检查 agent；中间的迁移切片只做必要的构建、编译、AVD 基础验证和页面 smoke test，不因每次移动 UI 代码就启动这两个 UI 检查 agent。这条例外只约束本次重构过程，最终合并 PR 时可以忽略。
 
 1. 必须启动两个 subagent skill，不能由主 agent 自己扮演：
    - `$ui-voyager`（UI漫游者）：系统性探索目标页面，把能点的尽量都点一遍，把上下左右的滑动都试一遍，重点找空白页、越界、裁切、重叠、错位、状态切换异常。

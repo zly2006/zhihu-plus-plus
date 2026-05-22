@@ -75,7 +75,7 @@ class HomeFeedViewModel :
         viewModelScope.launch {
             val newItems = data
                 .flatten()
-                .map { feed -> createDisplayItem(context, feed) }
+                .map { feed -> createDisplayItem(environment, feed) }
 
             val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
             // 前台先做本地已读过滤，再立即展示

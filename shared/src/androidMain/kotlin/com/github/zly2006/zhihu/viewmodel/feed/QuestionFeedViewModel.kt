@@ -27,6 +27,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.HttpMethod
 
 class QuestionFeedViewModel(
@@ -44,7 +45,7 @@ class QuestionFeedViewModel(
         }
     }
 
-    override fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
+    override fun createDisplayItem(environment: PaginationEnvironment, feed: Feed): FeedDisplayItem {
         val target = feed.target
         if (target is Feed.AnswerTarget) {
             return FeedDisplayItem(
@@ -56,7 +57,7 @@ class QuestionFeedViewModel(
                 title = "",
             )
         }
-        return super.createDisplayItem(context, feed)
+        return super.createDisplayItem(environment, feed)
     }
 
     suspend fun followQuestion(context: Context, questionId: Long, follow: Boolean) {

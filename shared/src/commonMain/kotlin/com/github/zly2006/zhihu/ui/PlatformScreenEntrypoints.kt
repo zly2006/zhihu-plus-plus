@@ -25,9 +25,6 @@ expect fun FollowTopLevelPage(
 expect fun FollowScreen(scrollToTopTrigger: Int = 0, innerPadding: PaddingValues)
 
 @Composable
-expect fun HotListScreen(innerPadding: PaddingValues)
-
-@Composable
 expect fun LegacyLocalHistoryScreen(innerPadding: PaddingValues)
 
 @Composable

@@ -25,6 +25,7 @@
 - `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
 - Newly extracted generic adapters must be reused in the same migration slice where reasonable. Grep for duplicate `Toast.makeText`, `getSharedPreferences`, and filter maintenance logic; replace low-risk call sites with `UserMessageSink`, `SettingsStore`, and `ContentFilterMaintenance`, or record why a remaining Android-only call site is deliberately left alone.
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
+- `HotListScreen`、`HotListViewModel`、`BaseFeedViewModel` 的共享分页/展示主体以及 `FeedCard`、`PaginatedList`、`FeedPullToRefresh`、`DraggableRefreshButton`、`AuthorBadge` 已迁入 `shared/commonMain`。Android 屏蔽用户/关键词/主题的详情抓取、Toast、Blocklist 写入保留为 `shared/androidMain` extension；Android/JVM 分别提供分页环境、variant capability、屏幕尺寸、官方徽章图标和 HTML 文本解析 adapter。desktop 登录后已改为调用 shared `HotListScreen`，不再使用单独的 JVM 热榜 UI。
 - `shared/src/androidMain` 中现存任何完整 Compose UI 页面、整页导航壳或整页 `expect/actual` 都只是迁移债务，不是可接受终态。Android source set 只能保留小粒度平台 adapter/provider/slot；页面主体、screen 结构、导航图和跨平台 UI 运行语义必须继续迁入 `shared/commonMain`。
 - Shared has feed data models, notification/daily/hot-list/read-history clients, display formatting, ZSE signing, and local recommendation scoring helpers.
 
@@ -53,6 +54,7 @@
 - Split account fetch/token refresh orchestration from Android `AccountData`.
 - Continue migrating `PaginationViewModel` subclasses and Android-only pagination call sites into shared after splitting their remaining platform side effects into small adapters.
 - Move `CollectionContentScreen` body into `shared/commonMain`; keep only export, article host, answer navigator repository, and Android back-handler/runtime pieces as small platform adapters.
+- Continue migrating the remaining feed screens (`HomeScreen`、`FollowScreen`、`QuestionScreen`、`SearchScreen`、history screens) now that `BaseFeedViewModel` and shared feed card/list components are common; keep their Android block-list/content-detail side effects as small adapters until the filter pipeline is shared.
 - Move `ContentFilterManager` and `ContentFilterExtensions` into shared after splitting preferences, database builder, logging/toast, and content-detail fetch side effects into adapters.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
 - Move local recommendation orchestration behind platform adapters.
@@ -65,3 +67,6 @@
 - 2026-05-21：`./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin --continue` 通过。
 - 2026-05-21：`./gradlew assembleLiteDebug` 通过。
 - 2026-05-21：`./gradlew ktlintFormat` 已执行 app/main、desktop、shared/commonMain、shared/androidMain 格式化任务，但最终被 iOS 编译任务拦下；失败点仍是本迁移期已知的 iOS/common 不兼容项（`JvmInline`、`Integer`、`System`、`java`、`String.format` 等）。本阶段仍不执行 iOS 修复。
+- 2026-05-22：HotList common UI 切片通过 `./gradlew assembleLiteDebug`。
+- 2026-05-22：HotList common UI 切片通过 `./gradlew :shared:jvmTest :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin --continue`。
+- 2026-05-22：HotList common UI 切片通过 `./gradlew :shared:runKtlintFormatOverCommonMainSourceSet :shared:runKtlintFormatOverAndroidMainSourceSet :shared:runKtlintFormatOverJvmMainSourceSet :app:runKtlintFormatOverMainSourceSet :desktopApp:runKtlintFormatOverMainSourceSet`。总任务 `./gradlew ktlintFormat` 仍会继续触发并失败于既有 iOS 编译问题（同 2026-05-21 记录），本阶段不处理 iOS。

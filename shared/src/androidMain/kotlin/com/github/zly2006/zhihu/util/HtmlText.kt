@@ -105,7 +105,7 @@ private fun processNode(
  * @return AnnotatedString with styled text using theme colors
  */
 @Composable
-fun parseHtmlTextWithTheme(html: String): AnnotatedString {
+actual fun parseHtmlTextWithTheme(html: String): AnnotatedString {
     val emphasisColor = MaterialTheme.colorScheme.primary
     return parseHtmlText(html, emphasisColor)
 }

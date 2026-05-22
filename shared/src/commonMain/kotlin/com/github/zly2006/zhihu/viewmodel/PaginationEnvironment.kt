@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
+import androidx.compose.runtime.Composable
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
@@ -43,4 +44,14 @@ interface PaginationEnvironment {
 
     fun configureSignedRequest(builder: HttpRequestBuilder) {
     }
+
+    fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
 }
+
+data class FeedDisplaySettings(
+    val enableQualityFilter: Boolean = true,
+    val reverseBlock: Boolean = false,
+)
+
+@Composable
+expect fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment

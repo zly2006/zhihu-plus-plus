@@ -108,6 +108,9 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
+import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel

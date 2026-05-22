@@ -24,8 +24,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.shared.R
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 
 @Composable
@@ -43,10 +41,4 @@ fun AuthorBadge(
             .size(if (compact) 16.dp else 18.dp)
             .semantics { contentDescription = badge.description },
     )
-}
-
-fun officialBadgeIconModel(iconUrl: String): Any = if (iconUrl == DataHolder.ZH_PLUS_AUTHOR_BADGE_ICON) {
-    R.drawable.ic_zh_plus_author_badge
-} else {
-    iconUrl
 }

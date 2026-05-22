@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.content.Context
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -36,14 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberScreenSizeDp
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import kotlin.math.roundToInt
 
 @Composable
@@ -55,21 +52,18 @@ fun DraggableRefreshButton(
         Icon(Icons.Default.Refresh, contentDescription = "刷新")
     },
 ) {
-    val context = LocalContext.current
     val density = LocalDensity.current
-    val configuration = LocalConfiguration.current
-    val preferences = remember {
-        context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    }
+    val screenSize = rememberScreenSizeDp()
+    val settings = rememberSettingsStore()
 
-    var offsetX by remember { mutableFloatStateOf(preferences.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
-    var offsetY by remember { mutableFloatStateOf(preferences.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
+    var offsetX by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-x", Float.MAX_VALUE)) }
+    var offsetY by remember { mutableFloatStateOf(settings.getFloat("$preferenceName-y", Float.MAX_VALUE)) }
     var pressing by remember { mutableStateOf(false) }
 
     fun adjustFabPosition() {
         with(density) {
-            offsetX = offsetX.coerceIn(0f, configuration.screenWidthDp.dp.toPx() - 56.dp.toPx())
-            offsetY = offsetY.coerceIn(0f, configuration.screenHeightDp.dp.toPx() - 250.dp.toPx())
+            offsetX = offsetX.coerceIn(0f, screenSize.width.dp.toPx() - 56.dp.toPx())
+            offsetY = offsetY.coerceIn(0f, screenSize.height.dp.toPx() - 250.dp.toPx())
         }
     }
 
@@ -102,7 +96,7 @@ fun DraggableRefreshButton(
                         pressing = false
                         adjustFabPosition()
                         with(density) {
-                            val screenWidth = configuration.screenWidthDp.dp.toPx()
+                            val screenWidth = screenSize.width.dp.toPx()
                             offsetX =
                                 if (offsetX < screenWidth / 2) {
                                     0f
@@ -110,10 +104,8 @@ fun DraggableRefreshButton(
                                     screenWidth - 56.dp.toPx()
                                 }
                         }
-                        preferences.edit {
-                            putFloat("$preferenceName-x", offsetX)
-                            putFloat("$preferenceName-y", offsetY)
-                        }
+                        settings.putFloat("$preferenceName-x", offsetX)
+                        settings.putFloat("$preferenceName-y", offsetY)
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()

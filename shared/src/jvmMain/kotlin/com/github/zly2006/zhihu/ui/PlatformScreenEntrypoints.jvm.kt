@@ -24,9 +24,6 @@ actual fun FollowTopLevelPage(
 actual fun FollowScreen(scrollToTopTrigger: Int, innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable
-actual fun HotListScreen(innerPadding: PaddingValues) = UnsupportedDesktopScreen()
-
-@Composable
 actual fun LegacyLocalHistoryScreen(innerPadding: PaddingValues) = UnsupportedDesktopScreen()
 
 @Composable

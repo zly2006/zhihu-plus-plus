@@ -32,14 +32,14 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 
-val LocalPullToRefreshViewModel = compositionLocalOf<BaseFeedViewModel> {
-    HomeFeedViewModel()
+val LocalPullToRefreshViewModel = compositionLocalOf<BaseFeedViewModel?> {
+    null
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,14 +49,29 @@ fun FeedPullToRefresh(
     padding: PaddingValues = PaddingValues(0.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val context = LocalContext.current
+    FeedPullToRefresh(
+        viewModel = viewModel,
+        environment = rememberPaginationEnvironment(viewModel.allowGuestAccess),
+        padding = padding,
+        content = content,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FeedPullToRefresh(
+    viewModel: BaseFeedViewModel,
+    environment: PaginationEnvironment,
+    padding: PaddingValues = PaddingValues(0.dp),
+    content: @Composable BoxScope.() -> Unit,
+) {
     val state = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
     PullToRefreshBox(
         isRefreshing = viewModel.isPullToRefresh && viewModel.isLoading,
         onRefresh = {
             scope.launch {
-                viewModel.pullToRefresh(context)
+                viewModel.pullToRefresh(environment)
             }
         },
         indicator = {

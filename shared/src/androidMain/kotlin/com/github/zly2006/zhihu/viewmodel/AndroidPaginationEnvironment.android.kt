@@ -24,6 +24,9 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
@@ -118,6 +121,14 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()
+    }
+
+    override fun feedDisplaySettings(): FeedDisplaySettings {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        return FeedDisplaySettings(
+            enableQualityFilter = preferences.getBoolean("enableQualityFilter", true),
+            reverseBlock = preferences.getBoolean("reverseBlock", false),
+        )
     }
 
     override suspend fun fetchCollection(collectionId: String): Collection {
@@ -272,6 +283,14 @@ class SharedAndroidNotificationPaginationEnvironment(
 
 fun PaginationViewModel<*>.paginationEnvironment(context: Context): AndroidContextPaginationEnvironment =
     SharedAndroidPaginationEnvironment(context, allowGuestAccess)
+
+@Composable
+actual fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment {
+    val context = LocalContext.current
+    return remember(context, allowGuestAccess) {
+        SharedAndroidPaginationEnvironment(context, allowGuestAccess)
+    }
+}
 
 fun PaginationViewModel<*>.notificationPaginationEnvironment(
     context: Context,

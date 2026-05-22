@@ -28,12 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -41,28 +37,27 @@ import com.github.zly2006.zhihu.shared.data.HotListFeed
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.components.BlockUserConfirmDialog
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.HotListViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
 const val HOT_LIST_LIST_TAG = "hot_list_list"
 const val HOT_LIST_REFRESH_BUTTON_TAG = "hot_list_refresh_button"
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-actual fun HotListScreen(
+fun HotListScreen(
     innerPadding: PaddingValues,
 ): Unit = HotListScreenContent(innerPadding, onTestRefreshClick = null, onTestLoadMore = null)
 
 @Composable
 fun HotListScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
-    onTestRefreshClick: (() -> Unit)?,
-    onTestLoadMore: (() -> Unit)?,
+    onTestRefreshClick: (() -> Unit)? = null,
+    onTestLoadMore: (() -> Unit)? = null,
 ): Unit = HotListScreenContent(innerPadding, onTestRefreshClick, onTestLoadMore)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,14 +67,14 @@ private fun HotListScreenContent(
     onTestRefreshClick: (() -> Unit)? = null,
     onTestLoadMore: (() -> Unit)? = null,
 ) {
-    val context = LocalContext.current
     val viewModel: HotListViewModel = viewModel()
+    val environment = rememberPaginationEnvironment(viewModel.allowGuestAccess)
     val userMessages = rememberUserMessageSink()
     val settings = rememberSettingsStore()
 
     LaunchedEffect(Unit) {
         if (viewModel.displayItems.isEmpty()) {
-            viewModel.refresh(context)
+            viewModel.refresh(environment)
         }
     }
 
@@ -89,15 +84,11 @@ private fun HotListScreenContent(
         }
     }
 
-    // Block user confirm dialog
-    var showBlockUserDialog by remember { mutableStateOf(false) }
-    var userToBlock by remember { mutableStateOf<Pair<String, String>?>(null) }
-
     Column {
-        FeedPullToRefresh(viewModel) {
+        FeedPullToRefresh(viewModel, environment) {
             PaginatedList(
                 items = viewModel.displayItems,
-                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(context) },
+                onLoadMore = { onTestLoadMore?.invoke() ?: viewModel.loadMore(environment) },
                 modifier = Modifier
                     .padding(innerPadding)
                     .testTag(HOT_LIST_LIST_TAG),
@@ -115,7 +106,7 @@ private fun HotListScreenContent(
                 DraggableRefreshButton(
                     modifier = Modifier.testTag(HOT_LIST_REFRESH_BUTTON_TAG),
                     onClick = {
-                        onTestRefreshClick?.invoke() ?: viewModel.refresh(context)
+                        onTestRefreshClick?.invoke() ?: viewModel.refresh(environment)
                     },
                 ) {
                     if (viewModel.isLoading) {
@@ -126,22 +117,5 @@ private fun HotListScreenContent(
                 }
             }
         }
-
-        // Block user confirm dialog
-        BlockUserConfirmDialog(
-            showDialog = showBlockUserDialog,
-            userToBlock = userToBlock,
-            displayItems = viewModel.displayItems,
-            context = context,
-            onDismiss = {
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-            onConfirm = {
-                viewModel.refresh(context)
-                showBlockUserDialog = false
-                userToBlock = null
-            },
-        )
     }
 }

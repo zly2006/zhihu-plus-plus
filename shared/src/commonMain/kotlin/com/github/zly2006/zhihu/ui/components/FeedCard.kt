@@ -17,9 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import android.content.Context.MODE_PRIVATE
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -70,8 +67,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -84,8 +81,10 @@ import com.github.zly2006.zhihu.navigation.Navigator
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
-import com.github.zly2006.zhihu.ui.subscreens.DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.parseHtmlTextWithTheme
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -111,42 +110,39 @@ fun FeedCard(
     onClick: (FeedDisplayItem.() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
-    val context = LocalContext.current
     val navigator = LocalNavigator.current
-    val isLiteVariant = remember(context) { context.packageName.endsWith(".lite") }
+    val uriHandler = LocalUriHandler.current
+    val userMessages = rememberUserMessageSink()
+    val settings = rememberSettingsStore()
+    val isLiteVariant = rememberIsLiteVariant()
     var offsetX by remember { mutableFloatStateOf(0f) }
     var currentY by remember { mutableFloatStateOf(0f) } // 当前手指Y位置
     var startY by remember { mutableFloatStateOf(0f) } // 开始滑动时的Y位置
     var isDragging by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE) }
     val enableSwipeReaction = remember {
-        preferences.getBoolean("enableSwipeReaction", false)
+        settings.getBoolean("enableSwipeReaction", false)
     } &&
         onLike != null &&
         onDislike != null
     val showFeedThumbnail = remember {
-        preferences.getBoolean("showFeedThumbnail", true)
+        settings.getBoolean("showFeedThumbnail", true)
     }
     val feedCardStyle = remember {
-        preferences.getString("feedCardStyle", "card")
+        settings.getString("feedCardStyle", "card")
     }
-    val duo3CardAppearance = remember { preferences.getBoolean("duo3_card_appearance", false) }
-    val duo3CardLayout = remember { preferences.getBoolean("duo3_card_layout", false) }
-    val duo3CardLargeTitle = remember { preferences.getBoolean(DUO3_CARD_LARGE_TITLE_PREFERENCE_KEY, true) }
+    val duo3CardAppearance = remember { settings.getBoolean("duo3_card_appearance", false) }
+    val duo3CardLayout = remember { settings.getBoolean("duo3_card_layout", false) }
+    val duo3CardLargeTitle = remember { settings.getBoolean("duo3_card_large_title", true) }
     val onClick = onClick ?: {
         this.navDestination?.let {
             navigator.onNavigate(it)
         } ?: run {
             if (this.content?.startsWith("http") == true) {
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse(this@run.content)
-                    },
-                )
+                uriHandler.openUri(this@run.content)
             } else {
-                Toast.makeText(context, "暂不支持打开该内容", Toast.LENGTH_SHORT).show()
+                userMessages.showMessage("暂不支持打开该内容", UserMessageDuration.Short)
             }
         }
     }
