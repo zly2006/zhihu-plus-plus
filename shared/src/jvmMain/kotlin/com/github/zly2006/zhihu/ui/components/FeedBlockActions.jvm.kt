@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 
 @Composable
@@ -9,6 +10,14 @@ actual fun rememberFeedBlockActions(): FeedBlockActions = FeedBlockActions(
     handleBlockTopic = { _, _, _ -> },
     handleBlockByKeywords = { _, _, _ -> },
 )
+
+@Composable
+actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
+    BlockByKeywordsRuntime(
+        extractKeywords = { _, _ -> emptyList() },
+        addNlpPhrase = {},
+    )
+}
 
 @Composable
 actual fun BlockUserConfirmDialog(
@@ -25,14 +34,4 @@ actual fun BlockUserConfirmDialog(
         onDismiss = onDismiss,
         onConfirmBlock = { onConfirm() },
     )
-}
-
-@Composable
-actual fun BlockByKeywordsDialog(
-    showDialog: Boolean,
-    feedTitle: String,
-    feedExcerpt: String?,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
 }
