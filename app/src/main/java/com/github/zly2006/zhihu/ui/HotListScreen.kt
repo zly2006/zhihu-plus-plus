@@ -95,6 +95,12 @@ fun HotListScreen(
                 FeedCard(
                     item,
                     thumbnailUrl = (item.feed as? HotListFeed)?.children?.firstOrNull()?.thumbnail,
+                    onBlockUser = { feedItem ->
+                        viewModel.handleBlockUser(context, feedItem) { authorInfo ->
+                            userToBlock = authorInfo
+                            showBlockUserDialog = true
+                        }
+                    },
                 )
             }
 
