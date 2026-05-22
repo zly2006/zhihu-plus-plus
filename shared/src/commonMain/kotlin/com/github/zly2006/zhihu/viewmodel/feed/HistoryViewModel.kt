@@ -17,14 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.androidContext
 
 class HistoryViewModel : BaseFeedViewModel() {
     override val initialUrl: String
@@ -34,15 +32,13 @@ class HistoryViewModel : BaseFeedViewModel() {
         get() = displayItems.isNotEmpty()
 
     override fun refresh(environment: PaginationEnvironment) {
-        val context = environment.androidContext()
         if (isLoading) return
         isLoading = true
         errorMessage = null
 
-        val history = HistoryStorage(context)
         displayItems.clear()
 
-        history.history.forEach { dest ->
+        environment.localHistory().forEach { dest ->
             val displayItem = when (dest) {
                 is Article -> {
                     FeedDisplayItem(

@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.feed
 
-import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -26,7 +25,6 @@ import com.github.zly2006.zhihu.shared.data.decodeOnlineHistoryItems
 import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.data.zhihuOnlineHistoryUrl
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.androidContext
 import kotlinx.serialization.json.JsonArray
 
 class OnlineHistoryViewModel : BaseFeedViewModel() {
@@ -34,10 +32,8 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
     override val shouldLogDecodeFailures: Boolean = false
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
-        val context = environment.androidContext()
-        val history = HistoryStorage(context)
-
         val response = decodeOnlineHistoryItems(rawData, ignoreInvalid = true)
+        val localHistory = environment.localHistory()
 
         response.forEach { item ->
             val navDest = try {
@@ -51,7 +47,7 @@ class OnlineHistoryViewModel : BaseFeedViewModel() {
                 ?.data
                 ?.text ?: item.data.extra.contentType
 
-            val matchedItem = history.history.firstOrNull {
+            val matchedItem = localHistory.firstOrNull {
                 it == navDest
             }
             val displayItem = FeedDisplayItem(

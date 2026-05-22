@@ -32,6 +32,8 @@ import androidx.lifecycle.LifecycleOwner
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.data.HistoryStorage
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -130,6 +132,8 @@ open class SharedAndroidPaginationEnvironment(
             reverseBlock = preferences.getBoolean("reverseBlock", false),
         )
     }
+
+    override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
     override suspend fun fetchCollection(collectionId: String): Collection {
         val json = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/collections/$collectionId") {

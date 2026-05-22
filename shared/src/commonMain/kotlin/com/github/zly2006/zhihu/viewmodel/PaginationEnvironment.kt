@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.navigation.NavDestination
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
@@ -46,6 +47,8 @@ interface PaginationEnvironment {
     }
 
     fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings()
+
+    fun localHistory(): List<NavDestination> = emptyList()
 }
 
 data class FeedDisplaySettings(
