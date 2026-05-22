@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
+import com.mikepenz.aboutlibraries.Libs
+import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 
 data class ManualLicenseEntry(
     val name: String,
@@ -95,13 +97,34 @@ val fullVariantManualLibraries = listOf(
     ),
 )
 
+@Suppress("DEPRECATION")
 @Composable
-expect fun OpenSourceLicensesContent(
+fun OpenSourceLicensesContent(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
     manualLibraries: List<ManualLicenseEntry>,
     onOpenUrl: (String) -> Unit,
-)
+) {
+    LibrariesContainer(
+        libraries = rememberOpenSourceLicensesLibraries(),
+        modifier = modifier,
+        contentPadding = contentPadding,
+        showDescription = false,
+        header = {
+            if (manualLibraries.isNotEmpty()) {
+                item {
+                    ManualLicenseEntryGroup(
+                        manualLibraries = manualLibraries,
+                        onOpenUrl = onOpenUrl,
+                    )
+                }
+            }
+        },
+    )
+}
+
+@Composable
+expect fun rememberOpenSourceLicensesLibraries(): Libs
 
 @Composable
 expect fun rememberShowFullVariantLicenses(): Boolean

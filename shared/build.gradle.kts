@@ -115,6 +115,7 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
             implementation("androidx.room:room-runtime:2.8.4")
             implementation("androidx.sqlite:sqlite-bundled:2.6.1")
+            implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -128,7 +129,6 @@ kotlin {
             implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.10.0")
             implementation("androidx.preference:preference:1.2.1")
             implementation("androidx.webkit:webkit:1.16.0")
-            implementation("com.mikepenz:aboutlibraries-compose-m3:14.0.1")
             implementation("com.journeyapps:zxing-android-embedded:4.3.0")
             implementation("com.google.zxing:core:3.5.3")
             implementation("io.coil-kt.coil3:coil-gif:3.4.0")
