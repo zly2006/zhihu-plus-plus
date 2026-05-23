@@ -44,7 +44,6 @@ import com.github.zly2006.zhihu.ui.FollowedTopic
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ACTIVITIES_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWERS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_COUNT_TAG
-import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_ARTICLES_LIST_TAG
@@ -61,6 +60,7 @@ import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_COUNT_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOWING_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_FOLLOW_BUTTON_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_HEADER_TAG
+import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_OFFICIAL_BADGE_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_PINS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_QUESTIONS_LIST_TAG
 import com.github.zly2006.zhihu.ui.PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG
