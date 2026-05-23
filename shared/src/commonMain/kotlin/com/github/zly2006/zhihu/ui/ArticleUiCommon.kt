@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -58,12 +61,15 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -83,6 +89,7 @@ import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.materialkolor.ktx.harmonize
 import kotlinx.datetime.TimeZone
@@ -514,6 +521,42 @@ fun ArticleActionBarContent(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "$commentCount", style = MaterialTheme.typography.titleMedium)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ArticleSkipAnswerButton(
+    visible: Boolean,
+    autoHideSkipAnswerButton: Boolean,
+    isScrollingUp: Boolean,
+    scrollValue: Int,
+    onNavigateNext: () -> Unit,
+) {
+    if (visible) {
+        var navigatingToNextAnswer by remember { mutableStateOf(false) }
+        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollValue == 0
+        val skipButtonAlpha by animateFloatAsState(
+            targetValue = if (showSkipButton) 1f else 0f,
+            animationSpec = tween(200),
+            label = "skipButtonAlpha",
+        )
+        DraggableRefreshButton(
+            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
+            onClick = {
+                if (showSkipButton) {
+                    navigatingToNextAnswer = true
+                    onNavigateNext()
+                    navigatingToNextAnswer = false
+                }
+            },
+            preferenceName = "buttonSkipAnswer",
+        ) {
+            if (navigatingToNextAnswer) {
+                CircularProgressIndicator(modifier = Modifier.size(30.dp))
+            } else {
+                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
             }
         }
     }

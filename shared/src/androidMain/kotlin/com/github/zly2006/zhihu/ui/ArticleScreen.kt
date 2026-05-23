@@ -26,7 +26,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -46,7 +45,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
@@ -54,8 +52,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -112,7 +108,6 @@ import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -962,32 +957,13 @@ fun ArticleScreen(
                         }
                     }
                     // Skip answer button
-                    if (article.type == ArticleType.Answer && buttonSkipAnswer) {
-                        var navigatingToNextAnswer by remember { mutableStateOf(false) }
-                        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollState.value == 0
-                        val skipButtonAlpha by animateFloatAsState(
-                            targetValue = if (showSkipButton) 1f else 0f,
-                            animationSpec = tween(200),
-                            label = "skipButtonAlpha",
-                        )
-                        DraggableRefreshButton(
-                            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                            onClick = {
-                                if (showSkipButton) {
-                                    navigatingToNextAnswer = true
-                                    navigateToNext()
-                                    navigatingToNextAnswer = false
-                                }
-                            },
-                            preferenceName = "buttonSkipAnswer",
-                        ) {
-                            if (navigatingToNextAnswer) {
-                                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                            } else {
-                                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
-                            }
-                        }
-                    }
+                    ArticleSkipAnswerButton(
+                        visible = article.type == ArticleType.Answer && buttonSkipAnswer,
+                        autoHideSkipAnswerButton = autoHideSkipAnswerButton,
+                        isScrollingUp = isScrollingUp,
+                        scrollValue = scrollState.value,
+                        onNavigateNext = { navigateToNext() },
+                    )
                     // Status bar gradient overlay (duo3 only — not needed in master path)
                     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val surfaceColor = MaterialTheme.colorScheme.surfaceContainer
