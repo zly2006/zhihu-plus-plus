@@ -203,21 +203,7 @@ fun ArticleActionsMenu(
                         try {
                             // 在IO线程中处理文本提取
                             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                val textToRead = buildString {
-                                    append(viewModel.title)
-                                    append("。")
-                                    if (viewModel.content.isNotEmpty()) {
-                                        // 从HTML内容中提取纯文本，限制处理的内容长度
-                                        val contentToProcess =
-                                            if (viewModel.content.length > 50000) {
-                                                viewModel.content.substring(0, 50000) + "..."
-                                            } else {
-                                                viewModel.content
-                                            }
-                                        val plainText = Jsoup.parse(contentToProcess).text()
-                                        append(plainText)
-                                    }
-                                }
+                                val textToRead = articleSpeechText(viewModel.title, viewModel.content)
 
                                 // 回到主线程执行TTS
                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {

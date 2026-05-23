@@ -132,3 +132,4 @@
 - 2026-05-22：文章发布时间格式化已从 Android `SimpleDateFormat` 改为 common `formatArticleDateTime`；`ArticleScreen` 不再为标题滚动阈值和文章日期保留 Android-local helper。
 - 2026-05-22：文章更多操作菜单的 action button 视觉组件已抽入 common `ArticleMenuActionButton`；朗读、分享、复制、导出、浏览器发送等平台副作用仍留在 Android `ArticleActionsMenu` 回调内。
 - 2026-05-22：文章更多操作菜单的分享/复制文本拼装已抽入 common `articleActionText`，Android 端只负责系统分享 Intent 和剪贴板副作用。
+- 2026-05-23：文章朗读文本提取已抽入 common `articleSpeechText`，HTML 到纯文本解析改用 common Ksoup；Android `ArticleActionsMenu` 只保留 TTS 调用、协程调度和 Toast 错误提示。

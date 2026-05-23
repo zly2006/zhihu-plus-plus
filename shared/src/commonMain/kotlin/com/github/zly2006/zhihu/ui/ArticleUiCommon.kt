@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.theme.ThemeManager
@@ -67,6 +68,25 @@ fun articleActionText(
 
         ArticleType.Article -> {
             "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
+        }
+    }
+
+fun articleSpeechText(
+    title: String,
+    content: String,
+    maxContentLength: Int = 50_000,
+): String =
+    buildString {
+        append(title)
+        append("。")
+        if (content.isNotEmpty()) {
+            val contentToProcess =
+                if (content.length > maxContentLength) {
+                    content.substring(0, maxContentLength) + "..."
+                } else {
+                    content
+                }
+            append(Ksoup.parse(contentToProcess).text())
         }
     }
 
