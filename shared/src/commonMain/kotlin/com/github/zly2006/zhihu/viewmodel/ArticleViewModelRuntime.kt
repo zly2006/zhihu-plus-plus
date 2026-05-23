@@ -51,6 +51,11 @@ interface ArticleViewModelRuntime {
         newState: VoteUpState,
     ): JsonObject
 
+    suspend fun fetchExportComments(
+        article: Article,
+        requestedCount: Int,
+    ): List<DataHolder.Comment>
+
     fun configureSignedRequest(builder: HttpRequestBuilder)
 
     fun xsrfToken(): String

@@ -52,7 +52,6 @@ import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
-import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
@@ -79,7 +78,6 @@ import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
-import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
 import io.ktor.client.request.header
@@ -101,7 +99,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
@@ -1063,24 +1060,9 @@ class ArticleViewModel(
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
-            url {
-                parameters["order"] = "score"
-                parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()
-                parameters["include"] = "data[*].content,excerpt,headline"
-            }
-            signFetchRequest()
-        } ?: return emptyList()
-
-        return json["data"]
-            ?.jsonArray
-            ?.mapNotNull { element ->
-                runCatching {
-                    AccountData.decodeJson<DataHolder.Comment>(element)
-                }.getOrNull()
-            }?.take(safeRequestedCount)
-            ?.map(::mapExportComment)
-            .orEmpty()
+        return articleRuntime(context)
+            .fetchExportComments(article, safeRequestedCount)
+            .map(::mapExportComment)
     }
 
     private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(

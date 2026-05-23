@@ -33,6 +33,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.article.VoteUpState
+import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.articleHost
@@ -46,6 +47,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 
 class AndroidArticleViewModelRuntime(
@@ -114,6 +116,32 @@ class AndroidArticleViewModelRuntime(
             }
             contentType(ContentType.Application.Json)
         }!!
+    }
+
+    override suspend fun fetchExportComments(
+        article: Article,
+        requestedCount: Int,
+    ): List<DataHolder.Comment> {
+        val safeRequestedCount = requestedCount.coerceAtLeast(0)
+        if (safeRequestedCount == 0) return emptyList()
+
+        val json = AccountData.fetchGet(context, article.rootCommentUrl) {
+            url {
+                parameters["order"] = "score"
+                parameters["limit"] = safeRequestedCount.coerceAtMost(20).toString()
+                parameters["include"] = "data[*].content,excerpt,headline"
+            }
+            signFetchRequest()
+        } ?: return emptyList()
+
+        return json["data"]
+            ?.jsonArray
+            ?.mapNotNull { element ->
+                runCatching {
+                    AccountData.decodeJson<DataHolder.Comment>(element)
+                }.getOrNull()
+            }?.take(safeRequestedCount)
+            .orEmpty()
     }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
