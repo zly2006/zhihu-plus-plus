@@ -362,7 +362,7 @@ class ArticleViewModel(
                 }
 
                 if (response.status.isSuccess()) {
-                    loadCollections(context)
+                    loadCollections(runtime)
                     runtime.showMessage(if (remove) "取消收藏成功" else "收藏成功")
                 } else {
                     runtime.showMessage("收藏操作失败")
@@ -501,6 +501,10 @@ class ArticleViewModel(
     fun loadCollections(context: Context) {
         if (httpClient == null) return
         val runtime = articleRuntime(context)
+        loadCollections(runtime)
+    }
+
+    private fun loadCollections(runtime: ArticleViewModelRuntime) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -538,7 +542,7 @@ class ArticleViewModel(
         val runtime = articleRuntime(context)
         viewModelScope.launch {
             runtime.createNewCollection(title, description, isPublic)
-            loadCollections(context)
+            loadCollections(runtime)
         }
     }
 
