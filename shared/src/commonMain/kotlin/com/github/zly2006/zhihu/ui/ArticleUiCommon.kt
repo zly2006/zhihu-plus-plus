@@ -137,35 +137,6 @@ fun formatArticleDateTime(seconds: Long): String {
 }
 
 @Composable
-fun ArticleDateTexts(
-    createdAt: Long,
-    updatedAt: Long,
-) {
-    Text(
-        "发布于 " + formatArticleDateTime(createdAt),
-        color = Color.Gray,
-        fontSize = 11.sp,
-    )
-    if (createdAt != updatedAt) {
-        Text(
-            "编辑于 " + formatArticleDateTime(updatedAt),
-            color = Color.Gray,
-            fontSize = 11.sp,
-        )
-    }
-}
-
-@Composable
-fun ArticleIpInfoText(ipInfo: String?) {
-    if (ipInfo == null) return
-    Text(
-        "IP属地：$ipInfo",
-        color = Color.Gray,
-        fontSize = 11.sp,
-    )
-}
-
-@Composable
 fun ArticleMenuActionButton(
     icon: @Composable () -> Unit,
     text: String,

@@ -39,6 +39,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -103,6 +104,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -332,6 +334,23 @@ fun ArticleScreen(
     var bottomBarHeightPx by remember { mutableFloatStateOf(0f) }
     var previousScrollForBarOffset by remember { mutableIntStateOf(0) }
     var isBarSnapping by remember { mutableStateOf(false) }
+
+    @Suppress("UnusedReceiverParameter") // 确保竖式布局
+    @Composable
+    fun ColumnScope.DateTexts() {
+        Text(
+            "发布于 " + formatArticleDateTime(viewModel.createdAt),
+            color = Color.Gray,
+            fontSize = 11.sp,
+        )
+        if (viewModel.createdAt != viewModel.updatedAt) {
+            Text(
+                "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
+                color = Color.Gray,
+                fontSize = 11.sp,
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         AccountData.addReadHistory(
@@ -1163,7 +1182,7 @@ fun ArticleScreen(
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                         horizontalAlignment = Alignment.Start,
                                     ) {
-                                        ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
+                                        DateTexts()
                                     }
                                 }
                                 WebviewComp(
@@ -1198,9 +1217,15 @@ fun ArticleScreen(
                                     horizontalAlignment = Alignment.End,
                                 ) {
                                     if (!pinAnswerDate) {
-                                        ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
+                                        DateTexts()
                                     }
-                                    ArticleIpInfoText(viewModel.ipInfo)
+                                    if (viewModel.ipInfo != null) {
+                                        Text(
+                                            "IP属地：${viewModel.ipInfo}",
+                                            color = Color.Gray,
+                                            fontSize = 11.sp,
+                                        )
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
@@ -1215,7 +1240,7 @@ fun ArticleScreen(
                                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                                 horizontalAlignment = Alignment.Start,
                                             ) {
-                                                ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
+                                                DateTexts()
                                             }
                                         }
                                     },
@@ -1248,9 +1273,15 @@ fun ArticleScreen(
                                             horizontalAlignment = Alignment.End,
                                         ) {
                                             if (!pinAnswerDate) {
-                                                ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
+                                                DateTexts()
                                             }
-                                            ArticleIpInfoText(viewModel.ipInfo)
+                                            if (viewModel.ipInfo != null) {
+                                                Text(
+                                                    "IP属地：${viewModel.ipInfo}",
+                                                    color = Color.Gray,
+                                                    fontSize = 11.sp,
+                                                )
+                                            }
                                         }
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
