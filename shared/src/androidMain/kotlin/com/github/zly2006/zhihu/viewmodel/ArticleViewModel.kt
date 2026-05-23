@@ -44,7 +44,6 @@ import androidx.navigation.NavBackStackEntry
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.TextNode
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -1049,7 +1048,7 @@ class ArticleViewModel(
             context = context,
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
-            httpClient = httpClient ?: AccountData.httpClient(context),
+            httpClient = httpClient ?: articleRuntime(context).accountHttpClient(),
         )
     }
 

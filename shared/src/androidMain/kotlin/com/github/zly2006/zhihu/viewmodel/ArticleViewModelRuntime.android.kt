@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -147,6 +148,9 @@ class AndroidArticleViewModelRuntime(
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         builder.signFetchRequest()
     }
+
+    override fun accountHttpClient(): HttpClient =
+        AccountData.httpClient(context)
 
     override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
 
