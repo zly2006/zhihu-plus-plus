@@ -1,10 +1,10 @@
 package com.github.zly2006.zhihu.ui
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import kotlinx.serialization.json.JsonElement
@@ -45,12 +45,12 @@ actual fun ArticleMarkdownContent(
     header: @Composable () -> Unit,
     footer: @Composable () -> Unit,
 ) {
-    header()
-    Text(
-        text = html.replace(Regex("<[^>]+>"), ""),
+    RenderMarkdown(
+        html = html,
         modifier = modifier,
+        header = header,
+        footer = footer,
     )
-    footer()
 }
 
 @Composable

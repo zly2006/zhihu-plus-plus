@@ -1,7 +1,7 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 
 @Composable
@@ -17,7 +17,7 @@ actual fun QuestionDetailContent(
     questionId: Long,
     html: String,
 ) {
-    Text(questionDetailPreview(html))
+    RenderMarkdown(html)
 }
 
 @Composable

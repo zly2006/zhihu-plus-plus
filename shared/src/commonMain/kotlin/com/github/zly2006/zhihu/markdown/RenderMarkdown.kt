@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.markdown
 
-import android.content.Context
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,32 +52,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import coil3.compose.AsyncImage
-import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.latex.rememberLatexFonts
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.SegmentCommentHolder
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.LocalSegmentActionSheetHost
 import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
-import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
-import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
-import com.github.zly2006.zhihu.util.saveImageToGallery
-import com.github.zly2006.zhihu.util.shareImage
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
 import com.hrm.markdown.renderer.MarkdownTheme
@@ -89,12 +80,11 @@ fun RenderImage(
     data: MarkdownImageData,
     modifier: Modifier,
 ) {
-    val context = LocalContext.current
+    val runtime = rememberMarkdownRuntime()
     var expanded by remember { mutableStateOf(false) }
     var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
-    val httpClient = AccountData.httpClient(context)
     val hapticFeedback = LocalHapticFeedback.current
 
     Box(
@@ -109,7 +99,7 @@ fun RenderImage(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            OpenImageDialog(context, httpClient, data.url).show()
+                            runtime.openImage(data.url)
                         },
                         onLongPress = { offset ->
                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -135,14 +125,14 @@ fun RenderImage(
                     text = { Text("查看图片") },
                     onClick = {
                         expanded = false
-                        OpenImageDialog(context, httpClient, data.url).show()
+                        runtime.openImage(data.url)
                     },
                 )
                 DropdownMenuItem(
                     text = { Text("在浏览器中打开") },
                     onClick = {
                         expanded = false
-                        luoTianYiUrlLauncher(context, data.url.toUri())
+                        runtime.openInBrowser(data.url)
                     },
                 )
                 DropdownMenuItem(
@@ -150,7 +140,7 @@ fun RenderImage(
                     onClick = {
                         expanded = false
                         coroutineScope.launch {
-                            saveImageToGallery(context, httpClient, data.url)
+                            runtime.saveMarkdownImage(data.url)
                         }
                     },
                 )
@@ -159,7 +149,7 @@ fun RenderImage(
                     onClick = {
                         expanded = false
                         coroutineScope.launch {
-                            shareImage(context, httpClient, data.url)
+                            runtime.shareMarkdownImage(data.url)
                         }
                     },
                 )
@@ -226,14 +216,11 @@ fun RenderMarkdown(
 ) {
     val document = remember(html) { htmlToMdAst(html) }
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
-    val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
-    val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
+    val runtime = rememberMarkdownRuntime()
+    val settings = rememberSettingsStore()
+    val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
+    val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val defaultTheme = MarkdownTheme.fromMaterialTheme()
-
-    val fontResult = rememberLatexFonts(context, AccountData.httpClient(context))
-    val mathFont = fontResult.downloaded?.mathFont ?: defaultTheme.mathFont
 
     val theme = defaultTheme.copy(
         bodyStyle = defaultTheme.bodyStyle.copy(
@@ -241,7 +228,7 @@ fun RenderMarkdown(
             lineHeight = 16.sp * fontSize / 100 * lineHeight / 100,
         ),
         mathFontSize = 18f * fontSize / 100,
-        mathFont = mathFont,
+        mathFont = runtime.mathFont ?: defaultTheme.mathFont,
     )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
@@ -258,7 +245,7 @@ fun RenderMarkdown(
             enableSelection = selectable,
             onLinkClick = { url ->
                 resolveContent(url)?.let { navigator.onNavigate(it) }
-                    ?: luoTianYiUrlLauncher(context, url.toUri())
+                    ?: runtime.openInBrowser(url)
             },
             header = header,
             footer = footer,

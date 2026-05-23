@@ -17,13 +17,15 @@
 
 package com.github.zly2006.zhihu.markdown
 
-import androidx.core.net.toUri
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.util.extractImageUrl
+import com.github.zly2006.zhihu.shared.util.parseSegmentTextParagraph
 import com.github.zly2006.zhihu.ui.components.SegmentedText
 import com.github.zly2006.zhihu.ui.components.segmentedTextStyle
-import com.github.zly2006.zhihu.util.extractImageUrl
-import com.github.zly2006.zhihu.util.parseSegmentTextParagraph
 import com.hrm.markdown.parser.ast.BlockQuote
 import com.hrm.markdown.parser.ast.ContainerNode
 import com.hrm.markdown.parser.ast.Document
@@ -57,11 +59,8 @@ import com.hrm.markdown.parser.ast.TableRow
 import com.hrm.markdown.parser.ast.Text
 import com.hrm.markdown.parser.ast.ThematicBreak
 import io.ktor.http.Url
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.TextNode
+import com.fleeksoft.ksoup.nodes.Node as HtmlNode
 import com.hrm.markdown.parser.ast.Node as MarkdownNode
-import org.jsoup.nodes.Node as HtmlNode
 
 private var parsingDocument: Document? = null
 private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?tex="
@@ -69,8 +68,8 @@ private const val ZHIHU_EQUATION_URL_PREFIX = "https://www.zhihu.com/equation?te
 fun htmlToMdAst(html: String): Document {
     val document = Document()
     parsingDocument = document
-    Jsoup
-        .parse(html)
+    Ksoup
+        .parseBodyFragment(html)
         .body()
         .childNodes()
         .appendBlocksTo(document)
@@ -263,7 +262,7 @@ private fun createBlockImage(element: Element): MarkdownNode? {
         }
     }
 
-    val src = extractImageUrl(element) ?: return null
+    val src = extractImageUrl(element::attr) ?: return null
     val caption = element.attr("alt")
     return Figure(
         imageUrl = src,
@@ -273,7 +272,7 @@ private fun createBlockImage(element: Element): MarkdownNode? {
 
 private fun createFigureBlock(element: Element): MarkdownNode? {
     element.selectFirst("img")?.let { image ->
-        val src = extractImageUrl(image) ?: return@let null
+        val src = extractImageUrl(image::attr) ?: return@let null
         val caption = element.selectFirst("figcaption")?.text()?.ifBlank { null } ?: ""
         return Figure(
             imageUrl = src,
@@ -300,7 +299,7 @@ private fun createVideoBoxBlock(element: Element): MarkdownNode? {
         if (resolved is Video) resolved.id else null
     } ?: element.attr("data-lens-id").toLongOrNull() ?: return null
     val thumbnailUrl = element.selectFirst("img")?.let { image ->
-        extractImageUrl(image)
+        extractImageUrl(image::attr)
     }
 
     return NativeBlock {
@@ -369,7 +368,7 @@ private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowerca
 
 private fun extractInlineChildren(element: Element): List<MarkdownNode> = element.childNodes().flatMap(::extractInlineNode)
 
-private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement)
+private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement::attr)
     ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
     ?.let { Url(it).parameters["tex"].orEmpty() }
     ?.takeIf { it.isNotBlank() }
@@ -433,7 +432,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
         "a" -> {
             val href = node.attr("href")
             val destination = if (href.contains("link.zhihu.com")) {
-                href.toUri().getQueryParameter("target") ?: href
+                runCatching { Url(href).parameters["target"] }.getOrNull() ?: href
             } else {
                 href
             }
@@ -461,7 +460,7 @@ private fun extractInlineNode(node: HtmlNode): List<MarkdownNode> = when (node) 
                     listOf(InlineMath(formula))
                 }
             } else {
-                extractImageUrl(node)
+                extractImageUrl(node::attr)
                     ?.let { url ->
                         listOf(
                             Image(
