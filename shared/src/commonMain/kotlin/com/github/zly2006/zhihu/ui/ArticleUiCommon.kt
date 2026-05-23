@@ -1,10 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -16,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,21 +28,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -63,7 +49,6 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,7 +56,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -83,21 +67,15 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
-import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
-import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
-import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
-import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
-import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.materialkolor.ktx.harmonize
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -278,471 +256,6 @@ fun ArticleAuthorRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun ArticleActionBarContent(
-    useDuo3ArticleActions: Boolean,
-    voteUpState: VoteUpState,
-    voteUpCount: Int,
-    isFavorited: Boolean,
-    commentCount: Int,
-    ttsState: TtsState?,
-    voteUpIcon: @Composable (contentDescription: String, tint: Color?, modifier: Modifier) -> Unit,
-    voteDownIcon: @Composable (contentDescription: String, tint: Color?, modifier: Modifier) -> Unit,
-    onVoteUpStateChange: (VoteUpState) -> Unit,
-    onCollectionRequest: () -> Unit,
-    onStopSpeakingRequest: () -> Unit,
-    onCommentsRequest: () -> Unit,
-    onActionsMenuRequest: () -> Unit,
-) {
-    if (!useDuo3ArticleActions) {
-        // ── master: Button-based vote + actions ────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 8.dp)
-                .height(36.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(
-                        color = if (voteUpState == VoteUpState.Neutral) {
-                            voteUpNeutralContent().copy(alpha = 0.1f)
-                        } else {
-                            voteUpNeutralContent()
-                        },
-                    ),
-                horizontalArrangement = Arrangement.Start,
-            ) {
-                when (voteUpState) {
-                    VoteUpState.Neutral -> {
-                        Button(
-                            onClick = { onVoteUpStateChange(VoteUpState.Up) },
-                            colors = voteUpNeutralButtonColors(),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            voteUpIcon("赞同", null, Modifier)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = voteUpCount.toString())
-                        }
-                        Button(
-                            onClick = { onVoteUpStateChange(VoteUpState.Down) },
-                            colors = voteUpNeutralButtonColors(),
-                            shape = RectangleShape,
-                            modifier = Modifier.height(ButtonDefaults.MinHeight).width(ButtonDefaults.MinHeight),
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            voteDownIcon("反对", null, Modifier)
-                        }
-                    }
-
-                    VoteUpState.Up -> {
-                        Button(
-                            onClick = { onVoteUpStateChange(VoteUpState.Neutral) },
-                            colors = voteUpActiveButtonColors(),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            voteUpIcon("赞同", null, Modifier)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = voteUpCount.toString())
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                    }
-
-                    VoteUpState.Down -> {
-                        Button(
-                            onClick = { onVoteUpStateChange(VoteUpState.Neutral) },
-                            colors = voteUpActiveButtonColors(),
-                            shape = RectangleShape,
-                            modifier = Modifier.height(ButtonDefaults.MinHeight),
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            voteDownIcon("反对", null, Modifier)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("反对")
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.End) {
-                IconButton(
-                    onClick = onCollectionRequest,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (isFavorited) Color(0xFFF57C00) else MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = if (isFavorited) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
-                    ),
-                ) {
-                    Icon(if (isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "收藏")
-                }
-                if (ttsState?.isSpeaking == true) {
-                    IconButton(
-                        onClick = onStopSpeakingRequest,
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                    }
-                }
-                Button(
-                    onClick = onCommentsRequest,
-                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
-                    colors = voteUpNeutralButtonColors(),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "$commentCount")
-                }
-
-                IconButton(
-                    onClick = onActionsMenuRequest,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    ),
-                ) {
-                    Icon(
-                        Icons.Filled.MoreVert,
-                        contentDescription = "更多选项",
-                    )
-                }
-            }
-        }
-    } else {
-        // ── duo3: pill-shaped animated vote + actions ────────────────────
-        Row(
-            modifier = Modifier
-                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 16.dp)
-                .padding(horizontal = 16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .padding(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimatedVisibility(
-                    visible = voteUpState == VoteUpState.Neutral || voteUpState == VoteUpState.Up,
-                ) {
-                    val upBgColor by animateColorAsState(
-                        targetValue = if (voteUpState == VoteUpState.Up) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
-                    )
-                    val upContentColor by animateColorAsState(
-                        targetValue = if (voteUpState == VoteUpState.Up) Color.White else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(upBgColor)
-                            .clickable {
-                                onVoteUpStateChange(
-                                    if (voteUpState == VoteUpState.Up) VoteUpState.Neutral else VoteUpState.Up,
-                                )
-                            }.padding(6.dp, 8.dp, 12.dp, 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        voteUpIcon(
-                            "赞同",
-                            upContentColor,
-                            Modifier.size(24.dp),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = voteUpCount.toString(),
-                            color = upContentColor,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                }
-
-                AnimatedVisibility(visible = voteUpState == VoteUpState.Neutral) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-
-                AnimatedVisibility(
-                    visible = voteUpState == VoteUpState.Neutral || voteUpState == VoteUpState.Down,
-                ) {
-                    val downBgColor by animateColorAsState(
-                        targetValue = if (voteUpState == VoteUpState.Down) voteUpNeutralContentDuo3() else MaterialTheme.colorScheme.surfaceContainer,
-                    )
-                    val downContentColor by animateColorAsState(
-                        targetValue = if (voteUpState == VoteUpState.Down) Color.White else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(downBgColor)
-                            .clickable {
-                                onVoteUpStateChange(
-                                    if (voteUpState == VoteUpState.Down) VoteUpState.Neutral else VoteUpState.Down,
-                                )
-                            }.padding(6.dp, 8.dp, 8.dp, 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AnimatedVisibility(visible = voteUpState != VoteUpState.Down) {
-                            Spacer(modifier = Modifier.width(2.dp))
-                        }
-                        voteDownIcon(
-                            "反对",
-                            downContentColor,
-                            Modifier.size(24.dp),
-                        )
-                        AnimatedVisibility(visible = voteUpState == VoteUpState.Down) {
-                            Row {
-                                Text(
-                                    text = "反对",
-                                    color = downContentColor,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(horizontal = 4.dp),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .padding(end = 4.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                IconButton(
-                    onClick = onCollectionRequest,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (isFavorited) {
-                            Color(0xFFF57C00).harmonize(MaterialTheme.colorScheme.primary)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainer
-                        },
-                        contentColor = if (isFavorited) {
-                            Color.White.copy(alpha = 0.87f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                    ),
-                ) {
-                    Icon(
-                        if (isFavorited) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                        contentDescription = "收藏",
-                    )
-                }
-
-                AnimatedVisibility(visible = ttsState?.isSpeaking == true) {
-                    IconButton(
-                        onClick = onStopSpeakingRequest,
-                        enabled = ttsState !in listOf(
-                            TtsState.Error,
-                            TtsState.Uninitialized,
-                            TtsState.Initializing,
-                            null,
-                        ),
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = Color(0xFF4CAF50).harmonize(MaterialTheme.colorScheme.primary),
-                            contentColor = Color.White,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.VolumeOff, contentDescription = "停止朗读")
-                    }
-                }
-
-                Button(
-                    onClick = onCommentsRequest,
-                    contentPadding = PaddingValues(start = 8.dp, end = 12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "$commentCount", style = MaterialTheme.typography.titleMedium)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ArticleSkipAnswerButton(
-    visible: Boolean,
-    autoHideSkipAnswerButton: Boolean,
-    isScrollingUp: Boolean,
-    scrollValue: Int,
-    onNavigateNext: () -> Unit,
-) {
-    if (visible) {
-        var navigatingToNextAnswer by remember { mutableStateOf(false) }
-        val showSkipButton = !autoHideSkipAnswerButton || isScrollingUp || scrollValue == 0
-        val skipButtonAlpha by animateFloatAsState(
-            targetValue = if (showSkipButton) 1f else 0f,
-            animationSpec = tween(200),
-            label = "skipButtonAlpha",
-        )
-        DraggableRefreshButton(
-            modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-            onClick = {
-                if (showSkipButton) {
-                    navigatingToNextAnswer = true
-                    onNavigateNext()
-                    navigatingToNextAnswer = false
-                }
-            },
-            preferenceName = "buttonSkipAnswer",
-        ) {
-            if (navigatingToNextAnswer) {
-                CircularProgressIndicator(modifier = Modifier.size(30.dp))
-            } else {
-                Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
-            }
-        }
-    }
-}
-
-@Composable
-fun ArticleAnswerSwitchContainer(
-    article: Article,
-    answerSwitchMode: String,
-    navigator: AnswerNavigator?,
-    scrollState: ScrollState,
-    onNavigatePrevious: () -> Unit,
-    onNavigateNext: () -> Unit,
-    previousContent: (@Composable () -> Unit)?,
-    nextContent: (@Composable () -> Unit)?,
-    content: @Composable () -> Unit,
-) {
-    val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-    val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
-
-    Box(
-        modifier = Modifier,
-    ) {
-        // 根据模式渲染
-        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
-            AnswerVerticalOverscroll(
-                previousAnswer = navigator?.previousAnswer,
-                nextAnswer = navigator?.nextAnswer,
-                onNavigatePrevious = onNavigatePrevious,
-                onNavigateNext = onNavigateNext,
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
-                scrollState = scrollState,
-            ) {
-                content()
-            }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-            AnswerHorizontalOverscroll(
-                canGoPrevious = navigator?.previousAnswer != null,
-                canGoNext = navigator?.nextAnswer != null,
-                onNavigatePrevious = onNavigatePrevious,
-                onNavigateNext = onNavigateNext,
-                previousContent = previousContent,
-                nextContent = nextContent,
-            ) {
-                content()
-            }
-        } else {
-            content()
-        }
-
-        VerticalReadingProgressBar(
-            scrollState = scrollState,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(
-                    top = progressBarTopPadding,
-                    bottom = progressBarBottomPadding,
-                    end = 2.dp,
-                ),
-        )
-    }
-}
-
-@Composable
-fun ArticleContentArea(
-    hasContent: Boolean,
-    useWebView: Boolean,
-    pinAnswerDate: Boolean,
-    ipInfo: String?,
-    dateTexts: @Composable () -> Unit,
-    webViewContent: @Composable () -> Unit,
-    markdownContent: @Composable (
-        header: @Composable () -> Unit,
-        footer: @Composable () -> Unit,
-    ) -> Unit,
-    footerMediaContent: @Composable () -> Unit,
-) {
-    if (hasContent) {
-        if (useWebView) {
-            if (pinAnswerDate) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalAlignment = Alignment.Start,
-                ) {
-                    dateTexts()
-                }
-            }
-            webViewContent()
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.End,
-            ) {
-                if (!pinAnswerDate) {
-                    dateTexts()
-                }
-                if (ipInfo != null) {
-                    Text(
-                        "IP属地：$ipInfo",
-                        color = Color.Gray,
-                        fontSize = 11.sp,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
-        } else {
-            markdownContent(
-                {
-                    if (pinAnswerDate) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            horizontalAlignment = Alignment.Start,
-                        ) {
-                            dateTexts()
-                        }
-                    }
-                },
-                {
-                    footerMediaContent()
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        if (!pinAnswerDate) {
-                            dateTexts()
-                        }
-                        if (ipInfo != null) {
-                            Text(
-                                "IP属地：$ipInfo",
-                                color = Color.Gray,
-                                fontSize = 11.sp,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height((16 + 36).dp))
-                },
-            )
         }
     }
 }
@@ -1227,7 +740,7 @@ fun ArticleSummarySheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ArticleTopAppBar(
+fun TwoRowsTopAppBar(
     title: @Composable (expanded: Boolean) -> Unit,
     subtitle: (@Composable (expanded: Boolean) -> Unit)?,
     navigationIcon: @Composable () -> Unit,
