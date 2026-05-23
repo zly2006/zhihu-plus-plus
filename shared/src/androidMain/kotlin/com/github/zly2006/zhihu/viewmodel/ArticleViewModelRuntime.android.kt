@@ -249,6 +249,9 @@ class AndroidArticleViewModelRuntime(
         } ?: throw Exception("Failed to create MediaStore entry")
     }
 
+    override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
+        AndroidArticleExportRenderer(context, loadAssetText)
+
     override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
 
     override fun hasImageExportPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

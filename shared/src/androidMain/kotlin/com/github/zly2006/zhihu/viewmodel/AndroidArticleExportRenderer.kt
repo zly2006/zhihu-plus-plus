@@ -30,16 +30,16 @@ data class AndroidPreparedExportWebView(
     val webView: WebView,
     val viewportWidthPx: Int,
     val contentHeightPx: Int,
-)
+) : PreparedArticleExportContent
 
 class AndroidArticleExportRenderer(
     private val context: Context,
     private val loadAssetText: (String) -> String,
-) {
-    suspend fun prepareExportWebView(
+) : ArticleImageExportRenderer {
+    override suspend fun prepareExportWebView(
         htmlContent: String,
         timeoutMs: Long,
-    ): AndroidPreparedExportWebView = withContext(Dispatchers.Main) {
+    ): PreparedArticleExportContent = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
             val webView = createExportWebView()
             val mainHandler = Handler(Looper.getMainLooper())
@@ -206,7 +206,8 @@ class AndroidArticleExportRenderer(
         return maxOf(contentHeightPx, webView.measuredHeight, webView.height, 1)
     }
 
-    suspend fun captureExportBitmap(preparedWebView: AndroidPreparedExportWebView): Bitmap = withContext(Dispatchers.Main) {
+    override suspend fun captureExportBitmap(preparedWebView: PreparedArticleExportContent): Bitmap = withContext(Dispatchers.Main) {
+        preparedWebView as AndroidPreparedExportWebView
         val rawWidth = preparedWebView.viewportWidthPx.coerceAtLeast(1)
         val rawHeight = preparedWebView.contentHeightPx.coerceAtLeast(1)
         val maxPixels = 24_000_000.0
@@ -235,7 +236,12 @@ class AndroidArticleExportRenderer(
         }
     }
 
-    fun recycleExportBitmap(bitmap: Any) {
+    override suspend fun destroyExportWebView(preparedWebView: PreparedArticleExportContent) {
+        preparedWebView as AndroidPreparedExportWebView
+        destroyExportWebView(preparedWebView.webView)
+    }
+
+    override fun recycleExportBitmap(bitmap: Any) {
         (bitmap as Bitmap).recycle()
     }
 }

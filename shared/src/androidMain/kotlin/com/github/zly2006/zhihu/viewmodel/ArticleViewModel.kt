@@ -659,7 +659,7 @@ class ArticleViewModel(
             return
         }
 
-        var preparedWebView: AndroidPreparedExportWebView? = null
+        var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
         try {
             preparedWebView = prepareExportWebView(
@@ -672,7 +672,7 @@ class ArticleViewModel(
                 ),
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
-            bitmap = captureExportBitmap(preparedWebView)
+            bitmap = captureExportBitmap(context, preparedWebView)
             withContext(Dispatchers.IO) {
                 saveImageToMediaStore(context, bitmap)
             }
@@ -689,7 +689,7 @@ class ArticleViewModel(
             }
         } finally {
             bitmap?.let { recycleExportBitmap(context, it) }
-            preparedWebView?.let { destroyExportWebView(it) }
+            preparedWebView?.let { destroyExportWebView(context, it) }
         }
     }
 
@@ -697,7 +697,7 @@ class ArticleViewModel(
         context: Context,
         htmlContent: String,
         timeoutMs: Long,
-    ): AndroidPreparedExportWebView = androidArticleExportRenderer(context)
+    ): PreparedArticleExportContent = articleImageExportRenderer(context)
         .prepareExportWebView(htmlContent, timeoutMs)
 
     private fun loadExportAssetText(context: Context, fileName: String): String = try {
@@ -707,18 +707,18 @@ class ArticleViewModel(
         ""
     }
 
-    private suspend fun captureExportBitmap(preparedWebView: AndroidPreparedExportWebView): Any =
-        androidArticleExportRenderer(preparedWebView.webView.context)
+    private suspend fun captureExportBitmap(context: Context, preparedWebView: PreparedArticleExportContent): Any =
+        articleImageExportRenderer(context)
             .captureExportBitmap(preparedWebView)
 
-    private suspend fun destroyExportWebView(preparedWebView: AndroidPreparedExportWebView) =
-        androidArticleExportRenderer(preparedWebView.webView.context).destroyExportWebView(preparedWebView.webView)
+    private suspend fun destroyExportWebView(context: Context, preparedWebView: PreparedArticleExportContent) =
+        articleImageExportRenderer(context).destroyExportWebView(preparedWebView)
 
     private fun recycleExportBitmap(context: Context, bitmap: Any) =
-        androidArticleExportRenderer(context).recycleExportBitmap(bitmap)
+        articleImageExportRenderer(context).recycleExportBitmap(bitmap)
 
-    private fun androidArticleExportRenderer(context: Context): AndroidArticleExportRenderer =
-        AndroidArticleExportRenderer(context) { fileName ->
+    private fun articleImageExportRenderer(context: Context): ArticleImageExportRenderer =
+        articleRuntime(context).articleImageExportRenderer { fileName ->
             loadExportAssetText(context, fileName)
         }
 

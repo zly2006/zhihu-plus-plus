@@ -73,6 +73,8 @@ interface ArticleViewModelRuntime {
         bitmap: Any,
     )
 
+    fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer
+
     fun xsrfToken(): String
 
     fun hasImageExportPermission(): Boolean
