@@ -61,10 +61,7 @@ import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.articleHost
-import com.github.zly2006.zhihu.ui.components.CustomWebView
-import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
@@ -173,6 +170,8 @@ class ArticleViewModel(
         ViewModel(),
         ArticleAnswerSwitchState,
         ArticlePreviewWebViewStore {
+        private val previewWebViews = AndroidArticlePreviewWebViewStore()
+
         /** 活跃的导航器：管理来源、历史记录和预取 */
         override var navigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? by androidx.compose.runtime.mutableStateOf(null)
 
@@ -182,40 +181,8 @@ class ArticleViewModel(
          */
         override var pendingNavigator: com.github.zly2006.zhihu.navigation.AnswerNavigator? = null
 
-        // 缓存的三个 WebView 实例，跨导航存活，避免重建闪动
-        var mainWebView: CustomWebView? = null
-            private set
-        var previousPreviewWebView: CustomWebView? = null
-            private set
-        var nextPreviewWebView: CustomWebView? = null
-            private set
-
-        // 与 WebView 实例绑定的 tag，用于 FrameLayout 包装模式中定位子 WebView
-        var mainTag: String? = null
-            private set
-        var prevTag: String? = null
-            private set
-        var nextTag: String? = null
-            private set
-
-        fun getOrCreateMainWebView(context: Context, answerId: Long): CustomWebView {
-            mainWebView?.let { return it }
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
-            return CustomWebView(context)
-                .apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
-                    setupUpWebviewClient()
-                }.also {
-                    mainWebView = it
-                    mainTag = "wv_main_$answerId"
-                    it.tag = mainTag
-                }
-        }
+        fun getOrCreateMainWebView(context: Context, answerId: Long) =
+            previewWebViews.getOrCreateMainWebView(context, answerId)
 
         /**
          * 导航时旋转三个 WebView：
@@ -223,54 +190,14 @@ class ArticleViewModel(
          * PREVIOUS: next→destroy, main→next, prev→main
          */
         override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
-            when (direction) {
-                ArticleAnswerTransitionDirection.HORIZONTAL_NEXT, ArticleAnswerTransitionDirection.VERTICAL_NEXT -> {
-                    previousPreviewWebView?.destroy()
-                    previousPreviewWebView = mainWebView
-                    prevTag = mainTag
-                    mainWebView = nextPreviewWebView
-                    mainTag = nextTag
-                    nextPreviewWebView = null
-                    nextTag = null
-                }
-                ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS, ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS -> {
-                    nextPreviewWebView?.destroy()
-                    nextPreviewWebView = mainWebView
-                    nextTag = mainTag
-                    mainWebView = previousPreviewWebView
-                    mainTag = prevTag
-                    previousPreviewWebView = null
-                    prevTag = null
-                }
-                else -> {}
-            }
+            previewWebViews.promoteForNavigation(direction)
         }
 
-        override fun getOrCreatePreviewWebView(context: Context, isNext: Boolean, answerId: Long): CustomWebView {
-            val existing = if (isNext) nextPreviewWebView else previousPreviewWebView
-            if (existing != null) return existing
-            val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
-            return CustomWebView(context)
-                .apply {
-                    if (useHardwareAcceleration) {
-                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
-                    } else {
-                        setLayerType(WebView.LAYER_TYPE_SOFTWARE, null)
-                    }
-                    setupUpWebviewClient()
-                }.also {
-                    if (isNext) {
-                        nextPreviewWebView = it
-                        nextTag = "wv_next_$answerId"
-                        it.tag = nextTag
-                    } else {
-                        previousPreviewWebView = it
-                        prevTag = "wv_prev_$answerId"
-                        it.tag = prevTag
-                    }
-                }
-        }
+        override fun getOrCreatePreviewWebView(
+            context: Context,
+            isNext: Boolean,
+            answerId: Long,
+        ) = previewWebViews.getOrCreatePreviewWebView(context, isNext, answerId)
 
         // 用于消除切换闪动：导航前设置，新页面用它初始化
         override var pendingInitialContent: CachedAnswerContent? = null
@@ -287,22 +214,11 @@ class ArticleViewModel(
             pendingNavigator = null
             pendingInitialContent = null
             navigatingFromAnswerSwitch = false
-            // 不销毁缓存 WebView，只清除 contentId 让下次重新加载
-            mainWebView?.contentId = null
-            previousPreviewWebView?.contentId = null
-            nextPreviewWebView?.contentId = null
+            previewWebViews.clearContentIds()
         }
 
         override fun onCleared() {
-            mainWebView?.destroy()
-            mainWebView = null
-            mainTag = null
-            previousPreviewWebView?.destroy()
-            previousPreviewWebView = null
-            prevTag = null
-            nextPreviewWebView?.destroy()
-            nextPreviewWebView = null
-            nextTag = null
+            previewWebViews.destroyAll()
             super.onCleared()
         }
     }
