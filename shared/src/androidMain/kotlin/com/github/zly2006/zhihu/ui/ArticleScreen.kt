@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.ui
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
@@ -61,7 +60,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -84,7 +82,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -99,7 +96,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
-import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -261,16 +257,8 @@ fun ArticleScreen(
         ?: remember { mutableStateOf(null) }
 
     val scrollState = rememberScrollState()
-    val preferences = LocalContext.current.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+    val articleSettings = rememberArticleScreenSettingsState()
 
-    var isTitleAutoHide by remember { mutableStateOf(preferences.getBoolean("titleAutoHide", false)) }
-    var autoHideArticleBottomBar by remember {
-        mutableStateOf(preferences.getBoolean("autoHideArticleBottomBar", false))
-    }
-    var answerSwitchMode by remember {
-        mutableStateOf(preferences.getString("answerSwitchMode", "vertical") ?: "vertical")
-    }
-    var pinAnswerDate by remember { mutableStateOf(preferences.getBoolean("pinAnswerDate", false)) }
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
     val density = LocalDensity.current
@@ -283,20 +271,6 @@ fun ArticleScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
-    val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
-    var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
-    var autoHideSkipAnswerButton by remember { mutableStateOf(preferences.getBoolean("autoHideSkipAnswerButton", true)) }
-    var answerDoubleTapAction by remember {
-        mutableStateOf(
-            AnswerDoubleTapAction.fromPreference(
-                preferences.getString(
-                    ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-                    AnswerDoubleTapAction.Ask.preferenceValue,
-                ),
-            ),
-        )
-    }
 
     // Follow-the-finger bar hide: pixel-based offsets driven by scroll delta
     val topBarOffset = remember { Animatable(0f) }
@@ -347,25 +321,19 @@ fun ArticleScreen(
     }
 
     fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
-        answerDoubleTapAction = action
-        preferences.edit {
-            putString(
-                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY,
-                action.preferenceValue,
-            )
-        }
+        articleSettings.saveAnswerDoubleTapAction(action)
     }
 
     fun handleAnswerDoubleTap() {
         if (article.type != ArticleType.Answer) return
-        performAnswerDoubleTapAction(answerDoubleTapAction)
+        performAnswerDoubleTapAction(articleSettings.answerDoubleTapAction)
     }
 
     val answerDoubleTapModifier = if (
         article.type == ArticleType.Answer &&
-        answerDoubleTapAction != AnswerDoubleTapAction.None
+        articleSettings.answerDoubleTapAction != AnswerDoubleTapAction.None
     ) {
-        Modifier.pointerInput(answerDoubleTapAction) {
+        Modifier.pointerInput(articleSettings.answerDoubleTapAction) {
             detectTapGestures(
                 onDoubleTap = { handleAnswerDoubleTap() },
             )
@@ -374,47 +342,12 @@ fun ArticleScreen(
         Modifier
     }
 
-    val preferenceListener = remember(preferences) {
-        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            when (key) {
-                "titleAutoHide" -> isTitleAutoHide = preferences.getBoolean(key, false)
-                "autoHideArticleBottomBar" -> {
-                    autoHideArticleBottomBar = preferences.getBoolean(key, false)
-                }
-
-                "buttonSkipAnswer" -> buttonSkipAnswer = preferences.getBoolean(key, true)
-                "autoHideSkipAnswerButton" -> autoHideSkipAnswerButton = preferences.getBoolean(key, true)
-
-                "answerSwitchMode" -> {
-                    answerSwitchMode = preferences.getString(key, "vertical") ?: "vertical"
-                }
-
-                "pinAnswerDate" -> pinAnswerDate = preferences.getBoolean(key, false)
-                ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY -> {
-                    answerDoubleTapAction = AnswerDoubleTapAction.fromPreference(
-                        preferences.getString(
-                            key,
-                            AnswerDoubleTapAction.Ask.preferenceValue,
-                        ),
-                    )
-                }
-            }
-        }
-    }
-
-    DisposableEffect(preferences, preferenceListener) {
-        preferences.registerOnSharedPreferenceChangeListener(preferenceListener)
-        onDispose {
-            preferences.unregisterOnSharedPreferenceChangeListener(preferenceListener)
-        }
-    }
-
     // Reset bar offsets when auto-hide preferences are turned off
-    LaunchedEffect(isTitleAutoHide) {
-        if (!isTitleAutoHide) topBarOffset.snapTo(0f)
+    LaunchedEffect(articleSettings.isTitleAutoHide) {
+        if (!articleSettings.isTitleAutoHide) topBarOffset.snapTo(0f)
     }
-    LaunchedEffect(autoHideArticleBottomBar) {
-        if (!autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
+    LaunchedEffect(articleSettings.autoHideArticleBottomBar) {
+        if (!articleSettings.autoHideArticleBottomBar) bottomBarOffset.snapTo(0f)
     }
 
     LaunchedEffect(scrollState.value) {
@@ -434,7 +367,7 @@ fun ArticleScreen(
             // Top bar: force show at top; content-like reveal at bottom
             if (atTop) {
                 topBarOffset.snapTo(0f)
-            } else if (isTitleAutoHide && topBarHeightPx > 0f) {
+            } else if (articleSettings.isTitleAutoHide && topBarHeightPx > 0f) {
                 val deltaBasedOffset = (topBarOffset.value - delta).coerceIn(-topBarHeightPx, 0f)
                 val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < topBarHeightPx.toInt()) {
@@ -449,7 +382,7 @@ fun ArticleScreen(
             // Bottom bar: force show at top; content-like reveal at bottom
             if (atTop) {
                 bottomBarOffset.snapTo(0f)
-            } else if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+            } else if (articleSettings.autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
                 val deltaBasedOffset = (bottomBarOffset.value + delta).coerceIn(0f, bottomBarHeightPx)
                 val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
                 if (distanceFromBottom < bottomBarHeightPx.toInt()) {
@@ -475,13 +408,13 @@ fun ArticleScreen(
     // and animate content scroll to follow the snap
     LaunchedEffect(scrollState.isScrollInProgress) {
         if (!scrollState.isScrollInProgress) {
-            val topTarget = if (isTitleAutoHide && topBarHeightPx > 0f) {
+            val topTarget = if (articleSettings.isTitleAutoHide && topBarHeightPx > 0f) {
                 if (abs(topBarOffset.value) > topBarHeightPx / 2) -topBarHeightPx else 0f
             } else {
                 topBarOffset.value
             }
 
-            val bottomTarget = if (autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
+            val bottomTarget = if (articleSettings.autoHideArticleBottomBar && bottomBarHeightPx > 0f) {
                 if (bottomBarOffset.value > bottomBarHeightPx / 2) bottomBarHeightPx else 0f
             } else {
                 bottomBarOffset.value
@@ -520,7 +453,7 @@ fun ArticleScreen(
             val canScroll = scrollState.maxValue > topBarHeight
             val isNearTop = scrollState.value < topBarHeight
             when {
-                !isTitleAutoHide -> true
+                !articleSettings.isTitleAutoHide -> true
                 !canScroll -> true
                 isScrollingUp -> true
                 isNearTop -> true
@@ -533,7 +466,7 @@ fun ArticleScreen(
             val canScroll = scrollState.maxValue > 0
             val isNearTop = scrollState.value == 0
             when {
-                !autoHideArticleBottomBar -> true
+                !articleSettings.autoHideArticleBottomBar -> true
                 !canScroll -> true
                 isScrollingUp -> true
                 isNearTop -> true
@@ -614,7 +547,7 @@ fun ArticleScreen(
     }
 
     val navigateToPrevious: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS
@@ -648,7 +581,7 @@ fun ArticleScreen(
     }
 
     val navigateToNext: () -> Unit = {
-        sharedData?.answerTransitionDirection = if (answerSwitchMode == "horizontal") {
+        sharedData?.answerTransitionDirection = if (articleSettings.answerSwitchMode == "horizontal") {
             ArticleAnswerTransitionDirection.HORIZONTAL_NEXT
         } else {
             ArticleAnswerTransitionDirection.VERTICAL_NEXT
@@ -721,7 +654,7 @@ fun ArticleScreen(
                             }
                         },
                         actions = {
-                            if (useDuo3ArticleActions) {
+                            if (articleSettings.useDuo3ArticleActions) {
                                 IconButton(
                                     onClick = { showActionsMenu = true },
                                 ) {
@@ -780,7 +713,7 @@ fun ArticleScreen(
                 @Composable
                 fun ActionBarContent() {
                     ArticleActionBarContent(
-                        useDuo3ArticleActions = useDuo3ArticleActions,
+                        useDuo3ArticleActions = articleSettings.useDuo3ArticleActions,
                         voteUpState = viewModel.voteUpState,
                         voteUpCount = viewModel.voteUpCount,
                         isFavorited = viewModel.isFavorited,
@@ -838,8 +771,8 @@ fun ArticleScreen(
                     ) {
                         ArticleContentArea(
                             hasContent = viewModel.content.isNotEmpty() || viewModel.attachment != null,
-                            useWebView = preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false),
-                            pinAnswerDate = pinAnswerDate,
+                            useWebView = articleSettings.useWebView,
+                            pinAnswerDate = articleSettings.pinAnswerDate,
                             ipInfo = viewModel.ipInfo,
                             dateTexts = { DateTexts() },
                             webViewContent = {
@@ -910,8 +843,8 @@ fun ArticleScreen(
                     }
                     // Skip answer button
                     ArticleSkipAnswerButton(
-                        visible = article.type == ArticleType.Answer && buttonSkipAnswer,
-                        autoHideSkipAnswerButton = autoHideSkipAnswerButton,
+                        visible = article.type == ArticleType.Answer && articleSettings.buttonSkipAnswer,
+                        autoHideSkipAnswerButton = articleSettings.autoHideSkipAnswerButton,
                         isScrollingUp = isScrollingUp,
                         scrollValue = scrollState.value,
                         onNavigateNext = { navigateToNext() },
@@ -933,7 +866,7 @@ fun ArticleScreen(
     } // end answerSwitchContent
 
     val nav = sharedData?.navigator
-    if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+    if (article.type == ArticleType.Answer && articleSettings.answerSwitchMode == "horizontal") {
         // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
         LaunchedEffect(nav?.nextAnswer) {
             val cached = nav?.nextAnswer ?: return@LaunchedEffect
@@ -968,7 +901,7 @@ fun ArticleScreen(
     }
     ArticleAnswerSwitchContainer(
         article = article,
-        answerSwitchMode = answerSwitchMode,
+        answerSwitchMode = articleSettings.answerSwitchMode,
         navigator = nav,
         scrollState = scrollState,
         onNavigatePrevious = { navigateToPrevious() },
