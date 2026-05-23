@@ -1,0 +1,120 @@
+/*
+ * Zhihu++ - Free & Ad-Free Zhihu client for Android.
+ * Copyright (C) 2024-2026, zly2006 <i@zly2006.me>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation (version 3 only).
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package com.github.zly2006.zhihu.viewmodel
+
+import android.content.Context
+import android.widget.Toast
+import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.data.getContentDetail
+import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
+import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.article.VoteUpState
+import com.github.zly2006.zhihu.shared.data.CollectionResponse
+import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+class AndroidArticleViewModelRuntime(
+    private val context: Context,
+) : ArticleViewModelRuntime {
+    override suspend fun getContentDetail(article: Article): DataHolder.Content? =
+        DataHolder.getContentDetail(context, article)
+
+    override suspend fun recordOpenEvent(
+        destination: Article,
+        questionId: Long?,
+    ) {
+        ContentOpenEventSupport.recordOpenEvent(
+            context = context,
+            destination = destination,
+            questionId = questionId,
+            openFrom = context.articleHost()?.consumePendingContentOpenFrom(destination)
+                ?: ContentOpenFrom.UNKNOWN,
+        )
+    }
+
+    override fun answerNavigatorRepository(): AnswerNavigatorRepository =
+        AndroidAnswerNavigatorRepository(context)
+
+    override suspend fun loadCollections(
+        contentType: String,
+        articleId: Long,
+    ): CollectionResponse {
+        val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/$articleId?limit=50"
+        val json = AccountData.fetchGet(context, collectionsUrl) {
+            signFetchRequest()
+        }!!
+        return AccountData.decodeJson(json)
+    }
+
+    override suspend fun createNewCollection(
+        title: String,
+        description: String,
+        isPublic: Boolean,
+    ) {
+        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                buildJsonObject {
+                    put("title", title)
+                    put("description", description)
+                    put("is_public", isPublic)
+                },
+            )
+            signFetchRequest()
+        }
+    }
+
+    override suspend fun voteArticle(
+        article: Article,
+        newState: VoteUpState,
+    ): JsonObject {
+        val endpoint = when (article.type) {
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
+        }
+        return AccountData.fetchPost(context, endpoint) {
+            when (article.type) {
+                ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+            }
+            contentType(ContentType.Application.Json)
+        }!!
+    }
+
+    override fun configureSignedRequest(builder: HttpRequestBuilder) {
+        builder.signFetchRequest()
+    }
+
+    override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
+
+    override fun showMessage(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+}

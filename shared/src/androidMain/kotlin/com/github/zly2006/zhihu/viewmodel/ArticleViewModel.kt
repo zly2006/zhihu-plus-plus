@@ -49,8 +49,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.getContentDetail
-import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
@@ -60,7 +58,6 @@ import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.Collection
-import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadge
@@ -87,8 +84,6 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
 import io.ktor.client.request.header
@@ -108,13 +103,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import org.jsoup.Jsoup
 import java.io.File
 import java.text.SimpleDateFormat
@@ -188,6 +181,9 @@ class ArticleViewModel(
 
     val isFavorited: Boolean
         get() = collections.any { it.isFavorited }
+
+    private fun articleRuntime(context: Context): ArticleViewModelRuntime =
+        AndroidArticleViewModelRuntime(context)
 
     // 检查存储权限
     fun hasStoragePermission(context: Context): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -354,13 +350,14 @@ class ArticleViewModel(
     @OptIn(ExperimentalStdlibApi::class)
     fun loadArticle(context: Context) {
         if (httpClient == null) return
+        val runtime = articleRuntime(context)
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
                     if (article.type == ArticleType.Answer) {
                         val articleHost = context.articleHost()
                         val sharedData = articleHost?.articleAnswerSwitchState
-                        val answer = DataHolder.getContentDetail(context, article) as? DataHolder.Answer
+                        val answer = runtime.getContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
                             title = answer.question.title
@@ -402,13 +399,7 @@ class ArticleViewModel(
                                     excerpt = answer.excerpt,
                                 ),
                             )
-                            ContentOpenEventSupport.recordOpenEvent(
-                                context = context,
-                                destination = article,
-                                questionId = answer.question.id,
-                                openFrom = articleHost?.consumePendingContentOpenFrom(article)
-                                    ?: ContentOpenFrom.UNKNOWN,
-                            )
+                            runtime.recordOpenEvent(article, answer.question.id)
                             // 设置问题回答导航器（如果当前不是收藏夹导航器）
                             if (sharedData?.navigator !is CollectionAnswerNavigator) {
                                 val existingNav = sharedData?.navigator
@@ -420,7 +411,7 @@ class ArticleViewModel(
                                 if (!isSameQuestion) {
                                     sharedData?.navigator = QuestionAnswerNavigator(
                                         questionId = questionId,
-                                        repository = AndroidAnswerNavigatorRepository(context),
+                                        repository = runtime.answerNavigatorRepository(),
                                     )
                                 }
                             }
@@ -438,7 +429,7 @@ class ArticleViewModel(
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
-                        val article = DataHolder.getContentDetail(context, article) as? DataHolder.Article
+                        val article = runtime.getContentDetail(article) as? DataHolder.Article
                         if (article != null) {
                             exportSourceContent = article
                             title = article.title
@@ -479,12 +470,7 @@ class ArticleViewModel(
                                     excerpt = article.excerpt,
                                 ),
                             )
-                            ContentOpenEventSupport.recordOpenEvent(
-                                context = context,
-                                destination = this@ArticleViewModel.article,
-                                openFrom = articleHost?.consumePendingContentOpenFrom(this@ArticleViewModel.article)
-                                    ?: ContentOpenFrom.UNKNOWN,
-                            )
+                            runtime.recordOpenEvent(this@ArticleViewModel.article, null)
                         } else {
                             content = "<h1>文章不存在</h1>"
                             Log.e("ArticleViewModel", "Article not found")
@@ -499,6 +485,7 @@ class ArticleViewModel(
 
     fun toggleFavorite(collectionId: String, remove: Boolean, context: Context) {
         if (httpClient == null) return
+        val runtime = articleRuntime(context)
         viewModelScope.launch {
             try {
                 val contentType = when (article.type) {
@@ -516,13 +503,13 @@ class ArticleViewModel(
 
                 if (response.status.isSuccess()) {
                     loadCollections(context)
-                    Toast.makeText(context, if (remove) "取消收藏成功" else "收藏成功", Toast.LENGTH_SHORT).show()
+                    runtime.showMessage(if (remove) "取消收藏成功" else "收藏成功")
                 } else {
-                    Toast.makeText(context, "收藏操作失败", Toast.LENGTH_SHORT).show()
+                    runtime.showMessage("收藏操作失败")
                 }
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Favorite toggle failed", e)
-                Toast.makeText(context, "收藏操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("收藏操作失败: ${e.message}")
             }
         }
     }
@@ -532,6 +519,7 @@ class ArticleViewModel(
             aiSummaryError = "未初始化网络客户端"
             return
         }
+        val runtime = articleRuntime(context)
         aiSummaryJob?.cancel()
         aiSummaryJob = viewModelScope.launch {
             aiSummaryLoading = true
@@ -550,9 +538,9 @@ class ArticleViewModel(
                 val response = httpClient.post("https://www.zhihu.com/ai_ingress/stream/completion") {
                     accept(ContentType.Text.EventStream)
                     contentType(ContentType.Application.Json)
-                    header("x-xsrftoken", AccountData.data.cookies["_xsrf"] ?: "")
+                    header("x-xsrftoken", runtime.xsrfToken())
                     setBody(request)
-                    signFetchRequest()
+                    runtime.configureSignedRequest(this)
                 }
                 if (!response.status.isSuccess()) {
                     val errorBody = response.bodyAsText()
@@ -652,6 +640,7 @@ class ArticleViewModel(
 
     fun loadCollections(context: Context) {
         if (httpClient == null) return
+        val runtime = articleRuntime(context)
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -659,11 +648,7 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
-                    val jojo = AccountData.fetchGet(context, collectionsUrl) {
-                        signFetchRequest()
-                    }!!
-                    val collectionsData = AccountData.decodeJson<CollectionResponse>(jojo)
+                    val collectionsData = runtime.loadCollections(contentType, article.id)
                     collections.clear()
                     collections.addAll(
                         collectionsData.data
@@ -690,43 +675,24 @@ class ArticleViewModel(
 
     fun createNewCollection(context: Context, title: String, description: String = "", isPublic: Boolean = false) {
         if (httpClient == null) return
+        val runtime = articleRuntime(context)
         viewModelScope.launch {
-            AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("title", title)
-                        put("description", description)
-                        put("is_public", isPublic)
-                    },
-                )
-                signFetchRequest()
-            }
+            runtime.createNewCollection(title, description, isPublic)
             loadCollections(context)
         }
     }
 
     fun toggleVoteUp(context: Context, newState: VoteUpState) {
+        val runtime = articleRuntime(context)
         viewModelScope.launch {
             try {
-                val endpoint = when (article.type) {
-                    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-                    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-                }
-
-                val response = AccountData.fetchPost(context, endpoint) {
-                    when (article.type) {
-                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
-                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
-                    }
-                    contentType(ContentType.Application.Json)
-                }!!
+                val response = runtime.voteArticle(article, newState)
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
-                Toast.makeText(context, "点赞失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("点赞失败: ${e.message}")
             }
         }
     }
