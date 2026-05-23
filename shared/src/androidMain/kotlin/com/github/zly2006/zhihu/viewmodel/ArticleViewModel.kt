@@ -48,6 +48,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
+import com.fleeksoft.ksoup.nodes.TextNode
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -108,7 +111,6 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -1221,20 +1223,20 @@ class ArticleViewModel(
         // 分隔线
         sb.append("---\n\n")
 
-        // 内容 - 使用 Jsoup 解析 HTML 并转换为 Markdown
-        val document = Jsoup.parse(content)
+        // 内容 - 解析 HTML 并转换为 Markdown
+        val document = Ksoup.parse(content)
         sb.append(htmlToMarkdown(document.body()))
 
         return sb.toString()
     }
 
     // HTML 转 Markdown 的递归函数
-    private fun htmlToMarkdown(element: org.jsoup.nodes.Element): String {
+    private fun htmlToMarkdown(element: Element): String {
         val sb = StringBuilder()
 
         for (node in element.childNodes()) {
             when (node) {
-                is org.jsoup.nodes.Element -> {
+                is Element -> {
                     when (node.tagName().lowercase()) {
                         "h1" -> sb.append("# ${node.text()}\n\n")
                         "h2" -> sb.append("## ${node.text()}\n\n")
@@ -1346,7 +1348,7 @@ class ArticleViewModel(
                         else -> sb.append(htmlToMarkdown(node))
                     }
                 }
-                is org.jsoup.nodes.TextNode -> {
+                is TextNode -> {
                     val text = node.text()
                     if (text.isNotBlank()) {
                         sb.append(text)
