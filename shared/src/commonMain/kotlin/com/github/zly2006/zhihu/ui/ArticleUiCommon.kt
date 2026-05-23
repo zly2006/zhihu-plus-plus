@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -80,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -88,9 +91,12 @@ import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
+import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
+import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.materialkolor.ktx.harmonize
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -559,6 +565,65 @@ fun ArticleSkipAnswerButton(
                 Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
             }
         }
+    }
+}
+
+@Composable
+fun ArticleAnswerSwitchContainer(
+    article: Article,
+    answerSwitchMode: String,
+    navigator: AnswerNavigator?,
+    scrollState: ScrollState,
+    onNavigatePrevious: () -> Unit,
+    onNavigateNext: () -> Unit,
+    previousContent: (@Composable () -> Unit)?,
+    nextContent: (@Composable () -> Unit)?,
+    content: @Composable () -> Unit,
+) {
+    val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
+    val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
+
+    Box(
+        modifier = Modifier,
+    ) {
+        // 根据模式渲染
+        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
+            AnswerVerticalOverscroll(
+                previousAnswer = navigator?.previousAnswer,
+                nextAnswer = navigator?.nextAnswer,
+                onNavigatePrevious = onNavigatePrevious,
+                onNavigateNext = onNavigateNext,
+                isAtTop = { scrollState.value == 0 },
+                isAtBottom = { scrollState.value >= scrollState.maxValue },
+                scrollState = scrollState,
+            ) {
+                content()
+            }
+        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+            AnswerHorizontalOverscroll(
+                canGoPrevious = navigator?.previousAnswer != null,
+                canGoNext = navigator?.nextAnswer != null,
+                onNavigatePrevious = onNavigatePrevious,
+                onNavigateNext = onNavigateNext,
+                previousContent = previousContent,
+                nextContent = nextContent,
+            ) {
+                content()
+            }
+        } else {
+            content()
+        }
+
+        VerticalReadingProgressBar(
+            scrollState = scrollState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(
+                    top = progressBarTopPadding,
+                    bottom = progressBarBottomPadding,
+                    end = 2.dp,
+                ),
+        )
     }
 }
 

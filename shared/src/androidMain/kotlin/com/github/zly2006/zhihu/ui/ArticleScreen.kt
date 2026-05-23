@@ -46,7 +46,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -104,12 +103,9 @@ import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
-import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
-import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
-import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.OpenInBrowser
@@ -980,87 +976,55 @@ fun ArticleScreen(
         }
     } // end answerSwitchContent
 
-    val progressBarTopPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
-    val progressBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 96.dp
-
-    Box(
-        modifier = Modifier,
-    ) {
-        // 根据模式渲染
-        if (article.type == ArticleType.Answer && answerSwitchMode == "vertical") {
-            val nav = sharedData?.navigator
-            AnswerVerticalOverscroll(
-                previousAnswer = nav?.previousAnswer,
-                nextAnswer = nav?.nextAnswer,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
-                isAtTop = { scrollState.value == 0 },
-                isAtBottom = { scrollState.value >= scrollState.maxValue },
-                scrollState = scrollState,
-            ) {
-                answerSwitchContent()
+    val nav = sharedData?.navigator
+    if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
+        // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
+        LaunchedEffect(nav?.nextAnswer) {
+            val cached = nav?.nextAnswer ?: return@LaunchedEffect
+            val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id)
+                ?: return@LaunchedEffect
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
+                )
             }
-        } else if (article.type == ArticleType.Answer && answerSwitchMode == "horizontal") {
-            val nav = sharedData?.navigator
-            // 预加载预览 WebView 内容，确保滑动前 WebView 已渲染完成
-            LaunchedEffect(nav?.nextAnswer) {
-                val cached = nav?.nextAnswer ?: return@LaunchedEffect
-                val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = true, cached.article.id)
-                    ?: return@LaunchedEffect
-                val articleId = cached.article.id.toString()
-                if (wv.contentId != articleId) {
-                    wv.contentId = articleId
-                    wv.loadZhihu(
-                        "https://www.zhihu.com/answer/${cached.article.id}",
-                        prepareContentDocument(cached.content, context).apply {
-                            title(viewModel.title)
-                        },
-                    )
-                }
-            }
-            LaunchedEffect(nav?.previousAnswer) {
-                val cached = nav?.previousAnswer ?: return@LaunchedEffect
-                val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
-                    ?: return@LaunchedEffect
-                val articleId = cached.article.id.toString()
-                if (wv.contentId != articleId) {
-                    wv.contentId = articleId
-                    wv.loadZhihu(
-                        "https://www.zhihu.com/answer/${cached.article.id}",
-                        prepareContentDocument(cached.content, context).apply {
-                            title(viewModel.title)
-                        },
-                    )
-                }
-            }
-            AnswerHorizontalOverscroll(
-                canGoPrevious = nav?.previousAnswer != null,
-                canGoNext = nav?.nextAnswer != null,
-                onNavigatePrevious = navigateToPrevious,
-                onNavigateNext = navigateToNext,
-                previousContent = nav?.previousAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) }
-                },
-                nextContent = nav?.nextAnswer?.let { cached ->
-                    { CachedAnswerPreview(cached) }
-                },
-            ) {
-                answerSwitchContent()
-            }
-        } else {
-            answerSwitchContent()
         }
-
-        VerticalReadingProgressBar(
-            scrollState = scrollState,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(
-                    top = progressBarTopPadding,
-                    bottom = progressBarBottomPadding,
-                    end = 2.dp,
-                ),
-        )
+        LaunchedEffect(nav?.previousAnswer) {
+            val cached = nav?.previousAnswer ?: return@LaunchedEffect
+            val wv = previewWebViewStore?.getOrCreatePreviewWebView(context, isNext = false, cached.article.id)
+                ?: return@LaunchedEffect
+            val articleId = cached.article.id.toString()
+            if (wv.contentId != articleId) {
+                wv.contentId = articleId
+                wv.loadZhihu(
+                    "https://www.zhihu.com/answer/${cached.article.id}",
+                    prepareContentDocument(cached.content, context).apply {
+                        title(viewModel.title)
+                    },
+                )
+            }
+        }
+    }
+    ArticleAnswerSwitchContainer(
+        article = article,
+        answerSwitchMode = answerSwitchMode,
+        navigator = nav,
+        scrollState = scrollState,
+        onNavigatePrevious = { navigateToPrevious() },
+        onNavigateNext = { navigateToNext() },
+        previousContent = nav?.previousAnswer?.let { cached ->
+            { CachedAnswerPreview(cached) }
+        },
+        nextContent = nav?.nextAnswer?.let { cached ->
+            { CachedAnswerPreview(cached) }
+        },
+    ) {
+        answerSwitchContent()
     }
 
     // 全屏菜单
