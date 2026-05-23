@@ -20,8 +20,6 @@ package com.github.zly2006.zhihu.viewmodel.filter
 import android.content.Context
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.NavDestination
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport as SharedContentOpenEventSupport
 
 typealias ContentOpenFrom = com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -44,33 +42,22 @@ object ContentOpenEventSupport {
         questionId: Long? = null,
         openFrom: String = ContentOpenFrom.UNKNOWN,
     ) {
-        val identity = toTrackedContentIdentity(destination) ?: return
-        withContext(Dispatchers.IO) {
-            getContentFilterDatabase(context)
-                .contentOpenEventDao()
-                .insert(
-                    ContentOpenEvent(
-                        contentType = identity.type,
-                        contentId = identity.id,
-                        questionId = questionId,
-                        openFrom = openFrom,
-                    ),
-                )
-        }
+        SharedContentOpenEventSupport.recordOpenEvent(
+            database = getContentFilterDatabase(context),
+            destination = destination,
+            questionId = questionId,
+            openFrom = openFrom,
+        )
     }
 
     suspend fun getAlreadyOpenedContentIds(
         context: Context,
         content: List<Pair<String, String>>,
-    ): Set<String> = withContext(Dispatchers.IO) {
-        val idsToCheck = content.map { (targetType, targetId) ->
-            buildContentKey(targetType, targetId)
-        }
-        getContentFilterDatabase(context)
-            .contentOpenEventDao()
-            .getOpenedContentKeysByKeys(idsToCheck)
-            .toSet()
-    }
+    ): Set<String> =
+        SharedContentOpenEventSupport.getAlreadyOpenedContentIds(
+            database = getContentFilterDatabase(context),
+            content = content,
+        )
 
     fun filterUnopenedAnswerArticles(
         candidates: List<Article>,

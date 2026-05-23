@@ -8,6 +8,9 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterDatabase
+import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEvent
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 
 data class TrackedContentIdentity(
     val type: String,
@@ -35,13 +38,13 @@ object ContentOpenEventSupport {
     fun toTrackedContentIdentity(destination: NavDestination): TrackedContentIdentity? = when (destination) {
         is Article -> {
             val type = when (destination.type) {
-                ArticleType.Answer -> CONTENT_TYPE_ANSWER
-                ArticleType.Article -> CONTENT_TYPE_ARTICLE
+                ArticleType.Answer -> ContentType.ANSWER
+                ArticleType.Article -> ContentType.ARTICLE
             }
             TrackedContentIdentity(type = type, id = destination.id.toString())
         }
-        is Question -> TrackedContentIdentity(type = CONTENT_TYPE_QUESTION, id = destination.questionId.toString())
-        is Pin -> TrackedContentIdentity(type = CONTENT_TYPE_PIN, id = destination.id.toString())
+        is Question -> TrackedContentIdentity(type = ContentType.QUESTION, id = destination.questionId.toString())
+        is Pin -> TrackedContentIdentity(type = ContentType.PIN, id = destination.id.toString())
         else -> null
     }
 
@@ -60,6 +63,38 @@ object ContentOpenEventSupport {
         else -> ContentOpenFrom.UNKNOWN
     }
 
+    suspend fun recordOpenEvent(
+        database: ContentFilterDatabase,
+        destination: NavDestination,
+        questionId: Long? = null,
+        openFrom: String = ContentOpenFrom.UNKNOWN,
+    ) {
+        val identity = toTrackedContentIdentity(destination) ?: return
+        database
+            .contentOpenEventDao()
+            .insert(
+                ContentOpenEvent(
+                    contentType = identity.type,
+                    contentId = identity.id,
+                    questionId = questionId,
+                    openFrom = openFrom,
+                ),
+            )
+    }
+
+    suspend fun getAlreadyOpenedContentIds(
+        database: ContentFilterDatabase,
+        content: List<Pair<String, String>>,
+    ): Set<String> = run {
+        val idsToCheck = content.map { (targetType, targetId) ->
+            buildContentKey(targetType, targetId)
+        }
+        database
+            .contentOpenEventDao()
+            .getOpenedContentKeysByKeys(idsToCheck)
+            .toSet()
+    }
+
     fun filterUnopenedAnswerArticles(
         candidates: List<Article>,
         openedContentKeys: Set<String>,
@@ -69,7 +104,7 @@ object ContentOpenEventSupport {
         article.type == ArticleType.Answer &&
             article.id != currentArticleId &&
             article.id !in historyIds &&
-            buildContentKey(CONTENT_TYPE_ANSWER, article.id.toString()) !in openedContentKeys
+            buildContentKey(ContentType.ANSWER, article.id.toString()) !in openedContentKeys
     }
 
     fun partitionQuestionAnswerCandidates(
@@ -102,9 +137,4 @@ object ContentOpenEventSupport {
             nextCandidates = nextCandidates,
         )
     }
-
-    private const val CONTENT_TYPE_ANSWER = "answer"
-    private const val CONTENT_TYPE_ARTICLE = "article"
-    private const val CONTENT_TYPE_QUESTION = "question"
-    private const val CONTENT_TYPE_PIN = "pin"
 }
