@@ -55,7 +55,6 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -110,7 +109,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
-import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
@@ -121,12 +119,10 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
-import com.github.zly2006.zhihu.shared.data.Person
 import com.github.zly2006.zhihu.shared.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.AnswerHorizontalOverscroll
 import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
-import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
@@ -780,70 +776,15 @@ fun ArticleScreen(
                             )
                         },
                         subtitle = { expanded ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
-                                    .padding(end = 16.dp)
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        navigator.onNavigate(
-                                            com.github.zly2006.zhihu.navigation.Person(
-                                                id = viewModel.authorId,
-                                                urlToken = viewModel.authorUrlToken,
-                                                name = viewModel.authorName,
-                                            ),
-                                        )
-                                    },
-                            ) {
-                                if (viewModel.authorAvatarSrc.isNotEmpty()) {
-                                    AsyncImage(
-                                        model = viewModel.authorAvatarSrc,
-                                        contentDescription = "作者头像",
-                                        modifier = Modifier
-                                            .size(if (expanded) 40.dp else 20.dp)
-                                            .clip(CircleShape),
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(if (expanded) 40.dp else 20.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
-
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = viewModel.authorName,
-                                            style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                                            color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f, fill = false),
-                                        )
-                                        if (viewModel.authorBadge != null) {
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            AuthorBadge(
-                                                badge = viewModel.authorBadge,
-                                                compact = !expanded,
-                                            )
-                                        }
-                                    }
-                                    if (viewModel.authorBio.isNotEmpty() && expanded) {
-                                        Text(
-                                            text = viewModel.authorBio,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
+                            ArticleAuthorRow(
+                                expanded = expanded,
+                                authorId = viewModel.authorId,
+                                authorUrlToken = viewModel.authorUrlToken,
+                                authorName = viewModel.authorName,
+                                authorAvatarSrc = viewModel.authorAvatarSrc,
+                                authorBio = viewModel.authorBio,
+                                authorBadge = viewModel.authorBadge,
+                            )
                         },
                         scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
                         colors = TopAppBarDefaults.topAppBarColors().copy(

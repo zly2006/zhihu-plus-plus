@@ -66,7 +66,9 @@ import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
@@ -133,6 +135,83 @@ fun formatArticleDateTime(seconds: Long): String {
         append(dateTime.minute.toString().padStart(2, '0'))
         append(':')
         append(dateTime.second.toString().padStart(2, '0'))
+    }
+}
+
+@Composable
+fun ArticleAuthorRow(
+    expanded: Boolean,
+    authorId: String,
+    authorUrlToken: String,
+    authorName: String,
+    authorAvatarSrc: String,
+    authorBio: String,
+    authorBadge: OfficialBadge?,
+) {
+    val navigator = LocalNavigator.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(if (expanded) PaddingValues(vertical = 16.dp) else PaddingValues(top = 2.dp, bottom = 8.dp))
+            .padding(end = 16.dp)
+            .fillMaxWidth()
+            .clickable {
+                navigator.onNavigate(
+                    com.github.zly2006.zhihu.navigation.Person(
+                        id = authorId,
+                        urlToken = authorUrlToken,
+                        name = authorName,
+                    ),
+                )
+            },
+    ) {
+        if (authorAvatarSrc.isNotEmpty()) {
+            AsyncImage(
+                model = authorAvatarSrc,
+                contentDescription = "作者头像",
+                modifier = Modifier
+                    .size(if (expanded) 40.dp else 20.dp)
+                    .clip(CircleShape),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(if (expanded) 40.dp else 20.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+        }
+
+        Spacer(modifier = Modifier.width(if (expanded) 8.dp else 4.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = authorName,
+                    style = if (expanded) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
+                    color = if (expanded) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (authorBadge != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    AuthorBadge(
+                        badge = authorBadge,
+                        compact = !expanded,
+                    )
+                }
+            }
+            if (authorBio.isNotEmpty() && expanded) {
+                Text(
+                    text = authorBio,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
