@@ -957,11 +957,7 @@ class ArticleViewModel(
     }
 
     private fun loadExportAssetText(context: Context, fileName: String): String = try {
-        context.assets.open(fileName).use { inputStream ->
-            inputStream.bufferedReader().use { reader ->
-                reader.readText()
-            }
-        }
+        articleRuntime(context).loadExportAssetText(fileName)
     } catch (e: Exception) {
         Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
         ""

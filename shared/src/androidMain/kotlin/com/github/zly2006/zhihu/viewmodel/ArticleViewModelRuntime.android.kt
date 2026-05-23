@@ -152,6 +152,13 @@ class AndroidArticleViewModelRuntime(
     override fun accountHttpClient(): HttpClient =
         AccountData.httpClient(context)
 
+    override fun loadExportAssetText(fileName: String): String =
+        context.assets.open(fileName).use { inputStream ->
+            inputStream.bufferedReader().use { reader ->
+                reader.readText()
+            }
+        }
+
     override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
 
     override fun hasImageExportPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

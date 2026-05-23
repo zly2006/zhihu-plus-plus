@@ -61,6 +61,8 @@ interface ArticleViewModelRuntime {
 
     fun accountHttpClient(): HttpClient
 
+    fun loadExportAssetText(fileName: String): String
+
     fun xsrfToken(): String
 
     fun hasImageExportPermission(): Boolean
