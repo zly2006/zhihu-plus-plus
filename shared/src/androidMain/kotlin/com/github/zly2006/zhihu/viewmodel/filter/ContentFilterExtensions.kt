@@ -76,7 +76,7 @@ object ContentFilterExtensions {
         withContext(Dispatchers.IO) {
             try {
                 val settings = context.feedFilterSettings()
-                getContentFilterDatabase(context).recordContentDisplay(settings, targetType, targetId)
+                recordContentDisplay(settings, getContentFilterDatabase(context), targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content display", e)
             }
@@ -91,7 +91,7 @@ object ContentFilterExtensions {
         withContext(Dispatchers.IO) {
             try {
                 val settings = context.feedFilterSettings()
-                getContentFilterDatabase(context).recordContentInteraction(settings, targetType, targetId)
+                recordContentInteraction(settings, getContentFilterDatabase(context), targetType, targetId)
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to record content interaction", e)
             }
@@ -105,7 +105,7 @@ object ContentFilterExtensions {
         withContext(Dispatchers.IO) {
             try {
                 val settings = context.feedFilterSettings()
-                getContentFilterDatabase(context).performContentFilterMaintenanceCleanup(settings)
+                performMaintenanceCleanup(settings, getContentFilterDatabase(context))
             } catch (e: Exception) {
                 Log.e("ContentFilterExtensions", "Failed to perform maintenance cleanup", e)
             }
@@ -122,7 +122,7 @@ object ContentFilterExtensions {
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
             val settings = context.feedFilterSettings()
-            getContentFilterDatabase(context).filterForegroundReadItems(settings, items)
+            applyForegroundReadFilterToDisplayItems(settings, getContentFilterDatabase(context), items)
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply foreground read filter", e)
             items
@@ -142,37 +142,32 @@ object ContentFilterExtensions {
     ): List<FeedDisplayItem> = withContext(Dispatchers.IO) {
         try {
             val settings = context.feedFilterSettings()
-            filterFeedDisplayItems(context, settings, items)
+            applyContentFilterToDisplayItems(
+                settings = settings,
+                database = getContentFilterDatabase(context),
+                items = items,
+                contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
+                semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+                onNlpBlocked = { blockedThisRound ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        context.mainExecutor.execute {
+                            Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                onDetailFetchFailed = { item ->
+                    Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
+                },
+                onDetailsKeywordFiltered = { item, keyword ->
+                    Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
+                },
+            )
         } catch (e: Exception) {
             Log.e("ContentFilterExtensions", "Failed to apply content filter to display items", e)
             items
         }
     }
 }
-
-private suspend fun filterFeedDisplayItems(
-    context: Context,
-    settings: FeedFilterSettings,
-    items: List<FeedDisplayItem>,
-): List<FeedDisplayItem> = getContentFilterDatabase(context).filterFeedDisplayItems(
-    settings = settings,
-    items = items,
-    contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
-    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
-    onNlpBlocked = { blockedThisRound ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            context.mainExecutor.execute {
-                Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
-            }
-        }
-    },
-    onDetailFetchFailed = { item ->
-        Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
-    },
-    onDetailsKeywordFiltered = { item, keyword ->
-        Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
-    },
-)
 
 private fun Context.feedFilterSettings(): FeedFilterSettings =
     getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
