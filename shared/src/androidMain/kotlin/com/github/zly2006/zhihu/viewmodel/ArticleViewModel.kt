@@ -29,7 +29,6 @@ import android.provider.MediaStore
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -100,7 +99,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1102,58 +1100,7 @@ class ArticleViewModel(
 
     private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
         val displayName = buildExportFileName("html")
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveHtmlToDownloadsWithMediaStore(context, displayName, htmlContent)
-        } else {
-            saveHtmlToLegacyDownloads(displayName, htmlContent)
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveHtmlToDownloadsWithMediaStore(
-        context: Context,
-        displayName: String,
-        htmlContent: String,
-    ): String {
-        val resolver = context.contentResolver
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
-            put(MediaStore.MediaColumns.IS_PENDING, 1)
-        }
-
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            ?: throw IllegalStateException("无法创建下载文件")
-
-        return try {
-            resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
-                writer.write(htmlContent)
-            } ?: throw IllegalStateException("无法打开下载文件")
-
-            contentValues.clear()
-            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-            resolver.update(uri, contentValues, null, null)
-            "Zhihu++/$displayName"
-        } catch (e: Exception) {
-            resolver.delete(uri, null, null)
-            throw e
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun saveHtmlToLegacyDownloads(displayName: String, htmlContent: String): String {
-        val downloadsDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Zhihu++",
-        )
-        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-            throw IllegalStateException("无法创建下载目录")
-        }
-
-        val file = File(downloadsDir, displayName)
-        file.writeText(htmlContent)
-        return file.absolutePath
+        return articleRuntime(context).saveHtmlToDownloads(displayName, htmlContent)
     }
 
     // 转换为Markdown格式

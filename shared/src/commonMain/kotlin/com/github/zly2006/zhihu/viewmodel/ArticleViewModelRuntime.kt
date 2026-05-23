@@ -63,6 +63,11 @@ interface ArticleViewModelRuntime {
 
     fun loadExportAssetText(fileName: String): String
 
+    fun saveHtmlToDownloads(
+        displayName: String,
+        htmlContent: String,
+    ): String
+
     fun xsrfToken(): String
 
     fun hasImageExportPermission(): Boolean

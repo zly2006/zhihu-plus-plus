@@ -20,10 +20,14 @@ package com.github.zly2006.zhihu.viewmodel
 import android.Manifest
 import android.app.Activity
 import android.content.ClipData
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.zly2006.zhihu.data.AccountData
@@ -50,6 +54,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
+import java.io.File
 
 class AndroidArticleViewModelRuntime(
     private val context: Context,
@@ -158,6 +163,64 @@ class AndroidArticleViewModelRuntime(
                 reader.readText()
             }
         }
+
+    override fun saveHtmlToDownloads(
+        displayName: String,
+        htmlContent: String,
+    ): String = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        saveHtmlToDownloadsWithMediaStore(displayName, htmlContent)
+    } else {
+        saveHtmlToLegacyDownloads(displayName, htmlContent)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun saveHtmlToDownloadsWithMediaStore(
+        displayName: String,
+        htmlContent: String,
+    ): String {
+        val resolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/html")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Zhihu++")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            ?: throw IllegalStateException("无法创建下载文件")
+
+        return try {
+            resolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                writer.write(htmlContent)
+            } ?: throw IllegalStateException("无法打开下载文件")
+
+            contentValues.clear()
+            contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            resolver.update(uri, contentValues, null, null)
+            "Zhihu++/$displayName"
+        } catch (e: Exception) {
+            resolver.delete(uri, null, null)
+            throw e
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun saveHtmlToLegacyDownloads(
+        displayName: String,
+        htmlContent: String,
+    ): String {
+        val downloadsDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Zhihu++",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
+        }
+
+        val file = File(downloadsDir, displayName)
+        file.writeText(htmlContent)
+        return file.absolutePath
+    }
 
     override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""
 
