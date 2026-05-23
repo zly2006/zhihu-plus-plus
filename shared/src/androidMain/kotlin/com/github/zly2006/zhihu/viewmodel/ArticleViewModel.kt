@@ -346,6 +346,11 @@ class ArticleViewModel(
     fun toggleFavorite(collectionId: String, remove: Boolean, context: Context) {
         if (httpClient == null) return
         val runtime = articleRuntime(context)
+        toggleFavorite(collectionId, remove, runtime)
+    }
+
+    private fun toggleFavorite(collectionId: String, remove: Boolean, runtime: ArticleViewModelRuntime) {
+        if (httpClient == null) return
         viewModelScope.launch {
             try {
                 val contentType = when (article.type) {
@@ -380,6 +385,14 @@ class ArticleViewModel(
             return
         }
         val runtime = articleRuntime(context)
+        requestAiSummary(runtime)
+    }
+
+    private fun requestAiSummary(runtime: ArticleViewModelRuntime) {
+        if (httpClient == null) {
+            aiSummaryError = "未初始化网络客户端"
+            return
+        }
         aiSummaryJob?.cancel()
         aiSummaryJob = viewModelScope.launch {
             aiSummaryLoading = true
@@ -540,6 +553,16 @@ class ArticleViewModel(
     fun createNewCollection(context: Context, title: String, description: String = "", isPublic: Boolean = false) {
         if (httpClient == null) return
         val runtime = articleRuntime(context)
+        createNewCollection(runtime, title, description, isPublic)
+    }
+
+    private fun createNewCollection(
+        runtime: ArticleViewModelRuntime,
+        title: String,
+        description: String = "",
+        isPublic: Boolean = false,
+    ) {
+        if (httpClient == null) return
         viewModelScope.launch {
             runtime.createNewCollection(title, description, isPublic)
             loadCollections(runtime)
@@ -548,6 +571,10 @@ class ArticleViewModel(
 
     fun toggleVoteUp(context: Context, newState: VoteUpState) {
         val runtime = articleRuntime(context)
+        toggleVoteUp(runtime, newState)
+    }
+
+    private fun toggleVoteUp(runtime: ArticleViewModelRuntime, newState: VoteUpState) {
         viewModelScope.launch {
             try {
                 val response = runtime.voteArticle(article, newState)
