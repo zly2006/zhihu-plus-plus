@@ -69,6 +69,7 @@ import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
+import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
 import com.github.zly2006.zhihu.util.buildArticleExportData
@@ -99,9 +100,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.math.roundToInt
@@ -1061,8 +1059,7 @@ class ArticleViewModel(
     private fun mapExportComment(comment: DataHolder.Comment): ArticleExportComment = prepareArticleExportComment(
         authorName = comment.author.name,
         content = comment.content,
-        createdTimeText = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-            .format(Date(comment.createdTime * 1000)),
+        createdTimeText = formatArticleDateTime(comment.createdTime).dropLast(3),
     )
 
     private fun buildExportFileName(extension: String): String = buildArticleExportFileName(
