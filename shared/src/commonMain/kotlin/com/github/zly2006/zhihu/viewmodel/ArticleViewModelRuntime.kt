@@ -77,6 +77,8 @@ interface ArticleViewModelRuntime {
 
     fun hasImageExportPermission(): Boolean
 
+    fun requiresHtmlExportPermission(): Boolean
+
     fun requestImageExportPermission()
 
     fun copyArticleMarkdownToClipboard(markdown: String)

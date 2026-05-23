@@ -258,6 +258,9 @@ class AndroidArticleViewModelRuntime(
             ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
     }
 
+    override fun requiresHtmlExportPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+
     override fun requestImageExportPermission() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(Manifest.permission.READ_MEDIA_IMAGES)

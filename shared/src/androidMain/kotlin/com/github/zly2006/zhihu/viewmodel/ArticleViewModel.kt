@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -707,7 +706,7 @@ class ArticleViewModel(
             return
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !runtime.hasImageExportPermission()) {
+        if (runtime.requiresHtmlExportPermission() && !runtime.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
                 runtime.requestImageExportPermission()
                 permissionRequestCount++
