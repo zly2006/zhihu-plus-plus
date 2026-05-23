@@ -538,6 +538,7 @@ const val PEOPLE_SCREEN_FOLLOWING_COUNT_TAG = "people_screen_stat_following"
 const val PEOPLE_SCREEN_FOLLOW_BUTTON_TAG = "people_screen_follow_button"
 const val PEOPLE_SCREEN_BLOCK_BUTTON_TAG = "people_screen_block_button"
 const val PEOPLE_SCREEN_RECOMMENDATION_BLOCK_BUTTON_TAG = "people_screen_recommendation_block_button"
+const val PEOPLE_SCREEN_OFFICIAL_BADGE_TAG = "people_screen_official_badge"
 const val PEOPLE_SCREEN_ANSWER_SORT_HOT_TAG = "people_screen_answer_sort_voteups"
 const val PEOPLE_SCREEN_ANSWER_SORT_TIME_TAG = "people_screen_answer_sort_created"
 const val PEOPLE_SCREEN_ARTICLE_SORT_HOT_TAG = "people_screen_article_sort_voteups"
@@ -1734,7 +1735,9 @@ private fun UserInfoHeader(
                     if (profile.officialBadge != null) {
                         AuthorBadge(
                             badge = profile.officialBadge,
-                            modifier = Modifier.padding(start = 6.dp),
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .testTag(PEOPLE_SCREEN_OFFICIAL_BADGE_TAG),
                         )
                     }
                 }
