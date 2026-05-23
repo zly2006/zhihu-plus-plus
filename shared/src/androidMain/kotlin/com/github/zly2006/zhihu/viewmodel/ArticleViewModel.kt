@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -31,7 +30,6 @@ import android.util.Log
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,7 +77,6 @@ import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
 import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
@@ -1337,11 +1334,11 @@ class ArticleViewModel(
     // 导出到剪贴板
     fun exportToClipboard(context: Context) {
         val markdown = convertToMarkdown()
+        val runtime = articleRuntime(context)
 
         // 将Markdown文本复制到剪贴板
-        val clip = ClipData.newPlainText("Zhihu Article", markdown)
-        context.clipboardManager.setPrimaryClip(clip)
+        runtime.copyArticleMarkdownToClipboard(markdown)
 
-        Toast.makeText(context, "文章已复制到剪贴板", Toast.LENGTH_SHORT).show()
+        runtime.showMessage("文章已复制到剪贴板")
     }
 }

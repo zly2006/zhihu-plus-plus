@@ -59,6 +59,8 @@ interface ArticleViewModelRuntime {
 
     fun requestImageExportPermission()
 
+    fun copyArticleMarkdownToClipboard(markdown: String)
+
     fun showMessage(message: String)
 
     fun showLongMessage(message: String)

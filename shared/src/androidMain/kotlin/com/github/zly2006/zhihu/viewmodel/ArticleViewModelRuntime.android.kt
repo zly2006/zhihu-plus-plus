@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel
 
 import android.Manifest
 import android.app.Activity
+import android.content.ClipData
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -35,6 +36,7 @@ import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
@@ -137,6 +139,11 @@ class AndroidArticleViewModelRuntime(
             )
         }
         ActivityCompat.requestPermissions(context as Activity, permissions, 1001)
+    }
+
+    override fun copyArticleMarkdownToClipboard(markdown: String) {
+        val clip = ClipData.newPlainText("Zhihu Article", markdown)
+        context.clipboardManager.setPrimaryClip(clip)
     }
 
     override fun showMessage(message: String) {
