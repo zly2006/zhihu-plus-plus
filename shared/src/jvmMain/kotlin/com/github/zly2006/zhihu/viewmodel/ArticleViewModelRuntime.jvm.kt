@@ -4,6 +4,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -19,12 +20,14 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -196,7 +199,26 @@ class DesktopArticleViewModelRuntime(
     override suspend fun fetchExportComments(
         article: Article,
         requestedCount: Int,
-    ): List<DataHolder.Comment> = emptyList()
+    ): List<DataHolder.Comment> {
+        val safeRequestedCount = requestedCount.coerceAtLeast(0)
+        if (safeRequestedCount == 0) return emptyList()
+
+        val json = fetchGet(article.rootCommentUrl) {
+            parameter("order", "score")
+            parameter("limit", safeRequestedCount.coerceAtMost(20).toString())
+            parameter("include", "data[*].content,excerpt,headline")
+            configureSignedRequest(this)
+        } ?: return emptyList()
+
+        return json["data"]
+            ?.jsonArray
+            ?.mapNotNull { element ->
+                runCatching {
+                    ZhihuJson.decodeJson<DataHolder.Comment>(element)
+                }.getOrNull()
+            }?.take(safeRequestedCount)
+            .orEmpty()
+    }
 
     override fun accountHttpClient(): HttpClient =
         store.createHttpClient(store.load().cookies)
