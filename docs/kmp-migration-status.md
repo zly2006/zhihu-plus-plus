@@ -148,3 +148,4 @@
 - 2026-05-24：文章页主函数和更多操作菜单内的直接 `Toast.makeText` 已替换为 common `UserMessageSink`；Android Toast 只保留在平台 sink actual，文章 UI 主体继续减少 Android 直接副作用。
 - 2026-05-24：文章更多操作菜单的 TTS、系统分享、复制链接和浏览器打开副作用已拆入 `ArticleActionsRuntime` 平台 adapter；`ArticleActionsMenu` 保留原菜单 UI 结构和按钮顺序，但不再直接依赖 Android `Context`、`Intent`、`ClipData`、`OpenInBrowser` 或 `viewModelScope`。
 - 2026-05-24：文章页滚动恢复日志改用 common `shared.util.Log`，`ArticleScreen` 不再直接 import Android `Log`。
+- 2026-05-24：撤回文章正文日期/IP 属地 footer 的无语义微组件抽取；`ArticleContentArea` 继续在原 WebView/Markdown footer 位置内联日期和 `IP属地` 文本，避免 `ArticleIpInfoText` / `ArticleMetaTexts` 这类错误抽象方向。切片通过 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew :shared:compileKotlinJvm :desktopApp:compileKotlin :app:compileLiteDebugKotlin --continue`，通过 `JAVA_HOME=$(/usr/libexec/java_home -v 25) ./gradlew :shared:runKtlintFormatOverCommonMainSourceSet`，并通过错误抽象残留 grep 与 common Android/WebView 边界 grep。

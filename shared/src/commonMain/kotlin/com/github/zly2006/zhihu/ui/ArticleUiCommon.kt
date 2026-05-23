@@ -695,11 +695,21 @@ fun ArticleContentArea(
                 }
             }
             webViewContent()
-            ArticleContentFooter(
-                pinAnswerDate = pinAnswerDate,
-                ipInfo = ipInfo,
-                dateTexts = dateTexts,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.End,
+            ) {
+                if (!pinAnswerDate) {
+                    dateTexts()
+                }
+                if (ipInfo != null) {
+                    Text(
+                        "IP属地：$ipInfo",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height((16 + 36).dp))
         } else {
             markdownContent(
@@ -715,36 +725,23 @@ fun ArticleContentArea(
                 },
                 {
                     footerMediaContent()
-                    ArticleContentFooter(
-                        pinAnswerDate = pinAnswerDate,
-                        ipInfo = ipInfo,
-                        dateTexts = dateTexts,
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        if (!pinAnswerDate) {
+                            dateTexts()
+                        }
+                        if (ipInfo != null) {
+                            Text(
+                                "IP属地：$ipInfo",
+                                color = Color.Gray,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height((16 + 36).dp))
                 },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ArticleContentFooter(
-    pinAnswerDate: Boolean,
-    ipInfo: String?,
-    dateTexts: @Composable () -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.End,
-    ) {
-        if (!pinAnswerDate) {
-            dateTexts()
-        }
-        if (ipInfo != null) {
-            Text(
-                "IP属地：$ipInfo",
-                color = Color.Gray,
-                fontSize = 11.sp,
             )
         }
     }
