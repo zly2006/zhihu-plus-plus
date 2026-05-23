@@ -141,3 +141,4 @@
 - 2026-05-23：文章底部操作栏已迁入 common `ArticleActionBarContent`；master 的 Button/duo3 分支、投票/收藏/朗读停止/评论/更多布局保持原结构，Android 只保留投票 drawable slot、ViewModel 投票回调、TTS 停止和弹层状态副作用。
 - 2026-05-23：文章“下一个回答”悬浮按钮已迁入 common `ArticleSkipAnswerButton`；显示条件、自动隐藏 alpha 动画、加载态和 `DraggableRefreshButton` 位置偏好保持原逻辑，Android 只传入滚动/设置状态和 `navigateToNext` 副作用。
 - 2026-05-23：文章回答切换外壳和阅读进度条已迁入 common `ArticleAnswerSwitchContainer`；竖向/横向回答切换、预览 slot 和进度条布局复用同一套 UI，Android 只保留横向预览 WebView 预加载副作用与缓存预览 renderer slot。
+- 2026-05-23：文章正文区域布局已迁入 common `ArticleContentArea`；WebView/Markdown 双路径的日期位置、尾部媒体 slot、IP 属地和底部留白由 common 复用，Android 只提供 WebView/Markdown/video renderer slot 和 WebView 滚动恢复副作用。

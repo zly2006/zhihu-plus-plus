@@ -628,6 +628,86 @@ fun ArticleAnswerSwitchContainer(
 }
 
 @Composable
+fun ArticleContentArea(
+    hasContent: Boolean,
+    useWebView: Boolean,
+    pinAnswerDate: Boolean,
+    ipInfo: String?,
+    dateTexts: @Composable () -> Unit,
+    webViewContent: @Composable () -> Unit,
+    markdownContent: @Composable (
+        header: @Composable () -> Unit,
+        footer: @Composable () -> Unit,
+    ) -> Unit,
+    footerMediaContent: @Composable () -> Unit,
+) {
+    if (hasContent) {
+        if (useWebView) {
+            if (pinAnswerDate) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    dateTexts()
+                }
+            }
+            webViewContent()
+            ArticleContentFooter(
+                pinAnswerDate = pinAnswerDate,
+                ipInfo = ipInfo,
+                dateTexts = dateTexts,
+            )
+            Spacer(modifier = Modifier.height((16 + 36).dp))
+        } else {
+            markdownContent(
+                {
+                    if (pinAnswerDate) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalAlignment = Alignment.Start,
+                        ) {
+                            dateTexts()
+                        }
+                    }
+                },
+                {
+                    footerMediaContent()
+                    ArticleContentFooter(
+                        pinAnswerDate = pinAnswerDate,
+                        ipInfo = ipInfo,
+                        dateTexts = dateTexts,
+                    )
+                    Spacer(modifier = Modifier.height((16 + 36).dp))
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ArticleContentFooter(
+    pinAnswerDate: Boolean,
+    ipInfo: String?,
+    dateTexts: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.End,
+    ) {
+        if (!pinAnswerDate) {
+            dateTexts()
+        }
+        if (ipInfo != null) {
+            Text(
+                "IP属地：$ipInfo",
+                color = Color.Gray,
+                fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+@Composable
 fun ArticleMenuActionButton(
     icon: @Composable () -> Unit,
     text: String,

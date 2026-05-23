@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,7 +71,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -838,16 +836,13 @@ fun ArticleScreen(
                             .padding(innerPadding)
                             .padding(top = 8.dp),
                     ) {
-                        if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
-                            if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
-                                if (pinAnswerDate) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                        horizontalAlignment = Alignment.Start,
-                                    ) {
-                                        DateTexts()
-                                    }
-                                }
+                        ArticleContentArea(
+                            hasContent = viewModel.content.isNotEmpty() || viewModel.attachment != null,
+                            useWebView = preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false),
+                            pinAnswerDate = pinAnswerDate,
+                            ipInfo = viewModel.ipInfo,
+                            dateTexts = { DateTexts() },
+                            webViewContent = {
                                 WebviewComp(
                                     onDoubleTap = ::handleAnswerDoubleTap,
                                     scrollState = scrollState,
@@ -875,82 +870,43 @@ fun ArticleScreen(
                                         },
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalAlignment = Alignment.End,
-                                ) {
-                                    if (!pinAnswerDate) {
-                                        DateTexts()
-                                    }
-                                    if (viewModel.ipInfo != null) {
-                                        Text(
-                                            "IP属地：${viewModel.ipInfo}",
-                                            color = Color.Gray,
-                                            fontSize = 11.sp,
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height((16 + 36).dp))
-                            } else {
+                            },
+                            markdownContent = { header, footer ->
                                 RenderMarkdown(
                                     html = viewModel.content,
                                     modifier = answerDoubleTapModifier.fuckHonorService(),
                                     selectable = true,
                                     enableScroll = false,
-                                    header = {
-                                        if (pinAnswerDate) {
-                                            Column(
-                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                                horizontalAlignment = Alignment.Start,
-                                            ) {
-                                                DateTexts()
-                                            }
-                                        }
-                                    },
-                                    footer = {
-                                        if (viewModel.attachment
-                                                ?.jsonObject
-                                                ?.get("type")
-                                                ?.jsonPrimitive
-                                                ?.content == "video"
-                                        ) {
-                                            val videoId = viewModel.attachment!!
-                                                .jsonObject["attachmentId"]
-                                                ?.jsonPrimitive
-                                                ?.content
-                                                ?.toLongOrNull()
-                                            if (videoId != null) {
-                                                val thumbnail = viewModel.attachment!!
-                                                    .jsonObject["video"]!!
-                                                    .jsonObject["videoInfo"]!!
-                                                    .jsonObject["thumbnail"]!!
-                                                    .jsonPrimitive.content
-                                                RenderVideoBox(
-                                                    videoId = videoId,
-                                                    thumbnailUrl = thumbnail,
-                                                )
-                                            }
-                                        }
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalAlignment = Alignment.End,
-                                        ) {
-                                            if (!pinAnswerDate) {
-                                                DateTexts()
-                                            }
-                                            if (viewModel.ipInfo != null) {
-                                                Text(
-                                                    "IP属地：${viewModel.ipInfo}",
-                                                    color = Color.Gray,
-                                                    fontSize = 11.sp,
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height((16 + 36).dp))
-                                    },
+                                    header = header,
+                                    footer = footer,
                                 )
-                            }
-                        }
+                            },
+                            footerMediaContent = {
+                                if (viewModel.attachment
+                                        ?.jsonObject
+                                        ?.get("type")
+                                        ?.jsonPrimitive
+                                        ?.content == "video"
+                                ) {
+                                    val videoId = viewModel.attachment!!
+                                        .jsonObject["attachmentId"]
+                                        ?.jsonPrimitive
+                                        ?.content
+                                        ?.toLongOrNull()
+                                    if (videoId != null) {
+                                        val thumbnail = viewModel.attachment!!
+                                            .jsonObject["video"]!!
+                                            .jsonObject["videoInfo"]!!
+                                            .jsonObject["thumbnail"]!!
+                                            .jsonPrimitive.content
+                                        RenderVideoBox(
+                                            videoId = videoId,
+                                            thumbnailUrl = thumbnail,
+                                        )
+                                    }
+                                }
+                            },
+                        )
                     }
                     // Skip answer button
                     ArticleSkipAnswerButton(
