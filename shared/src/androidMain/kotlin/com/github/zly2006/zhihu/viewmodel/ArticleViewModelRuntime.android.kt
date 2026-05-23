@@ -42,6 +42,7 @@ import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -79,6 +80,13 @@ class AndroidArticleViewModelRuntime(
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository =
         AndroidAnswerNavigatorRepository(context)
+
+    override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? =
+        context.articleHost()?.articleAnswerSwitchState
+
+    override fun postHistoryDestination(destination: Article) {
+        context.articleHost()?.postHistoryDestination(destination)
+    }
 
     override suspend fun loadCollections(
         contentType: String,

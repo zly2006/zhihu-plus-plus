@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonObject
@@ -35,6 +36,10 @@ interface ArticleViewModelRuntime {
     )
 
     fun answerNavigatorRepository(): AnswerNavigatorRepository
+
+    fun articleAnswerSwitchState(): ArticleAnswerSwitchState?
+
+    fun postHistoryDestination(destination: Article)
 
     suspend fun loadCollections(
         contentType: String,

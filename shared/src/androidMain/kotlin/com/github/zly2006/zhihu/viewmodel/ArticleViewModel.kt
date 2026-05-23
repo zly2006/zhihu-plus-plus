@@ -52,7 +52,6 @@ import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
-import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
@@ -211,12 +210,17 @@ class ArticleViewModel(
     fun loadArticle(context: Context) {
         if (httpClient == null) return
         val runtime = articleRuntime(context)
+        loadArticle(runtime)
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun loadArticle(runtime: ArticleViewModelRuntime) {
+        if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
                     if (article.type == ArticleType.Answer) {
-                        val articleHost = context.articleHost()
-                        val sharedData = articleHost?.articleAnswerSwitchState
+                        val sharedData = runtime.articleAnswerSwitchState()
                         val answer = runtime.getContentDetail(article) as? DataHolder.Answer
                         if (answer != null) {
                             exportSourceContent = answer
@@ -248,7 +252,7 @@ class ArticleViewModel(
                             createdAt = answer.createdTime
                             ipInfo = answer.ipInfo
 
-                            articleHost?.postHistoryDestination(
+                            runtime.postHistoryDestination(
                                 Article(
                                     id = answer.id,
                                     type = ArticleType.Answer,
@@ -318,8 +322,7 @@ class ArticleViewModel(
                             createdAt = article.created
                             ipInfo = article.ipInfo
 
-                            val articleHost = context.articleHost()
-                            articleHost?.postHistoryDestination(
+                            runtime.postHistoryDestination(
                                 Article(
                                     id = article.id,
                                     type = ArticleType.Article,
