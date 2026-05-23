@@ -44,7 +44,6 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
@@ -125,7 +124,7 @@ class ArticleViewModel(
     val httpClient: HttpClient?,
     navBackStackEntry: NavBackStackEntry?,
 ) : ViewModel() {
-    val permissionRequested = MutableLiveData<Unit>()
+    var permissionRequestCount by mutableIntStateOf(0)
     var title by mutableStateOf("")
     var authorId by mutableStateOf("")
     var authorUrlToken by mutableStateOf("")
@@ -750,7 +749,7 @@ class ArticleViewModel(
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
-                permissionRequested.value = Unit
+                permissionRequestCount++
                 Toast.makeText(context, "需要存储权限才能导出 HTML，正在请求权限", Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
@@ -794,7 +793,7 @@ class ArticleViewModel(
         if (!hasStoragePermission(context)) {
             withContext(Dispatchers.Main) {
                 requestStoragePermission(context as Activity)
-                permissionRequested.value = Unit
+                permissionRequestCount++
                 Toast.makeText(context, "需要存储权限才能导出图片，正在请求权限", Toast.LENGTH_SHORT).show()
                 onComplete(false)
             }
