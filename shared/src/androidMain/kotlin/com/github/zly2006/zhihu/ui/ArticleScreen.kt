@@ -85,7 +85,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
@@ -215,6 +214,7 @@ fun ArticleScreen(
 
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
+    val readHistoryRecorder = rememberArticleReadHistoryRecorder()
 
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
@@ -255,11 +255,7 @@ fun ArticleScreen(
     }
 
     LaunchedEffect(Unit) {
-        AccountData.addReadHistory(
-            context,
-            article.id.toString(),
-            article.type.name.lowercase(),
-        )
+        readHistoryRecorder.addReadHistory(article)
     }
 
     fun upVoteFromDoubleTap() {
