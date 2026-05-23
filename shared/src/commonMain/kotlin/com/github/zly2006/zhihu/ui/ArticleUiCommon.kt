@@ -18,6 +18,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.GetApp
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -168,6 +176,112 @@ fun ArticleMenuActionButton(
         contentColor = contentColor,
         onClick = onClick,
     )
+}
+
+@Composable
+fun ArticleActionsMenuContent(
+    ttsState: TtsState,
+    onToggleSpeech: () -> Unit,
+    onShareRequest: () -> Unit,
+    onSummaryRequest: () -> Unit,
+    onCopyLinkRequest: () -> Unit,
+    onExportRequest: () -> Unit,
+    onOpenInBrowserRequest: () -> Unit,
+) {
+    ArticleMenuActionButton(
+        icon = {
+            when (ttsState) {
+                TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                )
+
+                else -> Icon(
+                    if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
+        enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
+        onClick = onToggleSpeech,
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ArticleMenuActionButton(
+        icon = Icons.Filled.Share,
+        text = "分享",
+        onClick = onShareRequest,
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ArticleMenuActionButton(
+        icon = Icons.AutoMirrored.Filled.Comment,
+        text = "总结本文",
+        onClick = onSummaryRequest,
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ArticleMenuActionButton(
+        icon = Icons.Filled.ContentCopy,
+        text = "复制链接",
+        onClick = onCopyLinkRequest,
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ArticleMenuActionButton(
+        icon = Icons.Filled.GetApp,
+        text = "导出文章 (Markdown、图片、HTML、PDF)",
+        onClick = onExportRequest,
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    ArticleMenuActionButton(
+        icon = Icons.Outlined.DesktopWindows,
+        text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
+        onClick = onOpenInBrowserRequest,
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ArticleActionsMenuSheet(
+    showMenu: Boolean,
+    ttsState: TtsState,
+    onDismissRequest: () -> Unit,
+    onToggleSpeech: () -> Unit,
+    onShareRequest: () -> Unit,
+    onSummaryRequest: () -> Unit,
+    onCopyLinkRequest: () -> Unit,
+    onExportRequest: () -> Unit,
+    onOpenInBrowserRequest: () -> Unit,
+) {
+    if (!showMenu) return
+    MyModalBottomSheet(onDismissRequest) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            ArticleActionsMenuContent(
+                ttsState = ttsState,
+                onToggleSpeech = onToggleSpeech,
+                onShareRequest = onShareRequest,
+                onSummaryRequest = onSummaryRequest,
+                onCopyLinkRequest = onCopyLinkRequest,
+                onExportRequest = onExportRequest,
+                onOpenInBrowserRequest = onOpenInBrowserRequest,
+            )
+        }
+    }
 }
 
 @Composable

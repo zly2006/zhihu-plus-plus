@@ -64,15 +64,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -171,146 +166,77 @@ fun ArticleActionsMenu(
     onExportRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val articleHost = context.articleHost()
+    val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
 
-    @Composable
-    fun Content() {
-        val articleHost = context.articleHost()
-        val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-        ArticleMenuActionButton(
-            icon = {
-                when (ttsState) {
-                    TtsState.Initializing, TtsState.Uninitialized -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                    )
+    ArticleActionsMenuSheet(
+        showMenu = showMenu,
+        ttsState = ttsState,
+        onDismissRequest = onDismissRequest,
+        onToggleSpeech = {
+            onDismissRequest()
+            if (ttsState.isSpeaking) {
+                articleHost?.stopArticleSpeaking()
+            } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
+                // 使用协程在后台处理文本提取，避免UI阻塞
+                viewModel.viewModelScope.launch {
+                    try {
+                        // 在IO线程中处理文本提取
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            val textToRead = articleSpeechText(viewModel.title, viewModel.content)
 
-                    else -> Icon(
-                        if (ttsState.isSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            text = if (ttsState.isSpeaking) "停止朗读" else "开始朗读",
-            enabled = ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing),
-            onClick = {
-                onDismissRequest()
-                if (ttsState.isSpeaking) {
-                    articleHost?.stopArticleSpeaking()
-                } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                    // 使用协程在后台处理文本提取，避免UI阻塞
-                    viewModel.viewModelScope.launch {
-                        try {
-                            // 在IO线程中处理文本提取
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                val textToRead = articleSpeechText(viewModel.title, viewModel.content)
-
-                                // 回到主线程执行TTS
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                    if (textToRead.isNotBlank()) {
-                                        articleHost?.speakArticleText(textToRead, viewModel.title)
-                                    }
+                            // 回到主线程执行TTS
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                if (textToRead.isNotBlank()) {
+                                    articleHost?.speakArticleText(textToRead, viewModel.title)
                                 }
                             }
-                        } catch (e: Exception) {
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                Toast
-                                    .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
-                                    .show()
-                            }
+                        }
+                    } catch (e: Exception) {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            Toast
+                                .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     }
                 }
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 分享按钮
-        ArticleMenuActionButton(
-            icon = Icons.Filled.Share,
-            text = "分享",
-            onClick = {
-                onDismissRequest()
-                val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, text)
-                }
-                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(chooserIntent)
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ArticleMenuActionButton(
-            icon = Icons.AutoMirrored.Filled.Comment,
-            text = "总结本文",
-            onClick = {
-                onDismissRequest()
-                onSummaryRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 复制链接按钮
-        ArticleMenuActionButton(
-            icon = Icons.Filled.ContentCopy,
-            text = "复制链接",
-            onClick = {
-                onDismissRequest()
-                val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
-                context.articleHost()?.clipboardDestination = article
-                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-                Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 导出按钮
-        ArticleMenuActionButton(
-            icon = Icons.Filled.GetApp,
-            text = "导出文章 (Markdown、图片、HTML、PDF)",
-            onClick = {
-                onDismissRequest()
-                onExportRequest()
-            },
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ArticleMenuActionButton(
-            icon = Icons.Outlined.DesktopWindows,
-            text = "在电脑中打开（我计划使用浏览器插件实现，还在写，点击后请手动前往收藏夹打开）",
-            onClick = {
-                coroutineScope.launch {
-                    OpenInBrowser.openUrlInBrowser(context, article)
-                    onDismissRequest()
-                    Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
-                }
-            },
-        )
-
-        // 底部安全区域
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-
-    if (showMenu) {
-        MyModalBottomSheet(onDismissRequest) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            ) {
-                Content()
             }
-        }
-    }
+        },
+        onShareRequest = {
+            onDismissRequest()
+            val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+            chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(chooserIntent)
+        },
+        onSummaryRequest = {
+            onDismissRequest()
+            onSummaryRequest()
+        },
+        onCopyLinkRequest = {
+            onDismissRequest()
+            val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
+            context.articleHost()?.clipboardDestination = article
+            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
+            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+        },
+        onExportRequest = {
+            onDismissRequest()
+            onExportRequest()
+        },
+        onOpenInBrowserRequest = {
+            coroutineScope.launch {
+                OpenInBrowser.openUrlInBrowser(context, article)
+                onDismissRequest()
+                Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
+            }
+        },
+    )
 }
 
 /**
