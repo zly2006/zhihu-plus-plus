@@ -21,7 +21,6 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -94,6 +93,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.R
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -124,6 +124,7 @@ fun ArticleActionsMenu(
     onExportRequest: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
     val articleHost = context.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
 
@@ -152,9 +153,7 @@ fun ArticleActionsMenu(
                         }
                     } catch (e: Exception) {
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            Toast
-                                .makeText(context, "朗读失败：${e.message}", Toast.LENGTH_SHORT)
-                                .show()
+                            userMessages.showMessage("朗读失败：${e.message}")
                         }
                     }
                 }
@@ -181,7 +180,7 @@ fun ArticleActionsMenu(
             val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
             context.articleHost()?.clipboardDestination = article
             context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+            userMessages.showMessage("已复制链接")
         },
         onExportRequest = {
             onDismissRequest()
@@ -191,7 +190,7 @@ fun ArticleActionsMenu(
             coroutineScope.launch {
                 OpenInBrowser.openUrlInBrowser(context, article)
                 onDismissRequest()
-                Toast.makeText(context, "已发送到浏览器", Toast.LENGTH_SHORT).show()
+                userMessages.showMessage("已发送到浏览器")
             }
         },
     )
@@ -215,6 +214,7 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     val articleSettings = rememberArticleScreenSettingsState()
     val readHistoryRecorder = rememberArticleReadHistoryRecorder()
+    val userMessages = rememberUserMessageSink()
 
     var previousScrollValue by remember { mutableIntStateOf(0) }
     var isScrollingUp by remember { mutableStateOf(false) }
@@ -692,7 +692,7 @@ fun ArticleScreen(
                         onCollectionRequest = { showCollectionDialog = true },
                         onStopSpeakingRequest = {
                             articleHost?.stopArticleSpeaking()
-                            Toast.makeText(context, "已停止朗读", Toast.LENGTH_SHORT).show()
+                            userMessages.showMessage("已停止朗读")
                         },
                         onCommentsRequest = { showComments = true },
                         onActionsMenuRequest = { showActionsMenu = true },
@@ -752,7 +752,7 @@ fun ArticleScreen(
                                     it.loadZhihu(
                                         "https://www.zhihu.com/${article.type}/${article.id}",
                                         prepareContentDocument(viewModel.content) {
-                                            Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                                            userMessages.showMessage("图片加载失败，请向开发者反馈")
                                         },
                                         viewModel.title,
                                     )
@@ -832,7 +832,7 @@ fun ArticleScreen(
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
                     prepareContentDocument(cached.content) {
-                        Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                        userMessages.showMessage("图片加载失败，请向开发者反馈")
                     },
                     viewModel.title,
                 )
@@ -848,7 +848,7 @@ fun ArticleScreen(
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
                     prepareContentDocument(cached.content) {
-                        Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
+                        userMessages.showMessage("图片加载失败，请向开发者反馈")
                     },
                     viewModel.title,
                 )
@@ -934,7 +934,7 @@ fun ArticleScreen(
                 AnswerDoubleTapAction.OpenComments -> showComments = true
                 else -> Unit
             }
-            Toast.makeText(context, "已将双击回答动作设为：${action.label}", Toast.LENGTH_SHORT).show()
+            userMessages.showMessage("已将双击回答动作设为：${action.label}")
         },
     )
     // 导出对话框

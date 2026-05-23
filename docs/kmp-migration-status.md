@@ -145,3 +145,4 @@
 - 2026-05-23：文章页偏好状态已拆成 common `ArticleScreenSettingsState` 和平台 `rememberArticleScreenSettingsState()`；Android `SharedPreferences` 监听与 JVM `SettingsStore` 读取留在平台 actual，`ArticleScreen` 主体不再直接注册偏好 listener 或保存双击动作偏好，为后续保持 master 大函数结构迁入 common 做准备。
 - 2026-05-24：文章正文 noscript 图片修正逻辑已迁入 common `prepareContentDocument`，HTML 解析改用 common Ksoup；Android `ArticleScreen` 不再直接依赖 Jsoup `Document` 或 SDK 版本分支，只向 WebView slot 传入 common 处理后的 HTML 和图片失败 Toast 回调。
 - 2026-05-24：文章阅读历史写入已拆成 common `ArticleReadHistoryRecorder` 和平台 `rememberArticleReadHistoryRecorder()`；Android actual 继续复用 `AccountData.addReadHistory`，JVM 先提供空实现，`ArticleScreen` 主体不再直接依赖 `AccountData`。
+- 2026-05-24：文章页主函数和更多操作菜单内的直接 `Toast.makeText` 已替换为 common `UserMessageSink`；Android Toast 只保留在平台 sink actual，文章 UI 主体继续减少 Android 直接副作用。
