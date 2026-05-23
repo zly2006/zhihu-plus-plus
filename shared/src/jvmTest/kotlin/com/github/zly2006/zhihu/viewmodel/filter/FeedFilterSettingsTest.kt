@@ -45,10 +45,16 @@ class FeedFilterSettingsTest {
             putBoolean = { _, _ -> },
             getString = { key, default -> map[key] as? String ?: default },
             putString = { _, _ -> },
+            getStringOrNull = { key -> map[key] as? String },
+            putStringSet = { _, _ -> },
+            getStringSet = { key, default ->
+                (map[key] as? Iterable<*>)?.filterIsInstance<String>()?.toSet() ?: default
+            },
             getInt = { key, default -> map[key] as? Int ?: default },
             putInt = { _, _ -> },
             getFloat = { key, default -> map[key] as? Float ?: default },
             putFloat = { _, _ -> },
+            remove = { _ -> },
         )
     }
 }
