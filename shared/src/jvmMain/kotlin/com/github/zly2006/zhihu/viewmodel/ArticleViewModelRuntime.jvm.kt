@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.viewmodel
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -18,13 +19,41 @@ import io.ktor.client.request.get
 import io.ktor.client.request.post
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
 ) : ArticleViewModelRuntime {
-    override suspend fun getContentDetail(article: Article): DataHolder.Content? = null
+    override suspend fun getContentDetail(article: Article): DataHolder.Content? {
+        val apiUrl = when (article.type) {
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+        }
+
+        return runCatching {
+            val jo = fetchGet(apiUrl) {
+                configureSignedRequest(this)
+            } ?: return null
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, JsonPrimitive(value.jsonPrimitive.long))
+                    } else {
+                        put(key, value)
+                    }
+                }
+            }
+            when (article.type) {
+                ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(jojo)
+                ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(jojo)
+            }
+        }.getOrNull()
+    }
 
     override suspend fun recordOpenEvent(
         destination: Article,
