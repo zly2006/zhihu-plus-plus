@@ -56,6 +56,7 @@ import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
 import com.github.zly2006.zhihu.shared.util.applySegmentInfosToHtml
@@ -598,7 +599,7 @@ class ArticleViewModel(
     }
 
     private fun parseSummaryErrorMessage(responseBody: String): String? = runCatching {
-        val json = AccountData.json.parseToJsonElement(responseBody).jsonObject
+        val json = ZhihuJson.json.parseToJsonElement(responseBody).jsonObject
         json["error"]
             ?.jsonObject
             ?.get("message")
