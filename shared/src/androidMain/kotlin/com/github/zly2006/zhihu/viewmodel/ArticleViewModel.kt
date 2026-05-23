@@ -593,8 +593,10 @@ class ArticleViewModel(
 
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
+        val runtime = articleRuntime(context)
         exportToImageInternal(
             context = context,
+            runtime = runtime,
             includeComments = false,
             commentCount = 0,
             includeAppAttribution = includeAppAttribution,
@@ -610,8 +612,10 @@ class ArticleViewModel(
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
+        val runtime = articleRuntime(context)
         exportToImageInternal(
             context = context,
+            runtime = runtime,
             includeComments = true,
             commentCount = commentCount,
             includeAppAttribution = includeAppAttribution,
@@ -626,6 +630,15 @@ class ArticleViewModel(
         onComplete: (Boolean) -> Unit,
     ) {
         val runtime = articleRuntime(context)
+        exportToHtml(context, runtime, includeAppAttribution, onComplete)
+    }
+
+    private suspend fun exportToHtml(
+        context: Context,
+        runtime: ArticleViewModelRuntime,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
                 runtime.showMessage(error.message ?: "内容未加载完成")
@@ -645,7 +658,7 @@ class ArticleViewModel(
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
+            val htmlContent = createOfflineHtmlContent(context, runtime, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.IO) {
                 saveHtmlToDownloads(runtime, htmlContent)
             }
@@ -664,13 +677,13 @@ class ArticleViewModel(
 
     private suspend fun exportToImageInternal(
         context: Context,
+        runtime: ArticleViewModelRuntime,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
         successMessage: String,
         onComplete: (Boolean) -> Unit,
     ) {
-        val runtime = articleRuntime(context)
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
                 runtime.showMessage(error.message ?: "内容未加载完成")
@@ -697,6 +710,7 @@ class ArticleViewModel(
                 renderer = renderer,
                 htmlContent = createHtmlContent(
                     context = context,
+                    runtime = runtime,
                     includeComments = includeComments,
                     commentCount = commentCount,
                     includeAppAttribution = includeAppAttribution,
@@ -758,13 +772,14 @@ class ArticleViewModel(
     // 创建HTML内容
     private suspend fun createHtmlContent(
         context: Context,
+        runtime: ArticleViewModelRuntime,
         includeComments: Boolean,
         commentCount: Int,
         includeAppAttribution: Boolean,
     ): String {
         val commentsHtml = if (includeComments && commentCount > 0) {
             buildArticleExportCommentsHtml(
-                comments = fetchExportComments(context, commentCount),
+                comments = fetchExportComments(runtime, commentCount),
                 requestedCount = commentCount,
             )
         } else {
@@ -783,24 +798,25 @@ class ArticleViewModel(
 
     private suspend fun createOfflineHtmlContent(
         context: Context,
+        runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
     ): String = withContext(Dispatchers.IO) {
         buildOfflineArticleExportHtml(
             context = context,
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
-            httpClient = httpClient ?: articleRuntime(context).accountHttpClient(),
+            httpClient = httpClient ?: runtime.accountHttpClient(),
         )
     }
 
     private suspend fun fetchExportComments(
-        context: Context,
+        runtime: ArticleViewModelRuntime,
         requestedCount: Int,
     ): List<ArticleExportComment> {
         val safeRequestedCount = requestedCount.coerceAtLeast(0)
         if (safeRequestedCount == 0) return emptyList()
 
-        return articleRuntime(context)
+        return runtime
             .fetchExportComments(article, safeRequestedCount)
             .map(::mapExportComment)
     }
@@ -987,7 +1003,10 @@ class ArticleViewModel(
     fun exportToClipboard(context: Context) {
         val markdown = convertToMarkdown()
         val runtime = articleRuntime(context)
+        exportToClipboard(runtime, markdown)
+    }
 
+    private fun exportToClipboard(runtime: ArticleViewModelRuntime, markdown: String) {
         // 将Markdown文本复制到剪贴板
         runtime.copyArticleMarkdownToClipboard(markdown)
 
