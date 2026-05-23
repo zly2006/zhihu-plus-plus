@@ -39,7 +39,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1158,23 +1157,6 @@ fun ArticleScreen(
                             .padding(innerPadding)
                             .padding(top = 8.dp),
                     ) {
-                        @Suppress("UnusedReceiverParameter") // 确保竖式布局
-                        @Composable
-                        fun ColumnScope.DateTexts() {
-                            Text(
-                                "发布于 " + formatArticleDateTime(viewModel.createdAt),
-                                color = Color.Gray,
-                                fontSize = 11.sp,
-                            )
-                            if (viewModel.createdAt != viewModel.updatedAt) {
-                                Text(
-                                    "编辑于 " + formatArticleDateTime(viewModel.updatedAt),
-                                    color = Color.Gray,
-                                    fontSize = 11.sp,
-                                )
-                            }
-                        }
-
                         if (viewModel.content.isNotEmpty() || viewModel.attachment != null) {
                             if (preferences.getBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)) {
                                 if (pinAnswerDate) {
@@ -1182,7 +1164,7 @@ fun ArticleScreen(
                                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                         horizontalAlignment = Alignment.Start,
                                     ) {
-                                        DateTexts()
+                                        ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                     }
                                 }
                                 WebviewComp(
@@ -1217,7 +1199,7 @@ fun ArticleScreen(
                                     horizontalAlignment = Alignment.End,
                                 ) {
                                     if (!pinAnswerDate) {
-                                        DateTexts()
+                                        ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                     }
                                     if (viewModel.ipInfo != null) {
                                         Text(
@@ -1240,7 +1222,7 @@ fun ArticleScreen(
                                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                                                 horizontalAlignment = Alignment.Start,
                                             ) {
-                                                DateTexts()
+                                                ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                             }
                                         }
                                     },
@@ -1273,7 +1255,7 @@ fun ArticleScreen(
                                             horizontalAlignment = Alignment.End,
                                         ) {
                                             if (!pinAnswerDate) {
-                                                DateTexts()
+                                                ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                             }
                                             if (viewModel.ipInfo != null) {
                                                 Text(
