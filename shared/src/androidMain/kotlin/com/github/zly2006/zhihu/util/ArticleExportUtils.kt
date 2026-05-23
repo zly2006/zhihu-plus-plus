@@ -32,13 +32,9 @@ import kotlinx.coroutines.sync.withPermit
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import org.jsoup.nodes.Entities
 import java.io.ByteArrayInputStream
 import java.net.URLConnection
-import java.text.SimpleDateFormat
 import java.util.Base64
-import java.util.Date
-import java.util.Locale
 
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
@@ -61,13 +57,6 @@ data class ArticleExportData(
     val commentCount: Int,
     val content: String,
     val footerData: ArticleExportFooterData = ArticleExportFooterData(),
-)
-
-data class ArticleExportComment(
-    val authorName: String,
-    val contentHtml: String,
-    val createdTimeText: String,
-    val imageSrc: String = "",
 )
 
 fun prepareContentDocumentForExport(content: String): Document = Jsoup.parse(content).apply {
@@ -283,7 +272,7 @@ private fun String.replacePlaceholders(placeholders: Map<String, String>): Strin
     html.replace(entry.key, entry.value)
 }
 
-private fun escapeHtml(text: String): String = Entities.escape(text)
+private fun escapeHtml(text: String): String = escapeArticleExportHtml(text)
 
 private data class ArticleExportFooterPlaceholders(
     val exportedDate: String,
@@ -312,126 +301,6 @@ private fun buildArticleExportFooterPlaceholders(footerData: ArticleExportFooter
         appAttributionClass = if (footerData.includeAppAttribution) "export-credit" else "export-credit is-hidden",
         githubUrl = footerData.githubUrl,
     )
-}
-
-private fun formatArticleExportDate(epochMillis: Long): String = SimpleDateFormat(
-    "yyyy-MM-dd HH:mm",
-    Locale.getDefault(),
-).format(Date(epochMillis))
-
-fun prepareArticleExportComment(
-    authorName: String,
-    content: String,
-    createdTimeText: String,
-): ArticleExportComment {
-    val document = Jsoup.parseBodyFragment(content)
-    val imageSrc = document
-        .selectFirst("a.comment_img, a.comment_gif, a.comment_sticker")
-        ?.attr("href")
-        ?.takeIf { it.isNotBlank() }
-        ?.let(::normalizeArticleExportUrl)
-        .orEmpty()
-
-    document.select("noscript").remove()
-    document.select("a.comment_img, a.comment_gif, a.comment_sticker").remove()
-    document.select("a[href^=//]").forEach { anchor ->
-        anchor.attr("href", normalizeArticleExportUrl(anchor.attr("href")))
-    }
-    document.select("img").forEach { image ->
-        extractImageUrl(image)?.let { src ->
-            image.attr("src", normalizeArticleExportUrl(src))
-        }
-        image.removeClass("lazy")
-        image.removeAttr("srcset")
-        image.removeAttr("sizes")
-        image.attr("loading", "eager")
-    }
-    document.body().select("p, div").forEach { element ->
-        if (element.text().isBlank() && element.select("img").isEmpty()) {
-            element.remove()
-        }
-    }
-
-    return ArticleExportComment(
-        authorName = authorName,
-        contentHtml = document.body().html().trim(),
-        createdTimeText = createdTimeText,
-        imageSrc = imageSrc,
-    )
-}
-
-fun buildArticleExportCommentsHtml(
-    comments: List<ArticleExportComment>,
-    requestedCount: Int? = null,
-): String {
-    if (comments.isEmpty()) return ""
-    val titleSuffix = requestedCount
-        ?.takeIf { it > 0 }
-        ?.let { " (前 ${minOf(it, comments.size)} 条)" }
-        .orEmpty()
-
-    return buildString {
-        append("<div class='comments-title'>热门评论$titleSuffix</div>")
-        comments.forEach { comment ->
-            append(
-                """
-                <div class="comment">
-                    <div class="comment-author">${escapeHtml(comment.authorName)}</div>
-                    <div class="comment-content">${comment.contentHtml}</div>
-                    ${buildArticleExportCommentImageHtml(comment.imageSrc)}
-                    <div class="comment-time">${escapeHtml(comment.createdTimeText)}</div>
-                </div>
-                """.trimIndent(),
-            )
-        }
-    }
-}
-
-private fun buildArticleExportCommentImageHtml(imageSrc: String): String = imageSrc
-    .takeIf { it.isNotBlank() }
-    ?.let {
-        """
-        <img
-            class="comment-image"
-            src="${escapeHtml(it)}"
-            alt="评论图片"
-        />
-        """.trimIndent()
-    }.orEmpty()
-
-fun normalizeArticleExportUrl(url: String): String = when {
-    url.startsWith("//") -> "https:$url"
-    else -> url
-}
-
-fun buildArticleExportFileName(
-    content: DataHolder.Content,
-    extension: String,
-): String {
-    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-    val (title, authorName, typeLabel, typeKey, articleId) = when (content) {
-        is DataHolder.Answer -> ExportFileMeta(
-            title = content.question.title,
-            authorName = content.author.name,
-            typeLabel = "回答",
-            typeKey = "answer",
-            articleId = content.id,
-        )
-        is DataHolder.Article -> ExportFileMeta(
-            title = content.title,
-            authorName = content.author.name,
-            typeLabel = "文章",
-            typeKey = "article",
-            articleId = content.id,
-        )
-        else -> throw IllegalArgumentException("Unsupported export content type: ${content::class.simpleName}")
-    }
-    val safeTitle = sanitizeArticleExportFileNamePart(title).ifBlank { "无标题" }
-    val safeAuthorName = sanitizeArticleExportFileNamePart(authorName)
-        .ifBlank { "匿名作者" }
-    val normalizedExtension = extension.trimStart('.')
-
-    return "zhihu++_${safeTitle}_${safeAuthorName}的${typeLabel}_${typeKey}_${articleId}_$timestamp.$normalizedExtension"
 }
 
 suspend fun fetchArticleExportImageDataUrl(
@@ -464,13 +333,6 @@ private fun resolveArticleExportImageUrl(image: Element): String? = extractImage
         .takeIf { it.isNotBlank() && !it.startsWith("data:") }
         ?.let(::normalizeArticleExportUrl)
 
-fun sanitizeArticleExportFileNamePart(text: String): String = text
-    .trim()
-    .replace(Regex("\\s+"), "_")
-    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-    .replace(Regex("_+"), "_")
-    .trim('_')
-
 private fun resolveArticleExportImageMimeType(
     contentTypeHeader: String?,
     imageUrl: String,
@@ -489,11 +351,3 @@ private fun resolveArticleExportImageMimeType(
 
     return "image/jpeg"
 }
-
-private data class ExportFileMeta(
-    val title: String,
-    val authorName: String,
-    val typeLabel: String,
-    val typeKey: String,
-    val articleId: Long,
-)
