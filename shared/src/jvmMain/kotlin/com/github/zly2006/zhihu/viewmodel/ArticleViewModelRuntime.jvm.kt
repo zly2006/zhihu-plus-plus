@@ -244,7 +244,18 @@ class DesktopArticleViewModelRuntime(
     override fun saveHtmlToDownloads(
         displayName: String,
         htmlContent: String,
-    ): String = displayName
+    ): String {
+        val downloadsDir = File(
+            System.getProperty("user.home"),
+            "Downloads/Zhihu++",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
+        }
+        val file = File(downloadsDir, displayName)
+        file.writeText(htmlContent)
+        return file.absolutePath
+    }
 
     override fun saveImageToMediaStore(
         displayName: String,
