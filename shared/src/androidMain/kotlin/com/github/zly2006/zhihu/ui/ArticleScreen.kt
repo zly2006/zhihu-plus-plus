@@ -896,16 +896,16 @@ fun ArticleScreen(
         showDialog = showExportDialog,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
-            viewModel.exportToHtml(context, articleRuntime, includeAppAttribution, onComplete)
+            viewModel.exportToHtml(articleRuntime, includeAppAttribution, onComplete)
         },
         onExportImage = { includeAppAttribution, onComplete ->
-            viewModel.exportToImage(context, articleRuntime, includeAppAttribution, onComplete)
+            viewModel.exportToImage(articleRuntime, includeAppAttribution, onComplete)
         },
         onExportMarkdown = {
             viewModel.exportToClipboard(articleRuntime)
         },
         onExportImageWithComments = { commentCount, includeAppAttribution, onComplete ->
-            viewModel.exportToImageWithComments(context, articleRuntime, commentCount, includeAppAttribution, onComplete)
+            viewModel.exportToImageWithComments(articleRuntime, commentCount, includeAppAttribution, onComplete)
         },
     )
 }

@@ -571,17 +571,15 @@ class ArticleViewModel(
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
         val runtime = articleRuntime(context)
-        exportToImage(context, runtime, includeAppAttribution, onComplete)
+        exportToImage(runtime, includeAppAttribution, onComplete)
     }
 
     suspend fun exportToImage(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
         exportToImageInternal(
-            context = context,
             runtime = runtime,
             includeComments = false,
             commentCount = 0,
@@ -599,18 +597,16 @@ class ArticleViewModel(
         onComplete: (Boolean) -> Unit,
     ) {
         val runtime = articleRuntime(context)
-        exportToImageWithComments(context, runtime, commentCount, includeAppAttribution, onComplete)
+        exportToImageWithComments(runtime, commentCount, includeAppAttribution, onComplete)
     }
 
     suspend fun exportToImageWithComments(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         commentCount: Int,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
         exportToImageInternal(
-            context = context,
             runtime = runtime,
             includeComments = true,
             commentCount = commentCount,
@@ -626,11 +622,10 @@ class ArticleViewModel(
         onComplete: (Boolean) -> Unit,
     ) {
         val runtime = articleRuntime(context)
-        exportToHtml(context, runtime, includeAppAttribution, onComplete)
+        exportToHtml(runtime, includeAppAttribution, onComplete)
     }
 
     suspend fun exportToHtml(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
@@ -672,7 +667,6 @@ class ArticleViewModel(
     }
 
     private suspend fun exportToImageInternal(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         includeComments: Boolean,
         commentCount: Int,
