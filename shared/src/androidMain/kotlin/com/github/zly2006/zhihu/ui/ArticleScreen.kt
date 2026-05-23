@@ -98,6 +98,7 @@ import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.smoothGradient
+import com.github.zly2006.zhihu.viewmodel.AndroidArticleViewModelRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -160,6 +161,7 @@ fun ArticleScreen(
 ) {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val articleRuntime = remember(context) { AndroidArticleViewModelRuntime(context) }
     val articleHost = context.articleHost()
     val backStackEntry by articleHost?.articleNavController?.currentBackStackEntryAsState()
         ?: remember { mutableStateOf(null) }
@@ -213,7 +215,7 @@ fun ArticleScreen(
 
     fun upVoteFromDoubleTap() {
         if (viewModel.voteUpState != VoteUpState.Up) {
-            viewModel.toggleVoteUp(context, VoteUpState.Up)
+            viewModel.toggleVoteUp(articleRuntime, VoteUpState.Up)
         }
     }
 
@@ -349,8 +351,8 @@ fun ArticleScreen(
     }
 
     LaunchedEffect(article.id) {
-        viewModel.loadArticle(context)
-        viewModel.loadCollections(context)
+        viewModel.loadArticle(articleRuntime)
+        viewModel.loadCollections(articleRuntime)
     }
 
     // Master-style bar visibility (direction-based, used when true is false)
@@ -448,8 +450,8 @@ fun ArticleScreen(
                 sharedData.pendingInitialContent = null
             }
         }
-        viewModel.loadArticle(context)
-        viewModel.loadCollections(context)
+        viewModel.loadArticle(articleRuntime)
+        viewModel.loadCollections(articleRuntime)
     }
 
     val navigateToPrevious: () -> Unit = {
@@ -641,7 +643,7 @@ fun ArticleScreen(
                                 modifier = modifier,
                             )
                         },
-                        onVoteUpStateChange = { viewModel.toggleVoteUp(context, it) },
+                        onVoteUpStateChange = { viewModel.toggleVoteUp(articleRuntime, it) },
                         onCollectionRequest = { showCollectionDialog = true },
                         onStopSpeakingRequest = {
                             articleHost?.stopArticleSpeaking()
@@ -833,7 +835,7 @@ fun ArticleScreen(
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
             showSummaryDialog = true
-            viewModel.requestAiSummary(context)
+            viewModel.requestAiSummary(articleRuntime)
         },
         onExportRequest = { showExportDialog = true },
     )
@@ -848,7 +850,7 @@ fun ArticleScreen(
             viewModel.cancelAiSummary()
         },
         onRetryRequest = {
-            viewModel.requestAiSummary(context)
+            viewModel.requestAiSummary(articleRuntime)
         },
     )
 
@@ -861,12 +863,12 @@ fun ArticleScreen(
         showDialog = showCollectionDialog,
         onDismiss = { showCollectionDialog = false },
         collections = viewModel.collections,
-        onLoadCollections = { viewModel.loadCollections(context) },
+        onLoadCollections = { viewModel.loadCollections(articleRuntime) },
         onToggleFavorite = { collection ->
-            viewModel.toggleFavorite(collection.id, collection.isFavorited, context)
+            viewModel.toggleFavorite(collection.id, collection.isFavorited, articleRuntime)
         },
         onCreateCollection = { title, description, isPublic ->
-            viewModel.createNewCollection(context, title, description, isPublic)
+            viewModel.createNewCollection(articleRuntime, title, description, isPublic)
         },
     )
 
@@ -894,16 +896,16 @@ fun ArticleScreen(
         showDialog = showExportDialog,
         onDismiss = { showExportDialog = false },
         onExportHtml = { includeAppAttribution, onComplete ->
-            viewModel.exportToHtml(context, includeAppAttribution, onComplete)
+            viewModel.exportToHtml(context, articleRuntime, includeAppAttribution, onComplete)
         },
         onExportImage = { includeAppAttribution, onComplete ->
-            viewModel.exportToImage(context, includeAppAttribution, onComplete)
+            viewModel.exportToImage(context, articleRuntime, includeAppAttribution, onComplete)
         },
         onExportMarkdown = {
-            viewModel.exportToClipboard(context)
+            viewModel.exportToClipboard(articleRuntime)
         },
         onExportImageWithComments = { commentCount, includeAppAttribution, onComplete ->
-            viewModel.exportToImageWithComments(context, commentCount, includeAppAttribution, onComplete)
+            viewModel.exportToImageWithComments(context, articleRuntime, commentCount, includeAppAttribution, onComplete)
         },
     )
 }

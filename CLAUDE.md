@@ -171,6 +171,7 @@ python3 .agents/skills/ui-review-memory/memory_store.py update-status \
 - 迁移后的代码必须和 `master` 分支里 `git mv` 之前的原函数保持强一致：主体结构和关键函数名称必须 100% 相似，关键函数相似度必须达到 80% 以上（只变化空格的行不计入差异）。开始迁移、抽取或提交前必须对照 `master` 原文件检查；不满足该要求的迁移切片全部返工重做，不能继续在错误抽象上叠加修改。
 - KMP 迁移不是重写、不是重新设计 UI，也不是借机抽象。默认保持 `master` 原函数的大函数结构、局部变量组织、调用顺序和关键分支；只允许为 source set、平台 adapter、KMP 依赖替换、编译通过而做必要最小改动。若为了“看起来更 common”而把原函数拆散、改名、改调用层级、改导航入口或引入一次性中间层，必须立即回滚并按 `master` 结构返工。
 - 不得为了“迁入 common”或“减少重复”抽取无语义价值的微型 UI 组件。几个 `Text`、单个标签、单个字段展示、一次性 wrapper 等应优先保留在原函数原位置内联；只有能保留原函数主体、表达真实业务/页面结构、减少有意义平台边界或复用既有 shared 语义时，才允许抽组件。`ArticleIpInfoText` / `ArticleMetaTexts` 这类只包装少量文本的抽象是错误示例，必须撤回或返工。没有用户明确要求、没有 master 既有结构支撑、也没有真实跨平台边界收益时，不得擅自抽这种组件。
+- 本次微组件抽取事故的直接原因是主 agent 自行判断失误，不是 `AGENTS.md` 或 skill 要求。后续遇到只有几个 `Text`、字段展示、路由跳转、页面局部布局的迁移，不得先抽组件或传导航 lambda；必须先对照 `master` 的原函数位置、`LocalNavigator` 用法、调用顺序和局部结构，按原样迁移，只有平台副作用边界才允许拆最小 adapter。
 - iOS 目标可以保留在工程结构中，但本次不执行任何 iOS 相关构建、测试、调试或发布任务。
 - Android 必须使用 AVD 验证，不使用真机；lite 包名仍为 `com.github.zly2006.zhplus.lite`。
 - JVM/desktop 端不能依赖或引入任何 WebView 相关实现。需要扫码登录时，先用 `terminal-notifier -message "需要扫码登录 JVM 端" -sound default` 提醒用户；登录成功后必须备份 cookie，避免重复要求登录。

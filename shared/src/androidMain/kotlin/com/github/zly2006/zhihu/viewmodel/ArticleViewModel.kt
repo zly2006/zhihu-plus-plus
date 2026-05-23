@@ -191,7 +191,7 @@ class ArticleViewModel(
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    private fun loadArticle(runtime: ArticleViewModelRuntime) {
+    fun loadArticle(runtime: ArticleViewModelRuntime) {
         if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -329,7 +329,7 @@ class ArticleViewModel(
         toggleFavorite(collectionId, remove, runtime)
     }
 
-    private fun toggleFavorite(collectionId: String, remove: Boolean, runtime: ArticleViewModelRuntime) {
+    fun toggleFavorite(collectionId: String, remove: Boolean, runtime: ArticleViewModelRuntime) {
         if (httpClient == null) return
         viewModelScope.launch {
             try {
@@ -368,7 +368,7 @@ class ArticleViewModel(
         requestAiSummary(runtime)
     }
 
-    private fun requestAiSummary(runtime: ArticleViewModelRuntime) {
+    fun requestAiSummary(runtime: ArticleViewModelRuntime) {
         if (httpClient == null) {
             aiSummaryError = "未初始化网络客户端"
             return
@@ -497,7 +497,7 @@ class ArticleViewModel(
         loadCollections(runtime)
     }
 
-    private fun loadCollections(runtime: ArticleViewModelRuntime) {
+    fun loadCollections(runtime: ArticleViewModelRuntime) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -536,7 +536,7 @@ class ArticleViewModel(
         createNewCollection(runtime, title, description, isPublic)
     }
 
-    private fun createNewCollection(
+    fun createNewCollection(
         runtime: ArticleViewModelRuntime,
         title: String,
         description: String = "",
@@ -554,7 +554,7 @@ class ArticleViewModel(
         toggleVoteUp(runtime, newState)
     }
 
-    private fun toggleVoteUp(runtime: ArticleViewModelRuntime, newState: VoteUpState) {
+    fun toggleVoteUp(runtime: ArticleViewModelRuntime, newState: VoteUpState) {
         viewModelScope.launch {
             try {
                 val response = runtime.voteArticle(article, newState)
@@ -571,6 +571,15 @@ class ArticleViewModel(
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
         val runtime = articleRuntime(context)
+        exportToImage(context, runtime, includeAppAttribution, onComplete)
+    }
+
+    suspend fun exportToImage(
+        context: Context,
+        runtime: ArticleViewModelRuntime,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
         exportToImageInternal(
             context = context,
             runtime = runtime,
@@ -590,6 +599,16 @@ class ArticleViewModel(
         onComplete: (Boolean) -> Unit,
     ) {
         val runtime = articleRuntime(context)
+        exportToImageWithComments(context, runtime, commentCount, includeAppAttribution, onComplete)
+    }
+
+    suspend fun exportToImageWithComments(
+        context: Context,
+        runtime: ArticleViewModelRuntime,
+        commentCount: Int,
+        includeAppAttribution: Boolean,
+        onComplete: (Boolean) -> Unit,
+    ) {
         exportToImageInternal(
             context = context,
             runtime = runtime,
@@ -610,7 +629,7 @@ class ArticleViewModel(
         exportToHtml(context, runtime, includeAppAttribution, onComplete)
     }
 
-    private suspend fun exportToHtml(
+    suspend fun exportToHtml(
         context: Context,
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
@@ -976,7 +995,7 @@ class ArticleViewModel(
         exportToClipboard(runtime, markdown)
     }
 
-    private fun exportToClipboard(runtime: ArticleViewModelRuntime, markdown: String) {
+    fun exportToClipboard(runtime: ArticleViewModelRuntime, markdown: String = convertToMarkdown()) {
         // 将Markdown文本复制到剪贴板
         runtime.copyArticleMarkdownToClipboard(markdown)
 
