@@ -5,7 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.awt.Desktop
@@ -19,10 +20,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
     val accountState = remember {
         mutableStateOf(store.load().toAccountSettingsAccountState())
     }
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
     return AccountSettingsRuntime(
         accountState = accountState,
-        settings = noopSettingsStore(),
-        userMessages = UserMessageSink({}),
+        settings = settings,
+        userMessages = userMessages,
         refreshProfile = {
             accountState.value = store.load().toAccountSettingsAccountState()
         },

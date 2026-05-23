@@ -13,7 +13,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
-import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,10 +41,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
             accountDataState.value.toAccountSettingsAccountState()
         }
     }
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
     return AccountSettingsRuntime(
         accountState = accountState,
-        settings = noopSettingsStore(),
-        userMessages = UserMessageSink({}),
+        settings = settings,
+        userMessages = userMessages,
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
