@@ -3,16 +3,24 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import java.awt.Desktop
 import java.net.URI
 
@@ -35,7 +43,9 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime = remember {
         },
         toggleLike = { _, _, _ -> },
         handleShareAction = { _, onShowDialog -> onShowDialog() },
-        fetchLinkCardPreview = { null },
+        fetchLinkCardPreview = { linkCard ->
+            fetchDesktopLinkCardPreview(store, linkCard)
+        },
         openExternalUrl = ::openDesktopExternalUrl,
     )
 }
@@ -79,6 +89,75 @@ private suspend fun fetchDesktopPinDetail(
             ZhihuJson.decodeJson<DataHolder.Pin>(json)
         }
     }.getOrNull()
+}
+
+private suspend fun fetchDesktopQuestionDetail(
+    store: DesktopAccountStore,
+    question: Question,
+): DataHolder.Question? {
+    val account = store.load()
+    val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
+        "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+
+    return runCatching {
+        store.createHttpClient(account.cookies).use { client ->
+            val jo = client
+                .get(apiUrl) {
+                    account.cookies["d_c0"]?.let { dc0 ->
+                        signZhihuFetchRequest(dc0 = dc0)
+                    }
+                }.body<JsonObject>()
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, JsonPrimitive(value.jsonPrimitive.long))
+                    } else {
+                        put(key, value)
+                    }
+                }
+            }
+            ZhihuJson.decodeJson<DataHolder.Question>(jojo)
+        }
+    }.getOrNull()
+}
+
+private suspend fun fetchDesktopLinkCardPreview(
+    store: DesktopAccountStore,
+    linkCard: DataHolder.Pin.ContentLinkCard,
+): PinLinkCardPreview? {
+    val destination = resolveLinkCardDestination(linkCard) ?: return null
+    return when (destination) {
+        is Article -> {
+            when (val detail = DesktopArticleViewModelRuntime(store).getContentDetail(destination)) {
+                is DataHolder.Article -> PinLinkCardPreview(
+                    title = compactTitle(detail.title),
+                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
+                )
+                is DataHolder.Answer -> PinLinkCardPreview(
+                    title = compactTitle(detail.question.title),
+                    preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
+                )
+                else -> null
+            }
+        }
+        is Question -> {
+            fetchDesktopQuestionDetail(store, destination)?.let { detail ->
+                PinLinkCardPreview(
+                    title = compactTitle(detail.title),
+                    preview = compactPreview(detail.detail),
+                )
+            }
+        }
+        is Pin -> {
+            fetchDesktopPinDetail(store, destination)?.let { detail ->
+                PinLinkCardPreview(
+                    title = "${detail.author.name} 的想法",
+                    preview = compactPreview(detail.contentHtml),
+                )
+            }
+        }
+        else -> null
+    }
 }
 
 private fun kotlinx.serialization.json.JsonObject?.booleanCompat(vararg keys: String): Boolean {
