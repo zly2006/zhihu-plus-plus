@@ -17,9 +17,6 @@
 
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
-import android.content.Context
-import android.content.Intent
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -80,7 +77,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.toRoute
@@ -100,8 +96,6 @@ import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
-import com.github.zly2006.zhihu.util.OpenInBrowser
-import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -117,59 +111,24 @@ import kotlin.math.max
 fun ArticleActionsMenu(
     article: Article,
     viewModel: ArticleViewModel,
-    context: Context,
     showMenu: Boolean,
     onDismissRequest: () -> Unit,
     onSummaryRequest: () -> Unit,
     onExportRequest: () -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    val articleHost = context.articleHost()
-    val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
+    val articleActionsRuntime = rememberArticleActionsRuntime()
 
     ArticleActionsMenuSheet(
         showMenu = showMenu,
-        ttsState = ttsState,
+        ttsState = articleActionsRuntime.ttsState,
         onDismissRequest = onDismissRequest,
         onToggleSpeech = {
             onDismissRequest()
-            if (ttsState.isSpeaking) {
-                articleHost?.stopArticleSpeaking()
-            } else if (ttsState !in listOf(TtsState.Error, TtsState.Uninitialized, TtsState.Initializing)) {
-                // 使用协程在后台处理文本提取，避免UI阻塞
-                viewModel.viewModelScope.launch {
-                    try {
-                        // 在IO线程中处理文本提取
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            val textToRead = articleSpeechText(viewModel.title, viewModel.content)
-
-                            // 回到主线程执行TTS
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                if (textToRead.isNotBlank()) {
-                                    articleHost?.speakArticleText(textToRead, viewModel.title)
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            userMessages.showMessage("朗读失败：${e.message}")
-                        }
-                    }
-                }
-            }
+            articleActionsRuntime.toggleSpeech(viewModel.title, viewModel.content)
         },
         onShareRequest = {
             onDismissRequest()
-            val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, text)
-            }
-            val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-            chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(chooserIntent)
+            articleActionsRuntime.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
         },
         onSummaryRequest = {
             onDismissRequest()
@@ -177,21 +136,15 @@ fun ArticleActionsMenu(
         },
         onCopyLinkRequest = {
             onDismissRequest()
-            val text = articleActionText(article, viewModel.questionId, viewModel.title, viewModel.authorName)
-            context.articleHost()?.clipboardDestination = article
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-            userMessages.showMessage("已复制链接")
+            articleActionsRuntime.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
         },
         onExportRequest = {
             onDismissRequest()
             onExportRequest()
         },
         onOpenInBrowserRequest = {
-            coroutineScope.launch {
-                OpenInBrowser.openUrlInBrowser(context, article)
-                onDismissRequest()
-                userMessages.showMessage("已发送到浏览器")
-            }
+            onDismissRequest()
+            articleActionsRuntime.openArticleInBrowser(article)
         },
     )
 }
@@ -876,7 +829,6 @@ fun ArticleScreen(
     ArticleActionsMenu(
         article = article,
         viewModel = viewModel,
-        context = context,
         showMenu = showActionsMenu,
         onDismissRequest = { showActionsMenu = false },
         onSummaryRequest = {
