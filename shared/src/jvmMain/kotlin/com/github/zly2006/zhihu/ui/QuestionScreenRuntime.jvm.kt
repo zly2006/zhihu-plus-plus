@@ -8,6 +8,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.call.body
@@ -23,12 +24,14 @@ import java.net.URI
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime = remember {
     val store = DesktopAccountStore()
+    val historyStorage = DesktopHistoryStorage()
     QuestionScreenRuntime(
         loadQuestion = { question ->
             addDesktopReadHistory(store, question.questionId.toString(), "question")
             val questionData = fetchDesktopQuestionDetail(store, question)
             if (questionData != null) {
                 val historyDestination = Question(question.questionId, questionData.title)
+                historyStorage.add(historyDestination)
                 LoadedQuestionScreenData(
                     uiState = QuestionScreenUiState(
                         questionContent = questionData.detail,

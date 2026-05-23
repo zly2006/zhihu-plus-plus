@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -28,6 +29,7 @@ import java.net.URI
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime = remember {
     val store = DesktopAccountStore()
+    val historyStorage = DesktopHistoryStorage()
     PinScreenRuntime(
         loadPinDetail = { pin ->
             addDesktopReadHistory(store, pin.id.toString(), "pin")
@@ -35,6 +37,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime = remember {
             if (content == null) {
                 PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
             } else {
+                historyStorage.add(pin)
                 PinScreenUiState(
                     isLoading = false,
                     pinContent = content,

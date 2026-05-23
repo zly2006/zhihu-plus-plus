@@ -2,10 +2,12 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
@@ -29,6 +31,7 @@ class DesktopPaginationEnvironment(
     private val store: DesktopAccountStore = DesktopAccountStore(),
 ) : PaginationEnvironment {
     private val settingsStore = desktopSettingsStore()
+    private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(
         File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
     )
@@ -72,6 +75,9 @@ class DesktopPaginationEnvironment(
         enableQualityFilter = false,
         reverseBlock = settingsStore.toFeedFilterSettings().reverseBlock,
     )
+
+    override fun localHistory(): List<NavDestination> =
+        historyStorage.history
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = settingsStore.toFeedFilterSettings()
@@ -123,6 +129,10 @@ class DesktopPaginationEnvironment(
             )
             else -> Unit
         }
+    }
+
+    override suspend fun clearAllHistory() {
+        historyStorage.clearAndSave()
     }
 }
 

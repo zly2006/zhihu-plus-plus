@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -41,6 +42,7 @@ class DesktopArticleViewModelRuntime(
     private val contentFilterDatabase = getContentFilterDatabase(
         File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
     )
+    private val historyStorage = DesktopHistoryStorage()
 
     override suspend fun getContentDetail(article: Article): DataHolder.Content? {
         val apiUrl = when (article.type) {
@@ -140,7 +142,9 @@ class DesktopArticleViewModelRuntime(
 
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
 
-    override fun postHistoryDestination(destination: Article) = Unit
+    override fun postHistoryDestination(destination: Article) {
+        historyStorage.add(destination)
+    }
 
     override suspend fun fetchGet(
         url: String,
