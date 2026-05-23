@@ -156,6 +156,16 @@ fun ArticleDateTexts(
 }
 
 @Composable
+fun ArticleIpInfoText(ipInfo: String?) {
+    if (ipInfo == null) return
+    Text(
+        "IP属地：$ipInfo",
+        color = Color.Gray,
+        fontSize = 11.sp,
+    )
+}
+
+@Composable
 fun ArticleMenuActionButton(
     icon: @Composable () -> Unit,
     text: String,

@@ -137,3 +137,4 @@
 - 2026-05-23：缓存回答预览的 Scaffold、作者信息、底栏和按钮布局已抽入 common `CachedAnswerPreviewContent`；Android wrapper 只传入投票图标资源和现有 `RenderMarkdown` 正文 slot。
 - 2026-05-23：双击回答动作选择弹层已抽入 common `AnswerDoubleTapActionDialog`；Android 端只负责偏好保存、立即点赞/打开评论和 Toast 提示。
 - 2026-05-23：文章发布日期/编辑日期文本已抽入 common `ArticleDateTexts`，Android `ArticleScreen` 只在原位置调用，不再内联日期 UI。
+- 2026-05-23：文章 `IP属地` 文本已抽入 common `ArticleIpInfoText`，Android `ArticleScreen` 不再内联该 UI 文案。

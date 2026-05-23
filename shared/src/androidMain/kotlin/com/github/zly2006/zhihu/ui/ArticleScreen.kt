@@ -103,7 +103,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1201,13 +1200,7 @@ fun ArticleScreen(
                                     if (!pinAnswerDate) {
                                         ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                     }
-                                    if (viewModel.ipInfo != null) {
-                                        Text(
-                                            "IP属地：${viewModel.ipInfo}",
-                                            color = Color.Gray,
-                                            fontSize = 11.sp,
-                                        )
-                                    }
+                                    ArticleIpInfoText(viewModel.ipInfo)
                                 }
                                 Spacer(modifier = Modifier.height((16 + 36).dp))
                             } else {
@@ -1257,13 +1250,7 @@ fun ArticleScreen(
                                             if (!pinAnswerDate) {
                                                 ArticleDateTexts(viewModel.createdAt, viewModel.updatedAt)
                                             }
-                                            if (viewModel.ipInfo != null) {
-                                                Text(
-                                                    "IP属地：${viewModel.ipInfo}",
-                                                    color = Color.Gray,
-                                                    fontSize = 11.sp,
-                                                )
-                                            }
+                                            ArticleIpInfoText(viewModel.ipInfo)
                                         }
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
