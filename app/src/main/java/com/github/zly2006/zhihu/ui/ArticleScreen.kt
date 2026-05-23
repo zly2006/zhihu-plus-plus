@@ -112,11 +112,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -655,6 +657,7 @@ fun ArticleScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var showDoubleTapActionDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val hapticFeedback = LocalHapticFeedback.current
 
     val useDuo3ArticleActions = remember { preferences.getBoolean("duo3_article_actions", false) }
     var buttonSkipAnswer by remember { mutableStateOf(preferences.getBoolean("buttonSkipAnswer", true)) }
@@ -687,6 +690,7 @@ fun ArticleScreen(
     }
 
     fun upVoteFromDoubleTap() {
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
         if (viewModel.voteUpState != VoteUpState.Up) {
             viewModel.toggleVoteUp(context, VoteUpState.Up)
         }
@@ -697,7 +701,10 @@ fun ArticleScreen(
             AnswerDoubleTapAction.None -> Unit
             AnswerDoubleTapAction.Ask -> showDoubleTapActionDialog = true
             AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
-            AnswerDoubleTapAction.OpenComments -> showComments = true
+            AnswerDoubleTapAction.OpenComments -> {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.Confirm)
+                showComments = true
+            }
         }
     }
 
