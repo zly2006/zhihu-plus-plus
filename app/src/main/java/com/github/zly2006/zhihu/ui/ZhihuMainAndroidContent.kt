@@ -27,6 +27,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -85,7 +87,13 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
     },
     article = { article, navEntry ->
         val viewModel: ArticleViewModel = viewModel(navEntry) {
-            ArticleViewModel(article, activity.httpClient, navEntry)
+            ArticleViewModel(article, activity.httpClient) { onPause ->
+                navEntry.lifecycle.addObserver(object : DefaultLifecycleObserver {
+                    override fun onPause(owner: LifecycleOwner) {
+                        onPause()
+                    }
+                })
+            }
         }
         ArticleScreen(article, viewModel)
     },

@@ -94,7 +94,6 @@ class ArticleScreenInstrumentedTest {
         val viewModel = ArticleViewModel(
             article = ARTICLE,
             httpClient = null,
-            navBackStackEntry = null,
         )
         composeRule.activity.runOnUiThread {
             viewModel.title = "离线 Article 标题"

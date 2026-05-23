@@ -24,10 +24,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavBackStackEntry
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.TextNode
@@ -89,7 +87,7 @@ import kotlinx.serialization.json.jsonPrimitive
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
-    navBackStackEntry: NavBackStackEntry?,
+    registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
     var title by mutableStateOf("")
@@ -139,12 +137,10 @@ class ArticleViewModel(
     )
 
     init {
-        Log.i("zhihu-scroll", "me is $this, savedStateHandle is ${navBackStackEntry?.savedStateHandle}")
-        navBackStackEntry?.lifecycle?.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
-            override fun onPause(owner: LifecycleOwner) {
-                rememberedScrollYSync = false
-            }
-        })
+        Log.i("zhihu-scroll", "me is $this")
+        registerOnPause?.invoke {
+            rememberedScrollYSync = false
+        }
     }
 
     val isFavorited: Boolean
