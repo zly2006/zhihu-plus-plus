@@ -151,7 +151,7 @@ class ArticleViewModel(
     private var exportSourceContent: DataHolder.Content? = null
 
     // scroll fix
-    var rememberedScrollY = MutableLiveData(0)
+    var rememberedScrollY by mutableIntStateOf(0)
     var rememberedScrollYSync = true
 
     fun toCachedContent(sourceLabel: String = "此问题"): CachedAnswerContent = CachedAnswerContent(

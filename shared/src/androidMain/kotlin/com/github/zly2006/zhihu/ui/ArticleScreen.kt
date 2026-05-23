@@ -303,9 +303,9 @@ fun ArticleScreen(
         previousScrollForBarOffset = currentScroll
 
         if (viewModel.rememberedScrollYSync) {
-            viewModel.rememberedScrollY.value = currentScroll
+            viewModel.rememberedScrollY = currentScroll
         }
-        if (currentScroll == viewModel.rememberedScrollY.value && scrollState.maxValue != Int.MAX_VALUE) {
+        if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
             viewModel.rememberedScrollYSync = true
         }
     }
@@ -689,9 +689,9 @@ fun ArticleScreen(
                                 ) {
                                     it.isVerticalScrollBarEnabled = false
                                     it.setupUpWebviewClient {
-                                        if (!viewModel.rememberedScrollYSync && viewModel.rememberedScrollY.value != null) {
+                                        if (!viewModel.rememberedScrollYSync) {
                                             coroutineScope.launch {
-                                                val rememberedY = viewModel.rememberedScrollY.value ?: 0
+                                                val rememberedY = viewModel.rememberedScrollY
                                                 while (scrollState.maxValue < rememberedY) {
                                                     delay(100)
                                                 }
