@@ -55,5 +55,11 @@ interface ArticleViewModelRuntime {
 
     fun xsrfToken(): String
 
+    fun hasImageExportPermission(): Boolean
+
+    fun requestImageExportPermission()
+
     fun showMessage(message: String)
+
+    fun showLongMessage(message: String)
 }

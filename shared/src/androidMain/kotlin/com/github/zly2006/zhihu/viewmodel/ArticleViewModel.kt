@@ -17,11 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.app.Activity
 import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
@@ -41,8 +39,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -185,29 +181,6 @@ class ArticleViewModel(
 
     private fun articleRuntime(context: Context): ArticleViewModelRuntime =
         AndroidArticleViewModelRuntime(context)
-
-    // 检查存储权限
-    fun hasStoragePermission(context: Context): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        // Android 13+ 只需要媒体权限
-        ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-    } else {
-        // Android 12及以下需要读写外部存储权限
-        ContextCompat.checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-    }
-
-    // 请求存储权限
-    fun requestStoragePermission(activity: Activity) {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            arrayOf(
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE,
-            )
-        }
-        ActivityCompat.requestPermissions(activity, permissions, 1001) // 使用请求码1001
-    }
 
     // todo: replace this with sqlite
     class ArticlesSharedData :
@@ -738,19 +711,20 @@ class ArticleViewModel(
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
+        val runtime = articleRuntime(context)
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                runtime.showMessage(error.message ?: "内容未加载完成")
                 onComplete(false)
             }
             return
         }
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !hasStoragePermission(context)) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && !runtime.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
-                requestStoragePermission(context as Activity)
+                runtime.requestImageExportPermission()
                 permissionRequestCount++
-                Toast.makeText(context, "需要存储权限才能导出 HTML，正在请求权限", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
             }
             return
@@ -762,13 +736,13 @@ class ArticleViewModel(
                 saveHtmlToDownloads(context, htmlContent)
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "HTML 已保存到 $savedLocation", Toast.LENGTH_LONG).show()
+                runtime.showLongMessage("HTML 已保存到 $savedLocation")
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "HTML export failed", e)
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "HTML 导出失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("HTML 导出失败: ${e.message}")
                 onComplete(false)
             }
         }
@@ -782,19 +756,20 @@ class ArticleViewModel(
         successMessage: String,
         onComplete: (Boolean) -> Unit,
     ) {
+        val runtime = articleRuntime(context)
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, error.message ?: "内容未加载完成", Toast.LENGTH_SHORT).show()
+                runtime.showMessage(error.message ?: "内容未加载完成")
                 onComplete(false)
             }
             return
         }
 
-        if (!hasStoragePermission(context)) {
+        if (!runtime.hasImageExportPermission()) {
             withContext(Dispatchers.Main) {
-                requestStoragePermission(context as Activity)
+                runtime.requestImageExportPermission()
                 permissionRequestCount++
-                Toast.makeText(context, "需要存储权限才能导出图片，正在请求权限", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("需要存储权限才能导出图片，正在请求权限")
                 onComplete(false)
             }
             return
@@ -818,14 +793,14 @@ class ArticleViewModel(
                 saveImageToMediaStore(context, bitmap)
             }
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, successMessage, Toast.LENGTH_LONG).show()
+                runtime.showLongMessage(successMessage)
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "Image export failed", e)
             val errorPrefix = if (includeComments) "带评论图片导出失败" else "图片导出失败"
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "$errorPrefix: ${e.message}", Toast.LENGTH_SHORT).show()
+                runtime.showMessage("$errorPrefix: ${e.message}")
                 onComplete(false)
             }
         } finally {
