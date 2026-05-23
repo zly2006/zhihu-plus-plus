@@ -44,6 +44,9 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.articleHost
+import com.github.zly2006.zhihu.util.buildArticleExportData
+import com.github.zly2006.zhihu.util.buildArticleExportHtml
+import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
@@ -173,6 +176,30 @@ class AndroidArticleViewModelRuntime(
                 reader.readText()
             }
         }
+
+    override fun buildArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        extraSectionsHtml: String,
+    ): String = buildArticleExportHtml(
+        context = context,
+        exportData = buildArticleExportData(
+            content = content,
+            includeAppAttribution = includeAppAttribution,
+        ),
+        extraSectionsHtml = extraSectionsHtml,
+    )
+
+    override suspend fun buildOfflineArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        httpClient: HttpClient,
+    ): String = buildOfflineArticleExportHtml(
+        context = context,
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        httpClient = httpClient,
+    )
 
     override fun saveHtmlToDownloads(
         displayName: String,

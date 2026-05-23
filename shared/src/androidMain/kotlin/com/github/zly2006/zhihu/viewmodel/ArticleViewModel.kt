@@ -55,10 +55,7 @@ import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
 import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
-import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
-import com.github.zly2006.zhihu.util.buildArticleExportHtml
-import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.prepareArticleExportComment
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
@@ -658,7 +655,7 @@ class ArticleViewModel(
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(context, runtime, includeAppAttribution)
+            val htmlContent = createOfflineHtmlContent(runtime, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.IO) {
                 saveHtmlToDownloads(runtime, htmlContent)
             }
@@ -709,7 +706,6 @@ class ArticleViewModel(
             preparedWebView = prepareExportWebView(
                 renderer = renderer,
                 htmlContent = createHtmlContent(
-                    context = context,
                     runtime = runtime,
                     includeComments = includeComments,
                     commentCount = commentCount,
@@ -771,7 +767,6 @@ class ArticleViewModel(
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         includeComments: Boolean,
         commentCount: Int,
@@ -786,23 +781,18 @@ class ArticleViewModel(
             ""
         }
 
-        return buildArticleExportHtml(
-            context = context,
-            exportData = buildArticleExportData(
-                content = requireExportSourceContent(),
-                includeAppAttribution = includeAppAttribution,
-            ),
+        return runtime.buildArticleExportHtml(
+            content = requireExportSourceContent(),
+            includeAppAttribution = includeAppAttribution,
             extraSectionsHtml = commentsHtml,
         )
     }
 
     private suspend fun createOfflineHtmlContent(
-        context: Context,
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
     ): String = withContext(Dispatchers.IO) {
-        buildOfflineArticleExportHtml(
-            context = context,
+        runtime.buildOfflineArticleExportHtml(
             content = requireExportSourceContent(),
             includeAppAttribution = includeAppAttribution,
             httpClient = httpClient ?: runtime.accountHttpClient(),

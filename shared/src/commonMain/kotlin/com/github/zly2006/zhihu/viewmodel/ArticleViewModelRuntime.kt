@@ -68,6 +68,18 @@ interface ArticleViewModelRuntime {
 
     fun loadExportAssetText(fileName: String): String
 
+    fun buildArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        extraSectionsHtml: String,
+    ): String
+
+    suspend fun buildOfflineArticleExportHtml(
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        httpClient: HttpClient,
+    ): String
+
     fun saveHtmlToDownloads(
         displayName: String,
         htmlContent: String,
