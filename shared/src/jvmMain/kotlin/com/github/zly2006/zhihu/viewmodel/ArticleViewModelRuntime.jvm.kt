@@ -10,25 +10,35 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.io.File
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
 ) : ArticleViewModelRuntime {
+    private val contentFilterDatabase = getContentFilterDatabase(
+        File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
+    )
+
     override suspend fun getContentDetail(article: Article): DataHolder.Content? {
         val apiUrl = when (article.type) {
             ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
@@ -58,21 +68,71 @@ class DesktopArticleViewModelRuntime(
     override suspend fun recordOpenEvent(
         destination: Article,
         questionId: Long?,
-    ) = Unit
+    ) {
+        ContentOpenEventSupport.recordOpenEvent(
+            database = contentFilterDatabase,
+            destination = destination,
+            questionId = questionId,
+        )
+    }
 
     override fun answerNavigatorRepository(): AnswerNavigatorRepository =
         object : AnswerNavigatorRepository {
-            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? = null
+            override suspend fun fetchAnswerContent(article: Article): DataHolder.Answer? =
+                getContentDetail(article) as? DataHolder.Answer
 
             override suspend fun fetchQuestionFeeds(
                 questionId: Long,
                 pageUrl: String?,
-            ): AnswerNavigatorPage<Feed> = AnswerNavigatorPage(emptyList(), "")
+            ): AnswerNavigatorPage<Feed> {
+                val url = pageUrl ?: "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=6"
+                val jojo = fetchGet(url) {
+                    configureSignedRequest(this)
+                } ?: return AnswerNavigatorPage(emptyList(), "")
+                return AnswerNavigatorPage(
+                    items = ZhihuJson.json
+                        .decodeFromJsonElement(
+                            JsonArray.serializer(),
+                            jojo["data"] ?: return AnswerNavigatorPage(emptyList(), ""),
+                        ).mapNotNull { element ->
+                            runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
+                        },
+                    nextUrl = jojo["paging"]
+                        ?.jsonObject
+                        ?.get("next")
+                        ?.jsonPrimitive
+                        ?.content ?: "",
+                )
+            }
 
             override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
-                AnswerNavigatorPage(emptyList(), "")
+                fetchGet(pageUrl) {
+                    configureSignedRequest(this)
+                }?.let { jojo ->
+                    AnswerNavigatorPage(
+                        items = ZhihuJson.json
+                            .decodeFromJsonElement(
+                                JsonArray.serializer(),
+                                jojo["data"] ?: return AnswerNavigatorPage(emptyList(), ""),
+                            ).mapNotNull { element ->
+                                runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
+                            },
+                        nextUrl = jojo["paging"]
+                            ?.jsonObject
+                            ?.get("next")
+                            ?.jsonPrimitive
+                            ?.content ?: "",
+                    )
+                } ?: AnswerNavigatorPage(emptyList(), "")
 
-            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> = emptySet()
+            override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
+                ContentOpenEventSupport
+                    .getAlreadyOpenedContentIds(
+                        database = contentFilterDatabase,
+                        content = answerIds.map { ContentType.ANSWER to it.toString() },
+                    ).mapNotNullTo(mutableSetOf()) { key ->
+                        key.substringAfter(':', "").toLongOrNull()
+                    }
         }
 
     override fun articleAnswerSwitchState(): ArticleAnswerSwitchState? = null
