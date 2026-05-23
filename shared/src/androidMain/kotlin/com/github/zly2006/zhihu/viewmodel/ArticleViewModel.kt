@@ -18,13 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.os.Handler
-import android.os.Looper
-import android.view.View
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -86,17 +79,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 class ArticleViewModel(
     private val article: Article,
@@ -573,12 +561,6 @@ class ArticleViewModel(
         }
     }
 
-    private data class PreparedExportWebView(
-        val webView: WebView,
-        val viewportWidthPx: Int,
-        val contentHeightPx: Int,
-    )
-
     // 导出为图片 - 使用WebView渲染
     suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
         exportToImageInternal(
@@ -677,8 +659,8 @@ class ArticleViewModel(
             return
         }
 
-        var preparedWebView: PreparedExportWebView? = null
-        var bitmap: Bitmap? = null
+        var preparedWebView: AndroidPreparedExportWebView? = null
+        var bitmap: Any? = null
         try {
             preparedWebView = prepareExportWebView(
                 context = context,
@@ -706,8 +688,8 @@ class ArticleViewModel(
                 onComplete(false)
             }
         } finally {
-            bitmap?.recycle()
-            preparedWebView?.let { destroyExportWebView(it.webView) }
+            bitmap?.let { recycleExportBitmap(context, it) }
+            preparedWebView?.let { destroyExportWebView(it) }
         }
     }
 
@@ -715,154 +697,8 @@ class ArticleViewModel(
         context: Context,
         htmlContent: String,
         timeoutMs: Long,
-    ): PreparedExportWebView = withContext(Dispatchers.Main) {
-        suspendCancellableCoroutine { continuation ->
-            val webView = createExportWebView(context)
-            val mainHandler = Handler(Looper.getMainLooper())
-            val viewportWidthPx = resolveExportViewportWidthPx(context)
-            var isFinished = false
-            var timeoutRunnable = Runnable {}
-
-            fun fail(error: Throwable) {
-                if (isFinished) return
-                isFinished = true
-                mainHandler.removeCallbacks(timeoutRunnable)
-                runCatching { webView.stopLoading() }
-                runCatching { webView.destroy() }
-                if (continuation.isActive) {
-                    continuation.resumeWithException(error)
-                }
-            }
-
-            fun finish(contentHeightPx: Int) {
-                if (isFinished) return
-                isFinished = true
-                mainHandler.removeCallbacks(timeoutRunnable)
-                if (continuation.isActive) {
-                    continuation.resume(
-                        PreparedExportWebView(
-                            webView = webView,
-                            viewportWidthPx = viewportWidthPx,
-                            contentHeightPx = contentHeightPx,
-                        ),
-                    )
-                }
-            }
-
-            fun scheduleReadinessCheck(
-                attempt: Int = 0,
-                lastHeightPx: Int = -1,
-                stablePasses: Int = 0,
-            ) {
-                mainHandler.postDelayed({
-                    if (isFinished) return@postDelayed
-
-                    val contentHeightPx = computeExportContentHeightPx(webView)
-                    if (contentHeightPx <= 1 && attempt >= 24) {
-                        fail(IllegalStateException("内容为空"))
-                        return@postDelayed
-                    }
-
-                    measureAndLayoutExportWebView(
-                        webView = webView,
-                        widthPx = viewportWidthPx,
-                        heightPx = contentHeightPx.coerceAtLeast(1),
-                    )
-
-                    val nextStablePasses = if (contentHeightPx == lastHeightPx) stablePasses + 1 else 0
-                    if (contentHeightPx > 1 && (nextStablePasses >= 2 || attempt >= 24)) {
-                        finish(contentHeightPx)
-                    } else {
-                        scheduleReadinessCheck(
-                            attempt = attempt + 1,
-                            lastHeightPx = contentHeightPx,
-                            stablePasses = nextStablePasses,
-                        )
-                    }
-                }, if (attempt == 0) 450L else 180L)
-            }
-
-            timeoutRunnable = Runnable {
-                fail(IllegalStateException("超时"))
-            }
-
-            webView.webViewClient = object : android.webkit.WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    super.onPageFinished(view, url)
-                    if (!isFinished) {
-                        injectExportFootnoteScript(context, webView) {
-                            if (!isFinished) {
-                                scheduleReadinessCheck()
-                            }
-                        }
-                    }
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                    error: android.webkit.WebResourceError?,
-                ) {
-                    super.onReceivedError(view, request, error)
-                    if (request?.isForMainFrame != false) {
-                        fail(IllegalStateException("加载错误"))
-                    }
-                }
-            }
-
-            measureAndLayoutExportWebView(
-                webView = webView,
-                widthPx = viewportWidthPx,
-                heightPx = 1,
-            )
-            mainHandler.postDelayed(timeoutRunnable, timeoutMs)
-            webView.loadDataWithBaseURL(
-                "https://www.zhihu.com",
-                htmlContent,
-                "text/html",
-                "UTF-8",
-                null,
-            )
-
-            continuation.invokeOnCancellation {
-                if (!isFinished) {
-                    isFinished = true
-                    mainHandler.removeCallbacks(timeoutRunnable)
-                    runCatching { webView.stopLoading() }
-                    runCatching { webView.destroy() }
-                }
-            }
-        }
-    }
-
-    private fun createExportWebView(context: Context): WebView = WebView(context).apply {
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = false
-        settings.useWideViewPort = true
-        settings.loadWithOverviewMode = false
-        settings.builtInZoomControls = false
-        settings.displayZoomControls = false
-        setBackgroundColor(android.graphics.Color.WHITE)
-        isVerticalScrollBarEnabled = false
-        isHorizontalScrollBarEnabled = false
-    }
-
-    private fun injectExportFootnoteScript(context: Context, webView: WebView, onInjected: () -> Unit) {
-        val jsCode = loadExportAssetText(context, "footnotes.js")
-        if (jsCode.isBlank()) {
-            onInjected()
-            return
-        }
-
-        runCatching {
-            webView.evaluateJavascript(jsCode) {
-                onInjected()
-            }
-        }.onFailure { error ->
-            Log.e("ArticleViewModel", "Failed to inject export footnotes", error)
-            onInjected()
-        }
-    }
+    ): AndroidPreparedExportWebView = androidArticleExportRenderer(context)
+        .prepareExportWebView(htmlContent, timeoutMs)
 
     private fun loadExportAssetText(context: Context, fileName: String): String = try {
         articleRuntime(context).loadExportAssetText(fileName)
@@ -871,52 +707,20 @@ class ArticleViewModel(
         ""
     }
 
-    private fun measureAndLayoutExportWebView(webView: WebView, widthPx: Int, heightPx: Int) {
-        val safeHeight = heightPx.coerceAtLeast(1)
-        webView.measure(
-            View.MeasureSpec.makeMeasureSpec(widthPx.coerceAtLeast(1), View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(safeHeight, View.MeasureSpec.EXACTLY),
-        )
-        webView.layout(0, 0, widthPx.coerceAtLeast(1), safeHeight)
-    }
+    private suspend fun captureExportBitmap(preparedWebView: AndroidPreparedExportWebView): Any =
+        androidArticleExportRenderer(preparedWebView.webView.context)
+            .captureExportBitmap(preparedWebView)
 
-    private fun resolveExportViewportWidthPx(context: Context): Int = context.resources.displayMetrics.widthPixels
-        .coerceAtLeast(1)
+    private suspend fun destroyExportWebView(preparedWebView: AndroidPreparedExportWebView) =
+        androidArticleExportRenderer(preparedWebView.webView.context).destroyExportWebView(preparedWebView.webView)
 
-    private fun computeExportContentHeightPx(webView: WebView): Int {
-        val density = webView.resources.displayMetrics.density
-        val contentHeightPx = (webView.contentHeight * density).roundToInt()
-        return maxOf(contentHeightPx, webView.measuredHeight, webView.height, 1)
-    }
+    private fun recycleExportBitmap(context: Context, bitmap: Any) =
+        androidArticleExportRenderer(context).recycleExportBitmap(bitmap)
 
-    private suspend fun captureExportBitmap(preparedWebView: PreparedExportWebView): Bitmap = withContext(Dispatchers.Main) {
-        val rawWidth = preparedWebView.viewportWidthPx.coerceAtLeast(1)
-        val rawHeight = preparedWebView.contentHeightPx.coerceAtLeast(1)
-        val maxPixels = 24_000_000.0
-        val rawPixels = rawWidth.toDouble() * rawHeight.toDouble()
-        val scale = if (rawPixels > maxPixels) sqrt(maxPixels / rawPixels) else 1.0
-        val bitmapWidth = (rawWidth * scale).roundToInt().coerceAtLeast(1)
-        val bitmapHeight = (rawHeight * scale).roundToInt().coerceAtLeast(1)
-
-        Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888).also { bitmap ->
-            val canvas = Canvas(bitmap)
-            canvas.drawColor(android.graphics.Color.WHITE)
-            canvas.scale(
-                bitmapWidth.toFloat() / rawWidth.toFloat(),
-                bitmapHeight.toFloat() / rawHeight.toFloat(),
-            )
-            preparedWebView.webView.draw(canvas)
+    private fun androidArticleExportRenderer(context: Context): AndroidArticleExportRenderer =
+        AndroidArticleExportRenderer(context) { fileName ->
+            loadExportAssetText(context, fileName)
         }
-    }
-
-    private suspend fun destroyExportWebView(webView: WebView) {
-        withContext(Dispatchers.Main) {
-            runCatching {
-                webView.stopLoading()
-                webView.destroy()
-            }
-        }
-    }
 
     // 创建HTML内容
     private suspend fun createHtmlContent(
@@ -983,7 +787,7 @@ class ArticleViewModel(
         ?: throw IllegalStateException("内容未加载完成")
 
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(context: Context, bitmap: Bitmap) {
+    private fun saveImageToMediaStore(context: Context, bitmap: Any) {
         val displayName = buildExportFileName("png")
         articleRuntime(context).saveImageToMediaStore(displayName, bitmap)
     }
