@@ -23,6 +23,8 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -34,7 +36,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.awt.image.BufferedImage
 import java.io.File
+import javax.imageio.ImageIO
+import javax.swing.JEditorPane
+import javax.swing.SwingUtilities
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
@@ -194,7 +200,7 @@ class DesktopArticleViewModelRuntime(
 
     override fun xsrfToken(): String = store.load().cookies["_xsrf"] ?: ""
 
-    override fun hasImageExportPermission(): Boolean = false
+    override fun hasImageExportPermission(): Boolean = true
 
     override fun requiresHtmlExportPermission(): Boolean = false
 
@@ -260,27 +266,92 @@ class DesktopArticleViewModelRuntime(
     override fun saveImageToMediaStore(
         displayName: String,
         bitmap: Any,
-    ) = Unit
+    ) {
+        val downloadsDir = File(
+            System.getProperty("user.home"),
+            "Downloads/Zhihu++",
+        )
+        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
+            throw IllegalStateException("无法创建下载目录")
+        }
+        val file = File(downloadsDir, displayName)
+        ImageIO.write(bitmap as BufferedImage, "png", file)
+    }
 
     override fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer =
-        object : ArticleImageExportRenderer {
-            override suspend fun prepareExportWebView(
-                htmlContent: String,
-                timeoutMs: Long,
-            ): PreparedArticleExportContent =
-                error("Desktop image export renderer is not implemented")
-
-            override suspend fun captureExportBitmap(preparedWebView: PreparedArticleExportContent): Any =
-                error("Desktop image export renderer is not implemented")
-
-            override suspend fun destroyExportWebView(preparedWebView: PreparedArticleExportContent) = Unit
-
-            override fun recycleExportBitmap(bitmap: Any) = Unit
-        }
+        DesktopArticleExportRenderer()
 
     private fun contentHtml(content: DataHolder.Content): String = when (content) {
         is DataHolder.Answer -> content.content
         is DataHolder.Article -> content.content
         else -> ""
     }
+}
+
+private data class DesktopPreparedExportContent(
+    val htmlContent: String,
+) : PreparedArticleExportContent
+
+private class DesktopArticleExportRenderer : ArticleImageExportRenderer {
+    override suspend fun prepareExportWebView(
+        htmlContent: String,
+        timeoutMs: Long,
+    ): PreparedArticleExportContent = DesktopPreparedExportContent(htmlContent)
+
+    override suspend fun captureExportBitmap(preparedWebView: PreparedArticleExportContent): Any =
+        withContext(Dispatchers.IO) {
+            preparedWebView as DesktopPreparedExportContent
+            renderHtmlToImage(preparedWebView.htmlContent)
+        }
+
+    override suspend fun destroyExportWebView(preparedWebView: PreparedArticleExportContent) = Unit
+
+    override fun recycleExportBitmap(bitmap: Any) = Unit
+
+    private fun renderHtmlToImage(htmlContent: String): BufferedImage = runOnSwingThread {
+        val viewportWidthPx = 900
+        val editorPane = JEditorPane("text/html", htmlContent).apply {
+            isEditable = false
+            putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, true)
+            setSize(viewportWidthPx, Int.MAX_VALUE / 4)
+        }
+        val preferredSize = editorPane.preferredSize
+        val contentHeightPx = preferredSize.height.coerceAtLeast(1)
+        editorPane.setSize(viewportWidthPx, contentHeightPx)
+        editorPane.validate()
+
+        BufferedImage(
+            viewportWidthPx,
+            contentHeightPx,
+            BufferedImage.TYPE_INT_ARGB,
+        ).also { image ->
+            val graphics = image.createGraphics()
+            try {
+                graphics.color = java.awt.Color.WHITE
+                graphics.fillRect(0, 0, viewportWidthPx, contentHeightPx)
+                editorPane.paint(graphics)
+            } finally {
+                graphics.dispose()
+            }
+        }
+    }
+}
+
+private fun <T> runOnSwingThread(block: () -> T): T {
+    if (SwingUtilities.isEventDispatchThread()) {
+        return block()
+    }
+
+    var value: Any? = null
+    var error: Throwable? = null
+    SwingUtilities.invokeAndWait {
+        try {
+            value = block()
+        } catch (throwable: Throwable) {
+            error = throwable
+        }
+    }
+    error?.let { throw it }
+    @Suppress("UNCHECKED_CAST")
+    return value as T
 }
