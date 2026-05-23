@@ -36,8 +36,6 @@ import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.AndroidAnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -53,13 +51,9 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.put
 import java.io.File
 
 class AndroidArticleViewModelRuntime(
@@ -91,51 +85,18 @@ class AndroidArticleViewModelRuntime(
         context.articleHost()?.postHistoryDestination(destination)
     }
 
-    override suspend fun loadCollections(
-        contentType: String,
-        articleId: Long,
-    ): CollectionResponse {
-        val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/$articleId?limit=50"
-        val json = AccountData.fetchGet(context, collectionsUrl) {
-            signFetchRequest()
-        }!!
-        return AccountData.decodeJson(json)
-    }
+    override suspend fun fetchGet(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit,
+    ): JsonObject? = AccountData.fetchGet(context, url, block = block)
 
-    override suspend fun createNewCollection(
-        title: String,
-        description: String,
-        isPublic: Boolean,
-    ) {
-        AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
-            contentType(ContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("title", title)
-                    put("description", description)
-                    put("is_public", isPublic)
-                },
-            )
-            signFetchRequest()
-        }
-    }
+    override suspend fun fetchPost(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit,
+    ): JsonObject? = AccountData.fetchPost(context, url, block = block)
 
-    override suspend fun voteArticle(
-        article: Article,
-        newState: VoteUpState,
-    ): JsonObject {
-        val endpoint = when (article.type) {
-            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
-            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
-        }
-        return AccountData.fetchPost(context, endpoint) {
-            when (article.type) {
-                ArticleType.Answer -> setBody(mapOf("type" to newState.key))
-                ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
-            }
-            contentType(ContentType.Application.Json)
-        }!!
-    }
+    override fun decodeCollectionResponse(json: JsonElement): CollectionResponse =
+        AccountData.decodeJson(json)
 
     override suspend fun fetchExportComments(
         article: Article,
@@ -311,9 +272,13 @@ class AndroidArticleViewModelRuntime(
         ActivityCompat.requestPermissions(context as Activity, permissions, 1001)
     }
 
-    override fun copyArticleMarkdownToClipboard(markdown: String) {
-        val clip = ClipData.newPlainText("Zhihu Article", markdown)
-        context.clipboardManager.setPrimaryClip(clip)
+    override fun newPlainTextClip(
+        label: String,
+        text: String,
+    ): Any = ClipData.newPlainText(label, text)
+
+    override fun setPrimaryClip(clip: Any) {
+        context.clipboardManager.setPrimaryClip(clip as ClipData)
     }
 
     override fun showMessage(message: String) {

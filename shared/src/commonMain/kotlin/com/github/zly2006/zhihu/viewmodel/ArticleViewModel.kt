@@ -71,10 +71,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 
 class ArticleViewModel(
     private val article: Article,
@@ -427,7 +429,8 @@ class ArticleViewModel(
 
     private val collectionOrder = mutableListOf<String>()
 
-    fun loadCollections(runtime: ArticleViewModelRuntime) {
+    fun loadCollections(context: ArticleViewModelRuntime) {
+        if (httpClient == null) return
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 try {
@@ -435,7 +438,11 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsData = runtime.loadCollections(contentType, article.id)
+                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
+                    val jojo = context.fetchGet(collectionsUrl) {
+                        context.configureSignedRequest(this)
+                    }!!
+                    val collectionsData = context.decodeCollectionResponse(jojo)
                     collections.clear()
                     collections.addAll(
                         collectionsData.data
@@ -461,28 +468,49 @@ class ArticleViewModel(
     }
 
     fun createNewCollection(
-        runtime: ArticleViewModelRuntime,
+        context: ArticleViewModelRuntime,
         title: String,
         description: String = "",
         isPublic: Boolean = false,
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            runtime.createNewCollection(title, description, isPublic)
-            loadCollections(runtime)
+            context.fetchPost("https://www.zhihu.com/api/v4/collections") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("title", title)
+                        put("description", description)
+                        put("is_public", isPublic)
+                    },
+                )
+                context.configureSignedRequest(this)
+            }
+            loadCollections(context)
         }
     }
 
-    fun toggleVoteUp(runtime: ArticleViewModelRuntime, newState: VoteUpState) {
+    fun toggleVoteUp(context: ArticleViewModelRuntime, newState: VoteUpState) {
         viewModelScope.launch {
             try {
-                val response = runtime.voteArticle(article, newState)
+                val endpoint = when (article.type) {
+                    ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}/voters"
+                    ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}/voters"
+                }
+
+                val response = context.fetchPost(endpoint) {
+                    when (article.type) {
+                        ArticleType.Answer -> setBody(mapOf("type" to newState.key))
+                        ArticleType.Article -> setBody(mapOf("voting" to if (newState == VoteUpState.Up) 1 else 0))
+                    }
+                    contentType(ContentType.Application.Json)
+                }!!
 
                 voteUpState = newState
                 voteUpCount = response["voteup_count"]!!.jsonPrimitive.int
             } catch (e: Exception) {
                 Log.e("ArticleViewModel", "Vote up failed", e)
-                runtime.showMessage("点赞失败: ${e.message}")
+                context.showMessage("点赞失败: ${e.message}")
             }
         }
     }
@@ -521,44 +549,54 @@ class ArticleViewModel(
     }
 
     suspend fun exportToHtml(
-        runtime: ArticleViewModelRuntime,
+        context: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
         onComplete: (Boolean) -> Unit,
     ) {
         runCatching { requireExportSourceContent() }.onFailure { error ->
             withContext(Dispatchers.Main) {
-                runtime.showMessage(error.message ?: "内容未加载完成")
+                context.showMessage(error.message ?: "内容未加载完成")
                 onComplete(false)
             }
             return
         }
 
-        if (runtime.requiresHtmlExportPermission() && !runtime.hasImageExportPermission()) {
+        if (requiresHtmlExportPermission(context) && !hasStoragePermission(context)) {
             withContext(Dispatchers.Main) {
-                runtime.requestImageExportPermission()
+                requestStoragePermission(context)
                 permissionRequestCount++
-                runtime.showMessage("需要存储权限才能导出 HTML，正在请求权限")
+                context.showMessage("需要存储权限才能导出 HTML，正在请求权限")
                 onComplete(false)
             }
             return
         }
 
         try {
-            val htmlContent = createOfflineHtmlContent(runtime, includeAppAttribution)
+            val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.IO) {
-                saveHtmlToDownloads(runtime, htmlContent)
+                saveHtmlToDownloads(context, htmlContent)
             }
             withContext(Dispatchers.Main) {
-                runtime.showLongMessage("HTML 已保存到 $savedLocation")
+                context.showLongMessage("HTML 已保存到 $savedLocation")
                 onComplete(true)
             }
         } catch (e: Exception) {
             Log.e("ArticleViewModel", "HTML export failed", e)
             withContext(Dispatchers.Main) {
-                runtime.showMessage("HTML 导出失败: ${e.message}")
+                context.showMessage("HTML 导出失败: ${e.message}")
                 onComplete(false)
             }
         }
+    }
+
+    private fun requiresHtmlExportPermission(runtime: ArticleViewModelRuntime): Boolean =
+        runtime.requiresHtmlExportPermission()
+
+    private fun hasStoragePermission(runtime: ArticleViewModelRuntime): Boolean =
+        runtime.hasImageExportPermission()
+
+    private fun requestStoragePermission(runtime: ArticleViewModelRuntime) {
+        runtime.requestImageExportPermission()
     }
 
     private suspend fun exportToImageInternal(
@@ -878,10 +916,13 @@ class ArticleViewModel(
     }
 
     // 导出到剪贴板
-    fun exportToClipboard(runtime: ArticleViewModelRuntime, markdown: String = convertToMarkdown()) {
-        // 将Markdown文本复制到剪贴板
-        runtime.copyArticleMarkdownToClipboard(markdown)
+    fun exportToClipboard(context: ArticleViewModelRuntime) {
+        val markdown = convertToMarkdown()
 
-        runtime.showMessage("文章已复制到剪贴板")
+        // 将Markdown文本复制到剪贴板
+        val clip = context.newPlainTextClip("Zhihu Article", markdown)
+        context.setPrimaryClip(clip)
+
+        context.showMessage("文章已复制到剪贴板")
     }
 }

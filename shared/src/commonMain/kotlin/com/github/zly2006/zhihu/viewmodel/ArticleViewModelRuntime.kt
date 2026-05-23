@@ -19,12 +19,12 @@ package com.github.zly2006.zhihu.viewmodel
 
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 interface ArticleViewModelRuntime {
@@ -41,28 +41,43 @@ interface ArticleViewModelRuntime {
 
     fun postHistoryDestination(destination: Article)
 
-    suspend fun loadCollections(
-        contentType: String,
-        articleId: Long,
-    ): CollectionResponse
+    suspend fun fetchGet(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject?
 
-    suspend fun createNewCollection(
-        title: String,
-        description: String,
-        isPublic: Boolean,
-    )
+    suspend fun fetchPost(
+        url: String,
+        block: HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject?
 
-    suspend fun voteArticle(
-        article: Article,
-        newState: VoteUpState,
-    ): JsonObject
+    fun decodeCollectionResponse(json: JsonElement): CollectionResponse
+
+    fun configureSignedRequest(builder: HttpRequestBuilder)
+
+    fun showMessage(message: String)
+
+    fun showLongMessage(message: String)
+
+    fun newPlainTextClip(
+        label: String,
+        text: String,
+    ): Any
+
+    fun setPrimaryClip(clip: Any)
+
+    fun xsrfToken(): String
+
+    fun hasImageExportPermission(): Boolean
+
+    fun requiresHtmlExportPermission(): Boolean
+
+    fun requestImageExportPermission()
 
     suspend fun fetchExportComments(
         article: Article,
         requestedCount: Int,
     ): List<DataHolder.Comment>
-
-    fun configureSignedRequest(builder: HttpRequestBuilder)
 
     fun accountHttpClient(): HttpClient
 
@@ -91,18 +106,4 @@ interface ArticleViewModelRuntime {
     )
 
     fun articleImageExportRenderer(loadAssetText: (String) -> String): ArticleImageExportRenderer
-
-    fun xsrfToken(): String
-
-    fun hasImageExportPermission(): Boolean
-
-    fun requiresHtmlExportPermission(): Boolean
-
-    fun requestImageExportPermission()
-
-    fun copyArticleMarkdownToClipboard(markdown: String)
-
-    fun showMessage(message: String)
-
-    fun showLongMessage(message: String)
 }
