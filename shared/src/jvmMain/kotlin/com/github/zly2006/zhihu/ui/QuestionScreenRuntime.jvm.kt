@@ -6,6 +6,7 @@ import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -24,6 +25,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime = remember {
     val store = DesktopAccountStore()
     QuestionScreenRuntime(
         loadQuestion = { question ->
+            addDesktopReadHistory(store, question.questionId.toString(), "question")
             val questionData = fetchDesktopQuestionDetail(store, question)
             if (questionData != null) {
                 val historyDestination = Question(question.questionId, questionData.title)
@@ -111,5 +113,22 @@ private fun openDesktopExternalUrl(url: String) {
         if (Desktop.isDesktopSupported()) {
             Desktop.getDesktop().browse(URI(url))
         }
+    }
+}
+
+private suspend fun addDesktopReadHistory(
+    store: DesktopAccountStore,
+    contentToken: String,
+    contentType: String,
+) {
+    val account = store.load()
+    val dc0 = account.cookies["d_c0"] ?: return
+    store.createHttpClient(account.cookies).use { client ->
+        addZhihuReadHistory(
+            client = client,
+            contentToken = contentToken,
+            contentType = contentType,
+            dc0 = dc0,
+        )
     }
 }

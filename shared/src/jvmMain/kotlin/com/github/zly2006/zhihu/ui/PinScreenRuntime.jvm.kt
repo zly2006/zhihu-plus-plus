@@ -8,6 +8,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
@@ -29,6 +30,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime = remember {
     val store = DesktopAccountStore()
     PinScreenRuntime(
         loadPinDetail = { pin ->
+            addDesktopReadHistory(store, pin.id.toString(), "pin")
             val content = fetchDesktopPinDetail(store, pin)
             if (content == null) {
                 PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
@@ -172,5 +174,22 @@ private fun openDesktopExternalUrl(url: String) {
         if (Desktop.isDesktopSupported()) {
             Desktop.getDesktop().browse(URI(url))
         }
+    }
+}
+
+private suspend fun addDesktopReadHistory(
+    store: DesktopAccountStore,
+    contentToken: String,
+    contentType: String,
+) {
+    val account = store.load()
+    val dc0 = account.cookies["d_c0"] ?: return
+    store.createHttpClient(account.cookies).use { client ->
+        addZhihuReadHistory(
+            client = client,
+            contentToken = contentToken,
+            contentType = contentType,
+            dc0 = dc0,
+        )
     }
 }
