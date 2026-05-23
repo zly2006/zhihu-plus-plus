@@ -138,3 +138,4 @@
 - 2026-05-23：双击回答动作选择弹层已抽入 common `AnswerDoubleTapActionDialog`；Android 端只负责偏好保存、立即点赞/打开评论和 Toast 提示。
 - 2026-05-23：文章时间格式化已保留在 common `formatArticleDateTime`；发布日期/编辑日期继续使用 `master` 同名本地函数 `DateTexts` 的结构，`IP属地` 继续在 Android `ArticleScreen` 原位置展示，不再抽无意义 UI 组件。
 - 2026-05-23：文章顶部作者行已迁入 common `ArticleAuthorRow`；头像、作者名、徽章、简介和作者页跳转语义复用同一套 UI，跳转直接使用 shared `LocalNavigator`，Android `ArticleScreen` 只传入现有 `ArticleViewModel` 字段。
+- 2026-05-23：文章底部操作栏已迁入 common `ArticleActionBarContent`；master 的 Button/duo3 分支、投票/收藏/朗读停止/评论/更多布局保持原结构，Android 只保留投票 drawable slot、ViewModel 投票回调、TTS 停止和弹层状态副作用。
