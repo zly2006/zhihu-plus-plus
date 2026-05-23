@@ -68,6 +68,11 @@ interface ArticleViewModelRuntime {
         htmlContent: String,
     ): String
 
+    fun saveImageToMediaStore(
+        displayName: String,
+        bitmap: Any,
+    )
+
     fun xsrfToken(): String
 
     fun hasImageExportPermission(): Boolean

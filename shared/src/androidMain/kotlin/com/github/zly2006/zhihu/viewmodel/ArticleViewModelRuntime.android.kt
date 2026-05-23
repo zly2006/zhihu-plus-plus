@@ -23,6 +23,7 @@ import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -40,6 +41,7 @@ import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -220,6 +222,31 @@ class AndroidArticleViewModelRuntime(
         val file = File(downloadsDir, displayName)
         file.writeText(htmlContent)
         return file.absolutePath
+    }
+
+    override fun saveImageToMediaStore(
+        displayName: String,
+        bitmap: Any,
+    ) {
+        val contentResolver = context.contentResolver
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu++")
+        }
+
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+        uri?.let { imageUri ->
+            try {
+                contentResolver.openOutputStream(imageUri)?.use { outputStream ->
+                    (bitmap as Bitmap).compress(Bitmap.CompressFormat.PNG, 90, outputStream)
+                }
+            } catch (e: Exception) {
+                Log.e("ArticleViewModel", "Failed to save image to MediaStore", e)
+                throw e
+            }
+        } ?: throw Exception("Failed to create MediaStore entry")
     }
 
     override fun xsrfToken(): String = AccountData.data.cookies["_xsrf"] ?: ""

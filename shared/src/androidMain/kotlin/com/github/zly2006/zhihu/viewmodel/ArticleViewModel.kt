@@ -17,15 +17,12 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -1072,27 +1069,8 @@ class ArticleViewModel(
 
     // 使用MediaStore保存图片到公共目录
     private fun saveImageToMediaStore(context: Context, bitmap: Bitmap) {
-        val contentResolver = context.contentResolver
         val displayName = buildExportFileName("png")
-
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zhihu++")
-        }
-
-        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-        uri?.let { imageUri ->
-            try {
-                contentResolver.openOutputStream(imageUri)?.use { outputStream ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 90, outputStream)
-                }
-            } catch (e: Exception) {
-                Log.e("ArticleViewModel", "Failed to save image to MediaStore", e)
-                throw e
-            }
-        } ?: throw Exception("Failed to create MediaStore entry")
+        articleRuntime(context).saveImageToMediaStore(displayName, bitmap)
     }
 
     private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
