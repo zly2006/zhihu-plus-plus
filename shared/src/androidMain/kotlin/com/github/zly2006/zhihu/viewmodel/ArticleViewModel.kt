@@ -82,6 +82,9 @@ import kotlinx.serialization.json.jsonPrimitive
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
+    private val runtimeProvider: (Context) -> ArticleViewModelRuntime = { context ->
+        AndroidArticleViewModelRuntime(context)
+    },
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
@@ -142,7 +145,7 @@ class ArticleViewModel(
         get() = collections.any { it.isFavorited }
 
     private fun articleRuntime(context: Context): ArticleViewModelRuntime =
-        AndroidArticleViewModelRuntime(context)
+        runtimeProvider(context)
 
     // todo: replace this with sqlite
     class ArticlesSharedData :
