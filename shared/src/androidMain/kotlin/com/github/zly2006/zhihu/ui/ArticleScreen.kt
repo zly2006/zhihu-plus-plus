@@ -102,7 +102,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -132,7 +131,6 @@ import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
-import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -1468,61 +1466,20 @@ fun ArticleScreen(
         onDismiss = { showComments = false },
         content = article,
     )
-    if (showDoubleTapActionDialog) {
-        MyModalBottomSheet(
-            onDismissRequest = { showDoubleTapActionDialog = false },
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = "设置双击回答动作",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Button(
-                    onClick = {
-                        showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.None)
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.None.label}", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("设为无操作")
-                }
-                Button(
-                    onClick = {
-                        showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.VoteUp)
-                        upVoteFromDoubleTap()
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.VoteUp.label}", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("设为点赞")
-                }
-                Button(
-                    onClick = {
-                        showDoubleTapActionDialog = false
-                        saveAnswerDoubleTapAction(AnswerDoubleTapAction.OpenComments)
-                        showComments = true
-                        Toast.makeText(context, "已将双击回答动作设为：${AnswerDoubleTapAction.OpenComments.label}", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("设为打开评论区")
-                }
+    AnswerDoubleTapActionDialog(
+        showDialog = showDoubleTapActionDialog,
+        onDismissRequest = { showDoubleTapActionDialog = false },
+        onActionSelected = { action ->
+            showDoubleTapActionDialog = false
+            saveAnswerDoubleTapAction(action)
+            when (action) {
+                AnswerDoubleTapAction.VoteUp -> upVoteFromDoubleTap()
+                AnswerDoubleTapAction.OpenComments -> showComments = true
+                else -> Unit
             }
-        }
-    }
+            Toast.makeText(context, "已将双击回答动作设为：${action.label}", Toast.LENGTH_SHORT).show()
+        },
+    )
     // 导出对话框
     ExportDialogComponent(
         showDialog = showExportDialog,

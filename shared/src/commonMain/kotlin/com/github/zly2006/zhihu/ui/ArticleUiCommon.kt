@@ -67,6 +67,7 @@ import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
+import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
@@ -437,6 +438,55 @@ fun CachedAnswerPreviewContent(
                 content(cached.content)
             }
             Spacer(modifier = Modifier.height((16 + 36).dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AnswerDoubleTapActionDialog(
+    showDialog: Boolean,
+    onDismissRequest: () -> Unit,
+    onActionSelected: (AnswerDoubleTapAction) -> Unit,
+) {
+    if (!showDialog) return
+    MyModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "设置双击回答动作",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "选择以后双击回答时默认执行的动作。选择后会立即保存到设置，你也可以稍后在设置中修改。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = { onActionSelected(AnswerDoubleTapAction.None) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("设为无操作")
+            }
+            Button(
+                onClick = { onActionSelected(AnswerDoubleTapAction.VoteUp) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("设为点赞")
+            }
+            Button(
+                onClick = { onActionSelected(AnswerDoubleTapAction.OpenComments) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("设为打开评论区")
+            }
         }
     }
 }
