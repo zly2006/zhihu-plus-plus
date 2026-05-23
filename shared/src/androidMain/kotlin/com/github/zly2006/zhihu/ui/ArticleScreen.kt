@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.ui
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -111,8 +110,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -200,46 +197,6 @@ fun ArticleActionsMenu(
         },
     )
 }
-
-/**
- * 修复 noscript 标签中的图片加载问题。
- * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
- */
-private fun prepareContentDocument(content: String, context: Context): Document =
-    Jsoup.parse(content).apply {
-        select("noscript").forEach { noscript ->
-            noscript.nextSibling()?.let { actualImg ->
-                if (actualImg.nodeName() == "img") {
-                    if (actualImg.attr("data-actualsrc").isNotEmpty()) {
-                        actualImg.attr("src", actualImg.attr("data-actualsrc"))
-                        actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
-                        noscript.remove()
-                        return@forEach
-                    }
-                }
-            }
-            if (noscript.childrenSize() > 0) {
-                val node = noscript.child(0)
-                if (node.tagName() == "img") {
-                    if (node.attr("class").contains("content_image")) {
-                        node.attr("src", node.attr("data-thumbnail"))
-                    }
-                    if (node.attr("src").isEmpty()) {
-                        if (node.attr("data-default-watermark-src").isNotEmpty()) {
-                            node.attr("src", node.attr("data-default-watermark-src"))
-                        } else {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                context.mainExecutor.execute {
-                                    Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    }
-                }
-                noscript.after(node)
-            }
-        }
-    }
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -798,9 +755,10 @@ fun ArticleScreen(
                                     it.contentId = article.id.toString()
                                     it.loadZhihu(
                                         "https://www.zhihu.com/${article.type}/${article.id}",
-                                        prepareContentDocument(viewModel.content, context).apply {
-                                            title(viewModel.title)
+                                        prepareContentDocument(viewModel.content) {
+                                            Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
                                         },
+                                        viewModel.title,
                                     )
                                 }
                             },
@@ -877,9 +835,10 @@ fun ArticleScreen(
                 wv.contentId = articleId
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
+                    prepareContentDocument(cached.content) {
+                        Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
                     },
+                    viewModel.title,
                 )
             }
         }
@@ -892,9 +851,10 @@ fun ArticleScreen(
                 wv.contentId = articleId
                 wv.loadZhihu(
                     "https://www.zhihu.com/answer/${cached.article.id}",
-                    prepareContentDocument(cached.content, context).apply {
-                        title(viewModel.title)
+                    prepareContentDocument(cached.content) {
+                        Toast.makeText(context, "图片加载失败，请向开发者反馈", Toast.LENGTH_SHORT).show()
                     },
+                    viewModel.title,
                 )
             }
         }

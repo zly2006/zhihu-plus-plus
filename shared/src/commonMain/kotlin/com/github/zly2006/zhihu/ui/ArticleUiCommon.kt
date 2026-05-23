@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.navigation.AnswerNavigator
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -141,6 +142,48 @@ fun articleSpeechText(
             append(Ksoup.parse(contentToProcess).text())
         }
     }
+
+/**
+ * 修复 noscript 标签中的图片加载问题。
+ * 提取为独立函数，确保主 WebView 和预览 WebView 使用相同的文档处理。
+ */
+fun prepareContentDocument(
+    content: String,
+    onImageLoadFailure: () -> Unit = {},
+): String =
+    Ksoup
+        .parse(content)
+        .apply {
+            select("noscript").forEach { noscript ->
+                (noscript.nextSibling() as? Element)?.let { actualImg ->
+                    if (actualImg.nodeName() == "img") {
+                        if (actualImg.attr("data-actualsrc").isNotEmpty()) {
+                            actualImg.attr("src", actualImg.attr("data-actualsrc"))
+                            actualImg.attr("class", actualImg.attr("class").replace("lazy", ""))
+                            noscript.remove()
+                            return@forEach
+                        }
+                    }
+                }
+                if (noscript.childrenSize() > 0) {
+                    val node = noscript.child(0)
+                    if (node.tagName() == "img") {
+                        if (node.attr("class").contains("content_image")) {
+                            node.attr("src", node.attr("data-thumbnail"))
+                        }
+                        if (node.attr("src").isEmpty()) {
+                            if (node.attr("data-default-watermark-src").isNotEmpty()) {
+                                node.attr("src", node.attr("data-default-watermark-src"))
+                            } else {
+                                onImageLoadFailure()
+                            }
+                        }
+                    }
+                    noscript.after(node)
+                }
+            }
+        }.body()
+        .html()
 
 @OptIn(ExperimentalTime::class)
 fun formatArticleDateTime(seconds: Long): String {

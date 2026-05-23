@@ -465,6 +465,21 @@ class CustomWebView : WebView {
         this.document = document
     }
 
+    fun loadZhihu(
+        url: String,
+        bodyHtml: String,
+        title: String,
+        additionalStyle: String = "",
+    ) {
+        loadZhihu(
+            url = url,
+            document = Jsoup.parse(bodyHtml).apply {
+                title(title)
+            },
+            additionalStyle = additionalStyle,
+        )
+    }
+
     override fun startActionMode(callback: ActionMode.Callback): ActionMode? =
         super.startActionMode(CustomActionModeCallback(callback))
 

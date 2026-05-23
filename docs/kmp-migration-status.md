@@ -143,3 +143,4 @@
 - 2026-05-23：文章回答切换外壳和阅读进度条已迁入 common `ArticleAnswerSwitchContainer`；竖向/横向回答切换、预览 slot 和进度条布局复用同一套 UI，Android 只保留横向预览 WebView 预加载副作用与缓存预览 renderer slot。
 - 2026-05-23：文章正文区域布局已迁入 common `ArticleContentArea`；WebView/Markdown 双路径的日期位置、尾部媒体 slot、IP 属地和底部留白由 common 复用，Android 只提供 WebView/Markdown/video renderer slot 和 WebView 滚动恢复副作用。
 - 2026-05-23：文章页偏好状态已拆成 common `ArticleScreenSettingsState` 和平台 `rememberArticleScreenSettingsState()`；Android `SharedPreferences` 监听与 JVM `SettingsStore` 读取留在平台 actual，`ArticleScreen` 主体不再直接注册偏好 listener 或保存双击动作偏好，为后续保持 master 大函数结构迁入 common 做准备。
+- 2026-05-24：文章正文 noscript 图片修正逻辑已迁入 common `prepareContentDocument`，HTML 解析改用 common Ksoup；Android `ArticleScreen` 不再直接依赖 Jsoup `Document` 或 SDK 版本分支，只向 WebView slot 传入 common 处理后的 HTML 和图片失败 Toast 回调。
