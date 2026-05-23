@@ -82,9 +82,6 @@ import kotlinx.serialization.json.jsonPrimitive
 class ArticleViewModel(
     private val article: Article,
     val httpClient: HttpClient?,
-    private val runtimeProvider: (Context) -> ArticleViewModelRuntime = { context ->
-        AndroidArticleViewModelRuntime(context)
-    },
     registerOnPause: (((() -> Unit) -> Unit))? = null,
 ) : ViewModel() {
     var permissionRequestCount by mutableIntStateOf(0)
@@ -144,9 +141,6 @@ class ArticleViewModel(
     val isFavorited: Boolean
         get() = collections.any { it.isFavorited }
 
-    private fun articleRuntime(context: Context): ArticleViewModelRuntime =
-        runtimeProvider(context)
-
     // todo: replace this with sqlite
     class ArticlesSharedData :
         ArticleAnswerSwitchData(),
@@ -181,13 +175,6 @@ class ArticleViewModel(
             previewWebViews.destroyAll()
             super.onCleared()
         }
-    }
-
-    @OptIn(ExperimentalStdlibApi::class)
-    fun loadArticle(context: Context) {
-        if (httpClient == null) return
-        val runtime = articleRuntime(context)
-        loadArticle(runtime)
     }
 
     @OptIn(ExperimentalStdlibApi::class)
@@ -323,12 +310,6 @@ class ArticleViewModel(
         }
     }
 
-    fun toggleFavorite(collectionId: String, remove: Boolean, context: Context) {
-        if (httpClient == null) return
-        val runtime = articleRuntime(context)
-        toggleFavorite(collectionId, remove, runtime)
-    }
-
     fun toggleFavorite(collectionId: String, remove: Boolean, runtime: ArticleViewModelRuntime) {
         if (httpClient == null) return
         viewModelScope.launch {
@@ -357,15 +338,6 @@ class ArticleViewModel(
                 runtime.showMessage("收藏操作失败: ${e.message}")
             }
         }
-    }
-
-    fun requestAiSummary(context: Context) {
-        if (httpClient == null) {
-            aiSummaryError = "未初始化网络客户端"
-            return
-        }
-        val runtime = articleRuntime(context)
-        requestAiSummary(runtime)
     }
 
     fun requestAiSummary(runtime: ArticleViewModelRuntime) {
@@ -491,12 +463,6 @@ class ArticleViewModel(
 
     private val collectionOrder = mutableListOf<String>()
 
-    fun loadCollections(context: Context) {
-        if (httpClient == null) return
-        val runtime = articleRuntime(context)
-        loadCollections(runtime)
-    }
-
     fun loadCollections(runtime: ArticleViewModelRuntime) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
@@ -530,12 +496,6 @@ class ArticleViewModel(
         }
     }
 
-    fun createNewCollection(context: Context, title: String, description: String = "", isPublic: Boolean = false) {
-        if (httpClient == null) return
-        val runtime = articleRuntime(context)
-        createNewCollection(runtime, title, description, isPublic)
-    }
-
     fun createNewCollection(
         runtime: ArticleViewModelRuntime,
         title: String,
@@ -547,11 +507,6 @@ class ArticleViewModel(
             runtime.createNewCollection(title, description, isPublic)
             loadCollections(runtime)
         }
-    }
-
-    fun toggleVoteUp(context: Context, newState: VoteUpState) {
-        val runtime = articleRuntime(context)
-        toggleVoteUp(runtime, newState)
     }
 
     fun toggleVoteUp(runtime: ArticleViewModelRuntime, newState: VoteUpState) {
@@ -569,11 +524,6 @@ class ArticleViewModel(
     }
 
     // 导出为图片 - 使用WebView渲染
-    suspend fun exportToImage(context: Context, includeAppAttribution: Boolean, onComplete: (Boolean) -> Unit) {
-        val runtime = articleRuntime(context)
-        exportToImage(runtime, includeAppAttribution, onComplete)
-    }
-
     suspend fun exportToImage(
         runtime: ArticleViewModelRuntime,
         includeAppAttribution: Boolean,
@@ -591,16 +541,6 @@ class ArticleViewModel(
 
     // 导出为带评论的图片 - 使用WebView渲染
     suspend fun exportToImageWithComments(
-        context: Context,
-        commentCount: Int,
-        includeAppAttribution: Boolean,
-        onComplete: (Boolean) -> Unit,
-    ) {
-        val runtime = articleRuntime(context)
-        exportToImageWithComments(runtime, commentCount, includeAppAttribution, onComplete)
-    }
-
-    suspend fun exportToImageWithComments(
         runtime: ArticleViewModelRuntime,
         commentCount: Int,
         includeAppAttribution: Boolean,
@@ -614,15 +554,6 @@ class ArticleViewModel(
             successMessage = "带评论图片已保存到相册",
             onComplete = onComplete,
         )
-    }
-
-    suspend fun exportToHtml(
-        context: Context,
-        includeAppAttribution: Boolean,
-        onComplete: (Boolean) -> Unit,
-    ) {
-        val runtime = articleRuntime(context)
-        exportToHtml(runtime, includeAppAttribution, onComplete)
     }
 
     suspend fun exportToHtml(
@@ -983,12 +914,6 @@ class ArticleViewModel(
     }
 
     // 导出到剪贴板
-    fun exportToClipboard(context: Context) {
-        val markdown = convertToMarkdown()
-        val runtime = articleRuntime(context)
-        exportToClipboard(runtime, markdown)
-    }
-
     fun exportToClipboard(runtime: ArticleViewModelRuntime, markdown: String = convertToMarkdown()) {
         // 将Markdown文本复制到剪贴板
         runtime.copyArticleMarkdownToClipboard(markdown)
