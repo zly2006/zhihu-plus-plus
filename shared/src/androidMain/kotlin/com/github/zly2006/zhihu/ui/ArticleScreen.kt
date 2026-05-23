@@ -45,8 +45,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -103,7 +101,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -1555,138 +1552,11 @@ fun ArticleScreen(
 private fun CachedAnswerPreview(
     cached: CachedAnswerContent,
 ) {
-    val context = LocalContext.current
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = RectangleShape,
-            ),
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                Text(
-                    text = cached.title,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-            }
+    CachedAnswerPreviewContent(
+        cached = cached,
+        voteUpIcon = {
+            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
         },
-        bottomBar = {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(color = Color(0xFF40B6F6)),
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF40B6F6),
-                                contentColor = Color.Black,
-                            ),
-                            shape = RectangleShape,
-                            contentPadding = PaddingValues(horizontal = 0.dp),
-                        ) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(painterResource(R.drawable.ic_vote_up_24dp), "赞同")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = cached.voteUpCount.toString())
-                        }
-                    }
-                    Button(
-                        onClick = {},
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "${cached.commentCount}")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
-                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
-                ),
-        ) {
-            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                if (cached.authorAvatarUrl.isNotEmpty()) {
-                    AsyncImage(
-                        model = cached.authorAvatarUrl,
-                        contentDescription = "作者头像",
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray),
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = cached.authorName,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (cached.authorBadge != null) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            AuthorBadge(
-                                badge = cached.authorBadge,
-                            )
-                        }
-                    }
-                    if (cached.authorBio.isNotEmpty()) {
-                        Text(
-                            text = cached.authorBio,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                        )
-                    }
-                }
-            }
-            if (cached.content.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                RenderMarkdown(html = cached.content)
-            }
-            Spacer(modifier = Modifier.height((16 + 36).dp))
-        }
-    }
+        content = { RenderMarkdown(html = it) },
+    )
 }

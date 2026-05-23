@@ -134,3 +134,4 @@
 - 2026-05-22：文章更多操作菜单的分享/复制文本拼装已抽入 common `articleActionText`，Android 端只负责系统分享 Intent 和剪贴板副作用。
 - 2026-05-23：文章朗读文本提取已抽入 common `articleSpeechText`，HTML 到纯文本解析改用 common Ksoup；Android `ArticleActionsMenu` 只保留 TTS 调用、协程调度和 Toast 错误提示。
 - 2026-05-23：文章更多操作菜单的 bottom sheet 和按钮编排已抽入 common `ArticleActionsMenuSheet` / `ArticleActionsMenuContent`；Android `ArticleActionsMenu` 继续只提供 TTS、系统分享、剪贴板、导出和浏览器发送副作用。
+- 2026-05-23：缓存回答预览的 Scaffold、作者信息、底栏和按钮布局已抽入 common `CachedAnswerPreviewContent`；Android wrapper 只传入投票图标资源和现有 `RenderMarkdown` 正文 slot。

@@ -1,20 +1,26 @@
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -26,11 +32,13 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.GetApp
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.DesktopWindows
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,15 +51,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.theme.ThemeManager
+import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.materialkolor.ktx.harmonize
 import kotlinx.datetime.TimeZone
@@ -280,6 +297,146 @@ fun ArticleActionsMenuSheet(
                 onExportRequest = onExportRequest,
                 onOpenInBrowserRequest = onOpenInBrowserRequest,
             )
+        }
+    }
+}
+
+@Composable
+fun CachedAnswerPreviewContent(
+    cached: CachedAnswerContent,
+    voteUpIcon: @Composable () -> Unit,
+    content: @Composable (String) -> Unit,
+) {
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp)
+            .background(
+                color = MaterialTheme.colorScheme.background,
+                shape = RectangleShape,
+            ),
+        topBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background),
+            ) {
+                Text(
+                    text = cached.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 32.sp,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+            }
+        },
+        bottomBar = {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(color = Color(0xFF40B6F6)),
+                        horizontalArrangement = Arrangement.Start,
+                    ) {
+                        Button(
+                            onClick = {},
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF40B6F6),
+                                contentColor = Color.Black,
+                            ),
+                            shape = RectangleShape,
+                            contentPadding = PaddingValues(horizontal = 0.dp),
+                        ) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            voteUpIcon()
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = cached.voteUpCount.toString())
+                        }
+                    }
+                    Button(
+                        onClick = {},
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "评论")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "${cached.commentCount}")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
+                ),
+        ) {
+            Spacer(modifier = Modifier.height(innerPadding.calculateTopPadding()))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                if (cached.authorAvatarUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = cached.authorAvatarUrl,
+                        contentDescription = "作者头像",
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray),
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = cached.authorName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (cached.authorBadge != null) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            AuthorBadge(
+                                badge = cached.authorBadge,
+                            )
+                        }
+                    }
+                    if (cached.authorBio.isNotEmpty()) {
+                        Text(
+                            text = cached.authorBio,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                        )
+                    }
+                }
+            }
+            if (cached.content.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                content(cached.content)
+            }
+            Spacer(modifier = Modifier.height((16 + 36).dp))
         }
     }
 }
