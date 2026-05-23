@@ -763,7 +763,7 @@ fun BlockedRecordItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     SelectionContainer {
                         Text(
-                            record.excerpt,
+                            record.excerpt!!,
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
