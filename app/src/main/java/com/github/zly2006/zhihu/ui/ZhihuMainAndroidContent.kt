@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.github.zly2006.zhihu.MainActivity
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
+import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 
 @Composable
@@ -51,7 +52,7 @@ fun AndroidZhihuMain(navController: NavHostController) {
 private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainPlatformAdapter(
     articleEnterTransition = {
         val sharedData = try {
-            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
+            ViewModelProvider(activity)[AndroidArticlesSharedData::class.java]
         } catch (_: Exception) {
             null
         }
@@ -69,7 +70,7 @@ private fun androidZhihuMainPlatformAdapter(activity: MainActivity) = ZhihuMainP
     },
     articleExitTransition = {
         val sharedData = try {
-            ViewModelProvider(activity)[ArticleViewModel.ArticlesSharedData::class.java]
+            ViewModelProvider(activity)[AndroidArticlesSharedData::class.java]
         } catch (_: Exception) {
             null
         }

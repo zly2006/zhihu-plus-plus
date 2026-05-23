@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel
 
-import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -49,8 +48,6 @@ import com.github.zly2006.zhihu.shared.util.decodeZhidaAnswerData
 import com.github.zly2006.zhihu.shared.util.decodeZhidaStreamErrorMessage
 import com.github.zly2006.zhihu.shared.util.mergeSummaryChunk
 import com.github.zly2006.zhihu.shared.util.parseZhidaSsePayload
-import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
-import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
 import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.util.ArticleExportComment
 import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
@@ -142,40 +139,7 @@ class ArticleViewModel(
         get() = collections.any { it.isFavorited }
 
     // todo: replace this with sqlite
-    class ArticlesSharedData :
-        ArticleAnswerSwitchData(),
-        ArticlePreviewWebViewStore {
-        private val previewWebViews = AndroidArticlePreviewWebViewStore()
-
-        fun getOrCreateMainWebView(context: Context, answerId: Long) =
-            previewWebViews.getOrCreateMainWebView(context, answerId)
-
-        /**
-         * 导航时旋转三个 WebView：
-         * NEXT: prev→destroy, main→prev, next→main
-         * PREVIOUS: next→destroy, main→next, prev→main
-         */
-        override fun promoteForNavigation(direction: ArticleAnswerTransitionDirection) {
-            super.promoteForNavigation(direction)
-            previewWebViews.promoteForNavigation(direction)
-        }
-
-        override fun getOrCreatePreviewWebView(
-            context: Context,
-            isNext: Boolean,
-            answerId: Long,
-        ) = previewWebViews.getOrCreatePreviewWebView(context, isNext, answerId)
-
-        override fun reset() {
-            super.reset()
-            previewWebViews.clearContentIds()
-        }
-
-        override fun onCleared() {
-            previewWebViews.destroyAll()
-            super.onCleared()
-        }
-    }
+    open class ArticlesSharedData : ArticleAnswerSwitchData()
 
     @OptIn(ExperimentalStdlibApi::class)
     fun loadArticle(runtime: ArticleViewModelRuntime) {

@@ -91,7 +91,7 @@ import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.enableEdgeToEdgeCompat
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.telemetry
-import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.AndroidArticlesSharedData
 import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
@@ -119,7 +119,7 @@ class MainActivity :
     override val articleNavController: NavHostController
         get() = navController
     override val articleAnswerSwitchState: ArticleAnswerSwitchState
-        get() = ViewModelProvider(this)[ArticleViewModel.ArticlesSharedData::class.java]
+        get() = ViewModelProvider(this)[AndroidArticlesSharedData::class.java]
     override val articleTtsState: TtsState
         get() = ttsState
     override var clipboardDestination: NavDestination?
