@@ -613,7 +613,7 @@ class ArticleViewModel(
         try {
             val htmlContent = createOfflineHtmlContent(context, includeAppAttribution)
             val savedLocation = withContext(Dispatchers.IO) {
-                saveHtmlToDownloads(context, htmlContent)
+                saveHtmlToDownloads(runtime, htmlContent)
             }
             withContext(Dispatchers.Main) {
                 runtime.showLongMessage("HTML 已保存到 $savedLocation")
@@ -657,9 +657,10 @@ class ArticleViewModel(
 
         var preparedWebView: PreparedArticleExportContent? = null
         var bitmap: Any? = null
+        val renderer = articleImageExportRenderer(runtime)
         try {
             preparedWebView = prepareExportWebView(
-                context = context,
+                renderer = renderer,
                 htmlContent = createHtmlContent(
                     context = context,
                     includeComments = includeComments,
@@ -668,9 +669,9 @@ class ArticleViewModel(
                 ),
                 timeoutMs = if (includeComments) 18_000L else 15_000L,
             )
-            bitmap = captureExportBitmap(context, preparedWebView)
+            bitmap = captureExportBitmap(renderer, preparedWebView)
             withContext(Dispatchers.IO) {
-                saveImageToMediaStore(context, bitmap)
+                saveImageToMediaStore(runtime, bitmap)
             }
             withContext(Dispatchers.Main) {
                 runtime.showLongMessage(successMessage)
@@ -684,38 +685,40 @@ class ArticleViewModel(
                 onComplete(false)
             }
         } finally {
-            bitmap?.let { recycleExportBitmap(context, it) }
-            preparedWebView?.let { destroyExportWebView(context, it) }
+            bitmap?.let { recycleExportBitmap(renderer, it) }
+            preparedWebView?.let { destroyExportWebView(renderer, it) }
         }
     }
 
     private suspend fun prepareExportWebView(
-        context: Context,
+        renderer: ArticleImageExportRenderer,
         htmlContent: String,
         timeoutMs: Long,
-    ): PreparedArticleExportContent = articleImageExportRenderer(context)
-        .prepareExportWebView(htmlContent, timeoutMs)
+    ): PreparedArticleExportContent = renderer.prepareExportWebView(htmlContent, timeoutMs)
 
-    private fun loadExportAssetText(context: Context, fileName: String): String = try {
-        articleRuntime(context).loadExportAssetText(fileName)
+    private fun loadExportAssetText(runtime: ArticleViewModelRuntime, fileName: String): String = try {
+        runtime.loadExportAssetText(fileName)
     } catch (e: Exception) {
         Log.e("ArticleViewModel", "Failed to load export asset: $fileName", e)
         ""
     }
 
-    private suspend fun captureExportBitmap(context: Context, preparedWebView: PreparedArticleExportContent): Any =
-        articleImageExportRenderer(context)
-            .captureExportBitmap(preparedWebView)
+    private suspend fun captureExportBitmap(
+        renderer: ArticleImageExportRenderer,
+        preparedWebView: PreparedArticleExportContent,
+    ): Any = renderer.captureExportBitmap(preparedWebView)
 
-    private suspend fun destroyExportWebView(context: Context, preparedWebView: PreparedArticleExportContent) =
-        articleImageExportRenderer(context).destroyExportWebView(preparedWebView)
+    private suspend fun destroyExportWebView(
+        renderer: ArticleImageExportRenderer,
+        preparedWebView: PreparedArticleExportContent,
+    ) = renderer.destroyExportWebView(preparedWebView)
 
-    private fun recycleExportBitmap(context: Context, bitmap: Any) =
-        articleImageExportRenderer(context).recycleExportBitmap(bitmap)
+    private fun recycleExportBitmap(renderer: ArticleImageExportRenderer, bitmap: Any) =
+        renderer.recycleExportBitmap(bitmap)
 
-    private fun articleImageExportRenderer(context: Context): ArticleImageExportRenderer =
-        articleRuntime(context).articleImageExportRenderer { fileName ->
-            loadExportAssetText(context, fileName)
+    private fun articleImageExportRenderer(runtime: ArticleViewModelRuntime): ArticleImageExportRenderer =
+        runtime.articleImageExportRenderer { fileName ->
+            loadExportAssetText(runtime, fileName)
         }
 
     // 创建HTML内容
@@ -783,14 +786,14 @@ class ArticleViewModel(
         ?: throw IllegalStateException("内容未加载完成")
 
     // 使用MediaStore保存图片到公共目录
-    private fun saveImageToMediaStore(context: Context, bitmap: Any) {
+    private fun saveImageToMediaStore(runtime: ArticleViewModelRuntime, bitmap: Any) {
         val displayName = buildExportFileName("png")
-        articleRuntime(context).saveImageToMediaStore(displayName, bitmap)
+        runtime.saveImageToMediaStore(displayName, bitmap)
     }
 
-    private fun saveHtmlToDownloads(context: Context, htmlContent: String): String {
+    private fun saveHtmlToDownloads(runtime: ArticleViewModelRuntime, htmlContent: String): String {
         val displayName = buildExportFileName("html")
-        return articleRuntime(context).saveHtmlToDownloads(displayName, htmlContent)
+        return runtime.saveHtmlToDownloads(displayName, htmlContent)
     }
 
     // 转换为Markdown格式
