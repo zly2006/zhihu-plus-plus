@@ -48,6 +48,40 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun createLocalFeedDisplayItemKeepsLocalRecommendationMetadata() {
+        val item = createLocalFeedDisplayItem(
+            LocalRecommendationEntry(
+                feed = LocalFeed(
+                    id = "local_feed_answer_42",
+                    resultId = 1L,
+                    title = "回答标题",
+                    summary = "回答摘要",
+                    reasonDisplay = "热门推荐",
+                    navDestination = "answer:42",
+                ),
+                result = CrawlingResult(
+                    id = 1L,
+                    taskId = 1L,
+                    contentId = "answer:42",
+                    title = "回答标题",
+                    summary = "回答摘要",
+                    url = "https://www.zhihu.com/answer/42",
+                    reason = CrawlingReason.Trending,
+                ),
+                navDestination = Article(type = ArticleType.Answer, id = 42L, title = "回答标题"),
+            ),
+        )
+
+        assertEquals("回答标题", item.title)
+        assertEquals("回答摘要", item.summary)
+        assertEquals("热门推荐", item.details)
+        assertEquals("answer:42", item.localContentId)
+        assertEquals("local_feed_answer_42", item.localFeedId)
+        assertEquals(CrawlingReason.Trending.name, item.localReason)
+        assertNotNull(item.navDestinationJson)
+    }
+
+    @Test
     fun cleanupLocalRecommendationDataUsesWeekAndMonthRetention() = runTest {
         val database = testLocalContentDatabase()
         val dao = database.contentDao()

@@ -23,7 +23,6 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -109,18 +108,6 @@ class LocalHomeFeedViewModel :
         recommendationEngine.initialize()
         return recommendationEngine
     }
-
-    private fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
-        title = entry.feed.title,
-        summary = entry.feed.summary,
-        details = entry.feed.reasonDisplay,
-        feed = null,
-        navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
-        isFiltered = false,
-        localContentId = entry.result.contentId,
-        localFeedId = entry.feed.id,
-        localReason = entry.result.reason.name,
-    )
 
     private suspend fun generateFallbackContent() {
         val fallbackItems = listOf(

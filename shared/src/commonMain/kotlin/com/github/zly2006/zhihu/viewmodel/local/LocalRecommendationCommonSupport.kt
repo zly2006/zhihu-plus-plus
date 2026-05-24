@@ -20,7 +20,9 @@ package com.github.zly2006.zhihu.viewmodel.local
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
@@ -41,6 +43,18 @@ data class LocalRecommendationEntry(
     val feed: LocalFeed,
     val result: CrawlingResult,
     val navDestination: NavDestination?,
+)
+
+internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
+    title = entry.feed.title,
+    summary = entry.feed.summary,
+    details = entry.feed.reasonDisplay,
+    feed = null,
+    navDestinationJson = entry.navDestination?.toFeedDisplayItemNavDestinationJson(),
+    isFiltered = false,
+    localContentId = entry.result.contentId,
+    localFeedId = entry.feed.id,
+    localReason = entry.result.reason.name,
 )
 
 internal suspend fun cleanupLocalRecommendationData(
