@@ -17,19 +17,18 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
+import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.stableLocalFeedId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 /**
  * 推荐内容生成器，负责从爬虫结果生成LocalFeed
  */
 class FeedGenerator(
-    private val context: Context,
+    private val dao: LocalContentDao,
 ) {
-    private val database by lazy { getLocalContentDatabase(context) }
-    private val dao by lazy { database.contentDao() }
-
     /**
      * 从爬虫结果生成推荐内容
      */
@@ -44,7 +43,7 @@ class FeedGenerator(
             reasonDisplay = reasonDisplay,
             navDestination = generateNavDestination(result),
             userFeedback = existingFeed?.userFeedback ?: 0.0,
-            createdAt = existingFeed?.createdAt ?: System.currentTimeMillis(),
+            createdAt = existingFeed?.createdAt ?: Clock.System.now().toEpochMilliseconds(),
         )
 
         dao.insertFeed(feed)
