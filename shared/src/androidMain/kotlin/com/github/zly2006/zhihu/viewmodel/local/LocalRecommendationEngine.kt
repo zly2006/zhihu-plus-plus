@@ -63,7 +63,7 @@ class LocalRecommendationEngine(
         if (candidates.size < limit / 2) {
             ensurePendingTasks(dao)
             executeHighPriorityTasks()
-            waitForTaskCompletion(5_000L)
+            waitForTaskCompletion(dao, 5_000L)
             candidates = collectCandidateResults(dao, limit)
         }
 
@@ -177,17 +177,5 @@ class LocalRecommendationEngine(
         networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
     } catch (_: Exception) {
         false
-    }
-
-    private suspend fun waitForTaskCompletion(maxWaitTimeMs: Long) {
-        val startTime = System.currentTimeMillis()
-        val checkInterval = 500L
-
-        while (System.currentTimeMillis() - startTime < maxWaitTimeMs) {
-            if (dao.getTasksByStatus(CrawlingStatus.InProgress).isEmpty()) {
-                break
-            }
-            delay(checkInterval)
-        }
     }
 }

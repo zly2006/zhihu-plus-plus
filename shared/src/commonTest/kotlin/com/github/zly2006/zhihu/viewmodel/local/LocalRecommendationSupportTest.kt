@@ -169,6 +169,15 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun waitForTaskCompletionReturnsWhenNoTaskInProgress() = runTest {
+        val database = testLocalContentDatabase()
+
+        waitForTaskCompletion(database.contentDao(), maxWaitTimeMs = 5_000L)
+
+        database.close()
+    }
+
+    @Test
     fun getFreshnessWeightUsesSameAgeBuckets() {
         val now = 10_000L * 60L * 60L * 1000L
 

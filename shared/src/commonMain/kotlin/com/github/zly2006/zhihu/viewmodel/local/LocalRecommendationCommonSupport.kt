@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
@@ -117,6 +118,21 @@ internal suspend fun ensurePendingTasks(dao: LocalContentDao) {
 
     if (tasks.isNotEmpty()) {
         dao.insertTasks(tasks)
+    }
+}
+
+internal suspend fun waitForTaskCompletion(
+    dao: LocalContentDao,
+    maxWaitTimeMs: Long,
+) {
+    val startTime = Clock.System.now().toEpochMilliseconds()
+    val checkInterval = 500L
+
+    while (Clock.System.now().toEpochMilliseconds() - startTime < maxWaitTimeMs) {
+        if (dao.getTasksByStatus(CrawlingStatus.InProgress).isEmpty()) {
+            break
+        }
+        delay(checkInterval)
     }
 }
 
