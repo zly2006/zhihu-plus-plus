@@ -26,7 +26,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         ),
         updateAnnouncement = null,
         installedAtLeastThreeHours = false,
-        isDebuggable = false,
+        isDebuggable = true,
         viewModel = viewModel,
         requestLogin = {
             account = accountStore.load()
