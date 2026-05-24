@@ -15,6 +15,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
+import com.github.zly2006.zhihu.ui.formatArticleDateTime
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
@@ -233,19 +234,37 @@ class DesktopArticleViewModelRuntime(
     override fun accountHttpClient(): HttpClient =
         store.createHttpClient(store.load().cookies)
 
-    override fun loadExportAssetText(fileName: String): String = ""
+    override fun loadExportAssetText(fileName: String): String =
+        javaClass.classLoader
+            ?.getResourceAsStream(fileName)
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            ?: sequenceOf(
+                File("app/src/main/assets", fileName),
+                File(System.getProperty("user.dir"), "app/src/main/assets/$fileName"),
+            ).firstOrNull { it.isFile }?.readText()
+            ?: ""
 
     override fun buildArticleExportHtml(
         content: DataHolder.Content,
         includeAppAttribution: Boolean,
         extraSectionsHtml: String,
-    ): String = contentHtml(content) + extraSectionsHtml
+    ): String = renderArticleExportHtml(
+        template = loadExportAssetText(ARTICLE_EXPORT_TEMPLATE_ASSET),
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        extraSectionsHtml = extraSectionsHtml,
+    )
 
     override suspend fun buildOfflineArticleExportHtml(
         content: DataHolder.Content,
         includeAppAttribution: Boolean,
         httpClient: HttpClient,
-    ): String = contentHtml(content)
+    ): String = buildArticleExportHtml(
+        content = content,
+        includeAppAttribution = includeAppAttribution,
+        extraSectionsHtml = "",
+    )
 
     override fun saveHtmlToDownloads(
         displayName: String,
@@ -286,6 +305,140 @@ class DesktopArticleViewModelRuntime(
         is DataHolder.Article -> content.content
         else -> ""
     }
+
+    private fun renderArticleExportHtml(
+        template: String,
+        content: DataHolder.Content,
+        includeAppAttribution: Boolean,
+        extraSectionsHtml: String,
+    ): String {
+        if (template.isBlank()) {
+            return contentHtml(content) + extraSectionsHtml
+        }
+        val data = content.toDesktopExportData()
+        val authorAvatarHtml = data.authorAvatarSrc
+            .takeIf { it.isNotBlank() }
+            ?.let {
+                """
+                <img
+                    class="author-avatar"
+                    src="${escapeExportHtml(normalizeExportUrl(it))}"
+                    alt="作者头像"
+                />
+                """.trimIndent()
+            } ?: "<div class=\"author-avatar author-avatar-placeholder\"></div>"
+        val authorBioHtml = data.authorBio
+            .takeIf { it.isNotBlank() }
+            ?.let { "<div class=\"author-bio\">${escapeExportHtml(it)}</div>" }
+            .orEmpty()
+
+        return template.replacePlaceholders(
+            mapOf(
+                "{{title}}" to escapeExportHtml(data.title),
+                "{{authorAvatar}}" to authorAvatarHtml,
+                "{{authorName}}" to escapeExportHtml(data.authorName),
+                "{{authorBio}}" to authorBioHtml,
+                "{{voteCount}}" to data.voteUpCount.toString(),
+                "{{commentCount}}" to data.commentCount.toString(),
+                "{{bodyHtml}}" to data.contentHtml,
+                "{{extraSections}}" to extraSectionsHtml,
+                "{{exportedDate}}" to "导出日期：" + formatArticleDateTime(System.currentTimeMillis() / 1000L),
+                "{{publishedDate}}" to data.createdEpochSeconds
+                    .takeIf { it > 0L }
+                    ?.let { "发布日期：" + formatArticleDateTime(it) }
+                    .orEmpty(),
+                "{{editedDate}}" to data.updatedEpochSeconds
+                    .takeIf { it > 0L && it != data.createdEpochSeconds }
+                    ?.let { "编辑日期：" + formatArticleDateTime(it) }
+                    .orEmpty(),
+                "{{editedDateClass}}" to if (
+                    data.updatedEpochSeconds > 0L &&
+                    data.updatedEpochSeconds != data.createdEpochSeconds
+                ) {
+                    "export-footer-line"
+                } else {
+                    "export-footer-line is-hidden"
+                },
+                "{{appAttributionClass}}" to if (includeAppAttribution) "export-credit" else "export-credit is-hidden",
+                "{{githubUrl}}" to escapeExportHtml(ARTICLE_EXPORT_GITHUB_URL),
+            ),
+        )
+    }
+}
+
+private const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
+private const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+
+private data class DesktopArticleExportData(
+    val title: String,
+    val authorName: String,
+    val authorBio: String,
+    val authorAvatarSrc: String,
+    val voteUpCount: Int,
+    val commentCount: Int,
+    val contentHtml: String,
+    val createdEpochSeconds: Long,
+    val updatedEpochSeconds: Long,
+)
+
+private fun DataHolder.Content.toDesktopExportData(): DesktopArticleExportData = when (this) {
+    is DataHolder.Answer -> DesktopArticleExportData(
+        title = question.title,
+        authorName = author.name,
+        authorBio = author.headline,
+        authorAvatarSrc = author.avatarUrl,
+        voteUpCount = voteupCount,
+        commentCount = commentCount,
+        contentHtml = content,
+        createdEpochSeconds = createdTime,
+        updatedEpochSeconds = updatedTime,
+    )
+    is DataHolder.Article -> DesktopArticleExportData(
+        title = title,
+        authorName = author.name,
+        authorBio = author.headline,
+        authorAvatarSrc = author.avatarUrl,
+        voteUpCount = voteupCount,
+        commentCount = commentCount,
+        contentHtml = content,
+        createdEpochSeconds = created,
+        updatedEpochSeconds = updated,
+    )
+    else -> DesktopArticleExportData(
+        title = "",
+        authorName = "",
+        authorBio = "",
+        authorAvatarSrc = "",
+        voteUpCount = 0,
+        commentCount = 0,
+        contentHtml = "",
+        createdEpochSeconds = 0L,
+        updatedEpochSeconds = 0L,
+    )
+}
+
+private fun String.replacePlaceholders(placeholders: Map<String, String>): String =
+    placeholders.entries.fold(this) { html, entry ->
+        html.replace(entry.key, entry.value)
+    }
+
+private fun escapeExportHtml(text: String): String =
+    buildString(text.length) {
+        text.forEach { char ->
+            when (char) {
+                '&' -> append("&amp;")
+                '<' -> append("&lt;")
+                '>' -> append("&gt;")
+                '"' -> append("&quot;")
+                '\'' -> append("&#39;")
+                else -> append(char)
+            }
+        }
+    }
+
+private fun normalizeExportUrl(url: String): String = when {
+    url.startsWith("//") -> "https:$url"
+    else -> url
 }
 
 private data class DesktopPreparedExportContent(
