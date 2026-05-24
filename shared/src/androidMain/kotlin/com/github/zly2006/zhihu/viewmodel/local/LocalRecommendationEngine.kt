@@ -146,15 +146,7 @@ class LocalRecommendationEngine(
     suspend fun cleanup() {
         withContext(Dispatchers.IO) {
             taskScheduler.stopScheduling()
-
-            val oneWeekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
-            val oneMonthAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
-
-            dao.cleanupOldTasks(CrawlingStatus.Completed, oneWeekAgo)
-            dao.cleanupOldTasks(CrawlingStatus.Failed, oneWeekAgo)
-            dao.cleanupOldResults(oneMonthAgo)
-            dao.cleanupOldFeeds(oneMonthAgo)
-            dao.cleanupOldBehaviors(oneMonthAgo)
+            cleanupLocalRecommendationData(dao)
         }
     }
 

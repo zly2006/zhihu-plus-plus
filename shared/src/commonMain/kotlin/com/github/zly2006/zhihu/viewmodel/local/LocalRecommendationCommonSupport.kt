@@ -37,6 +37,20 @@ data class LocalRecommendationEntry(
     val navDestination: NavDestination?,
 )
 
+internal suspend fun cleanupLocalRecommendationData(
+    dao: LocalContentDao,
+    nowMillis: Long = Clock.System.now().toEpochMilliseconds(),
+) {
+    val oneWeekAgo = nowMillis - 7 * 24 * 60 * 60 * 1000L
+    val oneMonthAgo = nowMillis - 30 * 24 * 60 * 60 * 1000L
+
+    dao.cleanupOldTasks(CrawlingStatus.Completed, oneWeekAgo)
+    dao.cleanupOldTasks(CrawlingStatus.Failed, oneWeekAgo)
+    dao.cleanupOldResults(oneMonthAgo)
+    dao.cleanupOldFeeds(oneMonthAgo)
+    dao.cleanupOldBehaviors(oneMonthAgo)
+}
+
 internal suspend fun buildFallbackRecommendations(
     dao: LocalContentDao,
     userBehaviorAnalyzer: UserBehaviorAnalyzer,

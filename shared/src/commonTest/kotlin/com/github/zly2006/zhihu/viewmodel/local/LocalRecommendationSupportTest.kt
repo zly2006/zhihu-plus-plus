@@ -46,6 +46,69 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun cleanupLocalRecommendationDataUsesWeekAndMonthRetention() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        val now = 100L * 24L * 60L * 60L * 1000L
+        val olderThanWeek = now - 8L * 24L * 60L * 60L * 1000L
+        val olderThanMonth = now - 31L * 24L * 60L * 60L * 1000L
+        dao.insertTasks(
+            listOf(
+                CrawlingTask(
+                    url = "completed",
+                    reason = CrawlingReason.Trending,
+                    status = CrawlingStatus.Completed,
+                    createdAt = olderThanWeek,
+                ),
+                CrawlingTask(
+                    url = "not-started",
+                    reason = CrawlingReason.Trending,
+                    status = CrawlingStatus.NotStarted,
+                    createdAt = olderThanWeek,
+                ),
+            ),
+        )
+        dao.insertResult(
+            CrawlingResult(
+                taskId = 1L,
+                contentId = "answer:1",
+                title = "标题",
+                summary = "摘要",
+                url = "https://www.zhihu.com/answer/1",
+                reason = CrawlingReason.Trending,
+                createdAt = olderThanMonth,
+            ),
+        )
+        dao.insertFeed(
+            LocalFeed(
+                id = "local_feed_answer_1",
+                resultId = 1L,
+                title = "标题",
+                summary = "摘要",
+                reasonDisplay = "热门推荐",
+                navDestination = "answer:1",
+                createdAt = olderThanMonth,
+            ),
+        )
+        dao.insertBehavior(
+            UserBehavior(
+                contentId = "answer:1",
+                action = "click",
+                timestamp = olderThanMonth,
+            ),
+        )
+
+        cleanupLocalRecommendationData(dao, nowMillis = now)
+
+        assertEquals(emptyList(), dao.getTasksByStatus(CrawlingStatus.Completed))
+        assertEquals(1, dao.getTasksByStatus(CrawlingStatus.NotStarted).size)
+        assertEquals(emptyList(), dao.getRecentResults(10))
+        assertEquals(emptyList(), dao.getRecentFeeds(10))
+        assertEquals(emptyList(), dao.getBehaviorsSince(0L))
+        database.close()
+    }
+
+    @Test
     fun collectCandidateResultsNormalizesAndDeduplicatesCandidates() = runTest {
         val database = testLocalContentDatabase()
         val dao = database.contentDao()
