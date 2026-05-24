@@ -300,39 +300,4 @@ class LocalRecommendationEngine(
             delay(checkInterval)
         }
     }
-
-    private fun getFreshnessWeight(createdAt: Long): Double {
-        val ageMillis = (System.currentTimeMillis() - createdAt).coerceAtLeast(0L)
-        val ageHours = ageMillis / (60.0 * 60.0 * 1000.0)
-        return when {
-            ageHours < 12 -> 1.08
-            ageHours < 48 -> 1.0
-            ageHours < 168 -> 0.92
-            else -> 0.82
-        }
-    }
-
-    private fun getDefaultWeight(reason: CrawlingReason): Double = when (reason) {
-        CrawlingReason.Following -> 1.2
-        CrawlingReason.Trending -> 1.0
-        CrawlingReason.UpvotedQuestion -> 0.95
-        CrawlingReason.FollowingUpvote -> 0.88
-        CrawlingReason.CollaborativeFiltering -> 0.8
-    }
-
-    private fun createTaskForReason(reason: CrawlingReason): CrawlingTask {
-        val (url, priority) = when (reason) {
-            CrawlingReason.Following -> "https://api.zhihu.com/moments_v3?feed_type=recommend" to 8
-            CrawlingReason.Trending -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20" to 7
-            CrawlingReason.UpvotedQuestion -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15" to 6
-            CrawlingReason.FollowingUpvote -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=15" to 5
-            CrawlingReason.CollaborativeFiltering -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10" to 4
-        }
-
-        return CrawlingTask(
-            url = url,
-            reason = reason,
-            priority = priority,
-        )
-    }
 }
