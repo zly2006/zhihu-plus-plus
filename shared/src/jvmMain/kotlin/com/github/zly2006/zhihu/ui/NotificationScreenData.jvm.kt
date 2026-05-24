@@ -18,8 +18,11 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 
 @Composable
 actual fun rememberNotificationScreenData(): NotificationScreenData {
@@ -57,7 +60,13 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
                 userMessages.showMessage("已全部标记为已读")
             }
         },
-        copyDebugData = {},
+        copyDebugData = {
+            val debugData = Json.encodeToString(viewModel.debugData)
+            runCatching {
+                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(debugData), null)
+            }
+            userMessages.showMessage("已复制调试数据")
+        },
         showMessage = { message -> userMessages.showMessage(message) },
     )
 }
