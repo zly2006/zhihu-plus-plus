@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
+import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -14,8 +16,10 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
+import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -30,6 +34,8 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
@@ -105,6 +111,31 @@ actual fun PinShareDialog(
     showDialog: Boolean,
     onDismissRequest: () -> Unit,
 ) {
+    val navigator = LocalNavigator.current
+    val userMessages = rememberUserMessageSink()
+
+    ShareDialogContent(
+        showDialog = showDialog,
+        onDismissRequest = onDismissRequest,
+        onShareClick = {
+            onDismissRequest()
+            copyDesktopText(shareText)
+            userMessages.showMessage("已复制分享文本")
+        },
+        onCopyClick = {
+            onDismissRequest()
+            copyDesktopText(shareText)
+            userMessages.showMessage("已复制链接")
+        },
+        onSettingsClick = {
+            onDismissRequest()
+            navigator.onNavigate(Account.AppearanceSettings(setting = "shareAction"))
+        },
+    )
+}
+
+private fun copyDesktopText(text: String) {
+    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
 }
 
 private suspend fun fetchDesktopPinDetail(
