@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel
 
+import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -24,7 +26,15 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.statement.readRawBytes
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -38,7 +48,10 @@ import kotlinx.serialization.json.long
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
 import java.io.File
+import java.net.URLConnection
+import java.util.Base64
 import javax.imageio.ImageIO
 import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
@@ -260,11 +273,15 @@ class DesktopArticleViewModelRuntime(
         content: DataHolder.Content,
         includeAppAttribution: Boolean,
         httpClient: HttpClient,
-    ): String = buildArticleExportHtml(
-        content = content,
-        includeAppAttribution = includeAppAttribution,
-        extraSectionsHtml = "",
-    )
+    ): String = inlineArticleExportImagesInHtml(
+        buildArticleExportHtml(
+            content = content,
+            includeAppAttribution = includeAppAttribution,
+            extraSectionsHtml = "",
+        ),
+    ) { imageUrl ->
+        fetchArticleExportImageDataUrl(httpClient, imageUrl)
+    }
 
     override fun saveHtmlToDownloads(
         displayName: String,
@@ -340,7 +357,7 @@ class DesktopArticleViewModelRuntime(
                 "{{authorBio}}" to authorBioHtml,
                 "{{voteCount}}" to data.voteUpCount.toString(),
                 "{{commentCount}}" to data.commentCount.toString(),
-                "{{bodyHtml}}" to data.contentHtml,
+                "{{bodyHtml}}" to prepareContentHtmlForExport(data.contentHtml),
                 "{{extraSections}}" to extraSectionsHtml,
                 "{{exportedDate}}" to "导出日期：" + formatArticleDateTime(System.currentTimeMillis() / 1000L),
                 "{{publishedDate}}" to data.createdEpochSeconds
@@ -368,6 +385,7 @@ class DesktopArticleViewModelRuntime(
 
 private const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 private const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+private const val ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY = 6
 
 private data class DesktopArticleExportData(
     val title: String,
@@ -435,6 +453,128 @@ private fun escapeExportHtml(text: String): String =
             }
         }
     }
+
+private fun prepareContentHtmlForExport(contentHtml: String): String {
+    val document = Ksoup.parseBodyFragment(contentHtml)
+    document.select("noscript").remove()
+    document.select("img").forEach { image ->
+        extractImageUrl(image)?.let { src ->
+            image.attr("src", normalizeExportUrl(src))
+        }
+        image.removeClass("lazy")
+        image.removeAttr("srcset")
+        image.removeAttr("sizes")
+        image.attr("loading", "eager")
+    }
+    document.select("a[href^=//]").forEach { anchor ->
+        anchor.attr("href", normalizeExportUrl(anchor.attr("href")))
+    }
+    return document.body().html()
+}
+
+private suspend fun inlineArticleExportImagesInHtml(
+    html: String,
+    resolveDataUrl: suspend (String) -> String,
+): String {
+    val document = Ksoup.parse(html)
+    inlineArticleExportImages(document.select("img"), resolveDataUrl)
+    return document.outerHtml()
+}
+
+private suspend fun inlineArticleExportImages(
+    imageNodes: Iterable<Element>,
+    resolveDataUrl: suspend (String) -> String,
+) {
+    val imagesByUrl = linkedMapOf<String, MutableList<Element>>()
+    imageNodes.forEach { image ->
+        val imageUrl = resolveArticleExportImageUrl(image) ?: return@forEach
+        imagesByUrl.getOrPut(imageUrl) { mutableListOf() }.add(image)
+    }
+    if (imagesByUrl.isEmpty()) {
+        return
+    }
+
+    val dataUrlsByUrl = coroutineScope {
+        val semaphore = Semaphore(ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY)
+        imagesByUrl.keys
+            .map { imageUrl ->
+                async {
+                    imageUrl to runCatching {
+                        semaphore.withPermit {
+                            resolveDataUrl(imageUrl)
+                        }
+                    }.getOrDefault(imageUrl)
+                }
+            }.awaitAll()
+            .toMap()
+    }
+
+    imagesByUrl.forEach { (imageUrl, images) ->
+        val dataUrl = dataUrlsByUrl.getValue(imageUrl)
+        images.forEach { image ->
+            image.attr("src", dataUrl)
+            image.removeClass("lazy")
+            image.removeAttr("srcset")
+            image.removeAttr("sizes")
+            image.attr("loading", "eager")
+        }
+    }
+}
+
+private suspend fun fetchArticleExportImageDataUrl(
+    httpClient: HttpClient,
+    imageUrl: String,
+): String {
+    val response = httpClient.get(imageUrl)
+    if (!response.status.isSuccess()) {
+        throw IllegalStateException("下载图片失败: ${response.status.value}")
+    }
+
+    val bytes = response.readRawBytes()
+    if (bytes.isEmpty()) {
+        throw IllegalStateException("图片内容为空")
+    }
+
+    val mimeType = resolveArticleExportImageMimeType(
+        contentTypeHeader = response.headers[HttpHeaders.ContentType],
+        imageUrl = imageUrl,
+        imageBytes = bytes,
+    )
+    return "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
+}
+
+private fun resolveArticleExportImageUrl(image: Element): String? =
+    extractImageUrl(image)
+        ?.let(::normalizeExportUrl)
+        ?: image
+            .attr("src")
+            .takeIf { it.isNotBlank() && !it.startsWith("data:") }
+            ?.let(::normalizeExportUrl)
+
+private fun extractImageUrl(image: Element): String? =
+    image.attr("data-original").takeIf { it.isNotBlank() }
+        ?: image.attr("data-actualsrc").takeIf { it.isNotBlank() }
+        ?: image.attr("data-src").takeIf { it.isNotBlank() }
+        ?: image.attr("src").takeIf { it.isNotBlank() && !it.startsWith("data:") }
+
+private fun resolveArticleExportImageMimeType(
+    contentTypeHeader: String?,
+    imageUrl: String,
+    imageBytes: ByteArray,
+): String {
+    contentTypeHeader
+        ?.substringBefore(';')
+        ?.trim()
+        ?.takeIf { it.startsWith("image/") }
+        ?.let { return it }
+
+    URLConnection.guessContentTypeFromName(imageUrl.substringBefore('?'))?.let { return it }
+    ByteArrayInputStream(imageBytes).use { stream ->
+        URLConnection.guessContentTypeFromStream(stream)?.let { return it }
+    }
+
+    return "image/jpeg"
+}
 
 private fun normalizeExportUrl(url: String): String = when {
     url.startsWith("//") -> "https:$url"
