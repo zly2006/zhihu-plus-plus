@@ -17,19 +17,22 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
+import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
+import com.github.zly2006.zhihu.shared.recommendation.LocalContentStats
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonStats
+import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity
+import com.github.zly2006.zhihu.shared.recommendation.buildReasonPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 /**
  * 用户行为分析器，用于分析用户行为并优化推荐
  */
 class UserBehaviorAnalyzer(
-    private val context: Context,
+    private val dao: LocalContentDao,
 ) {
-    private val database by lazy { getLocalContentDatabase(context) }
-    private val dao by lazy { database.contentDao() }
-
     data class RecommendationBehaviorProfile(
         val reasonPreferences: Map<CrawlingReason, LocalReasonPreference>,
         val contentAffinities: Map<String, LocalContentAffinity>,
@@ -47,7 +50,7 @@ class UserBehaviorAnalyzer(
             val behavior = UserBehavior(
                 contentId = contentId,
                 action = action,
-                timestamp = System.currentTimeMillis(),
+                timestamp = Clock.System.now().toEpochMilliseconds(),
                 duration = duration,
             )
             dao.insertBehavior(behavior)
@@ -66,7 +69,9 @@ class UserBehaviorAnalyzer(
     }
 
     suspend fun buildBehaviorProfile(): RecommendationBehaviorProfile = withContext(Dispatchers.IO) {
-        val recentBehaviors = dao.getBehaviorsSince(System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L)
+        val recentBehaviors = dao.getBehaviorsSince(
+            Clock.System.now().toEpochMilliseconds() - 30 * 24 * 60 * 60 * 1000L,
+        )
 
         val reasonStats = mutableMapOf<CrawlingReason, LocalReasonStats>()
         val contentStats = mutableMapOf<String, LocalContentStats>()
