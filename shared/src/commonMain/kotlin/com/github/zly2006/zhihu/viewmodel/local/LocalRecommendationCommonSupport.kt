@@ -197,6 +197,61 @@ internal fun extractQuestionIdFromUrl(url: String): String? {
     return regex.find(url)?.groupValues?.get(1)
 }
 
+internal fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
+    CrawlingTask(
+        url = "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=${index * 10}",
+        reason = CrawlingReason.Following,
+        priority = 8,
+    )
+}
+
+internal fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
+    CrawlingTask(
+        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=${index * 20}",
+        reason = CrawlingReason.Trending,
+        priority = 7,
+    )
+}
+
+internal fun createDefaultUpvotedQuestionTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
+    CrawlingTask(
+        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=${index * 10}",
+        reason = CrawlingReason.UpvotedQuestion,
+        priority = 6,
+    )
+}
+
+internal fun createQuestionFeedTask(questionId: String): CrawlingTask = CrawlingTask(
+    url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
+    reason = CrawlingReason.UpvotedQuestion,
+    priority = 6,
+)
+
+internal fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
+    CrawlingTask(
+        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=${index * 20}",
+        reason = CrawlingReason.FollowingUpvote,
+        priority = 5,
+    )
+}
+
+internal fun createCollaborativeFilteringTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
+    CrawlingTask(
+        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=${index * 15}",
+        reason = CrawlingReason.CollaborativeFiltering,
+        priority = 4,
+    )
+}
+
+internal fun extractQuestionIdFromContentId(contentId: String): String? {
+    val identity = parseLocalContentIdentity(contentId, "")
+    return when {
+        identity?.type == "question" -> identity.id
+        ':' !in contentId -> contentId.filter(Char::isDigit).ifBlank { null }
+        else -> null
+    }
+}
+
 internal fun rankCandidate(
     candidate: CrawlingResult,
     behaviorProfile: UserBehaviorAnalyzer.RecommendationBehaviorProfile,

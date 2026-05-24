@@ -186,22 +186,6 @@ class LocalContentInitializer(
         }
     }
 
-    private fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-        CrawlingTask(
-            url = "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=${index * 10}",
-            reason = CrawlingReason.Following,
-            priority = 8,
-        )
-    }
-
-    private fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-        CrawlingTask(
-            url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=${index * 20}",
-            reason = CrawlingReason.Trending,
-            priority = 7,
-        )
-    }
-
     private suspend fun createUpvotedQuestionTasks(count: Int): List<CrawlingTask> {
         val tasks = mutableListOf<CrawlingTask>()
 
@@ -211,52 +195,15 @@ class LocalContentInitializer(
         recentContent.forEach { (contentId, _) ->
             val questionId = extractQuestionIdFromContentId(contentId)
             if (questionId != null) {
-                tasks.add(
-                    CrawlingTask(
-                        url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
-                        reason = CrawlingReason.UpvotedQuestion,
-                        priority = 6,
-                    ),
-                )
+                tasks.add(createQuestionFeedTask(questionId))
             }
         }
 
         // 如果不足，用默认任务补充
         while (tasks.size < count) {
-            tasks.add(
-                CrawlingTask(
-                    url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=${tasks.size * 10}",
-                    reason = CrawlingReason.UpvotedQuestion,
-                    priority = 6,
-                ),
-            )
+            tasks.add(createDefaultUpvotedQuestionTasks(tasks.size + 1).last())
         }
 
         return tasks
-    }
-
-    private fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-        CrawlingTask(
-            url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=${index * 20}",
-            reason = CrawlingReason.FollowingUpvote,
-            priority = 5,
-        )
-    }
-
-    private fun createCollaborativeFilteringTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
-        CrawlingTask(
-            url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=${index * 15}",
-            reason = CrawlingReason.CollaborativeFiltering,
-            priority = 4,
-        )
-    }
-
-    private fun extractQuestionIdFromContentId(contentId: String): String? {
-        val identity = parseLocalContentIdentity(contentId, "")
-        return when {
-            identity?.type == "question" -> identity.id
-            ':' !in contentId -> contentId.filter(Char::isDigit).ifBlank { null }
-            else -> null
-        }
     }
 }

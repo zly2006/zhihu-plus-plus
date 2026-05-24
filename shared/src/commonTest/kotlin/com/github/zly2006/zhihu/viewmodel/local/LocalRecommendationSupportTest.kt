@@ -247,6 +247,42 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun createInitializerTasksKeepsUrlsAndPriorities() {
+        assertEquals(
+            "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=20",
+            createFollowingTasks(3).last().url,
+        )
+        assertEquals(8, createFollowingTasks(1).single().priority)
+        assertEquals(
+            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=40",
+            createTrendingTasks(3).last().url,
+        )
+        assertEquals(
+            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=10",
+            createDefaultUpvotedQuestionTasks(2).last().url,
+        )
+        assertEquals(
+            "https://www.zhihu.com/api/v4/questions/123/feeds?limit=20",
+            createQuestionFeedTask("123").url,
+        )
+        assertEquals(
+            "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=20",
+            createFollowingUpvoteTasks(2).last().url,
+        )
+        assertEquals(
+            "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=15",
+            createCollaborativeFilteringTasks(2).last().url,
+        )
+    }
+
+    @Test
+    fun extractQuestionIdFromContentIdKeepsLegacyFallback() {
+        assertEquals("123", extractQuestionIdFromContentId("question:123"))
+        assertEquals("123", extractQuestionIdFromContentId("q123"))
+        assertEquals(null, extractQuestionIdFromContentId("answer:456"))
+    }
+
+    @Test
     fun getFreshnessWeightUsesSameAgeBuckets() {
         val now = 10_000L * 60L * 60L * 1000L
 
