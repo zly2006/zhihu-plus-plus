@@ -19,9 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import android.content.Context
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.data.target
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
@@ -162,44 +160,4 @@ class CrawlingExecutor(
         }
     }
 
-    private fun createCrawlingResult(
-        feed: Feed,
-        taskId: Long,
-        reason: CrawlingReason,
-        scoreMultiplier: Double = 1.0,
-    ): CrawlingResult? {
-        val target = feed.target ?: return null
-
-        return CrawlingResult(
-            taskId = taskId,
-            contentId = target.toLocalContentIdentity().value,
-            title = target.title,
-            summary = target.excerpt ?: "",
-            url = when (target) {
-                is Feed.AnswerTarget -> target.url
-                is Feed.ArticleTarget -> target.url
-                else -> target.url
-            },
-            reason = reason,
-            score = scoreFeedTarget(target) * scoreMultiplier,
-        )
-    }
-
-    private fun isVoteupFeed(feed: Feed): Boolean {
-        // 简化的判断逻辑，根据Feed类型判断是否为点赞相关
-        return when (feed) {
-            is CommonFeed -> {
-                // 检查attachedInfo或brief中是否包含点赞相关信息
-                feed.brief.contains("赞同") ||
-                    feed.brief.contains("点赞") ||
-                    feed.attachedInfo.contains("VOTEUP")
-            }
-            else -> false
-        }
-    }
-
-    private fun extractQuestionIdFromUrl(url: String): String? {
-        val regex = """question/(\d+)""".toRegex()
-        return regex.find(url)?.groupValues?.get(1)
-    }
 }

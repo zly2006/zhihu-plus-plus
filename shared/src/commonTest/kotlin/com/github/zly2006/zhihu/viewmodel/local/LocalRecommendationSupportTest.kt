@@ -2,6 +2,8 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.shared.data.CommonFeed
+import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import kotlinx.coroutines.test.runTest
@@ -199,6 +201,49 @@ class LocalRecommendationSupportTest {
         waitForTaskCompletion(database.contentDao(), maxWaitTimeMs = 5_000L)
 
         database.close()
+    }
+
+    @Test
+    fun createCrawlingResultKeepsFeedTargetMappingAndMultiplier() {
+        val feed = CommonFeed(
+            target = Feed.AnswerTarget(
+                id = 42L,
+                url = "https://www.zhihu.com/question/1/answer/42",
+                question = Feed.QuestionTarget(
+                    id = 1L,
+                    _title = "问题标题",
+                    url = "https://www.zhihu.com/question/1",
+                    type = "question",
+                ),
+                excerpt = "回答摘要",
+                voteupCount = 100,
+                commentCount = 0,
+            ),
+        )
+
+        val result = createCrawlingResult(feed, taskId = 7L, reason = CrawlingReason.Trending, scoreMultiplier = 1.2)
+
+        assertNotNull(result)
+        assertEquals(7L, result.taskId)
+        assertEquals("answer:42", result.contentId)
+        assertEquals("问题标题", result.title)
+        assertEquals("回答摘要", result.summary)
+        assertEquals("https://www.zhihu.com/question/1/answer/42", result.url)
+        assertEquals(CrawlingReason.Trending, result.reason)
+        assertEquals(2.4, result.score)
+    }
+
+    @Test
+    fun isVoteupFeedMatchesBriefOrAttachedInfo() {
+        assertTrue(isVoteupFeed(CommonFeed(brief = "某人赞同了回答")))
+        assertTrue(isVoteupFeed(CommonFeed(attachedInfo = "ACTION_VOTEUP")))
+        assertEquals(false, isVoteupFeed(CommonFeed(brief = "某人关注了问题")))
+    }
+
+    @Test
+    fun extractQuestionIdFromUrlKeepsQuestionRegex() {
+        assertEquals("123", extractQuestionIdFromUrl("https://www.zhihu.com/question/123/answer/456"))
+        assertEquals(null, extractQuestionIdFromUrl("https://www.zhihu.com/answer/456"))
     }
 
     @Test

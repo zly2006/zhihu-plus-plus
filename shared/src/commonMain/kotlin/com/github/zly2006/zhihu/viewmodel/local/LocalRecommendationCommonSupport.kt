@@ -18,9 +18,14 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.data.CommonFeed
+import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
+import com.github.zly2006.zhihu.shared.recommendation.scoreFeedTarget
+import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -149,6 +154,47 @@ internal suspend fun waitForTaskCompletion(
         }
         delay(checkInterval)
     }
+}
+
+internal fun createCrawlingResult(
+    feed: Feed,
+    taskId: Long,
+    reason: CrawlingReason,
+    scoreMultiplier: Double = 1.0,
+): CrawlingResult? {
+    val target = feed.target ?: return null
+
+    return CrawlingResult(
+        taskId = taskId,
+        contentId = target.toLocalContentIdentity().value,
+        title = target.title,
+        summary = target.excerpt ?: "",
+        url = when (target) {
+            is Feed.AnswerTarget -> target.url
+            is Feed.ArticleTarget -> target.url
+            else -> target.url
+        },
+        reason = reason,
+        score = scoreFeedTarget(target) * scoreMultiplier,
+    )
+}
+
+internal fun isVoteupFeed(feed: Feed): Boolean {
+    // 简化的判断逻辑，根据Feed类型判断是否为点赞相关
+    return when (feed) {
+        is CommonFeed -> {
+            // 检查attachedInfo或brief中是否包含点赞相关信息
+            feed.brief.contains("赞同") ||
+                feed.brief.contains("点赞") ||
+                feed.attachedInfo.contains("VOTEUP")
+        }
+        else -> false
+    }
+}
+
+internal fun extractQuestionIdFromUrl(url: String): String? {
+    val regex = """question/(\d+)""".toRegex()
+    return regex.find(url)?.groupValues?.get(1)
 }
 
 internal fun rankCandidate(
