@@ -28,12 +28,9 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.Url
+import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 
 /**
  * 知乎 Token 刷新业务逻辑
@@ -44,18 +41,9 @@ object ZhihuCredentialRefresher {
     private const val GRANT_TYPE = "refresh_token"
     private const val SOURCE = "com.zhihu.web"
 
-    private fun hmacSha1(key: String, message: String): String {
-        val signingKey = SecretKeySpec(key.toByteArray(StandardCharsets.UTF_8), "HmacSHA1")
-        val mac = Mac.getInstance("HmacSHA1")
-        mac.init(signingKey)
-        val rawHmac = mac.doFinal(message.toByteArray(StandardCharsets.UTF_8))
-        // Hex encode
-        return rawHmac.joinToString("") { "%02x".format(it) }
-    }
-
     private fun generateRefreshPayload(refreshToken: String, timestamp: Long): Map<String, String> {
         val message = "$GRANT_TYPE$CLIENT_ID$SOURCE$timestamp"
-        val signature = hmacSha1(CLIENT_SECRET, message)
+        val signature = hmacSha1Hex(CLIENT_SECRET, message)
 
         return mapOf(
             "client_id" to CLIENT_ID,
@@ -91,7 +79,7 @@ object ZhihuCredentialRefresher {
         println("请求原始数据: $payloadMap")
 
         val formData = payloadMap.entries.joinToString("&") {
-            "${URLEncoder.encode(it.key, "UTF-8")}=${URLEncoder.encode(it.value, "UTF-8")}"
+            "${it.key.encodeURLParameter(spaceToPlus = true)}=${it.value.encodeURLParameter(spaceToPlus = true)}"
         }
         val encryptedData = ZseSigner.encryptZseV4(formData)
 
@@ -102,10 +90,12 @@ object ZhihuCredentialRefresher {
                 header("Referer", "https://www.zhihu.com/signin")
                 header("x-zse-83", "3_3.0")
                 header("x-requested-with", "fetch")
-                setBody(encryptedData.toByteArray(StandardCharsets.UTF_8))
+                setBody(encryptedData.encodeToByteArray())
             }.raiseForStatus()
             .body<JsonObject>()
 
         return jojo["access_token"]!!.jsonPrimitive.content
     }
 }
+
+expect fun hmacSha1Hex(key: String, message: String): String

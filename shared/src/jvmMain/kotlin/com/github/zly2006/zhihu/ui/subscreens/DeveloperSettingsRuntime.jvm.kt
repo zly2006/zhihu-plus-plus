@@ -6,6 +6,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import java.awt.Toolkit
@@ -29,7 +30,15 @@ actual fun rememberDeveloperSettingsRuntime(): DeveloperSettingsRuntime {
             verifyLogin = { cookies ->
                 store.verifyAndSave(cookies.toMutableMap())
             },
-            refreshToken = {},
+            refreshToken = {
+                val account = store.load()
+                store.createHttpClient(account.cookies).use { client ->
+                    ZhihuCredentialRefresher.refreshZhihuToken(
+                        ZhihuCredentialRefresher.fetchRefreshToken(client),
+                        client,
+                    )
+                }
+            },
             saveCookies = { cookies ->
                 val current = store.load()
                 store.save(
