@@ -109,18 +109,7 @@ class LocalRecommendationEngine(
 
     suspend fun refreshContent() {
         withContext(Dispatchers.IO) {
-            val tasks = mutableListOf<CrawlingTask>()
-
-            CrawlingReason.entries.forEach { reason ->
-                val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-                if (pendingCount < 2) {
-                    tasks.add(createTaskForReason(reason))
-                }
-            }
-
-            if (tasks.isNotEmpty()) {
-                dao.insertTasks(tasks)
-            }
+            insertRefreshTasks(dao)
 
             dao
                 .getTasksByStatus(CrawlingStatus.NotStarted)

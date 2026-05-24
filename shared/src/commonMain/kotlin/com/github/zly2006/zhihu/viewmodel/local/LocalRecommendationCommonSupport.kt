@@ -121,6 +121,21 @@ internal suspend fun ensurePendingTasks(dao: LocalContentDao) {
     }
 }
 
+internal suspend fun insertRefreshTasks(dao: LocalContentDao) {
+    val tasks = mutableListOf<CrawlingTask>()
+
+    CrawlingReason.entries.forEach { reason ->
+        val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
+        if (pendingCount < 2) {
+            tasks.add(createTaskForReason(reason))
+        }
+    }
+
+    if (tasks.isNotEmpty()) {
+        dao.insertTasks(tasks)
+    }
+}
+
 internal suspend fun waitForTaskCompletion(
     dao: LocalContentDao,
     maxWaitTimeMs: Long,

@@ -169,6 +169,30 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun insertRefreshTasksAddsOneTaskForReasonsBelowPendingThreshold() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        dao.insertTasks(
+            listOf(
+                CrawlingTask(
+                    url = "existing-1",
+                    reason = CrawlingReason.Trending,
+                ),
+                CrawlingTask(
+                    url = "existing-2",
+                    reason = CrawlingReason.Trending,
+                ),
+            ),
+        )
+
+        insertRefreshTasks(dao)
+
+        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
+        assertEquals(1, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        database.close()
+    }
+
+    @Test
     fun waitForTaskCompletionReturnsWhenNoTaskInProgress() = runTest {
         val database = testLocalContentDatabase()
 
