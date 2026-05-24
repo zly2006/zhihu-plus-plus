@@ -17,16 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.ArticleType
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.Pin
-import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_ANSWER
-import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_ARTICLE
-import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_PIN
-import com.github.zly2006.zhihu.shared.recommendation.LOCAL_CONTENT_TYPE_QUESTION
 import com.github.zly2006.zhihu.shared.recommendation.applyReasonDiversity as applySharedReasonDiversity
 import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity as buildSharedContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason as buildSharedLocalRecommendationReason
@@ -55,17 +46,6 @@ fun parseLocalContentIdentity(
     contentId: String,
     url: String,
 ): LocalContentIdentity? = parseSharedLocalContentIdentity(contentId, url)
-
-fun LocalContentIdentity.toNavDestination(title: String): NavDestination? {
-    val numericId = id.toLongOrNull() ?: return null
-    return when (type) {
-        LOCAL_CONTENT_TYPE_ANSWER -> Article(type = ArticleType.Answer, id = numericId, title = title)
-        LOCAL_CONTENT_TYPE_ARTICLE -> Article(type = ArticleType.Article, id = numericId, title = title)
-        LOCAL_CONTENT_TYPE_QUESTION -> Question(questionId = numericId, title = title)
-        LOCAL_CONTENT_TYPE_PIN -> Pin(id = numericId)
-        else -> null
-    }
-}
 
 fun Feed.Target.toLocalContentIdentity(): LocalContentIdentity = toSharedLocalContentIdentity()
 

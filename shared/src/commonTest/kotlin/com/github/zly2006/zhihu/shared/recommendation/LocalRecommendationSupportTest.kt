@@ -1,5 +1,9 @@
 package com.github.zly2006.zhihu.shared.recommendation
 
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.Feed
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,6 +44,26 @@ class LocalRecommendationSupportTest {
     @Test
     fun normalizeLocalContentIdUsesTypedValue() {
         assertEquals("answer:42", normalizeLocalContentId("answer", "42"))
+    }
+
+    @Test
+    fun toNavDestinationRestoresAnswerArticleQuestionAndPin() {
+        assertEquals(
+            Article(type = ArticleType.Answer, id = 42, title = "回答标题"),
+            LocalContentIdentity("answer", "42").toNavDestination("回答标题"),
+        )
+        assertEquals(
+            Article(type = ArticleType.Article, id = 77, title = "文章标题"),
+            LocalContentIdentity("article", "77").toNavDestination("文章标题"),
+        )
+        assertEquals(
+            Question(questionId = 9, title = "问题标题"),
+            LocalContentIdentity("question", "9").toNavDestination("问题标题"),
+        )
+        assertEquals(
+            Pin(id = 88),
+            LocalContentIdentity("pin", "88").toNavDestination("想法"),
+        )
     }
 
     @Test
