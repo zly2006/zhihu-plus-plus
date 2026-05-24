@@ -6,6 +6,11 @@ import androidx.compose.runtime.remember
 @Composable
 actual fun rememberUserMessageSink(): UserMessageSink = remember {
     UserMessageSink(
-        showShortMessage = {},
+        showShortMessage = { message ->
+            println(message)
+        },
+        showLongMessage = { message ->
+            println(message)
+        },
     )
 }
