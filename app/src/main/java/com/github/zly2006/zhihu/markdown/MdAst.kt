@@ -147,14 +147,26 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
     )
 
     "p" -> {
+        fun Element.textChildNodes(): List<TextNode> = childNodes().filterIsInstance<TextNode>()
+
+        fun Element.textWithOnlyWhitespace(): Boolean = textChildNodes().all { it.text().isBlank() }
+
         if (element.childNodeSize() == 0) {
             // empty paragraph
             emptyList()
-        } else if (element.childNodeSize() == 1 && element.childrenSize() == 1 && element.child(0).tagName() == "br") {
+        } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "br") {
             // single <br> as paragraph, treat it as empty to avoid extra spacing
             emptyList()
+        } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "img" && element.child(0).attr("eeimg") == "1") {
+            // eeimg == "1" is inline math
+            val image = element.child(0)
+            extractEquationTex(image)
+                ?.let { formula -> listOf(MathBlock(formula)) }
+                ?: listOfNotNull(createBlockImage(image))
         } else {
             if (element.selectFirst("span.highlight-wrap") != null) {
+                // 含有知乎的划线高亮结构，需要单独处理
+                // TODO: 暂不考虑其他可能的结构，直接尝试解析整个段落为SegmentedTextParagraph
                 parseSegmentTextParagraph(element)?.let { paragraph ->
                     return listOf(
                         NativeBlock {

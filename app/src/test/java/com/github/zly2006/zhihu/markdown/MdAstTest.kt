@@ -63,6 +63,20 @@ class MdAstTest {
     }
 
     @Test
+    fun paragraph_with_only_inline_equation_with_space_should_convert_to_math_block() {
+        val document = htmlToMdAst(
+            """
+            <p>  <img eeimg="1" src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2" alt="E=mc^2"/>  </p>
+            """.trimIndent(),
+        )
+
+        assertEquals(1, document.children.size)
+        assertTrue(document.children.single() is MathBlock)
+        assertEquals("E=mc^2", (document.children.single() as MathBlock).literal)
+        assertFalse(document.allNodes().any { it is InlineMath })
+    }
+
+    @Test
     fun extracted_answer_content_should_keep_equation_as_math_not_figure() {
         val htmlFile = File(
             requireNotNull(javaClass.classLoader?.getResource("zhihu_answer_2035661632110585441_content.html")).toURI(),
