@@ -68,7 +68,7 @@ class LocalRecommendationEngine(
 
         var candidates = collectCandidateResults(dao, limit)
         if (candidates.size < limit / 2) {
-            ensurePendingTasks()
+            ensurePendingTasks(dao)
             executeHighPriorityTasks()
             waitForTaskCompletion(5_000L)
             candidates = collectCandidateResults(dao, limit)
@@ -196,25 +196,6 @@ class LocalRecommendationEngine(
             result = rankedResult.result,
             navDestination = navDestination,
         )
-    }
-
-    private suspend fun ensurePendingTasks() {
-        val tasks = mutableListOf<CrawlingTask>()
-
-        CrawlingReason.entries.forEach { reason ->
-            val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
-            val inProgressCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.InProgress)
-
-            if (pendingCount + inProgressCount < 2) {
-                repeat(3 - pendingCount - inProgressCount) {
-                    tasks.add(createTaskForReason(reason))
-                }
-            }
-        }
-
-        if (tasks.isNotEmpty()) {
-            dao.insertTasks(tasks)
-        }
     }
 
     private suspend fun executeHighPriorityTasks() {

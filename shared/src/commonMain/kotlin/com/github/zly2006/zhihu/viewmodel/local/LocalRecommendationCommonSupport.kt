@@ -47,6 +47,25 @@ internal suspend fun collectCandidateResults(
         }.distinctBy { it.contentId }
 }
 
+internal suspend fun ensurePendingTasks(dao: LocalContentDao) {
+    val tasks = mutableListOf<CrawlingTask>()
+
+    CrawlingReason.entries.forEach { reason ->
+        val pendingCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.NotStarted)
+        val inProgressCount = dao.getTaskCountByReasonAndStatus(reason, CrawlingStatus.InProgress)
+
+        if (pendingCount + inProgressCount < 2) {
+            repeat(3 - pendingCount - inProgressCount) {
+                tasks.add(createTaskForReason(reason))
+            }
+        }
+    }
+
+    if (tasks.isNotEmpty()) {
+        dao.insertTasks(tasks)
+    }
+}
+
 internal fun rankCandidate(
     candidate: CrawlingResult,
     behaviorProfile: UserBehaviorAnalyzer.RecommendationBehaviorProfile,

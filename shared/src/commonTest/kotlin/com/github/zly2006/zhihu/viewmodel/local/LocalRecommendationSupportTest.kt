@@ -53,6 +53,24 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun ensurePendingTasksAddsTasksForReasonsBelowThreshold() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        dao.insertTask(
+            CrawlingTask(
+                url = "existing",
+                reason = CrawlingReason.Trending,
+            ),
+        )
+
+        ensurePendingTasks(dao)
+
+        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
+        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        database.close()
+    }
+
+    @Test
     fun getFreshnessWeightUsesSameAgeBuckets() {
         val now = 10_000L * 60L * 60L * 1000L
 
