@@ -11,11 +11,13 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
+import com.github.zly2006.zhihu.ui.components.getShareText
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.serialization.json.JsonObject
@@ -29,38 +31,49 @@ import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
-actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime = remember {
+actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
+    val settings = rememberSettingsStore()
+    val userMessages = rememberUserMessageSink()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
-    QuestionScreenRuntime(
-        loadQuestion = { question ->
-            addDesktopReadHistory(store, question.questionId.toString(), "question")
-            val questionData = fetchDesktopQuestionDetail(store, question)
-            if (questionData != null) {
-                val historyDestination = Question(question.questionId, questionData.title)
-                historyStorage.add(historyDestination)
-                LoadedQuestionScreenData(
-                    uiState = QuestionScreenUiState(
-                        questionContent = questionData.detail,
-                        answerCount = questionData.answerCount,
-                        visitCount = questionData.visitCount,
-                        commentCount = questionData.commentCount,
-                        followerCount = questionData.followerCount,
-                        title = questionData.title,
-                        isFollowing = questionData.relationship.isFollowing,
-                    ),
-                    historyDestination = historyDestination,
+    return remember(settings, userMessages) {
+        QuestionScreenRuntime(
+            loadQuestion = { question ->
+                addDesktopReadHistory(store, question.questionId.toString(), "question")
+                val questionData = fetchDesktopQuestionDetail(store, question)
+                if (questionData != null) {
+                    val historyDestination = Question(question.questionId, questionData.title)
+                    historyStorage.add(historyDestination)
+                    LoadedQuestionScreenData(
+                        uiState = QuestionScreenUiState(
+                            questionContent = questionData.detail,
+                            answerCount = questionData.answerCount,
+                            visitCount = questionData.visitCount,
+                            commentCount = questionData.commentCount,
+                            followerCount = questionData.followerCount,
+                            title = questionData.title,
+                            isFollowing = questionData.relationship.isFollowing,
+                        ),
+                        historyDestination = historyDestination,
+                    )
+                } else {
+                    null
+                }
+            },
+            openLog = { question ->
+                openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
+            },
+            handleShareAction = { question, onShowDialog ->
+                handleDesktopShareAction(
+                    shareText = getShareText(question),
+                    settings = settings,
+                    userMessages = userMessages,
+                    onShowDialog = onShowDialog,
                 )
-            } else {
-                null
-            }
-        },
-        openLog = { question ->
-            openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
-        },
-        handleShareAction = { _, onShowDialog -> onShowDialog() },
-        showShortMessage = { message -> println(message) },
-    )
+            },
+            showShortMessage = { message -> println(message) },
+        )
+    }
 }
 
 @Composable
@@ -116,6 +129,29 @@ actual fun QuestionShareDialog(
 
 private fun copyDesktopText(text: String) {
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+}
+
+private fun handleDesktopShareAction(
+    shareText: String?,
+    settings: com.github.zly2006.zhihu.shared.platform.SettingsStore,
+    userMessages: com.github.zly2006.zhihu.shared.platform.UserMessageSink,
+    onShowDialog: () -> Unit,
+) {
+    when (settings.getString("shareActionMode", "ask")) {
+        "copy" -> {
+            if (shareText != null) {
+                copyDesktopText(shareText)
+                userMessages.showMessage("已复制链接")
+            }
+        }
+        "share" -> {
+            if (shareText != null) {
+                copyDesktopText(shareText)
+                userMessages.showMessage("已复制分享文本")
+            }
+        }
+        else -> onShowDialog()
+    }
 }
 
 private suspend fun fetchDesktopQuestionDetail(
