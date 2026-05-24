@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
@@ -29,6 +30,45 @@ data class RankedLocalResult(
     val finalScore: Double,
     val reasonDisplay: String,
 )
+
+data class LocalRecommendationEntry(
+    val feed: LocalFeed,
+    val result: CrawlingResult,
+    val navDestination: NavDestination?,
+)
+
+internal suspend fun buildFallbackRecommendations(
+    dao: LocalContentDao,
+    userBehaviorAnalyzer: UserBehaviorAnalyzer,
+    feedGenerator: FeedGenerator,
+    limit: Int,
+): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {
+    val behaviorProfile = userBehaviorAnalyzer.buildBehaviorProfile()
+
+    dao
+        .getRecentResults(limit * 3)
+        .mapNotNull { candidate ->
+            val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return@mapNotNull null
+            if (candidate.contentId == identity.value) {
+                candidate
+            } else {
+                candidate.copy(contentId = identity.value)
+            }
+        }.distinctBy { it.contentId }
+        .mapNotNull { candidate ->
+            rankCandidate(
+                candidate = candidate,
+                behaviorProfile = behaviorProfile,
+            )
+        }.sortedByDescending { it.finalScore }
+        .take(limit)
+        .mapNotNull { rankedResult ->
+            toRecommendationEntry(
+                rankedResult = rankedResult,
+                feedGenerator = feedGenerator,
+            )
+        }
+}
 
 internal suspend fun collectCandidateResults(
     dao: LocalContentDao,
@@ -92,6 +132,20 @@ internal fun rankCandidate(
             reasonPreference = reasonPreference,
             contentAffinity = contentAffinity,
         ),
+    )
+}
+
+internal suspend fun toRecommendationEntry(
+    rankedResult: RankedLocalResult,
+    feedGenerator: FeedGenerator,
+): LocalRecommendationEntry? {
+    val identity = parseLocalContentIdentity(rankedResult.result.contentId, rankedResult.result.url) ?: return null
+    val navDestination = identity.toNavDestination(rankedResult.result.title) ?: return null
+    val localFeed = feedGenerator.generateFeedFromResult(rankedResult.result, rankedResult.reasonDisplay)
+    return LocalRecommendationEntry(
+        feed = localFeed,
+        result = rankedResult.result,
+        navDestination = navDestination,
     )
 }
 

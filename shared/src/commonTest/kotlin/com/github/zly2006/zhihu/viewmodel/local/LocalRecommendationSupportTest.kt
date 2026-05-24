@@ -1,5 +1,7 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import kotlinx.coroutines.test.runTest
@@ -10,6 +12,39 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class LocalRecommendationSupportTest {
+    @Test
+    fun buildFallbackRecommendationsRanksRecentResultsAndCreatesEntries() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        dao.insertResult(
+            CrawlingResult(
+                taskId = 1L,
+                contentId = "42",
+                title = "回答标题",
+                summary = "摘要",
+                url = "https://www.zhihu.com/answer/42",
+                reason = CrawlingReason.Trending,
+                score = 10.0,
+            ),
+        )
+
+        val entries = buildFallbackRecommendations(
+            dao = dao,
+            userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
+            feedGenerator = FeedGenerator(dao),
+            limit = 5,
+        )
+
+        assertEquals(1, entries.size)
+        assertEquals("回答标题", entries.single().feed.title)
+        assertEquals("answer:42", entries.single().result.contentId)
+        assertEquals(
+            Article(type = ArticleType.Answer, id = 42L, title = "回答标题"),
+            entries.single().navDestination,
+        )
+        database.close()
+    }
+
     @Test
     fun collectCandidateResultsNormalizesAndDeduplicatesCandidates() = runTest {
         val database = testLocalContentDatabase()

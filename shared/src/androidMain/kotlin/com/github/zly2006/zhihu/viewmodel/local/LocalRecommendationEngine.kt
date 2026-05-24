@@ -20,7 +20,6 @@ package com.github.zly2006.zhihu.viewmodel.local
 import android.content.Context
 import android.net.ConnectivityManager
 import android.util.Log
-import com.github.zly2006.zhihu.navigation.NavDestination
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -31,12 +30,6 @@ import kotlin.jvm.java
 class LocalRecommendationEngine(
     private val context: Context,
 ) {
-    data class LocalRecommendationEntry(
-        val feed: LocalFeed,
-        val result: CrawlingResult,
-        val navDestination: NavDestination?,
-    )
-
     private val database by lazy { getLocalContentDatabase(context) }
     private val dao by lazy { database.contentDao() }
     private val feedGenerator by lazy { FeedGenerator(context) }
@@ -75,7 +68,7 @@ class LocalRecommendationEngine(
         }
 
         if (candidates.isEmpty()) {
-            return@withContext buildFallbackRecommendations(limit)
+            return@withContext buildFallbackRecommendations(dao, userBehaviorAnalyzer, feedGenerator, limit)
         }
 
         val behaviorProfile = userBehaviorAnalyzer.buildBehaviorProfile()
@@ -85,11 +78,14 @@ class LocalRecommendationEngine(
             }.sortedByDescending { it.finalScore }
 
         if (ranked.isEmpty()) {
-            return@withContext buildFallbackRecommendations(limit)
+            return@withContext buildFallbackRecommendations(dao, userBehaviorAnalyzer, feedGenerator, limit)
         }
 
         applyReasonDiversity(ranked, limit).mapNotNull { rankedResult ->
-            toRecommendationEntry(rankedResult)
+            toRecommendationEntry(
+                rankedResult = rankedResult,
+                feedGenerator = feedGenerator,
+            )
         }
     }
 
@@ -160,42 +156,6 @@ class LocalRecommendationEngine(
             dao.cleanupOldFeeds(oneMonthAgo)
             dao.cleanupOldBehaviors(oneMonthAgo)
         }
-    }
-
-    private suspend fun buildFallbackRecommendations(limit: Int): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {
-        val behaviorProfile = userBehaviorAnalyzer.buildBehaviorProfile()
-
-        dao
-            .getRecentResults(limit * 3)
-            .mapNotNull { candidate ->
-                val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return@mapNotNull null
-                if (candidate.contentId == identity.value) {
-                    candidate
-                } else {
-                    candidate.copy(contentId = identity.value)
-                }
-            }.distinctBy { it.contentId }
-            .mapNotNull { candidate ->
-                rankCandidate(
-                    candidate = candidate,
-                    behaviorProfile = behaviorProfile,
-                )
-            }.sortedByDescending { it.finalScore }
-            .take(limit)
-            .mapNotNull { rankedResult ->
-                toRecommendationEntry(rankedResult)
-            }
-    }
-
-    private suspend fun toRecommendationEntry(rankedResult: RankedLocalResult): LocalRecommendationEntry? {
-        val identity = parseLocalContentIdentity(rankedResult.result.contentId, rankedResult.result.url) ?: return null
-        val navDestination = identity.toNavDestination(rankedResult.result.title) ?: return null
-        val localFeed = feedGenerator.generateFeedFromResult(rankedResult.result, rankedResult.reasonDisplay)
-        return LocalRecommendationEntry(
-            feed = localFeed,
-            result = rankedResult.result,
-            navDestination = navDestination,
-        )
     }
 
     private suspend fun executeHighPriorityTasks() {

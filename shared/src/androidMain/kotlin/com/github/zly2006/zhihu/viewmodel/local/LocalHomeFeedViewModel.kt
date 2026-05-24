@@ -110,7 +110,7 @@ class LocalHomeFeedViewModel :
         return recommendationEngine
     }
 
-    private fun createLocalFeedDisplayItem(entry: LocalRecommendationEngine.LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
+    private fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
         title = entry.feed.title,
         summary = entry.feed.summary,
         details = entry.feed.reasonDisplay,
