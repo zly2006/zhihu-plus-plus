@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
@@ -17,42 +18,65 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.request
+import io.ktor.http.HttpMethod
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
 import java.net.URI
 
 @Composable
-actual fun rememberPinScreenRuntime(): PinScreenRuntime = remember {
+actual fun rememberPinScreenRuntime(): PinScreenRuntime {
+    val scope = rememberCoroutineScope()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
-    PinScreenRuntime(
-        loadPinDetail = { pin ->
-            addDesktopReadHistory(store, pin.id.toString(), "pin")
-            val content = fetchDesktopPinDetail(store, pin)
-            if (content == null) {
-                PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
-            } else {
-                historyStorage.add(pin)
-                PinScreenUiState(
-                    isLoading = false,
-                    pinContent = content,
-                    isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
-                    likeCount = content.likeCount,
-                )
-            }
-        },
-        toggleLike = { _, _, _ -> },
-        handleShareAction = { _, onShowDialog -> onShowDialog() },
-        fetchLinkCardPreview = { linkCard ->
-            fetchDesktopLinkCardPreview(store, linkCard)
-        },
-        openExternalUrl = ::openDesktopExternalUrl,
-    )
+    return remember(scope) {
+        PinScreenRuntime(
+            loadPinDetail = { pin ->
+                addDesktopReadHistory(store, pin.id.toString(), "pin")
+                val content = fetchDesktopPinDetail(store, pin)
+                if (content == null) {
+                    PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
+                } else {
+                    historyStorage.add(pin)
+                    PinScreenUiState(
+                        isLoading = false,
+                        pinContent = content,
+                        isLiked = content.virtuals.booleanCompat("isLiked", "is_liked"),
+                        likeCount = content.likeCount,
+                    )
+                }
+            },
+            toggleLike = { pin, isLiked, onResult ->
+                scope.launch {
+                    try {
+                        val method = if (isLiked) HttpMethod.Delete else HttpMethod.Post
+                        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}/voters/up"
+                        val jojo = fetchDesktopPinLike(store, endpoint, method) ?: return@launch
+                        onResult(
+                            PinLikeResult(
+                                isLiked = !isLiked,
+                                likeCount = jojo["liked_count"]?.jsonPrimitive?.intOrNull ?: -1,
+                            ),
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            },
+            handleShareAction = { _, onShowDialog -> onShowDialog() },
+            fetchLinkCardPreview = { linkCard ->
+                fetchDesktopLinkCardPreview(store, linkCard)
+            },
+            openExternalUrl = ::openDesktopExternalUrl,
+        )
+    }
 }
 
 @Composable
@@ -92,6 +116,25 @@ private suspend fun fetchDesktopPinDetail(
                     }
                 }.body<kotlinx.serialization.json.JsonObject>()
             ZhihuJson.decodeJson<DataHolder.Pin>(json)
+        }
+    }.getOrNull()
+}
+
+private suspend fun fetchDesktopPinLike(
+    store: DesktopAccountStore,
+    endpoint: String,
+    method: HttpMethod,
+): JsonObject? {
+    val account = store.load()
+    return runCatching {
+        store.createHttpClient(account.cookies).use { client ->
+            client
+                .request(endpoint) {
+                    this.method = method
+                    account.cookies["d_c0"]?.let { dc0 ->
+                        signZhihuFetchRequest(dc0 = dc0)
+                    }
+                }.body<JsonObject>()
         }
     }.getOrNull()
 }
