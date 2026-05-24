@@ -154,10 +154,10 @@ private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (
         if (element.childNodeSize() == 0) {
             // empty paragraph
             emptyList()
-        } else if (element.childNodeSize() == 1 && element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "br") {
+        } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "br") {
             // single <br> as paragraph, treat it as empty to avoid extra spacing
             emptyList()
-        } else if (element.childNodeSize() == 1 && element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "img" && element.child(0).attr("eeimg") == "1") {
+        } else if (element.childrenSize() == 1 && element.textWithOnlyWhitespace() && element.child(0).tagName() == "img" && element.child(0).attr("eeimg") == "1") {
             // eeimg == "1" is inline math
             val image = element.child(0)
             extractEquationTex(image)

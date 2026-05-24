@@ -63,10 +63,10 @@ class MdAstTest {
     }
 
     @Test
-    fun paragraph_with_only_inline_equation_should_convert_to_math_block() {
+    fun paragraph_with_only_inline_equation_with_space_should_convert_to_math_block() {
         val document = htmlToMdAst(
             """
-            <p><img eeimg="1" src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2" alt="E=mc^2"/></p>
+            <p>  <img eeimg="1" src="https://www.zhihu.com/equation?tex=E%3Dmc%5E2" alt="E=mc^2"/>  </p>
             """.trimIndent(),
         )
 
