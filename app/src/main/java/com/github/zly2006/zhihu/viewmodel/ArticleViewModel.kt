@@ -449,7 +449,7 @@ class ArticleViewModel(
                                 nav.prefetchPrevious(context, article.id)
                             }
                         } else {
-                            content = "<h1>回答不存在</h1>"
+                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
                             Log.e("ArticleViewModel", "Answer not found")
                         }
                     } else if (article.type == ArticleType.Article) {
@@ -500,7 +500,7 @@ class ArticleViewModel(
                                     ?: ContentOpenFrom.UNKNOWN,
                             )
                         } else {
-                            content = "<h1>文章不存在</h1>"
+                            content = "<h1>你似乎来到了没有知识存在的荒原</h1>"
                             Log.e("ArticleViewModel", "Article not found")
                         }
                     }
