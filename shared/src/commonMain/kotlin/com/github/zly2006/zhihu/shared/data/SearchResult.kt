@@ -32,6 +32,8 @@ import kotlinx.serialization.encoding.decodeStructure
 import kotlinx.serialization.encoding.encodeStructure
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -275,8 +277,13 @@ object StringOrListSerializer : KSerializer<List<String>?> {
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("StringOrList")
 
     override fun serialize(encoder: Encoder, value: List<String>?) {
-        // Not implemented as we only need deserialization
-        throw NotImplementedError("Serialization not implemented")
+        require(encoder is JsonEncoder)
+        encoder.encodeJsonElement(
+            value
+                ?.map(::JsonPrimitive)
+                ?.let(::JsonArray)
+                ?: JsonNull,
+        )
     }
 
     override fun deserialize(decoder: Decoder): List<String>? {
