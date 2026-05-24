@@ -66,12 +66,12 @@ class LocalRecommendationEngine(
     suspend fun generateRecommendations(limit: Int = 20): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {
         initialize()
 
-        var candidates = collectCandidateResults(limit)
+        var candidates = collectCandidateResults(dao, limit)
         if (candidates.size < limit / 2) {
             ensurePendingTasks()
             executeHighPriorityTasks()
             waitForTaskCompletion(5_000L)
-            candidates = collectCandidateResults(limit)
+            candidates = collectCandidateResults(dao, limit)
         }
 
         if (candidates.isEmpty()) {
@@ -160,20 +160,6 @@ class LocalRecommendationEngine(
             dao.cleanupOldFeeds(oneMonthAgo)
             dao.cleanupOldBehaviors(oneMonthAgo)
         }
-    }
-
-    private suspend fun collectCandidateResults(limit: Int): List<CrawlingResult> = withContext(Dispatchers.IO) {
-        CrawlingReason.entries
-            .flatMap { reason ->
-                dao.getResultsByReason(reason).take(limit * 2)
-            }.mapNotNull { candidate ->
-                val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return@mapNotNull null
-                if (candidate.contentId == identity.value) {
-                    candidate
-                } else {
-                    candidate.copy(contentId = identity.value)
-                }
-            }.distinctBy { it.contentId }
     }
 
     private suspend fun buildFallbackRecommendations(limit: Int): List<LocalRecommendationEntry> = withContext(Dispatchers.IO) {

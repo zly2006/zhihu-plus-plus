@@ -2,12 +2,56 @@ package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import kotlinx.coroutines.test.runTest
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class LocalRecommendationSupportTest {
+    @Test
+    fun collectCandidateResultsNormalizesAndDeduplicatesCandidates() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        dao.insertResults(
+            listOf(
+                CrawlingResult(
+                    taskId = 1L,
+                    contentId = "42",
+                    title = "标题 1",
+                    summary = "摘要",
+                    url = "https://www.zhihu.com/answer/42",
+                    reason = CrawlingReason.Trending,
+                    score = 10.0,
+                ),
+                CrawlingResult(
+                    taskId = 1L,
+                    contentId = "answer:42",
+                    title = "标题 2",
+                    summary = "摘要",
+                    url = "https://www.zhihu.com/answer/42",
+                    reason = CrawlingReason.Following,
+                    score = 9.0,
+                ),
+                CrawlingResult(
+                    taskId = 1L,
+                    contentId = "bad",
+                    title = "标题 3",
+                    summary = "摘要",
+                    url = "https://www.zhihu.com/not-content",
+                    reason = CrawlingReason.Trending,
+                    score = 8.0,
+                ),
+            ),
+        )
+
+        val candidates = collectCandidateResults(dao, limit = 10)
+
+        assertEquals(listOf("answer:42"), candidates.map { it.contentId })
+        database.close()
+    }
+
     @Test
     fun getFreshnessWeightUsesSameAgeBuckets() {
         val now = 10_000L * 60L * 60L * 1000L
@@ -71,4 +115,9 @@ class LocalRecommendationSupportTest {
         assertTrue(ranked.finalScore > 0.0)
         assertEquals("热门推荐 · 你明确喜欢过类似内容 · 你最近更偏好这类来源", ranked.reasonDisplay)
     }
+
+    private fun testLocalContentDatabase(): LocalContentDatabase =
+        getLocalContentDatabase(
+            createTempDirectory("local-recommendation-support-room").resolve("local-content.db").toFile(),
+        )
 }

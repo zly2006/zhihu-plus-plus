@@ -20,6 +20,8 @@ package com.github.zly2006.zhihu.viewmodel.local
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
 data class RankedLocalResult(
@@ -27,6 +29,23 @@ data class RankedLocalResult(
     val finalScore: Double,
     val reasonDisplay: String,
 )
+
+internal suspend fun collectCandidateResults(
+    dao: LocalContentDao,
+    limit: Int,
+): List<CrawlingResult> = withContext(Dispatchers.IO) {
+    CrawlingReason.entries
+        .flatMap { reason ->
+            dao.getResultsByReason(reason).take(limit * 2)
+        }.mapNotNull { candidate ->
+            val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return@mapNotNull null
+            if (candidate.contentId == identity.value) {
+                candidate
+            } else {
+                candidate.copy(contentId = identity.value)
+            }
+        }.distinctBy { it.contentId }
+}
 
 internal fun rankCandidate(
     candidate: CrawlingResult,
