@@ -17,6 +17,9 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
+import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason
+import com.github.zly2006.zhihu.shared.recommendation.parseLocalContentIdentity
 import kotlin.time.Clock
 
 data class RankedLocalResult(
@@ -24,6 +27,35 @@ data class RankedLocalResult(
     val finalScore: Double,
     val reasonDisplay: String,
 )
+
+internal fun rankCandidate(
+    candidate: CrawlingResult,
+    behaviorProfile: UserBehaviorAnalyzer.RecommendationBehaviorProfile,
+): RankedLocalResult? {
+    val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return null
+    val normalizedResult = if (candidate.contentId == identity.value) {
+        candidate
+    } else {
+        candidate.copy(contentId = identity.value)
+    }
+
+    val reasonPreference = behaviorProfile.reasonPreferences[normalizedResult.reason] ?: LocalReasonPreference(1.0)
+    val contentAffinity = behaviorProfile.contentAffinities[normalizedResult.contentId]
+    val reasonWeight = getDefaultWeight(normalizedResult.reason) * reasonPreference.multiplier
+    val contentWeight = contentAffinity?.multiplier ?: 1.0
+    val freshnessWeight = getFreshnessWeight(normalizedResult.createdAt)
+    val finalScore = normalizedResult.score * reasonWeight * contentWeight * freshnessWeight
+
+    return RankedLocalResult(
+        result = normalizedResult,
+        finalScore = finalScore,
+        reasonDisplay = buildLocalRecommendationReason(
+            baseReason = getReasonDisplayText(normalizedResult.reason),
+            reasonPreference = reasonPreference,
+            contentAffinity = contentAffinity,
+        ),
+    )
+}
 
 internal fun getFreshnessWeight(
     createdAt: Long,
@@ -45,6 +77,14 @@ internal fun getDefaultWeight(reason: CrawlingReason): Double = when (reason) {
     CrawlingReason.UpvotedQuestion -> 0.95
     CrawlingReason.FollowingUpvote -> 0.88
     CrawlingReason.CollaborativeFiltering -> 0.8
+}
+
+internal fun getReasonDisplayText(reason: CrawlingReason): String = when (reason) {
+    CrawlingReason.Following -> "关注用户的最新动态"
+    CrawlingReason.Trending -> "热门推荐"
+    CrawlingReason.FollowingUpvote -> "关注用户点赞的内容"
+    CrawlingReason.UpvotedQuestion -> "相关问题的优质回答"
+    CrawlingReason.CollaborativeFiltering -> "相似用户喜欢的内容"
 }
 
 internal fun createTaskForReason(reason: CrawlingReason): CrawlingTask {

@@ -1,7 +1,11 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
+import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class LocalRecommendationSupportTest {
     @Test
@@ -30,5 +34,41 @@ class LocalRecommendationSupportTest {
         assertEquals("https://api.zhihu.com/moments_v3?feed_type=recommend", task.url)
         assertEquals(CrawlingReason.Following, task.reason)
         assertEquals(8, task.priority)
+    }
+
+    @Test
+    fun rankCandidateNormalizesContentIdAndAppliesWeights() {
+        val ranked = rankCandidate(
+            candidate = CrawlingResult(
+                id = 1L,
+                taskId = 1L,
+                contentId = "42",
+                title = "标题",
+                summary = "摘要",
+                url = "https://www.zhihu.com/answer/42",
+                reason = CrawlingReason.Trending,
+                score = 10.0,
+                createdAt = 0L,
+            ),
+            behaviorProfile = UserBehaviorAnalyzer.RecommendationBehaviorProfile(
+                reasonPreferences = mapOf(
+                    CrawlingReason.Trending to LocalReasonPreference(
+                        multiplier = 1.2,
+                        explanation = "你最近更偏好这类来源",
+                    ),
+                ),
+                contentAffinities = mapOf(
+                    "answer:42" to LocalContentAffinity(
+                        multiplier = 1.5,
+                        explanation = "你明确喜欢过类似内容",
+                    ),
+                ),
+            ),
+        )
+
+        assertNotNull(ranked)
+        assertEquals("answer:42", ranked.result.contentId)
+        assertTrue(ranked.finalScore > 0.0)
+        assertEquals("热门推荐 · 你明确喜欢过类似内容 · 你最近更偏好这类来源", ranked.reasonDisplay)
     }
 }

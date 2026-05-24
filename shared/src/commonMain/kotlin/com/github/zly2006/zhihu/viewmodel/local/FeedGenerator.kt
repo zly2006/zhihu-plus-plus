@@ -69,11 +69,7 @@ class FeedGenerator(
     /**
      * 根据推荐原因获取理由显示文本
      */
-    fun getReasonDisplayText(reason: CrawlingReason): String = when (reason) {
-        CrawlingReason.Following -> "关注用户的最新动态"
-        CrawlingReason.Trending -> "热门推荐"
-        CrawlingReason.FollowingUpvote -> "关注用户点赞的内容"
-        CrawlingReason.UpvotedQuestion -> "相关问题的优质回答"
-        CrawlingReason.CollaborativeFiltering -> "相似用户喜欢的内容"
-    }
+    fun getReasonDisplayText(reason: CrawlingReason): String =
+        com.github.zly2006.zhihu.viewmodel.local
+            .getReasonDisplayText(reason)
 }

@@ -212,35 +212,6 @@ class LocalRecommendationEngine(
         )
     }
 
-    private fun rankCandidate(
-        candidate: CrawlingResult,
-        behaviorProfile: UserBehaviorAnalyzer.RecommendationBehaviorProfile,
-    ): RankedLocalResult? {
-        val identity = parseLocalContentIdentity(candidate.contentId, candidate.url) ?: return null
-        val normalizedResult = if (candidate.contentId == identity.value) {
-            candidate
-        } else {
-            candidate.copy(contentId = identity.value)
-        }
-
-        val reasonPreference = behaviorProfile.reasonPreferences[normalizedResult.reason] ?: LocalReasonPreference(1.0)
-        val contentAffinity = behaviorProfile.contentAffinities[normalizedResult.contentId]
-        val reasonWeight = getDefaultWeight(normalizedResult.reason) * reasonPreference.multiplier
-        val contentWeight = contentAffinity?.multiplier ?: 1.0
-        val freshnessWeight = getFreshnessWeight(normalizedResult.createdAt)
-        val finalScore = normalizedResult.score * reasonWeight * contentWeight * freshnessWeight
-
-        return RankedLocalResult(
-            result = normalizedResult,
-            finalScore = finalScore,
-            reasonDisplay = buildLocalRecommendationReason(
-                baseReason = feedGenerator.getReasonDisplayText(normalizedResult.reason),
-                reasonPreference = reasonPreference,
-                contentAffinity = contentAffinity,
-            ),
-        )
-    }
-
     private suspend fun ensurePendingTasks() {
         val tasks = mutableListOf<CrawlingTask>()
 
