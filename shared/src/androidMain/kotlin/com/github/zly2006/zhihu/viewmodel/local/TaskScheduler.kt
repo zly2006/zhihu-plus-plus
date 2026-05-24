@@ -84,20 +84,6 @@ class TaskScheduler(
      * 清理旧数据
      */
     private suspend fun cleanupOldData() {
-        val oneWeekAgo = System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000L
-        val oneMonthAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
-
-        // 清理旧的已完成任务
-        dao.cleanupOldTasks(CrawlingStatus.Completed, oneWeekAgo)
-        dao.cleanupOldTasks(CrawlingStatus.Failed, oneWeekAgo)
-
-        // 清理旧的爬虫结果
-        dao.cleanupOldResults(oneMonthAgo)
-
-        // 清理旧的推荐内容
-        dao.cleanupOldFeeds(oneMonthAgo)
-
-        // 清理旧的用户行为数据
-        dao.cleanupOldBehaviors(oneMonthAgo)
+        cleanupLocalRecommendationData(dao)
     }
 }
