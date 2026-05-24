@@ -34,12 +34,6 @@ typealias LocalContentStats = com.github.zly2006.zhihu.shared.recommendation.Loc
 typealias LocalReasonPreference = com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 typealias LocalContentAffinity = com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 
-data class RankedLocalResult(
-    val result: CrawlingResult,
-    val finalScore: Double,
-    val reasonDisplay: String,
-)
-
 fun normalizeLocalContentId(type: String, id: String): String = normalizeSharedLocalContentId(type, id)
 
 fun parseLocalContentIdentity(
