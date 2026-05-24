@@ -15,6 +15,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -90,6 +91,11 @@ actual fun PinCommentsSheet(
     onDismiss: () -> Unit,
     content: Pin,
 ) {
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = onDismiss,
+        content = content,
+    )
 }
 
 @Composable
