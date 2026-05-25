@@ -18,12 +18,21 @@ import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisp
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
+import com.github.zly2006.zhihu.viewmodel.local.CrawlingExecutor
+import com.github.zly2006.zhihu.viewmodel.local.FeedGenerator
+import com.github.zly2006.zhihu.viewmodel.local.LocalContentInitializer
+import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
+import com.github.zly2006.zhihu.viewmodel.local.TaskScheduler
+import com.github.zly2006.zhihu.viewmodel.local.UserBehaviorAnalyzer
+import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import java.io.File
 import java.util.Properties
 
@@ -35,6 +44,7 @@ class DesktopPaginationEnvironment(
     private val contentFilterDatabase = getContentFilterDatabase(
         File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
     )
+    private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
 
     override fun httpClient(): HttpClient = store.createHttpClient(store.load().cookies)
 
@@ -133,6 +143,47 @@ class DesktopPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         historyStorage.clearAndSave()
+    }
+
+    override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
+
+    private fun createLocalRecommendationEngine(): LocalRecommendationEngine {
+        val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/local-content.db")
+        databaseFile.parentFile?.mkdirs()
+        val dao = getLocalContentDatabase(databaseFile).contentDao()
+        val crawlingExecutor = CrawlingExecutor(
+            dao = dao,
+            fetchFeedArray = { url -> fetchDesktopLocalFeedArray(url) },
+        )
+        val taskScheduler = TaskScheduler(
+            dao = dao,
+            executeTask = { task -> crawlingExecutor.executeTask(task) },
+        )
+        val contentInitializer = LocalContentInitializer(dao)
+        return LocalRecommendationEngine(
+            dao = dao,
+            feedGenerator = FeedGenerator(dao),
+            userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
+            initializeContentIfNeeded = { contentInitializer.initializeIfNeeded() },
+            startScheduling = { taskScheduler.startScheduling() },
+            stopScheduling = { taskScheduler.stopScheduling() },
+            executeTask = { task -> crawlingExecutor.executeTask(task) },
+            logWarning = { message -> println("LocalRecommendationEngine warning: $message") },
+            logError = { message, throwable -> println("LocalRecommendationEngine error: $message: $throwable") },
+        )
+    }
+
+    private suspend fun fetchDesktopLocalFeedArray(url: String): JsonArray {
+        val account = store.load()
+        return store.createHttpClient(account.cookies).use { client ->
+            client
+                .get(url) {
+                    account.cookies["d_c0"]?.let { dc0 ->
+                        signZhihuFetchRequest(dc0 = dc0)
+                    }
+                }.body<JsonObject>()["data"]
+                ?.jsonArray ?: JsonArray(emptyList())
+        }
     }
 }
 
