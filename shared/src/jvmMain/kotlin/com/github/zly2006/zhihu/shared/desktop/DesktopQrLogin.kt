@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,7 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.shared.login.SharedQrLoginPane
-import com.github.zly2006.zhihu.ui.HotListScreen
+import com.github.zly2006.zhihu.theme.ZhihuTheme
+import com.github.zly2006.zhihu.ui.DesktopZhihuMain
 
 @Composable
 fun DesktopQrLoginScreen(
@@ -42,13 +42,10 @@ fun DesktopQrLoginScreen(
         didCheckSavedAccount = true
     }
 
-    MaterialTheme {
+    ZhihuTheme {
         if (isLoggedIn) {
-            HotListScreen()
-            return@MaterialTheme
-        }
-
-        if (didCheckSavedAccount) {
+            DesktopZhihuMain()
+        } else if (didCheckSavedAccount) {
             SharedQrLoginPane(
                 createClient = { cookies -> store.createHttpClient(cookies) },
                 onLoginSuccess = { cookies ->
