@@ -15,28 +15,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.export
+package com.github.zly2006.zhihu.util
 
-import com.github.zly2006.zhihu.util.ArticleExportComment
-import com.github.zly2006.zhihu.util.ArticleExportData
-import com.github.zly2006.zhihu.util.ArticleExportFooterData
-import com.github.zly2006.zhihu.util.buildArticleExportCommentsHtml
-import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
-import com.github.zly2006.zhihu.util.prepareArticleExportComment
-import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.io.File
+import java.io.FileNotFoundException
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ArticleExportHtmlTest {
     @Test
     fun exportTemplateAssetContainsPreviewPlaceholders() {
         val template = loadExportTemplateAsset()
 
-        assertTrue("导出模板需要保存在 assets 下，便于预览", template.isNotBlank())
+        assertTrue(template.isNotBlank(), "导出模板需要保存在 assets 下，便于预览")
         assertTrue(template.contains("{{title}}"))
         assertTrue(template.contains("{{authorAvatar}}"))
         assertTrue(template.contains("{{authorName}}"))
@@ -67,9 +61,9 @@ class ArticleExportHtmlTest {
         assertTrue(html.contains("导出标题"))
         assertTrue(html.contains("导出作者"))
         assertTrue(html.contains("作者简介"))
-        assertTrue("导出 HTML 需要包含作者头像", html.contains("https://pic1.zhimg.com/avatar.jpg"))
-        assertTrue("导出 HTML 需要包含赞同数", html.contains("128"))
-        assertTrue("导出 HTML 需要包含评论数", html.contains("7"))
+        assertTrue(html.contains("https://pic1.zhimg.com/avatar.jpg"), "导出 HTML 需要包含作者头像")
+        assertTrue(html.contains("128"), "导出 HTML 需要包含赞同数")
+        assertTrue(html.contains("7"), "导出 HTML 需要包含评论数")
     }
 
     @Test
@@ -94,17 +88,17 @@ class ArticleExportHtmlTest {
                 """.trimIndent(),
         )
 
-        assertTrue("导出 HTML 需要限制到移动端阅读宽度", html.contains("max-width: 720px"))
-        assertTrue("导出 HTML 需要使用原图地址", html.contains("https://pic1.zhimg.com/original.jpg"))
-        assertFalse("导出 HTML 处理 content 时应忽略 noscript 内容", html.contains("https://pic1.zhimg.com/thumbnail.jpg"))
-        assertTrue("统计信息需要改成 chip 样式", html.contains("stat-chip"))
-        assertTrue("导出 HTML 需要内嵌赞同图标", html.contains("vote-chip-icon"))
-        assertTrue("导出 HTML 需要内嵌评论图标", html.contains("comment-chip-icon"))
-        assertTrue("导出模板需要提供打印样式", html.contains("@media print"))
-        assertTrue("打印导出时不应保留卡片阴影", html.contains("box-shadow: none"))
-        assertFalse("导出 HTML 不应继续使用 card 统计样式", html.contains("stat-card"))
-        assertFalse("导出 HTML 不应显示赞同大字标签", html.contains(">赞同<"))
-        assertFalse("导出 HTML 不应显示评论大字标签", html.contains(">评论<"))
+        assertTrue(html.contains("max-width: 720px"), "导出 HTML 需要限制到移动端阅读宽度")
+        assertTrue(html.contains("https://pic1.zhimg.com/original.jpg"), "导出 HTML 需要使用原图地址")
+        assertFalse(html.contains("https://pic1.zhimg.com/thumbnail.jpg"), "导出 HTML 处理 content 时应忽略 noscript 内容")
+        assertTrue(html.contains("stat-chip"), "统计信息需要改成 chip 样式")
+        assertTrue(html.contains("vote-chip-icon"), "导出 HTML 需要内嵌赞同图标")
+        assertTrue(html.contains("comment-chip-icon"), "导出 HTML 需要内嵌评论图标")
+        assertTrue(html.contains("@media print"), "导出模板需要提供打印样式")
+        assertTrue(html.contains("box-shadow: none"), "打印导出时不应保留卡片阴影")
+        assertFalse(html.contains("stat-card"), "导出 HTML 不应继续使用 card 统计样式")
+        assertFalse(html.contains(">赞同<"), "导出 HTML 不应显示赞同大字标签")
+        assertFalse(html.contains(">评论<"), "导出 HTML 不应显示评论大字标签")
     }
 
     @Test
@@ -128,7 +122,7 @@ class ArticleExportHtmlTest {
         // 避免时区等因素导致日期显示不一致，测试中只验证日期标签的存在与否，而不验证具体日期文本
         assertTrue(html.contains("导出日期："))
         assertTrue(html.contains("发布日期："))
-        assertFalse("编辑和发布同一时间时不应显示编辑日期", html.contains("编辑日期："))
+        assertFalse(html.contains("编辑日期："), "编辑和发布同一时间时不应显示编辑日期")
         assertTrue(html.contains("知乎++"))
         assertTrue(html.contains("GitHub地址：https://github.com/zly2006/zhihu-plus-plus"))
     }
@@ -185,8 +179,8 @@ class ArticleExportHtmlTest {
         assertTrue(html.contains("这是一条真实评论"))
         assertTrue(html.contains("2026-03-26 18:30"))
         assertTrue(html.contains("https://pic1.zhimg.com/comment-image.jpg"))
-        assertFalse("导出评论不应继续包含 mock 用户名", html.contains("用户1"))
-        assertFalse("导出评论不应继续包含 mock 文案", html.contains("这篇文章写得很好"))
+        assertFalse(html.contains("用户1"), "导出评论不应继续包含 mock 用户名")
+        assertFalse(html.contains("这篇文章写得很好"), "导出评论不应继续包含 mock 文案")
     }
 
     @Test
@@ -228,7 +222,7 @@ class ArticleExportHtmlTest {
 
         assertTrue(html.contains("https://pic1.zhimg.com/example.jpg"))
         assertFalse(html.contains("data:image/jpeg;base64"))
-        assertTrue("关闭图片导出时不应请求 base64 数据", resolveCallCount == 0)
+        assertTrue(resolveCallCount == 0, "关闭图片导出时不应请求 base64 数据")
     }
 
     @Test
@@ -285,8 +279,8 @@ class ArticleExportHtmlTest {
         }
 
         assertTrue(resolveCallCount == 10)
-        assertTrue("图片导出应并行抓取，而不是完全串行", maxActiveCount >= 2)
-        assertTrue("图片导出并发数不应超过 6", maxActiveCount <= 6)
+        assertTrue(maxActiveCount >= 2, "图片导出应并行抓取，而不是完全串行")
+        assertTrue(maxActiveCount <= 6, "图片导出并发数不应超过 6")
         assertTrue(html.contains("data:image/jpeg;base64,example-0"))
         assertTrue(html.contains("data:image/jpeg;base64,example-9"))
     }
@@ -326,10 +320,11 @@ class ArticleExportHtmlTest {
 
     private fun loadExportTemplateAsset(): String {
         val templateFile = listOf(
+            File("../app/src/main/assets/article_export_template.html"),
             File("app/src/main/assets/article_export_template.html"),
             File("src/main/assets/article_export_template.html"),
         ).firstOrNull(File::exists)
-            ?: throw java.io.FileNotFoundException("article_export_template.html")
+            ?: throw FileNotFoundException("article_export_template.html")
         return templateFile.readText()
     }
 }
