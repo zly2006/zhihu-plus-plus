@@ -31,6 +31,8 @@ import kotlinx.serialization.json.JsonObject
 interface PaginationEnvironment {
     fun httpClient(): HttpClient
 
+    fun mobileHomeFeedHttpClient(): HttpClient = httpClient()
+
     suspend fun fetchJson(
         url: String,
         include: String,
@@ -46,6 +48,10 @@ interface PaginationEnvironment {
         tag: String?,
         error: Exception,
     )
+
+    suspend fun handleMobileHomeFeedFailure(error: Exception) {
+        handleFetchFailure("AndroidHomeFeedViewModel", error)
+    }
 
     fun configureSignedRequest(builder: HttpRequestBuilder) {
     }

@@ -8,7 +8,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -18,7 +20,13 @@ import java.net.URI
 actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
     val accountStore = remember { DesktopAccountStore() }
     var account by remember { mutableStateOf(accountStore.load()) }
-    val viewModel = viewModel<HomeFeedViewModel>()
+    val viewModel: BaseFeedViewModel = when (recommendationMode) {
+        RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
+        RecommendationMode.WEB,
+        RecommendationMode.LOCAL,
+        RecommendationMode.MIXED,
+        -> viewModel<HomeFeedViewModel>()
+    }
     return HomeScreenRuntime(
         account = HomeAccountState(
             isLoggedIn = account.login,

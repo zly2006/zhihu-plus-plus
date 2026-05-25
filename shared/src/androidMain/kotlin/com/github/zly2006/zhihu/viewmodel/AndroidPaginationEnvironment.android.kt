@@ -62,8 +62,10 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.cache.HttpCache
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
@@ -75,6 +77,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -91,6 +94,12 @@ import io.ktor.http.ContentType as KtorContentType
 
 interface AndroidContextPaginationEnvironment : PaginationEnvironment {
     val context: Context
+}
+
+private val ZHIHU_PP_ANDROID_HEADERS = createClientPlugin("ZhihuPPAndroidHeaders", { }) {
+    onRequest { request, _ ->
+        request.headers.appendAll(AccountData.ANDROID_HEADERS)
+    }
 }
 
 open class SharedAndroidPaginationEnvironment(
@@ -115,6 +124,26 @@ open class SharedAndroidPaginationEnvironment(
             }
         }
         return AccountData.httpClient(context)
+    }
+
+    override fun mobileHomeFeedHttpClient(): HttpClient {
+        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
+
+        return HttpClient {
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(UserAgent) {
+                agent = AccountData.ANDROID_USER_AGENT
+            }
+            install(ZHIHU_PP_ANDROID_HEADERS)
+            if (loginForRecommendation) {
+                install(HttpCookies) {
+                    storage = AccountData.cookieStorage(context, null)
+                }
+            }
+        }
     }
 
     override suspend fun fetchJson(
@@ -147,6 +176,13 @@ open class SharedAndroidPaginationEnvironment(
         Log.e(tag, "Failed to fetch feeds", error)
         context.mainExecutor.execute {
             Toast.makeText(context, "加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override suspend fun handleMobileHomeFeedFailure(error: Exception) {
+        Log.e("AndroidHomeFeedViewModel", "Failed to fetch feeds", error)
+        context.mainExecutor.execute {
+            Toast.makeText(context, "安卓端推荐加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
