@@ -24,7 +24,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -45,6 +44,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.HttpStatusException
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.util.ResolvedCollectionHtmlExportItem
@@ -108,6 +108,7 @@ open class SharedAndroidPaginationEnvironment(
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
     private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
+    private val userMessageSink by lazy { androidUserMessageSink(context) }
 
     override fun httpClient(): HttpClient {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
@@ -175,14 +176,14 @@ open class SharedAndroidPaginationEnvironment(
         }
         Log.e(tag, "Failed to fetch feeds", error)
         context.mainExecutor.execute {
-            Toast.makeText(context, "加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
+            userMessageSink.showShortMessage("加载失败: ${error.message}")
         }
     }
 
     override suspend fun handleMobileHomeFeedFailure(error: Exception) {
         Log.e("AndroidHomeFeedViewModel", "Failed to fetch feeds", error)
         context.mainExecutor.execute {
-            Toast.makeText(context, "安卓端推荐加载失败: ${error.message}", Toast.LENGTH_SHORT).show()
+            userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
         }
     }
 
@@ -229,7 +230,7 @@ open class SharedAndroidPaginationEnvironment(
             onNlpBlocked = { blockedThisRound ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     context.mainExecutor.execute {
-                        Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                        userMessageSink.showShortMessage("NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容")
                     }
                 }
             },
@@ -413,7 +414,7 @@ open class SharedAndroidPaginationEnvironment(
     override suspend fun handleCollectionExportFailure(error: Exception) {
         Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)
         context.mainExecutor.execute {
-            Toast.makeText(context, "导出失败: ${error.message}", Toast.LENGTH_SHORT).show()
+            userMessageSink.showShortMessage("导出失败: ${error.message}")
         }
     }
 
@@ -489,7 +490,7 @@ open class SharedAndroidPaginationEnvironment(
                                     curl,
                                 ),
                             )
-                        Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                        userMessageSink.showShortMessage("已复制到剪贴板")
                     }.show()
             }
         }
