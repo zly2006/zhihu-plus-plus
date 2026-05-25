@@ -4,9 +4,12 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
+import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
+import io.ktor.client.request.HttpRequestBuilder
+import kotlinx.serialization.json.JsonObject
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
@@ -20,6 +23,7 @@ class DesktopAccountStore(
     private val accountFile: Path = defaultAccountFile(),
 ) {
     private val repository = ZhihuAccountRepository(PathAccountSessionStore(accountFile))
+    private var lastRefreshCookie = 0L
 
     fun load(): DesktopAccountData = repository.load()
 
@@ -40,6 +44,22 @@ class DesktopAccountStore(
                 )
             },
         )
+    }
+
+    suspend fun fetchAuthenticatedJson(
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject? {
+        val account = load()
+        return createHttpClient(account.cookies).use { client ->
+            fetchZhihuAuthenticatedJson(
+                client = client,
+                url = url,
+                lastRefreshMillis = lastRefreshCookie,
+                updateLastRefreshMillis = { lastRefreshCookie = it },
+                block = block,
+            )
+        }
     }
 
     suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean {

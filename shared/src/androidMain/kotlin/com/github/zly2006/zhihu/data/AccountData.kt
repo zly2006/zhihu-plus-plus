@@ -35,21 +35,17 @@ import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
+import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.KSerializer
@@ -273,27 +269,13 @@ object AccountData {
 
     suspend fun fetch(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}): JsonObject? {
         val client = httpClient(context)
-        val response = client.request(url) {
-            block()
-        }
-        if (response.status == HttpStatusCode.NoContent) {
-            return null
-        }
-        val body = response.body<JsonElement>()
-        if (response.status != HttpStatusCode.Unauthorized) return body as? JsonObject
-
-        if (System.currentTimeMillis() - lastRefreshCookie < 10_000) {
-            // 10s 内只刷新一次，避免死循环
-            return body as? JsonObject
-        }
-        val refreshToken = ZhihuCredentialRefresher.fetchRefreshToken(client)
-        ZhihuCredentialRefresher.refreshZhihuToken(refreshToken, client)
-        lastRefreshCookie = System.currentTimeMillis()
-        val retryResponse = client.request(url) {
-            block()
-        }
-        val body1 = retryResponse.raiseForStatus().body<JsonElement>()
-        return body1 as? JsonObject
+        return fetchZhihuAuthenticatedJson(
+            client = client,
+            url = url,
+            lastRefreshMillis = lastRefreshCookie,
+            updateLastRefreshMillis = { lastRefreshCookie = it },
+            block = block,
+        )
     }
 
     suspend fun fetchGet(context: Context, url: String, block: suspend HttpRequestBuilder.() -> Unit = {}) = fetch(context, url) {

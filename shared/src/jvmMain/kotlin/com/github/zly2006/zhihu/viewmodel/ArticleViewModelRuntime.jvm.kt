@@ -25,9 +25,9 @@ import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
-import io.ktor.client.request.post
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -169,21 +169,17 @@ class DesktopArticleViewModelRuntime(
     override suspend fun fetchGet(
         url: String,
         block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = accountHttpClient().use { client ->
-        client
-            .get(url) {
-                block()
-            }.body()
+    ): JsonObject? = store.fetchAuthenticatedJson(url) {
+        block()
+        method = HttpMethod.Get
     }
 
     override suspend fun fetchPost(
         url: String,
         block: HttpRequestBuilder.() -> Unit,
-    ): JsonObject? = accountHttpClient().use { client ->
-        client
-            .post(url) {
-                block()
-            }.body()
+    ): JsonObject? = store.fetchAuthenticatedJson(url) {
+        block()
+        method = HttpMethod.Post
     }
 
     override fun decodeCollectionResponse(json: JsonElement): CollectionResponse =
