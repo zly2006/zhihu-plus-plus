@@ -3,12 +3,19 @@ package com.github.zly2006.zhihu.shared.desktop
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
+import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
+import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
+import io.ktor.http.contentType
 import kotlinx.serialization.json.JsonObject
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
@@ -58,6 +65,24 @@ class DesktopAccountStore(
                 lastRefreshMillis = lastRefreshCookie,
                 updateLastRefreshMillis = { lastRefreshCookie = it },
                 block = block,
+            )
+        }
+    }
+
+    suspend fun addReadHistory(
+        contentToken: String,
+        contentTypeName: String,
+    ) {
+        val account = load()
+        val dc0 = account.cookies["d_c0"] ?: return
+        val body = buildZhihuReadHistoryBody(contentToken, contentTypeName)
+        fetchAuthenticatedJson(ZHIHU_READ_HISTORY_ADD_URL) {
+            method = HttpMethod.Post
+            contentType(ContentType.Application.Json)
+            setBody(body)
+            signZhihuFetchRequest(
+                dc0 = dc0,
+                body = body,
             )
         }
     }

@@ -8,7 +8,6 @@ import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
@@ -181,14 +180,8 @@ private suspend fun addDesktopReadHistory(
     contentToken: String,
     contentType: String,
 ) {
-    val account = store.load()
-    val dc0 = account.cookies["d_c0"] ?: return
-    store.createHttpClient(account.cookies).use { client ->
-        addZhihuReadHistory(
-            client = client,
-            contentToken = contentToken,
-            contentType = contentType,
-            dc0 = dc0,
-        )
-    }
+    store.addReadHistory(
+        contentToken = contentToken,
+        contentTypeName = contentType,
+    )
 }

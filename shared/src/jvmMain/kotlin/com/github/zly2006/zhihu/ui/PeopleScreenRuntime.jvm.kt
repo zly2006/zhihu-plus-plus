@@ -5,7 +5,6 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.addZhihuReadHistory
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -150,17 +149,11 @@ private suspend fun addDesktopReadHistory(
     contentId: String,
     contentType: String,
 ) {
-    val account = store.load()
-    val dc0 = account.cookies["d_c0"] ?: return
     runCatching {
-        store.createHttpClient(account.cookies).use { client ->
-            addZhihuReadHistory(
-                client = client,
-                contentToken = contentId,
-                contentType = contentType,
-                dc0 = dc0,
-            )
-        }
+        store.addReadHistory(
+            contentToken = contentId,
+            contentTypeName = contentType,
+        )
     }
 }
 
