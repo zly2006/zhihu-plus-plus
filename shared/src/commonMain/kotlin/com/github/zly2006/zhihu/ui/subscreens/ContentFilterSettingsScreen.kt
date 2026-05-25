@@ -68,6 +68,7 @@ import com.github.zly2006.zhihu.shared.filter.ContentFilterStats
 import com.github.zly2006.zhihu.shared.filter.rememberContentFilterMaintenance
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
@@ -456,7 +457,7 @@ fun ContentFilterSettingsScreen(
                 try {
                     filterStats = filterMaintenance.loadFilterStats()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("ContentFilterSettingsScreen", "Failed to load filter stats", e)
                 }
             }
 

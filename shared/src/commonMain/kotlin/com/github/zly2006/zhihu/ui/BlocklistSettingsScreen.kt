@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Person
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedTopic
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedUser
@@ -187,7 +188,7 @@ private fun BlocklistSettingsScreenContent(
                 loadedBlockedTopics = runtime.loadTopics()
                 loadedStats = runtime.loadStats()
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                 runtime.userMessages.showShortMessage("加载数据失败: ${e.message}")
             }
         }
@@ -321,7 +322,7 @@ private fun BlocklistSettingsScreenContent(
                                 try {
                                     runtime.userMessages.showLongMessage(runtime.exportRules())
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("导出失败: ${e.message}")
                                 }
                             }
@@ -362,7 +363,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已删除关键词")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
@@ -379,7 +380,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已清空所有关键词")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
@@ -407,7 +408,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已删除用户")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
@@ -424,7 +425,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已清空所有用户")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
@@ -453,7 +454,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已删除主题")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("删除失败: ${e.message}")
                                 }
                             }
@@ -470,7 +471,7 @@ private fun BlocklistSettingsScreenContent(
                                     runtime.userMessages.showShortMessage("已清空所有主题")
                                     loadData()
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                                     runtime.userMessages.showShortMessage("清空失败: ${e.message}")
                                 }
                             }
@@ -498,7 +499,7 @@ private fun BlocklistSettingsScreenContent(
                             loadData()
                             showAddKeywordDialog = false
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                             runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
@@ -524,7 +525,7 @@ private fun BlocklistSettingsScreenContent(
                             loadData()
                             showAddTopicDialog = false
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                             runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }
@@ -550,7 +551,7 @@ private fun BlocklistSettingsScreenContent(
                             loadData()
                             showAddUserDialog = false
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            Log.e("BlocklistSettingsScreen", "Blocklist settings action failed", e)
                             runtime.userMessages.showShortMessage("添加失败: ${e.message}")
                         }
                     }

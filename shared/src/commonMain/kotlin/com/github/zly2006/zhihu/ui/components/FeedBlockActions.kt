@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import kotlinx.coroutines.launch
 
@@ -79,7 +80,7 @@ fun BlockByKeywordsDialog(
                 keywordInfoList = keywordsWithWeight
                 extractedKeywords = keywordsWithWeight.take(8).map { it.keyword }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("FeedBlockActions", "Failed to extract block keywords", e)
                 userMessages.showShortMessage("提取关键词失败: ${e.message}")
             } finally {
                 isLoading = false
@@ -104,7 +105,7 @@ fun BlockByKeywordsDialog(
                     userMessages.showShortMessage("已添加NLP屏蔽短语: $phrase")
                     onConfirm()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("FeedBlockActions", "Failed to add NLP block phrase", e)
                     userMessages.showShortMessage("添加失败: ${e.message}")
                 } finally {
                     isAdding = false
