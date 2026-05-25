@@ -18,6 +18,7 @@ import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
@@ -172,9 +173,14 @@ private suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,
     pin: Pin,
 ): DataHolder.Pin? {
+    val account = store.load()
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}"
     return runCatching {
-        val json = store.fetchAuthenticatedJson(endpoint) ?: return@runCatching null
+        val json = store.fetchAuthenticatedJson(endpoint) {
+            account.cookies["d_c0"]?.let { dc0 ->
+                signZhihuFetchRequest(dc0 = dc0)
+            }
+        } ?: return@runCatching null
         ZhihuJson.decodeJson<DataHolder.Pin>(json)
     }.getOrNull()
 }
@@ -183,21 +189,32 @@ private suspend fun fetchDesktopPinLike(
     store: DesktopAccountStore,
     endpoint: String,
     method: HttpMethod,
-): JsonObject? = runCatching {
-    store.fetchAuthenticatedJson(endpoint) {
-        this.method = method
-    }
-}.getOrNull()
+): JsonObject? {
+    val account = store.load()
+    return runCatching {
+        store.fetchAuthenticatedJson(endpoint) {
+            this.method = method
+            account.cookies["d_c0"]?.let { dc0 ->
+                signZhihuFetchRequest(dc0 = dc0)
+            }
+        }
+    }.getOrNull()
+}
 
 private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? {
+    val account = store.load()
     val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
         "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
     return runCatching {
-        val jo = store.fetchAuthenticatedJson(apiUrl) ?: return@runCatching null
+        val jo = store.fetchAuthenticatedJson(apiUrl) {
+            account.cookies["d_c0"]?.let { dc0 ->
+                signZhihuFetchRequest(dc0 = dc0)
+            }
+        } ?: return@runCatching null
         val jojo = buildJsonObject {
             jo.entries.forEach { (key, value) ->
                 if (key == "id") {

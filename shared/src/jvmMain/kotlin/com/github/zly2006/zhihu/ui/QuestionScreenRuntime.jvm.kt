@@ -14,6 +14,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
@@ -154,11 +155,16 @@ private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? {
+    val account = store.load()
     val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
         "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
     return runCatching {
-        val jo = store.fetchAuthenticatedJson(apiUrl) ?: return@runCatching null
+        val jo = store.fetchAuthenticatedJson(apiUrl) {
+            account.cookies["d_c0"]?.let { dc0 ->
+                signZhihuFetchRequest(dc0 = dc0)
+            }
+        } ?: return@runCatching null
         val jojo = buildJsonObject {
             jo.entries.forEach { (key, value) ->
                 if (key == "id") {

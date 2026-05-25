@@ -37,11 +37,13 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime = remember {
     PeopleScreenRuntime(
         loadProfile = { person ->
             addDesktopReadHistory(store, person.id, "profile")
+            val account = store.load()
             val jojo = store.fetchAuthenticatedJson(peopleProfileUrl(person)) {
                 parameter(
                     "include",
                     "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
                 )
+                account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
             } ?: error("Empty people profile response")
             val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
             historyStorage.add(
