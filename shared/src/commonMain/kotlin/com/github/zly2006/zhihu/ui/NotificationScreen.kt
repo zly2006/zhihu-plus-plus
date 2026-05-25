@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
@@ -77,6 +78,7 @@ import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
+import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 
 data class NotificationScreenData(
     val notifications: List<NotificationItem>,
@@ -97,10 +99,20 @@ data class NotificationScreenData(
 expect fun rememberNotificationScreenData(): NotificationScreenData
 
 @Composable
-expect fun NotificationDebugCopyButton(
+fun NotificationDebugCopyButton(
     visible: Boolean,
     onClick: () -> Unit,
-)
+) {
+    if (!visible) {
+        return
+    }
+    DraggableRefreshButton(
+        onClick = onClick,
+        preferenceName = "copyAll",
+    ) {
+        Icon(Icons.Default.CopyAll, contentDescription = "复制")
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

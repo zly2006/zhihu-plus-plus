@@ -2,9 +2,6 @@ package com.github.zly2006.zhihu.ui
 
 import android.content.ClipData
 import android.content.pm.ApplicationInfo
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -13,7 +10,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import com.github.zly2006.zhihu.viewmodel.notificationPaginationEnvironment
@@ -55,20 +51,4 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
             userMessages.showMessage(message, UserMessageDuration.Long)
         },
     )
-}
-
-@Composable
-actual fun NotificationDebugCopyButton(
-    visible: Boolean,
-    onClick: () -> Unit,
-) {
-    if (!visible) {
-        return
-    }
-    DraggableRefreshButton(
-        onClick = onClick,
-        preferenceName = "copyAll",
-    ) {
-        Icon(Icons.Default.CopyAll, contentDescription = "复制")
-    }
 }

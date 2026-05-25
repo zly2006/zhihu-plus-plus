@@ -1,8 +1,5 @@
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
@@ -13,7 +10,6 @@ import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import io.ktor.client.HttpClient
@@ -73,22 +69,6 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
         },
         showMessage = { message -> userMessages.showMessage(message) },
     )
-}
-
-@Composable
-actual fun NotificationDebugCopyButton(
-    visible: Boolean,
-    onClick: () -> Unit,
-) {
-    if (!visible) {
-        return
-    }
-    DraggableRefreshButton(
-        onClick = onClick,
-        preferenceName = "copyAll",
-    ) {
-        Icon(Icons.Default.CopyAll, contentDescription = "复制")
-    }
 }
 
 private class JvmNotificationPaginationEnvironment(
