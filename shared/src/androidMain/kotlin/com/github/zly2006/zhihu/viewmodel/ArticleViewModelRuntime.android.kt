@@ -27,7 +27,6 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -39,6 +38,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.articleHost
@@ -282,10 +282,10 @@ class AndroidArticleViewModelRuntime(
     }
 
     override fun showMessage(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        androidUserMessageSink(context).showShortMessage(message)
     }
 
     override fun showLongMessage(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        androidUserMessageSink(context).showLongMessage(message)
     }
 }
