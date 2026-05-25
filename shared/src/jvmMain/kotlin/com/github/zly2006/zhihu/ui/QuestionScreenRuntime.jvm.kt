@@ -14,13 +14,9 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -158,29 +154,21 @@ private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? {
-    val account = store.load()
     val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
         "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
     return runCatching {
-        store.createHttpClient(account.cookies).use { client ->
-            val jo = client
-                .get(apiUrl) {
-                    account.cookies["d_c0"]?.let { dc0 ->
-                        signZhihuFetchRequest(dc0 = dc0)
-                    }
-                }.body<JsonObject>()
-            val jojo = buildJsonObject {
-                jo.entries.forEach { (key, value) ->
-                    if (key == "id") {
-                        put(key, JsonPrimitive(value.jsonPrimitive.long))
-                    } else {
-                        put(key, value)
-                    }
+        val jo = store.fetchAuthenticatedJson(apiUrl) ?: return@runCatching null
+        val jojo = buildJsonObject {
+            jo.entries.forEach { (key, value) ->
+                if (key == "id") {
+                    put(key, JsonPrimitive(value.jsonPrimitive.long))
+                } else {
+                    put(key, value)
                 }
             }
-            ZhihuJson.decodeJson<DataHolder.Question>(jojo)
         }
+        ZhihuJson.decodeJson<DataHolder.Question>(jojo)
     }.getOrNull()
 }
 
