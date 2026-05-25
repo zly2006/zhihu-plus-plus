@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.recommendation.LocalContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.LocalReasonPreference
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonArray
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -434,6 +435,41 @@ class LocalRecommendationSupportTest {
             executedReasons,
         )
         assertEquals(1, database.contentDao().getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        database.close()
+    }
+
+    @Test
+    fun crawlingExecutorMarksTaskCompletedAfterEmptyFetch() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+        val taskId = dao.insertTask(
+            CrawlingTask(
+                url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
+                reason = CrawlingReason.Following,
+            ),
+        )
+        val requestedUrls = mutableListOf<String>()
+        val executor = CrawlingExecutor(
+            dao = dao,
+            fetchFeedArray = { url ->
+                requestedUrls.add(url)
+                JsonArray(emptyList())
+            },
+            nowMillis = { 42L },
+        )
+
+        executor.executeTask(
+            CrawlingTask(
+                id = taskId,
+                url = "https://api.zhihu.com/moments_v3?feed_type=recommend",
+                reason = CrawlingReason.Following,
+            ),
+        )
+
+        assertEquals(listOf("https://api.zhihu.com/moments_v3?feed_type=recommend"), requestedUrls)
+        assertEquals(emptyList(), dao.getTasksByStatus(CrawlingStatus.InProgress))
+        assertEquals(1, dao.getTasksByStatus(CrawlingStatus.Completed).size)
+        assertEquals(emptyList(), dao.getRecentResults(10))
         database.close()
     }
 
