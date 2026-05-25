@@ -61,7 +61,7 @@ private fun com.github.zly2006.zhihu.shared.account.ZhihuAccountSession.toAccoun
     AccountSettingsAccountState(
         login = login,
         username = username,
-        avatarUrl = null,
+        avatarUrl = profile?.avatarUrl,
         id = profile?.id ?: "",
         urlToken = profile?.urlToken,
     )

@@ -195,6 +195,7 @@ object AccountData {
                 name = it.name,
                 urlToken = it.urlToken,
                 userType = it.userType,
+                avatarUrl = it.avatarUrl,
             )
         },
         self = self?.let { json.encodeToJsonElement(it) },

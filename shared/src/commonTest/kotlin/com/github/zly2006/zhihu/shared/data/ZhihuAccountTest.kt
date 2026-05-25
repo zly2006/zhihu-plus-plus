@@ -57,6 +57,7 @@ class ZhihuAccountTest {
         assertEquals("test-agent", session.userAgent)
         assertEquals("1", session.profile?.id)
         assertEquals("alice-token", session.profile?.urlToken)
+        assertEquals("https://example.com/avatar.jpg", session.profile?.avatarUrl)
         assertEquals(
             "https://example.com/avatar.jpg",
             session.self

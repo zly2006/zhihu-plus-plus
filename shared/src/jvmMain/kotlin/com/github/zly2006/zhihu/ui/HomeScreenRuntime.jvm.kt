@@ -32,7 +32,7 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
     return HomeScreenRuntime(
         account = HomeAccountState(
             isLoggedIn = account.login,
-            avatarUrl = null,
+            avatarUrl = account.profile?.avatarUrl,
         ),
         updateAnnouncement = null,
         installedAtLeastThreeHours = false,

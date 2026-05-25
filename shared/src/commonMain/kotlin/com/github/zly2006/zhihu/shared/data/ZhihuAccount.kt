@@ -25,6 +25,7 @@ data class ZhihuAccountProfile(
     val name: String = "",
     val urlToken: String? = null,
     val userType: String = "",
+    val avatarUrl: String? = null,
 )
 
 fun <T : HttpClientEngineConfig> HttpClientConfig<T>.installZhihuCommonClientConfig(
@@ -75,6 +76,7 @@ suspend fun fetchVerifiedZhihuSession(
             name = profile.name,
             urlToken = profile.urlToken,
             userType = profile.userType,
+            avatarUrl = profile.avatarUrl,
         ),
         self = account,
     )

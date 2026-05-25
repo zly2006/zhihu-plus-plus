@@ -14,6 +14,7 @@ data class ZhihuAccountProfileSnapshot(
     val name: String = "",
     val urlToken: String? = null,
     val userType: String = "",
+    val avatarUrl: String? = null,
 )
 
 @Serializable
