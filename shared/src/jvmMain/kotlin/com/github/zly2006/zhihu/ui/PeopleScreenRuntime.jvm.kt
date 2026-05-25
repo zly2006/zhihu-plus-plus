@@ -17,7 +17,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import kotlinx.serialization.json.JsonObject
@@ -38,16 +37,12 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime = remember {
     PeopleScreenRuntime(
         loadProfile = { person ->
             addDesktopReadHistory(store, person.id, "profile")
-            val jojo = store.createHttpClient(store.load().cookies).use { client ->
-                client
-                    .get(peopleProfileUrl(person)) {
-                        parameter(
-                            "include",
-                            "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
-                        )
-                        store.load().cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
-                    }.body<JsonObject>()
-            }
+            val jojo = store.fetchAuthenticatedJson(peopleProfileUrl(person)) {
+                parameter(
+                    "include",
+                    "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
+                )
+            } ?: error("Empty people profile response")
             val loadedPerson = ZhihuJson.decodeJson<DataHolder.People>(jojo)
             historyStorage.add(
                 Person(
