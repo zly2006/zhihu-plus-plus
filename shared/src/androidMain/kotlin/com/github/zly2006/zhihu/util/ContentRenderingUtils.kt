@@ -25,28 +25,17 @@ import android.provider.MediaStore.MediaColumns
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.em
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
-import com.github.zly2006.zhihu.navigation.NavDestination
-import com.github.zly2006.zhihu.navigation.resolveContent
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
 import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
 
 /**
  * 从 img 元素提取最高质量的图片URL（无水印原图）
@@ -55,114 +44,6 @@ import org.jsoup.nodes.TextNode
 fun extractImageUrl(imgElement: Element): String? =
     com.github.zly2006.zhihu.shared.util
         .extractImageUrl(imgElement::attr)
-
-/**
- * 处理文本节点中的emoji，提取emoji占位符并添加到AnnotatedString
- */
-fun AnnotatedString.Builder.processTextWithEmoji(
-    text: String,
-    componentUsed: MutableSet<String>?,
-) {
-    var buffer = StringBuilder()
-    var emojiBuffer = StringBuilder()
-    var isEmoji = false
-
-    for (ch in text) {
-        if (ch == '[') {
-            if (buffer.isNotEmpty()) {
-                append(buffer.toString())
-                buffer = StringBuilder()
-            }
-            isEmoji = true
-            emojiBuffer.append(ch)
-        } else if (ch == ']') {
-            if (isEmoji) {
-                emojiBuffer.append(ch)
-                val placeholder = emojiBuffer.toString()
-                val emojiPath = EmojiManager.getEmojiPath(placeholder)
-                if (emojiPath != null) {
-                    // 使用emoji文件名作为key
-                    val emojiFileName = emojiPath.substringAfterLast('/')
-                    val emojiKey = "emoji_$emojiFileName"
-                    appendInlineContent(emojiKey, placeholder)
-                    componentUsed?.add(emojiKey)
-                } else {
-                    append(placeholder)
-                }
-                emojiBuffer = StringBuilder()
-                isEmoji = false
-            } else {
-                buffer.append(ch)
-            }
-        } else {
-            if (isEmoji) {
-                emojiBuffer.append(ch)
-            } else {
-                buffer.append(ch)
-            }
-        }
-    }
-
-    // 处理剩余的buffer内容
-    if (buffer.isNotEmpty()) {
-        append(buffer.toString())
-    }
-    // 如果还有未完成的emoji buffer（没有找到结束的']'），也添加进去
-    if (isEmoji && emojiBuffer.isNotEmpty()) {
-        append(emojiBuffer.toString())
-    }
-}
-
-/**
- * 通用的HTML节点DFS处理函数
- * 用于评论区的简单文本处理
- */
-fun AnnotatedString.Builder.dfsSimple(
-    node: Node,
-    onNavigate: (NavDestination) -> Unit,
-    context: Context,
-    componentUsed: MutableSet<String>? = null,
-) {
-    when (node) {
-        is Element -> {
-            when (node.tagName()) {
-                "br" -> {
-                    append("\n")
-                }
-
-                "a" -> {
-                    val href = node.attr("href")
-                    val linkText = node.text()
-                    if (linkText.isNotEmpty()) {
-                        withLink(
-                            LinkAnnotation.Clickable(
-                                href,
-                                TextLinkStyles(style = SpanStyle(color = Color(0xff66CCFF))),
-                            ) {
-                                resolveContent(href)?.let(onNavigate)
-                                    ?: luoTianYiUrlLauncher(context, href.toUri())
-                            },
-                        ) {
-                            append(linkText)
-                        }
-                    }
-                }
-
-                else -> {
-                    node.childNodes().forEach { dfsSimple(it, onNavigate, context, componentUsed) }
-                }
-            }
-        }
-
-        is TextNode -> {
-            processTextWithEmoji(node.text(), componentUsed)
-        }
-
-        else -> {
-            append(node.outerHtml())
-        }
-    }
-}
 
 /**
  * 创建emoji的inline content映射
