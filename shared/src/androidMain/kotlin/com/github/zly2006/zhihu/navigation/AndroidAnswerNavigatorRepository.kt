@@ -6,9 +6,10 @@ import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -57,7 +58,7 @@ class AndroidAnswerNavigatorRepository(
     override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
         ContentOpenEventSupport
             .getAlreadyOpenedContentIds(
-                context = appContext,
+                database = getContentFilterDatabase(appContext),
                 content = answerIds.map { ContentType.ANSWER to it.toString() },
             ).mapNotNullTo(mutableSetOf()) { key ->
                 key.substringAfter(':', "").toLongOrNull()
