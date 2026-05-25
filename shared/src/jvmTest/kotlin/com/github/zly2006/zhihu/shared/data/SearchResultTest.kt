@@ -15,23 +15,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.shared.data
 
-import com.github.zly2006.zhihu.shared.data.SearchResult
-import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import java.net.URLEncoder
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * Unit test for search functionality
  * Tests parsing of search API v3 response format
  */
-class SearchUnitTest {
+class SearchResultTest {
     /**
      * Test parsing real Zhihu search API response
      * This test uses actual JSON data returned by the Zhihu search API
@@ -2195,12 +2194,12 @@ class SearchUnitTest {
         val convertedJson = ZhihuJson.snakeCaseToCamelCase(jsonElement) as JsonObject
 
         // Verify response structure
-        assertTrue("Response should contain 'data' field", "data" in convertedJson)
-        assertTrue("Response should contain 'paging' field", "paging" in convertedJson)
+        assertTrue("data" in convertedJson, "Response should contain 'data' field")
+        assertTrue("paging" in convertedJson, "Response should contain 'paging' field")
 
         val dataArray = convertedJson["data"]?.jsonArray
-        assertNotNull("Data array should not be null", dataArray)
-        assertTrue("Should have search results", dataArray != null && dataArray.size > 0)
+        assertNotNull(dataArray, "Data array should not be null")
+        assertTrue(dataArray.size > 0, "Should have search results")
         println("Got ${dataArray?.size} search results from real API response")
 
         // Parse all results to verify they can all be decoded as SearchResult
@@ -2212,8 +2211,8 @@ class SearchUnitTest {
         dataArray?.forEachIndexed { index, element ->
             try {
                 val result = ZhihuJson.decodeJson<SearchResult>(element)
-                assertNotNull("Result $index should have type", result.type)
-                assertNotNull("Result $index should have id", result.id)
+                assertNotNull(result.type, "Result $index should have type")
+                assertNotNull(result.id, "Result $index should have id")
                 // Note: obj field is optional for some result types like "relevant_query"
                 if (result.obj != null) {
                     resultsWithObject++
@@ -2233,7 +2232,7 @@ class SearchUnitTest {
         println("Result types found: ${typesSeen.joinToString(", ")}")
 
         // Assert that we parsed at least some results successfully
-        assertTrue("Should successfully parse at least some results", successCount > 0)
+        assertTrue(successCount > 0, "Should successfully parse at least some results")
 
         // Verify we can parse at least the first successfully parsed result
         if (successCount > 0) {
@@ -2256,7 +2255,7 @@ class SearchUnitTest {
 
         // Verify paging information
         val pagingObj = convertedJson["paging"]
-        assertNotNull("Paging should not be null", pagingObj)
+        assertNotNull(pagingObj, "Paging should not be null")
         println("Paging information present in response")
 
         println("All search results parsed successfully!")
@@ -2387,7 +2386,7 @@ class SearchUnitTest {
     @Test
     fun testSearchQueryEncoding() {
         val query = "测试搜索 with spaces"
-        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val encoded = URLEncoder.encode(query, "UTF-8")
 
         // Verify URL encoding works correctly
         assertTrue(encoded.contains("%"))
