@@ -9,6 +9,7 @@ import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -19,7 +20,8 @@ import java.io.File
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
     val blocklistManager = rememberDesktopBlocklistManager()
-    return remember(blocklistManager) {
+    val userMessages = rememberUserMessageSink()
+    return remember(blocklistManager, userMessages) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
@@ -27,7 +29,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                     if (authorInfo != null) {
                         onShowDialog(authorInfo)
                     } else {
-                        println("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
+                        userMessages.showShortMessage("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
                     }
                 }
             },
@@ -35,7 +37,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                 viewModel.viewModelScope.launch {
                     try {
                         blocklistManager.addBlockedTopic(topicId, topicName)
-                        println("已屏蔽主题「$topicName」")
+                        userMessages.showShortMessage("已屏蔽主题「$topicName」")
                         viewModel.displayItems.removeAll {
                             val topics = when (val content = it.raw) {
                                 is DataHolder.Answer -> content.question.topics
@@ -46,7 +48,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                             topics?.any { topic -> topic.id == topicId } == true
                         }
                     } catch (e: Exception) {
-                        println("屏蔽失败: ${e.message}")
+                        userMessages.showShortMessage("屏蔽失败: ${e.message}")
                     }
                 }
             },
@@ -56,7 +58,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                     if (contentInfo != null) {
                         onShowDialog(feedItem to contentInfo)
                     } else {
-                        println("无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作")
+                        userMessages.showShortMessage("无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作")
                     }
                 }
             },
@@ -93,6 +95,7 @@ actual fun BlockUserConfirmDialog(
 ) {
     val blocklistManager = rememberDesktopBlocklistManager()
     val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
         userToBlock = userToBlock,
@@ -108,10 +111,10 @@ actual fun BlockUserConfirmDialog(
                         avatarUrl = author.avatarUrl,
                     )
                     onConfirm()
-                    println("已屏蔽用户：${author.name}")
+                    userMessages.showShortMessage("已屏蔽用户：${author.name}")
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    println("屏蔽用户失败: ${e.message}")
+                    userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
                 }
             }
         },
