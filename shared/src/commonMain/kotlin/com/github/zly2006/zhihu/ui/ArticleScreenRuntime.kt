@@ -3,10 +3,13 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModelRuntime
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 interface ArticleScreenRuntime {
     val articleHost: ArticleHost?
@@ -48,6 +51,30 @@ expect fun ArticleMarkdownContent(
 )
 
 @Composable
-expect fun ArticleVideoAttachmentContent(attachment: JsonElement?)
+fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
+    if (attachment
+            ?.jsonObject
+            ?.get("type")
+            ?.jsonPrimitive
+            ?.content == "video"
+    ) {
+        val videoId = attachment
+            .jsonObject["attachmentId"]
+            ?.jsonPrimitive
+            ?.content
+            ?.toLongOrNull()
+        if (videoId != null) {
+            val thumbnail = attachment
+                .jsonObject["video"]!!
+                .jsonObject["videoInfo"]!!
+                .jsonObject["thumbnail"]!!
+                .jsonPrimitive.content
+            RenderVideoBox(
+                videoId = videoId,
+                thumbnailUrl = thumbnail,
+            )
+        }
+    }
+}
 
 expect fun Modifier.articleMarkdownSelectionWorkaround(): Modifier

@@ -5,12 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime = remember {
@@ -54,33 +50,6 @@ actual fun ArticleMarkdownContent(
         header = header,
         footer = footer,
     )
-}
-
-@Composable
-actual fun ArticleVideoAttachmentContent(attachment: JsonElement?) {
-    if (attachment
-            ?.jsonObject
-            ?.get("type")
-            ?.jsonPrimitive
-            ?.content == "video"
-    ) {
-        val videoId = attachment
-            .jsonObject["attachmentId"]
-            ?.jsonPrimitive
-            ?.content
-            ?.toLongOrNull()
-        if (videoId != null) {
-            val thumbnail = attachment
-                .jsonObject["video"]!!
-                .jsonObject["videoInfo"]!!
-                .jsonObject["thumbnail"]!!
-                .jsonPrimitive.content
-            RenderVideoBox(
-                videoId = videoId,
-                thumbnailUrl = thumbnail,
-            )
-        }
-    }
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = this

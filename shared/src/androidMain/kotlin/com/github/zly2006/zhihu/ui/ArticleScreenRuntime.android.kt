@@ -7,7 +7,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -16,8 +15,6 @@ import com.github.zly2006.zhihu.viewmodel.AndroidArticleViewModelRuntime
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModelRuntime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 actual fun rememberArticleScreenRuntime(): ArticleScreenRuntime {
@@ -99,33 +96,6 @@ actual fun ArticleMarkdownContent(
         header = header,
         footer = footer,
     )
-}
-
-@Composable
-actual fun ArticleVideoAttachmentContent(attachment: kotlinx.serialization.json.JsonElement?) {
-    if (attachment
-            ?.jsonObject
-            ?.get("type")
-            ?.jsonPrimitive
-            ?.content == "video"
-    ) {
-        val videoId = attachment
-            .jsonObject["attachmentId"]
-            ?.jsonPrimitive
-            ?.content
-            ?.toLongOrNull()
-        if (videoId != null) {
-            val thumbnail = attachment
-                .jsonObject["video"]!!
-                .jsonObject["videoInfo"]!!
-                .jsonObject["thumbnail"]!!
-                .jsonPrimitive.content
-            RenderVideoBox(
-                videoId = videoId,
-                thumbnailUrl = thumbnail,
-            )
-        }
-    }
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
