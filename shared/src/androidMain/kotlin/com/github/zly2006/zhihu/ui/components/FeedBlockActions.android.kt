@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockUser
@@ -58,7 +59,7 @@ actual fun BlockUserConfirmDialog(
                     onConfirm()
                     Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("FeedBlockActions", "Failed to block user", e)
                     Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
