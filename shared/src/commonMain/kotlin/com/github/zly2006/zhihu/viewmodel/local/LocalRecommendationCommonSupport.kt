@@ -31,6 +31,7 @@ import com.github.zly2006.zhihu.shared.recommendation.toLocalContentIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.math.ceil
 import kotlin.time.Clock
 
 data class RankedLocalResult(
@@ -307,6 +308,54 @@ internal suspend fun toRecommendationEntry(
         result = rankedResult.result,
         navDestination = navDestination,
     )
+}
+
+internal fun applyReasonDiversity(
+    rankedResults: List<RankedLocalResult>,
+    limit: Int,
+): List<RankedLocalResult> {
+    if (limit <= 0 || rankedResults.isEmpty()) {
+        return emptyList()
+    }
+    if (rankedResults.size <= limit) {
+        return rankedResults
+    }
+
+    val selected = mutableListOf<RankedLocalResult>()
+    val reasonCounts = mutableMapOf<CrawlingReason, Int>()
+    val maxPerReason = ceil(limit * 0.5).toInt().coerceAtLeast(1)
+    val diversityTarget = rankedResults
+        .map { it.result.reason }
+        .distinct()
+        .size
+        .coerceAtMost(limit)
+        .coerceAtMost(3)
+
+    rankedResults.forEach { ranked ->
+        if (selected.size >= diversityTarget) return@forEach
+        if (selected.none { it.result.reason == ranked.result.reason }) {
+            selected.add(ranked)
+            reasonCounts[ranked.result.reason] = 1
+        }
+    }
+
+    rankedResults.forEach { ranked ->
+        if (selected.size >= limit || ranked in selected) return@forEach
+        val currentCount = reasonCounts[ranked.result.reason] ?: 0
+        if (currentCount < maxPerReason) {
+            selected.add(ranked)
+            reasonCounts[ranked.result.reason] = currentCount + 1
+        }
+    }
+
+    if (selected.size < limit) {
+        rankedResults.forEach { ranked ->
+            if (selected.size >= limit || ranked in selected) return@forEach
+            selected.add(ranked)
+        }
+    }
+
+    return selected.take(limit)
 }
 
 internal fun getFreshnessWeight(

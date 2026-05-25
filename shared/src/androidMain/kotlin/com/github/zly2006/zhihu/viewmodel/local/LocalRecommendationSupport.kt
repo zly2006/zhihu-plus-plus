@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.shared.data.Feed
-import com.github.zly2006.zhihu.shared.recommendation.applyReasonDiversity as applySharedReasonDiversity
 import com.github.zly2006.zhihu.shared.recommendation.buildContentAffinity as buildSharedContentAffinity
 import com.github.zly2006.zhihu.shared.recommendation.buildLocalRecommendationReason as buildSharedLocalRecommendationReason
 import com.github.zly2006.zhihu.shared.recommendation.buildReasonPreference as buildSharedReasonPreference
@@ -57,15 +56,6 @@ fun buildLocalRecommendationReason(
     baseReason = baseReason,
     reasonPreference = reasonPreference,
     contentAffinity = contentAffinity,
-)
-
-fun applyReasonDiversity(
-    rankedResults: List<RankedLocalResult>,
-    limit: Int,
-): List<RankedLocalResult> = applySharedReasonDiversity(
-    rankedResults = rankedResults,
-    limit = limit,
-    reasonOf = { it.result.reason },
 )
 
 fun stableLocalFeedId(contentId: String): String = stableSharedLocalFeedId(contentId)

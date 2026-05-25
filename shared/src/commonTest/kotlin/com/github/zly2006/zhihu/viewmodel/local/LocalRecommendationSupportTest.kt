@@ -380,6 +380,64 @@ class LocalRecommendationSupportTest {
         assertEquals("热门推荐 · 你明确喜欢过类似内容 · 你最近更偏好这类来源", ranked.reasonDisplay)
     }
 
+    @Test
+    fun localRecommendationEngineInitializesOnlyOnce() = runTest {
+        val database = testLocalContentDatabase()
+        var initializeCount = 0
+        var startCount = 0
+        val engine = localRecommendationEngineForTest(
+            dao = database.contentDao(),
+            initializeContentIfNeeded = { initializeCount++ },
+            startScheduling = { startCount++ },
+        )
+
+        engine.initialize()
+        engine.initialize()
+
+        assertEquals(1, initializeCount)
+        assertEquals(1, startCount)
+        database.close()
+    }
+
+    @Test
+    fun localRecommendationEngineRefreshContentInsertsAndExecutesTopPriorityTasks() = runTest {
+        val database = testLocalContentDatabase()
+        val executedReasons = mutableListOf<CrawlingReason>()
+        val engine = localRecommendationEngineForTest(
+            dao = database.contentDao(),
+            executeTask = { task -> executedReasons.add(task.reason) },
+        )
+
+        engine.refreshContent()
+
+        assertEquals(
+            listOf(
+                CrawlingReason.Following,
+                CrawlingReason.Trending,
+                CrawlingReason.UpvotedQuestion,
+            ),
+            executedReasons,
+        )
+        assertEquals(1, database.contentDao().getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        database.close()
+    }
+
+    private fun localRecommendationEngineForTest(
+        dao: LocalContentDao,
+        initializeContentIfNeeded: suspend () -> Unit = {},
+        startScheduling: () -> Unit = {},
+        stopScheduling: () -> Unit = {},
+        executeTask: suspend (CrawlingTask) -> Unit = {},
+    ): LocalRecommendationEngine = LocalRecommendationEngine(
+        dao = dao,
+        feedGenerator = FeedGenerator(dao),
+        userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
+        initializeContentIfNeeded = initializeContentIfNeeded,
+        startScheduling = startScheduling,
+        stopScheduling = stopScheduling,
+        executeTask = executeTask,
+    )
+
     private fun testLocalContentDatabase(): LocalContentDatabase =
         getLocalContentDatabase(
             createTempDirectory("local-recommendation-support-room").resolve("local-content.db").toFile(),

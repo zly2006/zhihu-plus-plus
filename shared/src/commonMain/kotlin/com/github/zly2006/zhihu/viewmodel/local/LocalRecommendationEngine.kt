@@ -17,27 +17,24 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
-import android.net.ConnectivityManager
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlin.jvm.java
 
 class LocalRecommendationEngine(
-    private val context: Context,
+    private val dao: LocalContentDao,
+    private val feedGenerator: FeedGenerator,
+    private val userBehaviorAnalyzer: UserBehaviorAnalyzer,
+    private val initializeContentIfNeeded: suspend () -> Unit,
+    private val startScheduling: () -> Unit,
+    private val stopScheduling: () -> Unit,
+    private val executeTask: suspend (CrawlingTask) -> Unit,
+    private val isNetworkAvailable: () -> Boolean = { true },
+    private val logWarning: (String) -> Unit = {},
+    private val logError: (String, Throwable) -> Unit = { _, _ -> },
 ) {
-    private val database by lazy { getLocalContentDatabase(context) }
-    private val dao by lazy { database.contentDao() }
-    private val feedGenerator by lazy { FeedGenerator(context) }
-    private val userBehaviorAnalyzer by lazy { UserBehaviorAnalyzer(context) }
-    private val contentInitializer by lazy { LocalContentInitializer(context) }
-    private val taskScheduler by lazy { TaskScheduler(context) }
-    private val crawlingExecutor by lazy { CrawlingExecutor(context) }
-
     @Volatile
     private var initialized = false
 
@@ -50,8 +47,8 @@ class LocalRecommendationEngine(
             if (initialized) {
                 return@withContext
             }
-            contentInitializer.initializeIfNeeded()
-            taskScheduler.startScheduling()
+            initializeContentIfNeeded()
+            startScheduling()
             initialized = true
         }
     }
@@ -116,7 +113,7 @@ class LocalRecommendationEngine(
                 .sortedByDescending { it.priority }
                 .take(3)
                 .forEach { task ->
-                    runCatching { crawlingExecutor.executeTask(task) }
+                    runCatching { executeTask(task) }
                 }
         }
     }
@@ -134,14 +131,14 @@ class LocalRecommendationEngine(
 
     suspend fun cleanup() {
         withContext(Dispatchers.IO) {
-            taskScheduler.stopScheduling()
+            stopScheduling()
             cleanupLocalRecommendationData(dao)
         }
     }
 
     private suspend fun executeHighPriorityTasks() {
         if (!isNetworkAvailable()) {
-            Log.w("LocalRecommendationEngine", "No network connection, skipping task execution")
+            logWarning("No network connection, skipping task execution")
             return
         }
 
@@ -151,20 +148,11 @@ class LocalRecommendationEngine(
             .take(3)
             .forEach { task ->
                 try {
-                    crawlingExecutor.executeTask(task)
+                    executeTask(task)
                     delay(1_000L)
                 } catch (e: Exception) {
-                    Log.e("LocalRecommendationEngine", "Task execution failed: ${e.message}", e)
+                    logError("Task execution failed: ${e.message}", e)
                 }
             }
-    }
-
-    private fun isNetworkAvailable(): Boolean = try {
-        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
-        val activeNetwork = connectivityManager.activeNetwork
-        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-        networkCapabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-    } catch (_: Exception) {
-        false
     }
 }
