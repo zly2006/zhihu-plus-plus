@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -19,6 +18,7 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
@@ -43,6 +43,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val context = LocalContext.current
     return remember(context) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+        val userMessages = androidUserMessageSink(context)
         PinScreenRuntime(
             loadPinDetail = { pin ->
                 AccountData.addReadHistory(context, pin.id.toString(), "pin")
@@ -79,7 +80,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                             ),
                         )
                     } catch (e: Exception) {
-                        Toast.makeText(context, "操作失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("操作失败: ${e.message}")
                     }
                 }
             },

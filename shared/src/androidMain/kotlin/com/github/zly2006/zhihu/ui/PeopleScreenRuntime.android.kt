@@ -1,7 +1,6 @@
 package com.github.zly2006.zhihu.ui
 
 import android.content.Intent
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +11,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -29,6 +29,7 @@ private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActi
 actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     val context = LocalContext.current
     return remember(context) {
+        val userMessages = androidUserMessageSink(context)
         PeopleScreenRuntime(
             loadProfile = { person ->
                 AccountData.addReadHistory(context, person.id, "profile")
@@ -121,7 +122,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 }
             },
             showShortMessage = { message ->
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                userMessages.showShortMessage(message)
             },
             openWebUrl = { url ->
                 context.startActivity(
