@@ -3,8 +3,11 @@ package com.github.zly2006.zhihu.viewmodel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
@@ -38,7 +41,8 @@ import java.util.Properties
 
 class DesktopPaginationEnvironment(
     private val store: DesktopAccountStore = DesktopAccountStore(),
-) : PaginationEnvironment {
+) : PaginationEnvironment,
+    CollectionContentEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase(
@@ -144,6 +148,23 @@ class DesktopPaginationEnvironment(
     }
 
     override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
+
+    override suspend fun fetchCollection(collectionId: String): Collection {
+        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
+            ?: throw IllegalStateException("收藏夹信息加载失败")
+        return ZhihuJson.decodeJson(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
+    }
+
+    override suspend fun exportCollectionItemsToHtmlZip(
+        collectionTitle: String,
+        items: List<CollectionItem>,
+        includeImages: Boolean,
+        onProgress: suspend (CollectionHtmlExportProgress) -> Unit,
+    ): CollectionHtmlExportResult = throw UnsupportedOperationException("桌面端暂不支持收藏夹 ZIP 导出")
+
+    override suspend fun handleCollectionExportFailure(error: Exception) {
+        Log.e("CollectionContentViewModel", "Failed to export collection HTML zip", error)
+    }
 
     private fun createLocalRecommendationEngine(): LocalRecommendationEngine {
         val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/local-content.db")
