@@ -252,7 +252,7 @@ fun RenderMarkdown(
     val preferences = remember { context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE) }
     val fontSize = preferences.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = preferences.getInt(PREF_LINE_HEIGHT, 160)
-    val defaultTheme = MarkdownTheme.fromMaterialTheme()
+    val defaultTheme = MarkdownTheme.material3()
 
     val fontResult = rememberLatexFonts(context, AccountData.httpClient(context))
     val mathFont = fontResult.downloaded?.mathFont ?: defaultTheme.mathFont
