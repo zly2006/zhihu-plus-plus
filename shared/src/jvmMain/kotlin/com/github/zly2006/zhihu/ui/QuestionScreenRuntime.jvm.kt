@@ -67,7 +67,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                     onShowDialog = onShowDialog,
                 )
             },
-            showShortMessage = { message -> println(message) },
+            showShortMessage = { message -> userMessages.showShortMessage(message) },
         )
     }
 }
