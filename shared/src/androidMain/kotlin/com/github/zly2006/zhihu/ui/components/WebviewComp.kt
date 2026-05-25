@@ -63,10 +63,10 @@ import androidx.webkit.WebResourceErrorCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.github.zly2006.zhihu.data.AccountData
-import com.github.zly2006.zhihu.data.AccountData.json
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
+import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
@@ -78,22 +78,11 @@ import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import com.github.zly2006.zhihu.util.signFetchRequest
 import io.ktor.client.HttpClient
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
 import io.ktor.http.Url
-import io.ktor.http.contentType
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -132,46 +121,15 @@ private fun Context.navigateInMainActivity(destination: NavDestination, fallback
  */
 @OptIn(DelicateCoroutinesApi::class)
 suspend fun getHighestQualityVideoUrl(context: Context, httpClient: HttpClient, videoId: String, contentId: String, contentType: String = "answer"): String? = try {
-    val response = httpClient.post("https://www.zhihu.com/api/v4/video/play_info?r=$videoId") {
-        contentType(ContentType.Application.Json)
-        header("x-xsrftoken", AccountData.data.cookies["_xsrf"])
-        header("x-app-za", "OS=webplayer")
-        header("x-referer", "")
-        setBody(
-            """{"content_id":"$contentId","content_type_str":"$contentType","video_id":"$videoId","scene_code":"answer_detail_web","is_only_video":true}""",
-        )
+    fetchHighestQualityZhihuVideoUrl(
+        httpClient = httpClient,
+        videoId = videoId,
+        contentId = contentId,
+        contentType = contentType,
+        xsrfToken = AccountData.data.cookies["_xsrf"],
+    ) {
         signFetchRequest()
     }
-
-    val responseText = response.bodyAsText()
-    val jsonResponse = json
-        .parseToJsonElement(responseText)
-        .jsonObject
-
-    val videoPlay = jsonResponse["video_play"]?.jsonObject
-    val playlist = videoPlay?.get("playlist")?.jsonObject
-    val mp4List = playlist?.get("mp4")?.jsonArray
-
-    // 找到最高质量的视频
-    var bestVideo: JsonObject? = null
-    var maxBitrate = -1
-
-    mp4List?.forEach { videoElement ->
-        val video = videoElement.jsonObject
-        val bitrate = video["bitrate"]?.jsonPrimitive?.intOrNull ?: 0
-        if (bitrate > maxBitrate) {
-            maxBitrate = bitrate
-            bestVideo = video
-        }
-    }
-
-    // 获取视频URL
-    bestVideo
-        ?.get("url")
-        ?.jsonArray
-        ?.firstOrNull()
-        ?.jsonPrimitive
-        ?.content
 } catch (e: Exception) {
     Log.e("VideoDownload", "Error getting video URL: ${e.message}")
     null

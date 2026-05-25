@@ -4,11 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
 import com.github.zly2006.zhihu.navigation.Home
@@ -16,16 +19,29 @@ import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
+import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
+import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.awt.Desktop
+import java.net.URI
 
 @Composable
 fun DesktopZhihuMain() {
     val navController = rememberNavController()
     val httpClient = rememberZhihuHttpClient()
+    val accountStore = remember { DesktopAccountStore() }
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
 
     fun navigateToMainTabs() {
@@ -44,7 +60,46 @@ fun DesktopZhihuMain() {
                 mainTabNavigationTarget = route
                 navigateToMainTabs()
             }
-            is Video -> Unit
+            is Video -> {
+                val current = runCatching {
+                    navController.currentBackStackEntry?.toRoute<Article>()
+                }.getOrNull() ?: runCatching {
+                    navController.currentBackStackEntry?.toRoute<Question>()
+                }.getOrNull()
+                if (current == null) {
+                    userMessages.showMessage("无法打开视频：未知的内容类型")
+                    return
+                }
+                val (contentId, contentType) = when (current) {
+                    is Article -> current.id.toString() to when (current.type) {
+                        ArticleType.Answer -> "answer"
+                        ArticleType.Article -> "article"
+                    }
+                    is Question -> current.questionId.toString() to "question"
+                    else -> return
+                }
+                coroutineScope.launch {
+                    val cookies = accountStore.load().cookies
+                    val videoUrl = withContext(Dispatchers.IO) {
+                        runCatching {
+                            fetchHighestQualityZhihuVideoUrl(
+                                httpClient = httpClient,
+                                videoId = route.id.toString(),
+                                contentId = contentId,
+                                contentType = contentType,
+                                xsrfToken = cookies["_xsrf"],
+                            ) {
+                                signZhihuFetchRequest(dc0 = cookies["d_c0"] ?: "")
+                            }
+                        }.getOrNull()
+                    }
+                    if (videoUrl == null) {
+                        userMessages.showMessage("获取视频链接失败")
+                    } else if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().browse(URI(videoUrl))
+                    }
+                }
+            }
             MainTabs -> {
                 mainTabNavigationTarget = Home
                 navigateToMainTabs()
