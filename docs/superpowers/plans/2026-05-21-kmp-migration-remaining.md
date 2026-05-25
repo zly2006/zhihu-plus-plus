@@ -90,7 +90,7 @@
 - 通用分页状态已使用 shared `ZhihuPaging`；`PaginationViewModel`、`CollectionsViewModel`、`CollectionContentViewModel` 本体已迁入 `shared/commonMain`。
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 只保留必要 data/runtime adapter。
 - `shared/src/androidMain` 中剩余完整 UI 页面、完整 screen、整页导航壳和整页 `expect/actual` 都是待清理债务；Android 只能保留小粒度平台 adapter/provider/slot。
-- `ContentFilterManager` / `ContentFilterExtensions` 仍在 app 或 Android 调用链中，但目标必须迁入 shared；迁移 ContentFilter 设置页、feed ViewModel 或 PaginationViewModel 时不得弱化、绕开或空实现过滤功能。
+- `ContentFilterManager` / `ContentFilterExtensions` 主体已迁入 shared；后续迁移 ContentFilter 设置页、feed ViewModel 或 PaginationViewModel 时不得弱化、绕开或空实现过滤功能，Android 只能继续收敛偏好、数据库、Toast/log、详情 fetch 和 variant NLP 等平台 adapter。
 
 ## 剩余任务顺序
 
@@ -170,7 +170,7 @@ rg -n "ThemeManager|ZhihuTheme|dynamic|isSystemInDarkTheme|SharedPreferences|Con
 - 2026-05-21：`CollectionsViewModel` 和 `CollectionContentViewModel` 已迁入 `shared/commonMain`；收藏夹信息 fetch、详情解析、HTML/ZIP 导出、Toast/log、Android 文件路径和 cacheDir 已拆到 `SharedAndroidPaginationEnvironment` 平台 adapter。`./gradlew :shared:compileKotlinMetadata`、`:shared:compileKotlinJvm`、`:desktopApp:compileKotlin` 已通过；`:shared:compileAndroidMain --continue` 的首个 blocker 已后移到 `FollowScreen` 的既有 `MainActivity` 依赖。
 - 2026-05-21：`FollowScreen`、`HomeScreen`、`HotListScreen`、`PeopleScreen`、`QuestionScreen`、`SearchScreen` 已去掉 app `MainActivity` / `LoginActivity` / `WebviewActivity` / app reselect typealias 依赖；`CommentScreen.kt` 和 `PinViewModel.kt` 已通过 `git mv` 进入 `shared/androidMain`；`WebviewComp` 保持 Android-only WebView 但去掉 app Activity 类型依赖；`DeveloperSettingsScreen` 改走 common `DeveloperRuntimeInfoProvider`，TTS 状态继续使用 common `TtsState`。本地推荐 Android 实现已先移入 `shared/androidMain` 作为临时桥，仍需继续拆 environment 后迁 common。`./gradlew :shared:compileAndroidMain --continue`、`:shared:compileKotlinJvm :desktopApp:compileKotlin --continue` 已通过。
 - 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；`ContentFilterExtensions` 已迁入 common，后续继续拆 history repository、notification preferences、comment HTML/request helper、collection/home screen platform hooks 等平台副作用后再迁子类或页面。
-- 注意：`:app:compileLiteDebugKotlin` 当前仍因既有 `shared/androidMain` 迁移债失败，包括 `AccountSettingScreen`、`WebviewComp`、`ContentFilterExtensions`、`MainActivity`/`BuildConfig`/`R` 访问等；不能把这个 slice 说成 Android 编译通过。
+- 注意：最新内容过滤切片中 `:app:compileLiteDebugKotlin` 已通过；仍需关注既有 `shared/androidMain` 迁移债和 AndroidMain ktlint 的 KSP 生成文件缺失 blocker，不能把未验证的后续 UI/导航迁移说成整体 Android 验证完成。
 
 目标：
 
