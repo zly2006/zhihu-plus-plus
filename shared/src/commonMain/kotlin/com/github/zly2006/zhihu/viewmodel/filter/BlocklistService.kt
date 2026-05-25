@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.shared.filter.KeywordBackup
 import com.github.zly2006.zhihu.shared.filter.NlpKeywordBackup
 import com.github.zly2006.zhihu.shared.filter.TopicBackup
 import com.github.zly2006.zhihu.shared.filter.UserBackup
+import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.serialization.json.Json
 
 /**
@@ -99,7 +100,7 @@ class BlocklistService(
                 }
             } catch (e: Exception) {
                 // 正则表达式错误，忽略这个关键词
-                e.printStackTrace()
+                Log.e("BlocklistService", "Failed to match blocked keyword", e)
                 false
             }
         }

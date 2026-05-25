@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.DailySection
 import com.github.zly2006.zhihu.shared.data.fetchDailyStoriesBefore
 import com.github.zly2006.zhihu.shared.data.fetchDailyStoriesForDate
 import com.github.zly2006.zhihu.shared.data.fetchLatestDailyStories
+import com.github.zly2006.zhihu.shared.util.Log
 import io.ktor.client.HttpClient
 
 class DailyViewModel : ViewModel() {
@@ -76,7 +77,7 @@ class DailyViewModel : ViewModel() {
             sections = sections + DailySection(data.date, data.stories)
             nextDate = data.date
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("DailyViewModel", "Failed to load more daily stories", e)
         } finally {
             isLoadingMore = false
         }

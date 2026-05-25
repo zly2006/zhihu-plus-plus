@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
+import com.github.zly2006.zhihu.shared.util.Log
 import kotlinx.serialization.json.Json
 
 fun interface KeywordSemanticMatcher {
@@ -212,7 +213,7 @@ class BlockedKeywordService(
             // 维护记录数量限制
             recordDao.maintainRecordLimit()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("BlockedKeywordService", "Failed to save blocked content record", e)
         }
     }
 
@@ -245,7 +246,7 @@ class BlockedKeywordService(
             json,
         )
     } catch (e: Exception) {
-        e.printStackTrace()
+        Log.e("BlockedKeywordService", "Failed to parse matched keywords", e)
         emptyList()
     }
 }
