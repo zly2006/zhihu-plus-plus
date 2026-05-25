@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
@@ -34,7 +35,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                     val summary = manager.importAllBlocklistFromJson(context, uri)
                     importCallback?.invoke(summary)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
                     userMessages.showShortMessage("导入失败: ${e.message}")
                 }
             }

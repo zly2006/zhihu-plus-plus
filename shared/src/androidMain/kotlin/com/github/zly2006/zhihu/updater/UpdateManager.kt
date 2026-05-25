@@ -267,7 +267,7 @@ object UpdateManager {
                     }
                 } catch (e: Exception) {
                     // nightly版本检查失败时，继续使用正式版本
-                    e.printStackTrace()
+                    Log.e("UpdateManager", "Failed to check nightly release", e)
                 }
             }
 
