@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import java.awt.Desktop
@@ -23,11 +24,11 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
     var account by remember { mutableStateOf(accountStore.load()) }
     val viewModel: BaseFeedViewModel = when (recommendationMode) {
         RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
+        RecommendationMode.LOCAL -> viewModel<LocalHomeFeedViewModel>()
         RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
-        RecommendationMode.WEB,
-        RecommendationMode.LOCAL,
-        -> viewModel<HomeFeedViewModel>()
+        RecommendationMode.WEB -> viewModel<HomeFeedViewModel>()
     }
+    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
     return HomeScreenRuntime(
         account = HomeAccountState(
             isLoggedIn = account.login,
@@ -52,7 +53,16 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
                 Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(data), null)
             }
         },
-        recordLocalItemOpened = {},
-        recordLocalItemFeedback = { _, _ -> false },
+        recordLocalItemOpened = { item ->
+            localHomeViewModel?.onLocalItemOpened(item)
+        },
+        recordLocalItemFeedback = { item, feedback ->
+            if (localHomeViewModel != null && item.localContentId != null) {
+                localHomeViewModel.onLocalItemFeedback(item, feedback)
+                true
+            } else {
+                false
+            }
+        },
     )
 }
