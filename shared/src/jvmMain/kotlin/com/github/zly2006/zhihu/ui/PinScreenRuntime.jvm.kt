@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
@@ -78,7 +79,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                             ),
                         )
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e("PinScreenRuntime", "Failed to toggle pin like", e)
                     }
                 }
             },

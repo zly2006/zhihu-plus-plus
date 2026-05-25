@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -113,7 +114,7 @@ actual fun BlockUserConfirmDialog(
                     onConfirm()
                     userMessages.showShortMessage("已屏蔽用户：${author.name}")
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("FeedBlockActions", "Failed to block user", e)
                     userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
                 }
             }

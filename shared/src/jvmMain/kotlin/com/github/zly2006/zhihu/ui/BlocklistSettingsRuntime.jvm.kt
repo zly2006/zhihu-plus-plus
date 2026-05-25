@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
@@ -37,7 +38,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                             val summary = manager.importAllBlocklistFromJsonText(selectedFile.readText())
                             onImported(summary)
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            Log.e("BlocklistSettingsRuntime", "Failed to import blocklist", e)
                             userMessages.showShortMessage("导入失败: ${e.message}")
                         }
                     }
