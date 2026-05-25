@@ -22,6 +22,7 @@ import android.app.AlertDialog
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.Composable
@@ -52,8 +53,12 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
@@ -172,8 +177,33 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun applyHomeFeedFilters(items: List<FeedDisplayItem>): HomeFeedFilterResult {
         val settings = feedDisplaySettings()
-        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(context, items)
-        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(context, foregroundItems)
+        val filterSettings = context.contentFilterSettings()
+        val filterDatabase = getContentFilterDatabase(context)
+        val foregroundItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(
+            settings = filterSettings,
+            database = filterDatabase,
+            items = items,
+        )
+        val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(
+            settings = filterSettings,
+            database = filterDatabase,
+            items = foregroundItems,
+            contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
+            semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
+            onNlpBlocked = { blockedThisRound ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    context.mainExecutor.execute {
+                        Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onDetailFetchFailed = { item ->
+                Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
+            },
+            onDetailsKeywordFiltered = { item, keyword ->
+                Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
+            },
+        )
         return HomeFeedFilterResult(
             foregroundItems = foregroundItems,
             filteredItems = filteredItems,
@@ -203,19 +233,24 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun recordContentInteraction(feed: Feed) {
+        val filterSettings = context.contentFilterSettings()
+        val filterDatabase = getContentFilterDatabase(context)
         when (val target = feed.target) {
             is Feed.AnswerTarget -> ContentFilterExtensions.recordContentInteraction(
-                context,
+                filterSettings,
+                filterDatabase,
                 ContentType.ANSWER,
                 target.id.toString(),
             )
             is Feed.ArticleTarget -> ContentFilterExtensions.recordContentInteraction(
-                context,
+                filterSettings,
+                filterDatabase,
                 ContentType.ARTICLE,
                 target.id.toString(),
             )
             is Feed.QuestionTarget -> ContentFilterExtensions.recordContentInteraction(
-                context,
+                filterSettings,
+                filterDatabase,
                 ContentType.QUESTION,
                 target.id.toString(),
             )

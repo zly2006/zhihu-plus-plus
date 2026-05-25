@@ -97,6 +97,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.TrackedContentIdentity
+import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -237,7 +239,10 @@ class MainActivity :
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
             try {
-                ContentFilterExtensions.performMaintenanceCleanup(this@MainActivity)
+                ContentFilterExtensions.performMaintenanceCleanup(
+                    settings = contentFilterSettings(),
+                    database = getContentFilterDatabase(this@MainActivity),
+                )
                 Log.i(TAG, "Content filter maintenance cleanup completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to perform content filter cleanup", e)
