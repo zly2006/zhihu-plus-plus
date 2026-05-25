@@ -46,9 +46,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.viewmodel.CollectionsViewModel
+import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 
 data class CollectionScreenData(
     val collections: List<Collection>,
@@ -58,10 +61,33 @@ data class CollectionScreenData(
 )
 
 @Composable
-expect fun rememberCollectionScreenData(
+fun rememberCollectionScreenData(
     urlToken: String?,
     testCollections: List<Collection>? = null,
-): CollectionScreenData
+): CollectionScreenData {
+    val useTestCollections = testCollections != null || urlToken == null
+    val viewModel: CollectionsViewModel = viewModel(key = urlToken) {
+        CollectionsViewModel(urlToken.orEmpty())
+    }
+    val environment = rememberPaginationEnvironment(allowGuestAccess = false)
+
+    LaunchedEffect(useTestCollections, viewModel, environment) {
+        if (!useTestCollections && viewModel.allData.isEmpty()) {
+            viewModel.refresh(environment)
+        }
+    }
+
+    return CollectionScreenData(
+        collections = testCollections ?: viewModel.allData,
+        isEnd = useTestCollections || viewModel.isEnd,
+        isLoading = viewModel.isLoading,
+        loadMore = {
+            if (!useTestCollections) {
+                viewModel.loadMore(environment)
+            }
+        },
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
