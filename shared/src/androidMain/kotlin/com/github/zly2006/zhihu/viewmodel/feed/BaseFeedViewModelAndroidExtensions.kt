@@ -18,7 +18,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,7 +74,7 @@ fun BaseFeedViewModel.handleBlockTopic(
 ) {
     viewModelScope.launch {
         try {
-            val blocklistManager = BlocklistManager.getInstance(context)
+            val blocklistManager = getBlocklistManager(context)
             blocklistManager.addBlockedTopic(topicId, topicName)
             Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
             displayItems.removeAll {

@@ -12,7 +12,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.exportAllBlocklistToJson
+import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.importAllBlocklistFromJson
 import kotlinx.coroutines.launch
 
 @Composable
@@ -20,7 +22,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
     val context = LocalContext.current
-    val manager = remember(context) { BlocklistManager.getInstance(context) }
+    val manager = remember(context) { getBlocklistManager(context) }
     val coroutineScope = rememberCoroutineScope()
     var importCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val importLauncher = rememberLauncherForActivityResult(

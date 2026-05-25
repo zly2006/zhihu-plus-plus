@@ -17,38 +17,16 @@
 
 package com.github.zly2006.zhihu.viewmodel.filter
 
-import android.content.Context
-import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
- * Android facade for blocklist storage and import/export.
+ * Blocklist storage facade.
  * Core CRUD and matching semantics live in [BlocklistService].
  */
-class BlocklistManager private constructor(
-    context: Context,
+class BlocklistManager(
+    private val service: BlocklistService,
 ) {
-    private val database = getContentFilterDatabase(context)
-    private val service = BlocklistService(
-        keywordDao = database.blockedKeywordDao(),
-        userDao = database.blockedUserDao(),
-        topicDao = database.blockedTopicDao(),
-    )
-
-    companion object {
-        @Volatile
-        @Suppress("ktlint")
-        private var INSTANCE: BlocklistManager? = null
-
-        fun getInstance(context: Context): BlocklistManager = INSTANCE ?: synchronized(this) {
-            val instance = BlocklistManager(context.applicationContext)
-            INSTANCE = instance
-            instance
-        }
-    }
-
     suspend fun addBlockedKeyword(
         keyword: String,
         caseSensitive: Boolean = false,
@@ -149,19 +127,11 @@ class BlocklistManager private constructor(
         service.countBlockedTopics(topicIds)
     }
 
-    suspend fun exportAllBlocklistToJson(context: Context): File = withContext(Dispatchers.IO) {
-        val dir = context.getExternalFilesDir(null) ?: context.filesDir
-        val file = File(dir, "zhihupp_blocklist.json")
-        file.writeText(service.encodeAllBlocklistToJson())
-        file
+    suspend fun exportAllBlocklistToJsonText(): String = withContext(Dispatchers.IO) {
+        service.encodeAllBlocklistToJson()
     }
 
-    suspend fun importAllBlocklistFromJson(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-        val text = context.contentResolver
-            .openInputStream(uri)
-            ?.bufferedReader()
-            ?.readText()
-            ?: return@withContext "读取文件失败"
+    suspend fun importAllBlocklistFromJsonText(text: String): String = withContext(Dispatchers.IO) {
         service.importAllBlocklistFromJsonText(text)
     }
 
@@ -169,3 +139,11 @@ class BlocklistManager private constructor(
         service.getTopicName(topicId)
     }
 }
+
+fun ContentFilterDatabase.createBlocklistManager(): BlocklistManager = BlocklistManager(
+    BlocklistService(
+        keywordDao = blockedKeywordDao(),
+        userDao = blockedUserDao(),
+        topicDao = blockedTopicDao(),
+    ),
+)

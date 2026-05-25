@@ -15,7 +15,7 @@ import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -39,7 +39,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     signFetchRequest()
                 }!!
                 val loadedPerson = AccountData.decodeJson<DataHolder.People>(jojo)
-                val blocklistManager = BlocklistManager.getInstance(context)
+                val blocklistManager = getBlocklistManager(context)
                 (context as? ArticleHost)?.postHistoryDestination(
                     Person(
                         id = loadedPerson.id,
@@ -106,7 +106,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 }
             },
             toggleRecommendationBlock = { request ->
-                val blocklistManager = BlocklistManager.getInstance(context)
+                val blocklistManager = getBlocklistManager(context)
                 if (request.isBlocked) {
                     blocklistManager.removeBlockedUser(request.userId)
                     false
