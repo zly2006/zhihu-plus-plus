@@ -26,8 +26,6 @@ import com.github.zly2006.zhihu.viewmodel.local.TaskScheduler
 import com.github.zly2006.zhihu.viewmodel.local.UserBehaviorAnalyzer
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonArray
@@ -174,15 +172,13 @@ class DesktopPaginationEnvironment(
 
     private suspend fun fetchDesktopLocalFeedArray(url: String): JsonArray {
         val account = store.load()
-        return store.createHttpClient(account.cookies).use { client ->
-            client
-                .get(url) {
-                    account.cookies["d_c0"]?.let { dc0 ->
-                        signZhihuFetchRequest(dc0 = dc0)
-                    }
-                }.body<JsonObject>()["data"]
-                ?.jsonArray ?: JsonArray(emptyList())
-        }
+        return store
+            .fetchAuthenticatedJson(url) {
+                account.cookies["d_c0"]?.let { dc0 ->
+                    signZhihuFetchRequest(dc0 = dc0)
+                }
+            }?.get("data")
+            ?.jsonArray ?: JsonArray(emptyList())
     }
 }
 
