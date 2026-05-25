@@ -20,11 +20,11 @@ package com.github.zly2006.zhihu.ui.components
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -52,7 +52,7 @@ fun handleShareAction(
             // 直接复制链接
             context.articleHost()?.clipboardDestination = content
             context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content)))
-            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+            androidUserMessageSink(context).showShortMessage("已复制链接")
         }
         "share" -> {
             // 直接调用系统分享
@@ -97,7 +97,7 @@ fun ShareDialog(
             onDismissRequest()
             context.articleHost()?.clipboardDestination = content
             context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
-            Toast.makeText(context, "已复制链接", Toast.LENGTH_SHORT).show()
+            androidUserMessageSink(context).showShortMessage("已复制链接")
         },
         onSettingsClick = {
             onDismissRequest()

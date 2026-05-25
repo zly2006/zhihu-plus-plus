@@ -1,6 +1,5 @@
 package com.github.zly2006.zhihu.ui.subscreens
 
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.theme.ThemeMode
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import java.io.File
@@ -41,6 +41,7 @@ actual fun WebViewCustomFontSettings(
     onCustomFontNameChange: (String?) -> Unit,
 ) {
     val context = LocalContext.current
+    val userMessages = androidUserMessageSink(context)
     val fontFilePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -51,7 +52,7 @@ actual fun WebViewCustomFontSettings(
             destFile.outputStream().use { output -> input.copyTo(output) }
         }
         onCustomFontNameChange(name)
-        Toast.makeText(context, "字体已设置，重新打开文章后生效", Toast.LENGTH_SHORT).show()
+        userMessages.showShortMessage("字体已设置，重新打开文章后生效")
     }
     Column(
         modifier = Modifier,
@@ -75,7 +76,7 @@ actual fun WebViewCustomFontSettings(
                     onClick = {
                         File(context.filesDir, "custom_font").delete()
                         onCustomFontNameChange(null)
-                        Toast.makeText(context, "已清除自定义字体", Toast.LENGTH_SHORT).show()
+                        userMessages.showShortMessage("已清除自定义字体")
                     },
                     modifier = Modifier.weight(1f),
                 ) {
