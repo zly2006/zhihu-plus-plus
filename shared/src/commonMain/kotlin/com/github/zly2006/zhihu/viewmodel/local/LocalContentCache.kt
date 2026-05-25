@@ -121,12 +121,4 @@ enum class CrawlingReason {
     CollaborativeFiltering,
 }
 
-interface ZhihuLocalFeedClient {
-    suspend fun crawlFollowingFeeds(): List<CrawlingResult>
-
-    suspend fun crawlTrendingFeeds(): List<CrawlingResult>
-
-    suspend fun crawlUpvotedQuestionFeeds(questionId: String): List<CrawlingResult>
-}
-
 private fun currentEpochMillis(): Long = Clock.System.now().toEpochMilliseconds()
