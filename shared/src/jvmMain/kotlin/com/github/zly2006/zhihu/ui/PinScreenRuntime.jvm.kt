@@ -18,14 +18,10 @@ import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
-import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.request
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -176,18 +172,10 @@ private suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,
     pin: Pin,
 ): DataHolder.Pin? {
-    val account = store.load()
     val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}"
     return runCatching {
-        store.createHttpClient(account.cookies).use { client ->
-            val json = client
-                .get(endpoint) {
-                    account.cookies["d_c0"]?.let { dc0 ->
-                        signZhihuFetchRequest(dc0 = dc0)
-                    }
-                }.body<kotlinx.serialization.json.JsonObject>()
-            ZhihuJson.decodeJson<DataHolder.Pin>(json)
-        }
+        val json = store.fetchAuthenticatedJson(endpoint) ?: return@runCatching null
+        ZhihuJson.decodeJson<DataHolder.Pin>(json)
     }.getOrNull()
 }
 
@@ -195,48 +183,31 @@ private suspend fun fetchDesktopPinLike(
     store: DesktopAccountStore,
     endpoint: String,
     method: HttpMethod,
-): JsonObject? {
-    val account = store.load()
-    return runCatching {
-        store.createHttpClient(account.cookies).use { client ->
-            client
-                .request(endpoint) {
-                    this.method = method
-                    account.cookies["d_c0"]?.let { dc0 ->
-                        signZhihuFetchRequest(dc0 = dc0)
-                    }
-                }.body<JsonObject>()
-        }
-    }.getOrNull()
-}
+): JsonObject? = runCatching {
+    store.fetchAuthenticatedJson(endpoint) {
+        this.method = method
+    }
+}.getOrNull()
 
 private suspend fun fetchDesktopQuestionDetail(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? {
-    val account = store.load()
     val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
         "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
 
     return runCatching {
-        store.createHttpClient(account.cookies).use { client ->
-            val jo = client
-                .get(apiUrl) {
-                    account.cookies["d_c0"]?.let { dc0 ->
-                        signZhihuFetchRequest(dc0 = dc0)
-                    }
-                }.body<JsonObject>()
-            val jojo = buildJsonObject {
-                jo.entries.forEach { (key, value) ->
-                    if (key == "id") {
-                        put(key, JsonPrimitive(value.jsonPrimitive.long))
-                    } else {
-                        put(key, value)
-                    }
+        val jo = store.fetchAuthenticatedJson(apiUrl) ?: return@runCatching null
+        val jojo = buildJsonObject {
+            jo.entries.forEach { (key, value) ->
+                if (key == "id") {
+                    put(key, JsonPrimitive(value.jsonPrimitive.long))
+                } else {
+                    put(key, value)
                 }
             }
-            ZhihuJson.decodeJson<DataHolder.Question>(jojo)
         }
+        ZhihuJson.decodeJson<DataHolder.Question>(jojo)
     }.getOrNull()
 }
 
