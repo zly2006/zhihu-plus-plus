@@ -13,9 +13,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -36,10 +34,10 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
     DisposableEffect(client) {
         onDispose { client.close() }
     }
-    val environment = remember(client, cookies, settingsStore) {
+    val environment = remember(store, client, cookies, settingsStore, userMessages) {
         JvmNotificationPaginationEnvironment(
+            store = store,
             client = client,
-            cookies = cookies,
             notificationSettingsStore = settingsStore,
             showMessage = userMessages::showMessage,
         )
@@ -72,8 +70,8 @@ actual fun rememberNotificationScreenData(): NotificationScreenData {
 }
 
 private class JvmNotificationPaginationEnvironment(
+    private val store: DesktopAccountStore,
     private val client: HttpClient,
-    private val cookies: Map<String, String>,
     override val notificationSettingsStore: NotificationSettingsStore,
     private val showMessage: (String) -> Unit,
 ) : NotificationPaginationEnvironment {
@@ -83,13 +81,13 @@ private class JvmNotificationPaginationEnvironment(
         url: String,
         include: String,
     ): JsonObject =
-        client
-            .get(url) {
+        store
+            .fetchAuthenticatedJson(url) {
                 if (include.isNotEmpty()) {
                     parameter("include", include)
                 }
                 configureSignedRequest(this)
-            }.body()
+            } ?: error("No notification response body")
 
     override fun logDecodeFailure(
         tag: String?,
@@ -110,6 +108,6 @@ private class JvmNotificationPaginationEnvironment(
     }
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
-        builder.signZhihuFetchRequest(dc0 = cookies["d_c0"] ?: "")
+        builder.signZhihuFetchRequest(dc0 = store.load().cookies["d_c0"] ?: "")
     }
 }
