@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.markdown.RenderVideoBox
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
@@ -43,12 +44,21 @@ expect fun ArticleWebViewContent(
 )
 
 @Composable
-expect fun ArticleMarkdownContent(
+fun ArticleMarkdownContent(
     html: String,
     modifier: Modifier,
     header: @Composable () -> Unit,
     footer: @Composable () -> Unit,
-)
+) {
+    RenderMarkdown(
+        html = html,
+        modifier = modifier,
+        selectable = true,
+        enableScroll = false,
+        header = header,
+        footer = footer,
+    )
+}
 
 @Composable
 fun ArticleVideoAttachmentContent(attachment: JsonElement?) {

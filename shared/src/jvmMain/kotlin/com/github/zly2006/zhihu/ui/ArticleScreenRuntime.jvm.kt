@@ -4,7 +4,6 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 
@@ -34,21 +33,6 @@ actual fun ArticleWebViewContent(
         modifier = Modifier,
         header = {},
         footer = {},
-    )
-}
-
-@Composable
-actual fun ArticleMarkdownContent(
-    html: String,
-    modifier: Modifier,
-    header: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    RenderMarkdown(
-        html = html,
-        modifier = modifier,
-        header = header,
-        footer = footer,
     )
 }
 

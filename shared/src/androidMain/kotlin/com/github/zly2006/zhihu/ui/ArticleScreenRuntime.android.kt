@@ -6,7 +6,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -79,23 +78,6 @@ actual fun ArticleWebViewContent(
             title,
         )
     }
-}
-
-@Composable
-actual fun ArticleMarkdownContent(
-    html: String,
-    modifier: Modifier,
-    header: @Composable () -> Unit,
-    footer: @Composable () -> Unit,
-) {
-    RenderMarkdown(
-        html = html,
-        modifier = modifier,
-        selectable = true,
-        enableScroll = false,
-        header = header,
-        footer = footer,
-    )
 }
 
 actual fun Modifier.articleMarkdownSelectionWorkaround(): Modifier = fuckHonorService()
