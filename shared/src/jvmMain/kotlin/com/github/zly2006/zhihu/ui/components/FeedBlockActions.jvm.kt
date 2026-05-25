@@ -10,16 +10,16 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
-    val blocklistService = rememberDesktopBlocklistService()
-    return remember(blocklistService) {
+    val blocklistManager = rememberDesktopBlocklistManager()
+    return remember(blocklistManager) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
@@ -34,7 +34,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
             handleBlockTopic = { viewModel, topicId, topicName ->
                 viewModel.viewModelScope.launch {
                     try {
-                        blocklistService.addBlockedTopic(topicId, topicName)
+                        blocklistManager.addBlockedTopic(topicId, topicName)
                         println("已屏蔽主题「$topicName」")
                         viewModel.displayItems.removeAll {
                             val topics = when (val content = it.raw) {
@@ -91,7 +91,7 @@ actual fun BlockUserConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val blocklistService = rememberDesktopBlocklistService()
+    val blocklistManager = rememberDesktopBlocklistManager()
     val coroutineScope = rememberCoroutineScope()
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
@@ -101,7 +101,7 @@ actual fun BlockUserConfirmDialog(
         onConfirmBlock = { author ->
             coroutineScope.launch {
                 try {
-                    blocklistService.addBlockedUser(
+                    blocklistManager.addBlockedUser(
                         userId = author.id,
                         userName = author.name,
                         urlToken = author.urlToken,
@@ -119,15 +119,11 @@ actual fun BlockUserConfirmDialog(
 }
 
 @Composable
-private fun rememberDesktopBlocklistService(): BlocklistService = remember {
+private fun rememberDesktopBlocklistManager() = remember {
     val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
     databaseFile.parentFile?.mkdirs()
     val database = getContentFilterDatabase(databaseFile)
-    BlocklistService(
-        keywordDao = database.blockedKeywordDao(),
-        userDao = database.blockedUserDao(),
-        topicDao = database.blockedTopicDao(),
-    )
+    database.createBlocklistManager()
 }
 
 private fun ensureAuthorInfo(feedItem: FeedDisplayItem): Pair<String, String>? {

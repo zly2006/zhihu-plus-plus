@@ -13,7 +13,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
@@ -34,11 +34,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime = remember {
     val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
     databaseFile.parentFile?.mkdirs()
     val database = getContentFilterDatabase(databaseFile)
-    val blocklistService = BlocklistService(
-        keywordDao = database.blockedKeywordDao(),
-        userDao = database.blockedUserDao(),
-        topicDao = database.blockedTopicDao(),
-    )
+    val blocklistManager = database.createBlocklistManager()
     PeopleScreenRuntime(
         loadProfile = { person ->
             addDesktopReadHistory(store, person.id, "profile")
@@ -73,7 +69,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime = remember {
                     articleCount = loadedPerson.articlesCount,
                     isFollowing = loadedPerson.isFollowing,
                     isBlocking = loadedPerson.isBlocking,
-                    isBlockedInRecommendations = blocklistService.isUserBlocked(loadedPerson.id),
+                    isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
                 ),
                 urlToken = loadedPerson.urlToken,
             )
@@ -123,7 +119,6 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime = remember {
             }
         },
         toggleRecommendationBlock = { request ->
-            val blocklistManager = blocklistService
             if (request.isBlocked) {
                 blocklistManager.removeBlockedUser(request.userId)
                 false

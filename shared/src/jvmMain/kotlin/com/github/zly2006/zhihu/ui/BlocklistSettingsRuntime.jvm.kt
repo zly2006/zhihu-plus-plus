@@ -4,11 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
-import com.github.zly2006.zhihu.viewmodel.filter.BlocklistService
+import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -17,32 +15,26 @@ import javax.swing.filechooser.FileNameExtensionFilter
 actual fun rememberBlocklistSettingsPlatformRuntime(
     userMessages: UserMessageSink,
 ): BlocklistSettingsRuntime {
-    val service = remember {
+    val manager = remember {
         val databaseFile = blocklistDatabaseFile()
         databaseFile.parentFile?.mkdirs()
         val database = getContentFilterDatabase(databaseFile)
-        BlocklistService(
-            keywordDao = database.blockedKeywordDao(),
-            userDao = database.blockedUserDao(),
-            topicDao = database.blockedTopicDao(),
-        )
+        database.createBlocklistManager()
     }
     val coroutineScope = rememberCoroutineScope()
-    return remember(service, userMessages) {
+    return remember(manager, userMessages) {
         BlocklistSettingsRuntime(
             userMessages = userMessages,
-            loadKeywords = { withContext(Dispatchers.IO) { service.getAllBlockedKeywords() } },
-            loadUsers = { withContext(Dispatchers.IO) { service.getAllBlockedUsers() } },
-            loadTopics = { withContext(Dispatchers.IO) { service.getAllBlockedTopics() } },
-            loadStats = { withContext(Dispatchers.IO) { service.getBlocklistStats() } },
+            loadKeywords = manager::getAllBlockedKeywords,
+            loadUsers = manager::getAllBlockedUsers,
+            loadTopics = manager::getAllBlockedTopics,
+            loadStats = manager::getBlocklistStats,
             requestImport = { onImported ->
                 val selectedFile = chooseBlocklistImportFile()
                 if (selectedFile != null) {
                     coroutineScope.launch {
                         try {
-                            val summary = withContext(Dispatchers.IO) {
-                                service.importAllBlocklistFromJsonText(selectedFile.readText())
-                            }
+                            val summary = manager.importAllBlocklistFromJsonText(selectedFile.readText())
                             onImported(summary)
                         } catch (e: Exception) {
                             e.printStackTrace()
@@ -52,48 +44,26 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
                 }
             },
             exportRules = {
-                withContext(Dispatchers.IO) {
-                    val file = File(blocklistDatabaseFile().parentFile, "zhihupp_blocklist.json")
-                    file.writeText(service.encodeAllBlocklistToJson())
-                    "已导出到 ${file.absolutePath}"
-                }
+                val file = File(blocklistDatabaseFile().parentFile, "zhihupp_blocklist.json")
+                file.writeText(manager.exportAllBlocklistToJsonText())
+                "已导出到 ${file.absolutePath}"
             },
-            addKeyword = { keyword, caseSensitive, isRegex ->
-                withContext(Dispatchers.IO) {
-                    service.addBlockedKeyword(keyword, caseSensitive, isRegex)
-                }
-            },
-            deleteKeyword = { keywordId ->
-                withContext(Dispatchers.IO) { service.removeBlockedKeyword(keywordId) }
-            },
-            clearKeywords = {
-                withContext(Dispatchers.IO) { service.clearAllBlockedKeywords() }
-            },
-            addUser = { userId, userName ->
-                withContext(Dispatchers.IO) { service.addBlockedUser(userId, userName) }
-            },
-            deleteUser = { userId ->
-                withContext(Dispatchers.IO) { service.removeBlockedUser(userId) }
-            },
-            clearUsers = {
-                withContext(Dispatchers.IO) { service.clearAllBlockedUsers() }
-            },
-            addTopic = { topicId, topicName ->
-                withContext(Dispatchers.IO) { service.addBlockedTopic(topicId, topicName) }
-            },
-            deleteTopic = { topicId ->
-                withContext(Dispatchers.IO) { service.removeBlockedTopic(topicId) }
-            },
-            clearTopics = {
-                withContext(Dispatchers.IO) { service.clearAllBlockedTopics() }
-            },
+            addKeyword = manager::addBlockedKeyword,
+            deleteKeyword = manager::removeBlockedKeyword,
+            clearKeywords = manager::clearAllBlockedKeywords,
+            addUser = { userId, userName -> manager.addBlockedUser(userId, userName) },
+            deleteUser = manager::removeBlockedUser,
+            clearUsers = manager::clearAllBlockedUsers,
+            addTopic = manager::addBlockedTopic,
+            deleteTopic = manager::removeBlockedTopic,
+            clearTopics = manager::clearAllBlockedTopics,
         )
     }
 }
 
 private fun blocklistDatabaseFile(): File {
     val home = System.getProperty("user.home")
-    return File(home, ".zhihu-plus-plus/content-filter.db")
+    return File(home, ".zhihu-plus/content-filter.db")
 }
 
 private fun chooseBlocklistImportFile(): File? {
