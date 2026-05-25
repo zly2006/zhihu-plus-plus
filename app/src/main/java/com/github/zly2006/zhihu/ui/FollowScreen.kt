@@ -88,6 +88,10 @@ class FollowScreenData : ViewModel() {
     var selectedTabIndex by mutableIntStateOf(0)
 }
 
+// 固定标签栏用的是 PrimaryTabRow，其纯文字高度为 Material3 默认的 48dp；
+// 关注页内容按此值留出顶部空间，必须与实际标签栏高度保持一致
+private val FOLLOW_TAB_ROW_HEIGHT = 48.dp
+
 const val FOLLOW_SCREEN_TAB_ROW_TAG = "follow_screen_tab_row"
 const val FOLLOW_SCREEN_PAGER_TAG = "follow_screen_pager"
 const val FOLLOWING_USERS_ROW_TAG = "following_users_row"
@@ -172,21 +176,18 @@ fun FollowScreen(
 @Composable
 fun FollowTopLevelPage(
     selectedTabIndex: Int,
-    onTabSelected: (Int) -> Unit,
     scrollToTopTrigger: Int = 0,
     innerPadding: PaddingValues = PaddingValues(0.dp),
     isActive: Boolean = true,
 ) {
+    // 标签栏由 MainTabsPager 固定在顶部渲染，这里只放内容并为其留出顶部空间
     Column(
         modifier = Modifier
-            .padding(bottom = innerPadding.calculateBottomPadding())
-            .then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
+            .padding(
+                top = innerPadding.calculateTopPadding() + FOLLOW_TAB_ROW_HEIGHT,
+                bottom = innerPadding.calculateBottomPadding(),
+            ).then(if (isActive) Modifier else Modifier.clearAndSetSemantics {}),
     ) {
-        FollowTabRow(
-            selectedTabIndex = selectedTabIndex,
-            onTabSelected = onTabSelected,
-            modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-        )
         when (selectedTabIndex) {
             0 -> FollowRecommendScreen(
                 scrollToTopTrigger = scrollToTopTrigger,
@@ -201,7 +202,7 @@ fun FollowTopLevelPage(
 }
 
 @Composable
-private fun FollowTabRow(
+internal fun FollowTabRow(
     selectedTabIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,

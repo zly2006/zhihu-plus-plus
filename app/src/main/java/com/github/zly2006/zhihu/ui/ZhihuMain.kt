@@ -30,6 +30,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -586,36 +587,60 @@ private fun MainTabsPager(
     innerPadding: androidx.compose.foundation.layout.PaddingValues,
     onFollowTabSelected: (Int) -> Unit,
 ) {
-    HorizontalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize(),
-    ) { pageIndex ->
-        val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
-        when (page) {
-            MainTabPage.HomePage -> HomeScreen(
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-            )
-            MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
-                selectedTabIndex = 0,
+    Box(modifier = Modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+        ) { pageIndex ->
+            val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
+            when (page) {
+                MainTabPage.HomePage -> HomeScreen(
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                )
+                MainTabPage.FollowRecommendPage -> FollowTopLevelPage(
+                    selectedTabIndex = 0,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+                MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
+                    selectedTabIndex = 1,
+                    scrollToTopTrigger = scrollToTopTrigger,
+                    innerPadding = innerPadding,
+                    isActive = pagerState.currentPage == pageIndex,
+                )
+                MainTabPage.HotListPage -> HotListScreen(innerPadding)
+                MainTabPage.DailyPage -> DailyScreen()
+                MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
+                MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
+            }
+        }
+
+        // 关注页的标签栏固定在主 Pager 之上，不随推荐/动态横滑移动。
+        // 用 targetPage 而非 currentPage 判定显隐：滑离关注页时标签栏随滑动即时淡出，
+        // 落到邻页时已消失，不会滞留遮挡邻页顶部
+        val followTab = pages.getOrNull(pagerState.targetPage).followTabIndex()
+        var lastFollowTab by remember { mutableIntStateOf(0) }
+        if (followTab >= 0) lastFollowTab = followTab
+        AnimatedVisibility(
+            visible = followTab >= 0,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
+        ) {
+            FollowTabRow(
+                selectedTabIndex = if (followTab >= 0) followTab else lastFollowTab,
                 onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
+                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
             )
-            MainTabPage.FollowDynamicPage -> FollowTopLevelPage(
-                selectedTabIndex = 1,
-                onTabSelected = onFollowTabSelected,
-                scrollToTopTrigger = scrollToTopTrigger,
-                innerPadding = innerPadding,
-                isActive = pagerState.currentPage == pageIndex,
-            )
-            MainTabPage.HotListPage -> HotListScreen(innerPadding)
-            MainTabPage.DailyPage -> DailyScreen()
-            MainTabPage.OnlineHistoryPage -> OnlineHistoryScreen()
-            MainTabPage.AccountPage -> AccountSettingScreen(innerPadding)
         }
     }
+}
+
+private fun MainTabPage?.followTabIndex(): Int = when (this) {
+    MainTabPage.FollowRecommendPage -> 0
+    MainTabPage.FollowDynamicPage -> 1
+    else -> -1
 }
 
 private fun isTopLevelDest(navEntry: NavBackStackEntry?): Boolean = navEntry.hasRoute(MainTabs::class)
