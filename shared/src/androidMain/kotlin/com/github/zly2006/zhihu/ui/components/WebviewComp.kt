@@ -67,12 +67,12 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Video
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.fetchHighestQualityZhihuVideoUrl
+import com.github.zly2006.zhihu.shared.util.extractImageUrl
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.blacklist
-import com.github.zly2006.zhihu.util.extractImageUrl
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
@@ -163,7 +163,7 @@ class CustomWebView : WebView {
                 result.type == HitTestResult.SRC_IMAGE_ANCHOR_TYPE
             ) {
                 val imgElement = document?.select("img[src='${result.extra}']")?.first()
-                val url = imgElement?.let { extractImageUrl(it) }
+                val url = imgElement?.let { extractImageUrl(it::attr) }
                     ?: result.extra?.takeIf { !it.startsWith("data") }
                 if (url != null) {
                     menu.add("查看图片").setOnMenuItemClickListener {
@@ -273,7 +273,7 @@ class CustomWebView : WebView {
 
     fun defaultHtmlClickListener(): HtmlClickListener = HtmlClickListener { clicked ->
         if (clicked.tagName() == "img") {
-            val url = extractImageUrl(clicked)
+            val url = extractImageUrl(clicked::attr)
             if (url != null) {
                 val httpClient = AccountData.httpClient(context)
                 this.openImage(httpClient, url)

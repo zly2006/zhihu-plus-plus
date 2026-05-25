@@ -35,15 +35,6 @@ import androidx.core.net.toUri
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
-import org.jsoup.nodes.Element
-
-/**
- * 从 img 元素提取最高质量的图片URL（无水印原图）
- * 按优先级尝试不同的属性
- */
-fun extractImageUrl(imgElement: Element): String? =
-    com.github.zly2006.zhihu.shared.util
-        .extractImageUrl(imgElement::attr)
 
 /**
  * 创建emoji的inline content映射
