@@ -1,11 +1,11 @@
 package com.github.zly2006.zhihu.ui.components
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockByKeywords
 import com.github.zly2006.zhihu.viewmodel.feed.handleBlockTopic
@@ -41,6 +41,7 @@ actual fun BlockUserConfirmDialog(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
     BlockUserConfirmDialogContent(
         showDialog = showDialog,
         userToBlock = userToBlock,
@@ -57,10 +58,10 @@ actual fun BlockUserConfirmDialog(
                         avatarUrl = author.avatarUrl,
                     )
                     onConfirm()
-                    Toast.makeText(context, "已屏蔽用户：${author.name}", Toast.LENGTH_SHORT).show()
+                    userMessages.showShortMessage("已屏蔽用户：${author.name}")
                 } catch (e: Exception) {
                     Log.e("FeedBlockActions", "Failed to block user", e)
-                    Toast.makeText(context, "屏蔽用户失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
                 }
             }
         },
