@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu.viewmodel.filter
+package com.github.zly2006.zhihu.shared.filter
 
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -25,16 +25,14 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
-import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
-import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Test
+import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class ContentOpenEventSupportTest {
     @Test
-    fun inferOpenFrom_mapsKnownSourceAndTargetPairs() {
+    fun inferOpenFromMapsKnownSourceAndTargetPairs() {
         assertEquals(
             ContentOpenFrom.QUESTION_FEED,
             ContentOpenEventSupport.inferOpenFrom(
@@ -73,7 +71,7 @@ class ContentOpenEventSupportTest {
     }
 
     @Test
-    fun toTrackedContentIdentity_returnsSupportedContentTypes() {
+    fun toTrackedContentIdentityReturnsSupportedContentTypes() {
         assertEquals(
             TrackedContentIdentity(ContentType.ANSWER, "11"),
             ContentOpenEventSupport.toTrackedContentIdentity(Article(type = ArticleType.Answer, id = 11L)),
@@ -98,7 +96,7 @@ class ContentOpenEventSupportTest {
     }
 
     @Test
-    fun filterUnopenedAnswerArticles_excludesCurrentHistoryAndOpenedAnswers() {
+    fun filterUnopenedAnswerArticlesExcludesCurrentHistoryAndOpenedAnswers() {
         val filtered = ContentOpenEventSupport.filterUnopenedAnswerArticles(
             candidates = listOf(
                 Article(type = ArticleType.Answer, id = 10L),
@@ -115,7 +113,7 @@ class ContentOpenEventSupportTest {
     }
 
     @Test
-    fun partitionQuestionAnswerCandidates_movesOpenedAnswersToPreviousAndKeepsFreshNext() {
+    fun partitionQuestionAnswerCandidatesMovesOpenedAnswersToPreviousAndKeepsFreshNext() {
         val partition = ContentOpenEventSupport.partitionQuestionAnswerCandidates(
             candidates = listOf(
                 Article(type = ArticleType.Answer, id = 10L),
