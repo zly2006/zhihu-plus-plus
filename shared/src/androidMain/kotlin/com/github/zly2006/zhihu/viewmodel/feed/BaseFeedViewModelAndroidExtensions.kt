@@ -10,7 +10,6 @@
 package com.github.zly2006.zhihu.viewmodel.feed
 
 import android.content.Context
-import android.widget.Toast
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
@@ -18,6 +17,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.Dispatchers
@@ -36,12 +36,13 @@ fun BaseFeedViewModel.handleBlockUser(
     feedItem: FeedDisplayItem,
     onShowDialog: (Pair<String, String>) -> Unit,
 ) {
+    val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val authorInfo = ensureAuthorInfo(context, feedItem)
         if (authorInfo != null) {
             onShowDialog(authorInfo)
         } else {
-            Toast.makeText(context, "无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作", Toast.LENGTH_LONG).show()
+            userMessages.showLongMessage("无法获取屏蔽用户所需的数据，请尝试进入内容详情页操作")
         }
     }
 }
@@ -54,12 +55,13 @@ fun BaseFeedViewModel.handleBlockByKeywords(
     feedItem: FeedDisplayItem,
     onShowDialog: (Pair<FeedDisplayItem, Triple<String, String, String?>>) -> Unit,
 ) {
+    val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         val contentInfo = ensureContentForKeywordBlocking(context, feedItem)
         if (contentInfo != null) {
             onShowDialog(feedItem to contentInfo)
         } else {
-            Toast.makeText(context, "无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作", Toast.LENGTH_LONG).show()
+            userMessages.showLongMessage("无法获取关键词屏蔽所需的数据，请尝试进入内容详情页操作")
         }
     }
 }
@@ -72,11 +74,12 @@ fun BaseFeedViewModel.handleBlockTopic(
     topicId: String,
     topicName: String,
 ) {
+    val userMessages = androidUserMessageSink(context)
     viewModelScope.launch {
         try {
             val blocklistManager = getBlocklistManager(context)
             blocklistManager.addBlockedTopic(topicId, topicName)
-            Toast.makeText(context, "已屏蔽主题「$topicName」", Toast.LENGTH_SHORT).show()
+            userMessages.showShortMessage("已屏蔽主题「$topicName」")
             displayItems.removeAll {
                 val topics = when (val content = it.raw) {
                     is DataHolder.Answer -> content.question.topics
@@ -88,7 +91,7 @@ fun BaseFeedViewModel.handleBlockTopic(
             }
         } catch (e: Exception) {
             val message = "屏蔽失败: ${e.message}"
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            userMessages.showShortMessage(message)
         }
     }
 }
