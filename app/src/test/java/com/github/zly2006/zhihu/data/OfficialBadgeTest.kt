@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.data
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.Person
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import kotlinx.serialization.json.Json
@@ -145,7 +146,7 @@ class OfficialBadgeTest {
 
     @Test
     fun decodesSnakeCaseBadgeV2WithTypedSerializer() {
-        val badgeV2 = AccountData.decodeJson<DataHolder.BadgeV2>(
+        val badgeV2 = ZhihuJson.decodeJson<DataHolder.BadgeV2>(
             Json.parseToJsonElement(
                 """
                 {
@@ -220,7 +221,7 @@ class OfficialBadgeTest {
 
     @Test
     fun decodesZhihuAdminOfficialAccountCertification() {
-        val badgeV2 = AccountData.decodeJson<DataHolder.BadgeV2>(
+        val badgeV2 = ZhihuJson.decodeJson<DataHolder.BadgeV2>(
             Json.parseToJsonElement(
                 """
                 {
@@ -288,7 +289,7 @@ class OfficialBadgeTest {
 
     @Test
     fun injectsZhPlusAuthorBadgeForMaintainerPeopleDto() {
-        val people = AccountData.decodeJson<DataHolder.People>(
+        val people = ZhihuJson.decodeJson<DataHolder.People>(
             Json.parseToJsonElement(
                 """
                 {
@@ -320,7 +321,7 @@ class OfficialBadgeTest {
 
     @Test
     fun injectsZhPlusAuthorBadgeForMaintainerFeedAuthorDto() {
-        val person = AccountData.decodeJson<Person>(
+        val person = ZhihuJson.decodeJson<Person>(
             Json.parseToJsonElement(
                 """
                 {

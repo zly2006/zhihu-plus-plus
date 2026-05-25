@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu
 
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.Feed
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -38,7 +38,7 @@ class CodecUnitTest {
             val decodeFromString = Json.decodeFromString<JsonObject>(it)
             val feeds = decodeFromString["data"]!!.jsonArray
             feeds.forEach {
-                AccountData.decodeJson<Feed>(it)
+                ZhihuJson.decodeJson<Feed>(it)
             }
         }
     }

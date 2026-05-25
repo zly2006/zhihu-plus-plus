@@ -18,8 +18,8 @@
 package com.github.zly2006.zhihu.ui
 
 import com.github.zly2006.zhihu.navigation.Person
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class PeopleScreenProfileUrlTest {
     @Test

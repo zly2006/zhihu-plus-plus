@@ -17,8 +17,8 @@
 
 package com.github.zly2006.zhihu
 
-import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.data.SearchResult
+import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -2192,7 +2192,7 @@ class SearchUnitTest {
 
         // Parse the response - First convert from snake_case to camelCase as the actual API does
         val jsonElement = Json { ignoreUnknownKeys = true }.parseToJsonElement(realApiResponse)
-        val convertedJson = AccountData.snake_case2camelCase(jsonElement) as JsonObject
+        val convertedJson = ZhihuJson.snakeCaseToCamelCase(jsonElement) as JsonObject
 
         // Verify response structure
         assertTrue("Response should contain 'data' field", "data" in convertedJson)
@@ -2211,7 +2211,7 @@ class SearchUnitTest {
 
         dataArray?.forEachIndexed { index, element ->
             try {
-                val result = AccountData.decodeJson<SearchResult>(element)
+                val result = ZhihuJson.decodeJson<SearchResult>(element)
                 assertNotNull("Result $index should have type", result.type)
                 assertNotNull("Result $index should have id", result.id)
                 // Note: obj field is optional for some result types like "relevant_query"
@@ -2241,7 +2241,7 @@ class SearchUnitTest {
             for (i in 0 until (dataArray?.size ?: 0)) {
                 try {
                     val element = dataArray?.get(i)
-                    val result = AccountData.decodeJson<SearchResult>(element!!)
+                    val result = ZhihuJson.decodeJson<SearchResult>(element!!)
                     println("First successfully parsed result details:")
                     println("  Type: ${result.type}")
                     println("  ID: ${result.id}")
