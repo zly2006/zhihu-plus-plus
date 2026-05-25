@@ -15,6 +15,7 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.formatArticleDateTime
@@ -58,6 +59,7 @@ import javax.swing.SwingUtilities
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
+    private val userMessages: UserMessageSink,
 ) : ArticleViewModelRuntime {
     private val contentFilterDatabase = getContentFilterDatabase(
         File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
@@ -192,11 +194,11 @@ class DesktopArticleViewModelRuntime(
     }
 
     override fun showMessage(message: String) {
-        println(message)
+        userMessages.showShortMessage(message)
     }
 
     override fun showLongMessage(message: String) {
-        println(message)
+        userMessages.showLongMessage(message)
     }
 
     override fun newPlainTextClip(

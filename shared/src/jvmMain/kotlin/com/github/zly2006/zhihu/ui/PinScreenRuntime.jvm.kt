@@ -20,6 +20,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
+import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -90,7 +91,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                 )
             },
             fetchLinkCardPreview = { linkCard ->
-                fetchDesktopLinkCardPreview(store, linkCard)
+                fetchDesktopLinkCardPreview(store, userMessages, linkCard)
             },
             openExternalUrl = ::openDesktopExternalUrl,
         )
@@ -225,12 +226,13 @@ private suspend fun fetchDesktopQuestionDetail(
 
 private suspend fun fetchDesktopLinkCardPreview(
     store: DesktopAccountStore,
+    userMessages: UserMessageSink,
     linkCard: DataHolder.Pin.ContentLinkCard,
 ): PinLinkCardPreview? {
     val destination = resolveLinkCardDestination(linkCard) ?: return null
     return when (destination) {
         is Article -> {
-            when (val detail = DesktopArticleViewModelRuntime(store).getContentDetail(destination)) {
+            when (val detail = DesktopArticleViewModelRuntime(store, userMessages).getContentDetail(destination)) {
                 is DataHolder.Article -> PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.excerpt.ifBlank { detail.content }),
