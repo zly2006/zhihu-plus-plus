@@ -15,19 +15,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.github.zly2006.zhihu
+package com.github.zly2006.zhihu.util
 
 import androidx.compose.ui.graphics.Color
-import com.github.zly2006.zhihu.util.parseHtmlText
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 /**
  * Unit test for HTML text parsing functionality
  * Tests parsing of <em> tags in title and content
  */
-class HtmlTextUnitTest {
+class HtmlTextDetailedTest {
     /**
      * Test basic <em> tag parsing
      */
@@ -41,14 +41,14 @@ class HtmlTextUnitTest {
         assertEquals("This is a test string", annotatedString.text)
 
         // Verify there's at least one style span
-        assertTrue("Should have at least one span style", annotatedString.spanStyles.isNotEmpty())
+        assertTrue(annotatedString.spanStyles.isNotEmpty(), "Should have at least one span style")
 
         // Verify the emphasized text has the correct color
         val emSpan = annotatedString.spanStyles.find { span ->
             span.start == 10 && span.end == 14 // "test" position
         }
-        assertTrue("Should find emphasized span", emSpan != null)
-        assertEquals("Emphasized text should have the emphasis color", emphasisColor, emSpan?.item?.color)
+        assertNotNull(emSpan, "Should find emphasized span")
+        assertEquals(emphasisColor, emSpan.item.color, "Emphasized text should have the emphasis color")
     }
 
     /**
@@ -64,7 +64,7 @@ class HtmlTextUnitTest {
         assertEquals("Search keyword1 and keyword2", annotatedString.text)
 
         // Verify there are two emphasized spans
-        assertEquals("Should have two span styles", 2, annotatedString.spanStyles.size)
+        assertEquals(2, annotatedString.spanStyles.size, "Should have two span styles")
     }
 
     /**
@@ -80,7 +80,7 @@ class HtmlTextUnitTest {
         assertEquals("This is plain text", annotatedString.text)
 
         // Verify there are no styles
-        assertEquals("Should have no span styles", 0, annotatedString.spanStyles.size)
+        assertEquals(0, annotatedString.spanStyles.size, "Should have no span styles")
     }
 
     /**
@@ -94,7 +94,7 @@ class HtmlTextUnitTest {
 
         // Verify the text is parsed correctly
         assertEquals("Test emphasis text", annotatedString.text)
-        assertTrue("Should have emphasized text", annotatedString.spanStyles.isNotEmpty())
+        assertTrue(annotatedString.spanStyles.isNotEmpty(), "Should have emphasized text")
     }
 
     /**
@@ -108,10 +108,10 @@ class HtmlTextUnitTest {
         val annotatedString = parseHtmlText(html, emphasisColor)
 
         // Verify the text content
-        assertTrue("Should contain the search keyword", annotatedString.text.contains("搜"))
+        assertTrue(annotatedString.text.contains("搜"), "Should contain the search keyword")
 
         // Verify emphasis is applied
-        assertTrue("Should have at least one emphasized span", annotatedString.spanStyles.isNotEmpty())
+        assertTrue(annotatedString.spanStyles.isNotEmpty(), "Should have at least one emphasized span")
     }
 
     /**
@@ -124,8 +124,8 @@ class HtmlTextUnitTest {
         val annotatedString = parseHtmlText(html, emphasisColor)
 
         // Verify empty result
-        assertEquals("Should have empty text", "", annotatedString.text)
-        assertEquals("Should have no styles", 0, annotatedString.spanStyles.size)
+        assertEquals("", annotatedString.text, "Should have empty text")
+        assertEquals(0, annotatedString.spanStyles.size, "Should have no styles")
     }
 
     /**
@@ -138,7 +138,7 @@ class HtmlTextUnitTest {
         val annotatedString = parseHtmlText(html, emphasisColor)
 
         // Jsoup automatically decodes HTML entities
-        assertTrue("Should decode HTML entities", annotatedString.text.contains("<em>"))
-        assertTrue("Should have emphasized text", annotatedString.spanStyles.isNotEmpty())
+        assertTrue(annotatedString.text.contains("<em>"), "Should decode HTML entities")
+        assertTrue(annotatedString.spanStyles.isNotEmpty(), "Should have emphasized text")
     }
 }

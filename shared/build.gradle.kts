@@ -145,6 +145,9 @@ kotlin {
             implementation("io.ktor:ktor-client-cio:3.5.0")
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.11.0")
         }
+        jvmTest.dependencies {
+            implementation("org.jsoup:jsoup:1.22.1")
+        }
     }
 }
 
