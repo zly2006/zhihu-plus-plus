@@ -67,11 +67,11 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
             context.clipboardManager.setPrimaryClip(clip)
         },
         recordLocalItemOpened = { item ->
-            localHomeViewModel?.onLocalItemOpened(context, item)
+            localHomeViewModel?.onLocalItemOpened(item)
         },
         recordLocalItemFeedback = { item, feedback ->
             if (localHomeViewModel != null && item.localContentId != null) {
-                localHomeViewModel.onLocalItemFeedback(context, item, feedback)
+                localHomeViewModel.onLocalItemFeedback(item, feedback)
                 true
             } else {
                 false

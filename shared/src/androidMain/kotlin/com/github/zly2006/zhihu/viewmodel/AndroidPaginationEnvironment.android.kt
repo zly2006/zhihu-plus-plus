@@ -54,6 +54,7 @@ import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.cache.HttpCache
@@ -92,6 +93,8 @@ open class SharedAndroidPaginationEnvironment(
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
+    private val localRecommendationEngine by lazy { LocalRecommendationEngine(context) }
+
     override fun httpClient(): HttpClient {
         val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
         val loginForRecommendation = preferences.getBoolean("loginForRecommendation", true)
@@ -257,6 +260,23 @@ open class SharedAndroidPaginationEnvironment(
                     put("clear", true)
                 },
             )
+        }
+    }
+
+    override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
+
+    override suspend fun handleLocalRecommendationFailure(error: Exception) {
+        Log.e("LocalHomeFeedViewModel", "Error fetching local feeds", error)
+    }
+
+    override suspend fun showLocalRecommendationDatabaseError() {
+        withContext(Dispatchers.Main) {
+            AlertDialog
+                .Builder(context)
+                .setTitle("数据库错误")
+                .setMessage("本地推荐系统的数据库未正确初始化。请尝试重启应用或清除应用数据。")
+                .setPositiveButton("确定") { dialog, _ -> dialog.dismiss() }
+                .show()
         }
     }
 

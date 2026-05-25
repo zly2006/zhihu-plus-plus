@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
@@ -75,6 +76,15 @@ interface PaginationEnvironment {
     suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> = emptySet()
 
     suspend fun clearAllHistory() {
+    }
+
+    fun localRecommendationEngine(): LocalRecommendationEngine? = null
+
+    suspend fun handleLocalRecommendationFailure(error: Exception) {
+        handleFetchFailure("LocalHomeFeedViewModel", error)
+    }
+
+    suspend fun showLocalRecommendationDatabaseError() {
     }
 
     fun answerNavigatorRepository(): AnswerNavigatorRepository? = null

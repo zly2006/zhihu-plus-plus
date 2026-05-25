@@ -17,14 +17,10 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.app.AlertDialog
-import android.content.Context
-import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
-import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import kotlinx.coroutines.Dispatchers
@@ -47,9 +43,8 @@ class LocalHomeFeedViewModel :
     }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        val context = environment.androidContext()
         try {
-            val engine = ensureEngine(context)
+            val engine = ensureEngine(environment)
             val recommendations = engine.generateRecommendations(20)
 
             if (recommendations.isEmpty()) {
@@ -58,16 +53,9 @@ class LocalHomeFeedViewModel :
                 addDisplayItems(recommendations.map(::createLocalFeedDisplayItem))
             }
         } catch (e: Exception) {
-            Log.e("LocalHomeFeedViewModel", "Error fetching local feeds", e)
+            environment.handleLocalRecommendationFailure(e)
             if (e.message?.contains("does not exist. Is Room annotation processor correctly configured?") == true) {
-                withContext(Dispatchers.Main) {
-                    AlertDialog
-                        .Builder(context)
-                        .setTitle("数据库错误")
-                        .setMessage("本地推荐系统的数据库未正确初始化。请尝试重启应用或清除应用数据。")
-                        .setPositiveButton("确定") { dialog, _ -> dialog.dismiss() }
-                        .show()
-                }
+                environment.showLocalRecommendationDatabaseError()
             }
             generateFallbackContent()
         } finally {
@@ -75,19 +63,25 @@ class LocalHomeFeedViewModel :
         }
     }
 
-    fun onLocalItemOpened(context: Context, item: FeedDisplayItem) {
+    fun onLocalItemOpened(item: FeedDisplayItem) {
         val contentId = item.localContentId ?: return
         val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
+        if (!::recommendationEngine.isInitialized) {
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            ensureEngine(context).recordContentOpened(contentId, reason)
+            recommendationEngine.recordContentOpened(contentId, reason)
         }
     }
 
-    fun onLocalItemFeedback(context: Context, item: FeedDisplayItem, feedback: Double) {
+    fun onLocalItemFeedback(item: FeedDisplayItem, feedback: Double) {
         val contentId = item.localContentId ?: return
         val reason = item.localReason?.let { runCatching { CrawlingReason.valueOf(it) }.getOrNull() } ?: return
+        if (!::recommendationEngine.isInitialized) {
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            ensureEngine(context).recordRecommendationFeedback(
+            recommendationEngine.recordRecommendationFeedback(
                 feedId = item.localFeedId,
                 contentId = contentId,
                 reason = reason,
@@ -101,9 +95,10 @@ class LocalHomeFeedViewModel :
         }
     }
 
-    private suspend fun ensureEngine(context: Context): LocalRecommendationEngine {
+    private suspend fun ensureEngine(environment: PaginationEnvironment): LocalRecommendationEngine {
         if (!::recommendationEngine.isInitialized) {
-            recommendationEngine = LocalRecommendationEngine(context)
+            recommendationEngine = environment.localRecommendationEngine()
+                ?: error("LocalRecommendationEngine is required for local home feed")
         }
         recommendationEngine.initialize()
         return recommendationEngine
