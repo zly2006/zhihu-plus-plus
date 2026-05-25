@@ -23,7 +23,6 @@ import android.widget.Toast
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
@@ -35,11 +34,6 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.androidContext
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
-import com.github.zly2006.zhihu.viewmodel.filter.AndroidContentFilterRuntime
-import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
-import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
-import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
-import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.UserAgent
@@ -176,51 +170,26 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
-                val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-                val filterSettings = context.contentFilterSettings()
-                val filterDatabase = getContentFilterDatabase(context)
                 // 前台先做本地已读过滤，再立即展示
-                val foregroundFilteredItems = ContentFilterExtensions.applyForegroundReadFilterToDisplayItems(
-                    settings = filterSettings,
-                    database = filterDatabase,
-                    items = itemsToDisplay,
-                )
-                if (!preferences.getBoolean("reverseBlock", false)) {
+                val filterResult = environment.applyHomeFeedFilters(itemsToDisplay)
+                if (!filterResult.reverseBlock) {
                     withContext(Dispatchers.Main) {
-                        addDisplayItems(foregroundFilteredItems)
+                        addDisplayItems(filterResult.foregroundItems)
                     }
                 }
 
                 // 后台继续运行其余内容过滤
-                val filteredItems = ContentFilterExtensions.applyContentFilterToDisplayItems(
-                    settings = filterSettings,
-                    database = filterDatabase,
-                    items = foregroundFilteredItems,
-                    contentDetailProvider = ContentDetailProvider { ContentDetailCache.getOrFetch(context, it) },
-                    semanticMatcher = AndroidContentFilterRuntime.semanticMatcher,
-                    onNlpBlocked = { blockedThisRound ->
-                        context.mainExecutor.execute {
-                            Toast.makeText(context, "NLP 已屏蔽 ${blockedThisRound.first().title.take(10)}... 等 ${blockedThisRound.size} 条内容", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onDetailFetchFailed = { item ->
-                        Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
-                    },
-                    onDetailsKeywordFiltered = { item, keyword ->
-                        Log.e("ContentFilterExtensions", "Filtered item '${item.title}' due to keyword '$keyword' in details: ${item.content}")
-                    },
-                )
-                val newDestinations = foregroundFilteredItems.map { it.navDestination }.toSet()
+                val newDestinations = filterResult.foregroundItems.map { it.navDestination }.toSet()
 
-                if (preferences.getBoolean("reverseBlock", false)) {
-                    addDisplayItems(filteredItems)
+                if (filterResult.reverseBlock) {
+                    addDisplayItems(filterResult.filteredItems)
                 }
 
                 // 移除被过滤的条目，并更新已保留条目的 raw 内容
                 withContext(Dispatchers.Main) {
                     displayItems.removeAll { item ->
                         if (item.navDestination !in newDestinations) return@removeAll false
-                        val filteredVersion = filteredItems.find { it.navDestination == item.navDestination }
+                        val filteredVersion = filterResult.filteredItems.find { it.navDestination == item.navDestination }
                         item.raw = filteredVersion?.raw ?: item.raw
                         // remove if no filtered version exists, which means it was filtered out
                         filteredVersion == null
