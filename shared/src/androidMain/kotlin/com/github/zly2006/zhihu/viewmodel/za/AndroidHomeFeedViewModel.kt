@@ -23,12 +23,9 @@ import android.widget.Toast
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.androidContext
@@ -41,7 +38,6 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.get
-import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.util.appendAll
@@ -50,7 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -89,14 +84,6 @@ class AndroidHomeFeedViewModel :
         }
     }
 
-    /**
-     * Find the first JsonObject in the list where the value associated with [key] matches [value].
-     */
-    @Suppress("NOTHING_TO_INLINE")
-    private inline fun List<JsonObject>.joStrMatch(key: String, value: String): JsonObject =
-        this.firstOrNull { it[key]?.jsonPrimitive?.content == value }
-            ?: throw IllegalStateException("No matching JsonObject found for $key = $value: $this")
-
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
         val context = environment.androidContext()
         try {
@@ -112,59 +99,8 @@ class AndroidHomeFeedViewModel :
                     .map { it.jsonObject }
                     .forEach { card ->
                         try {
-                            if (card["type"]?.jsonPrimitive?.content != "ComponentCard") {
-                                return@forEach
-                            }
-                            val route =
-                                card["action"]!!
-                                    .jsonObject["parameter"]!!
-                                    .jsonPrimitive.content
-                                    .substringAfter("route_url=")
-                            val routeDest = resolveContent(route.decodeURLPart()) ?: return@forEach
-                            val children = card["children"]?.jsonArray?.map { it.jsonObject } ?: return@forEach
-                            val title = children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
-                            val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
-                            val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return@forEach
-                            val footerText = if (footer["style"]!!.jsonPrimitive.content == "LineFooterReaction_feed_v3") {
-                                val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
-                                val voteUp = footerLine.joStrMatch("reaction", "Vote")["count"]!!.jsonPrimitive.int
-                                val comment = footerLine.joStrMatch("reaction", "Comment")["count"]!!.jsonPrimitive.int
-                                val collect = footerLine.joStrMatch("reaction", "Collect")["count"]!!.jsonPrimitive.int
-                                "$voteUp 赞同 · $comment 评论 · $collect 收藏"
-                            } else {
-                                val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
-                                footerLine.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
-                            }
-                            val lineAuthor =
-                                children
-                                    .first {
-                                        it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
-                                            it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
-                                    }["elements"]!!
-                                    .jsonArray
-                                    .map { it.jsonObject }
-                            val avatar = lineAuthor
-                                .joStrMatch("style", "Avatar_default")["image"]!!
-                                .jsonObject["url"]!!
-                                .jsonPrimitive.content
-                            val authorName = lineAuthor.joStrMatch("type", "Text")["text"]!!.jsonPrimitive.content
-                            if (routeDest is Article) {
-                                routeDest.authorName = authorName
-                                routeDest.title = title
-                                routeDest.avatarSrc = avatar
-                            }
-
-                            itemsToDisplay.add(
-                                FeedDisplayItem(
-                                    navDestinationJson = routeDest.toFeedDisplayItemNavDestinationJson(),
-                                    avatarSrc = avatar,
-                                    authorName = authorName,
-                                    summary = summary,
-                                    title = title,
-                                    details = "$footerText · 手机版推荐",
-                                    feed = null,
-                                ),
-                            )
+                            val displayItem = parseMobileHomeFeedDisplayItem(card) ?: return@forEach
+                            itemsToDisplay.add(displayItem)
                         } catch (e: Exception) {
                             Log.e("AndroidHomeFeedViewModel", "Failed to process card: $card", e)
                         }
