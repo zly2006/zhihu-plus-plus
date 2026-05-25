@@ -81,6 +81,7 @@ import com.github.zly2006.zhihu.nlp.SentenceEmbeddingManager
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedContentRecord
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeyword
 import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
+import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import kotlinx.coroutines.launch
 
 /**
@@ -111,7 +112,7 @@ fun NLPKeywordManagementScreen(
     var blockedRecords by remember { mutableStateOf<List<BlockedContentRecord>>(emptyList()) }
     var extractedKeywords by remember { mutableStateOf<List<String>>(emptyList()) }
     var inputText by remember { mutableStateOf("") }
-    var similarityThreshold by remember { mutableFloatStateOf(ContentFilterExtensions.getNLPSimilarityThreshold(context).toFloat()) }
+    var similarityThreshold by remember { mutableFloatStateOf(ContentFilterExtensions.getNLPSimilarityThreshold(context.contentFilterSettings()).toFloat()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var keywordToEdit by remember { mutableStateOf<BlockedKeyword?>(null) }

@@ -17,13 +17,6 @@
 
 package com.github.zly2006.zhihu.nlp
 
-typealias KeywordWithWeight = com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
-typealias NlpDebugTrace = com.github.zly2006.zhihu.shared.nlp.NlpDebugTrace
-typealias SegmentDebugInfo = com.github.zly2006.zhihu.shared.nlp.SegmentDebugInfo
-typealias KeywordSelectionDebug = com.github.zly2006.zhihu.shared.nlp.KeywordSelectionDebug
-typealias SegmentMatchDebug = com.github.zly2006.zhihu.shared.nlp.SegmentMatchDebug
-typealias PhraseMatchResult = com.github.zly2006.zhihu.shared.nlp.PhraseMatchResult
-
 sealed interface ModelState {
     data object Uninitialized : ModelState
 

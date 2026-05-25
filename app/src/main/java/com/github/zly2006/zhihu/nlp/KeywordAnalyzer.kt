@@ -17,9 +17,9 @@
 
 package com.github.zly2006.zhihu.nlp
 
-import com.github.zly2006.zhihu.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.nlp.NLPService
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
+import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 
 /**
  * 关键词分析器
