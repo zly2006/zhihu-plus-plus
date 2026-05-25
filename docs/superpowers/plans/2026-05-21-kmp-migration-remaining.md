@@ -169,7 +169,7 @@ rg -n "ThemeManager|ZhihuTheme|dynamic|isSystemInDarkTheme|SharedPreferences|Con
 - 2026-05-21：`HistoryViewModel`、`OnlineHistoryViewModel` 和 `OnlineHistoryScreen` 已改为使用 `shared/androidMain` 的 `HistoryStorage`，去掉对 `MainActivity.history` 的直接依赖。
 - 2026-05-21：`CollectionsViewModel` 和 `CollectionContentViewModel` 已迁入 `shared/commonMain`；收藏夹信息 fetch、详情解析、HTML/ZIP 导出、Toast/log、Android 文件路径和 cacheDir 已拆到 `SharedAndroidPaginationEnvironment` 平台 adapter。`./gradlew :shared:compileKotlinMetadata`、`:shared:compileKotlinJvm`、`:desktopApp:compileKotlin` 已通过；`:shared:compileAndroidMain --continue` 的首个 blocker 已后移到 `FollowScreen` 的既有 `MainActivity` 依赖。
 - 2026-05-21：`FollowScreen`、`HomeScreen`、`HotListScreen`、`PeopleScreen`、`QuestionScreen`、`SearchScreen` 已去掉 app `MainActivity` / `LoginActivity` / `WebviewActivity` / app reselect typealias 依赖；`CommentScreen.kt` 和 `PinViewModel.kt` 已通过 `git mv` 进入 `shared/androidMain`；`WebviewComp` 保持 Android-only WebView 但去掉 app Activity 类型依赖；`DeveloperSettingsScreen` 改走 common `DeveloperRuntimeInfoProvider`，TTS 状态继续使用 common `TtsState`。本地推荐 Android 实现已先移入 `shared/androidMain` 作为临时桥，仍需继续拆 environment 后迁 common。`./gradlew :shared:compileAndroidMain --continue`、`:shared:compileKotlinJvm :desktopApp:compileKotlin --continue` 已通过。
-- 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；需要继续拆 `ContentFilterExtensions`、history repository、notification preferences、comment HTML/request helper、collection/home screen platform hooks 等平台副作用后再迁子类或页面。
+- 剩余：feed/comment/list 子类仍在 Android source set，Android 调用链仍通过临时 `Context -> PaginationEnvironment` 适配；`ContentFilterExtensions` 已迁入 common，后续继续拆 history repository、notification preferences、comment HTML/request helper、collection/home screen platform hooks 等平台副作用后再迁子类或页面。
 - 注意：`:app:compileLiteDebugKotlin` 当前仍因既有 `shared/androidMain` 迁移债失败，包括 `AccountSettingScreen`、`WebviewComp`、`ContentFilterExtensions`、`MainActivity`/`BuildConfig`/`R` 访问等；不能把这个 slice 说成 Android 编译通过。
 
 目标：
@@ -197,12 +197,12 @@ rg -n "ZhihuPageLoader" .
 
 状态：
 
-- 2026-05-21：`ContentFilterExtensions.kt` 已从 app 移入 `shared/androidMain`，解除 shared feed ViewModel 对 app 源集的反向引用。NLP 语义 matcher 通过 `AndroidContentFilterRuntime.semanticMatcher` 注入，`MainActivity` 启动时接入现有 full/lite `NlpServiceKeywordSemanticMatcher`，没有把 Android variant NLP 实现迁入 shared。
-- 剩余：`ContentFilterExtensions` 仍是 Android wrapper；继续把 `applyContentFilterToDisplayItems` 的详情补齐、关键词/NLP/作者/主题编排和消息/日志回调拆进 `shared/commonMain`，Android 只保留 `Context`、settings/db builder、`ContentDetailCache`、Toast/log 和 variant NLP 注入。
+- 2026-05-26：`ContentFilterExtensions.kt` 已迁入 `shared/commonMain`，保留 feed 过滤入口函数名和过滤顺序；Android 调用点改为注入 `FeedFilterSettings`、KMP Room database、`ContentDetailCache` provider、Toast/log callback 和 `AndroidContentFilterRuntime.semanticMatcher`。
+- 2026-05-26：`BlocklistManager` 已迁入 `shared/commonMain` 并继续委托 shared `BlocklistService`；Android 只保留 `Context -> database` factory 以及 SAF/文件导入导出扩展。
 
 目标：
 
-- `ContentFilterManager` 和 `ContentFilterExtensions` 主体迁入 `shared/commonMain`。
+- `ContentFilterManager`、`ContentFilterExtensions` 和 `BlocklistManager` 主体已迁入 `shared/commonMain`；继续清理残留 Android adapter 里的平台副作用和重复调用点。
 - 保留关键过滤功能：曝光/交互记录、前台已读过滤、重复曝光过滤、广告/知乎学堂/微信公众号/付费内容过滤、关键词/用户/主题过滤、reverseBlock、统计、清理和屏蔽记录保存。
 - Android 副作用拆成小 adapter：SharedPreferences/设置读取、Room database builder 和文件路径、Toast/Dialog/log、`Context`、内容详情 fetch/provider、平台生命周期维护触发。
 - `ContentFilterSettingsScreen` 必须依赖三块通用能力：`SettingsStore`、`ContentFilterMaintenance`、`UserMessageSink`；后续迁移核心过滤器时，逐步让过滤维护动作委托 shared 的 `ContentFilterManager`/KMP Room，而不是继续在页面 adapter 里扩写逻辑。

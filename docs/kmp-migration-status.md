@@ -38,7 +38,7 @@
 - `CommentScreen` 页面主体已迁入 `shared/commonMain`；评论列表、排序、回复输入、滑动回复、作者跳转、点赞状态、图片菜单 UI、时间展示和 test tags 复用同一套 Compose。Android/JVM 通过 `CommentScreenRuntime` 提供图片打开/保存/分享、外链打开、emoji inline content 和选择菜单 workaround；Android 继续复用现有 `OpenImageDialog`、相册保存、系统分享和 Honor workaround，JVM 不引入 WebView。
 - `ArticleUiCommon` 已迁入 `shared/commonMain`；文章页投票按钮颜色、底栏避让 bring-into-view 规则和 `ArticleTopAppBar` 等纯 UI helper 不再留在 Android source set。`ArticleScreen` 页面主体和 `ArticleViewModel` 仍在 `shared/androidMain`，后续继续拆 WebView/TTS/分享/导出/收藏等平台副作用。
 - `HistoryViewModel`、`OnlineHistoryViewModel` 和 `OnlineHistoryScreen` 的本地历史读取/清理已改为直接使用 `shared/androidMain` 的 `HistoryStorage`，不再 cast `MainActivity.history`。
-- `ContentFilterManager` is in `shared/commonMain`. `ContentFilterExtensions` has moved from app into `shared/androidMain` as the current Android wrapper over shared filter pipelines; its remaining Android `Context`/preferences/Room/log/Toast/detail-fetch dependencies are adapter seams, not ownership. Continue moving the orchestration and strategy into `shared/commonMain` instead of replacing or bypassing filtering logic.
+- `ContentFilterManager`、`ContentFilterExtensions` 和 `BlocklistManager` 已迁入 `shared/commonMain`。Android 只保留 `Context`/settings bridge、Room builder/file path、`ContentDetailCache`、Toast/log、SAF/file import-export 和 variant NLP 注入等平台 adapter；不得把这些过滤/屏蔽核心编排重新退回 Android。
 - `ContentFilterSettingsScreen` should not use a mixed page adapter for all platform work. Its common bridge is split into generic `SettingsStore`, `ContentFilterMaintenance`, and `UserMessageSink` capabilities; filter maintenance owns one shared KMP Room-backed implementation instead of copying Android DAO logic in platform actuals.
 - Newly extracted generic adapters must be reused in the same migration slice where reasonable. Grep for duplicate `Toast.makeText`, `getSharedPreferences`, and filter maintenance logic; replace low-risk call sites with `UserMessageSink`, `SettingsStore`, and `ContentFilterMaintenance`, or record why a remaining Android-only call site is deliberately left alone.
 - `DailyScreen`、`CollectionScreen`、`NotificationScreen`、`OpenSourceLicensesScreen` 页面主体已迁入 `shared/commonMain`；Android 仅保留必要 data/provider/runtime adapter。`SentenceSimilarityTestScreen` 不是普通 shared 页面，full/lite 变体实现必须留在 Android app variant。
@@ -80,7 +80,7 @@
 - Split account fetch/token refresh orchestration from Android `AccountData`.
 - Continue migrating `PaginationViewModel` subclasses and Android-only pagination call sites into shared after splitting their remaining platform side effects into small adapters.
 - Continue migrating the remaining Android-only page bodies now that `BaseFeedViewModel` and shared feed card/list components are common; keep Android block-list/content-detail side effects as small adapters until the filter pipeline is shared.
-- Move `ContentFilterManager` and `ContentFilterExtensions` into shared after splitting preferences, database builder, logging/toast, and content-detail fetch side effects into adapters.
+- Continue shrinking content-filter Android adapters now that `ContentFilterManager`、`ContentFilterExtensions` and `BlocklistManager` are shared; keep Android-only preferences, database builder, logging/toast, content-detail fetch, SAF/file and variant NLP side effects in adapters.
 - Add a shared hot-list/home shell that Android and desktop can both invoke.
 - Move local recommendation orchestration behind platform adapters.
 - Move pure HTML/text parsing only after replacing Jsoup with Ksoup-compatible shared code.
