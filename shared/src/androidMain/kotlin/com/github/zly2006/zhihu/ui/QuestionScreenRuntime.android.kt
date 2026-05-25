@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.ShareDialog
@@ -27,6 +28,7 @@ private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActi
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val context = LocalContext.current
     return remember(context) {
+        val userMessages = androidUserMessageSink(context)
         QuestionScreenRuntime(
             loadQuestion = { question ->
                 AccountData.addReadHistory(context, question.questionId.toString(), "question")
@@ -68,9 +70,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 handleShareAction(context, question, onShowDialog)
             },
             showShortMessage = { message ->
-                android.widget.Toast
-                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                    .show()
+                userMessages.showShortMessage(message)
             },
         )
     }

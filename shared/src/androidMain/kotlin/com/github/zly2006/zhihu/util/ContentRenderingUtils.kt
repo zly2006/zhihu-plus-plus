@@ -22,7 +22,6 @@ import android.content.Intent
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.MediaStore.MediaColumns
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.ui.Modifier
@@ -32,6 +31,7 @@ import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.readRawBytes
@@ -73,6 +73,7 @@ suspend fun saveImageToGallery(
     httpClient: HttpClient,
     imageUrl: String,
 ) {
+    val userMessages = androidUserMessageSink(context)
     try {
         val response = httpClient.get(imageUrl)
         val bytes = response.readRawBytes()
@@ -107,20 +108,10 @@ suspend fun saveImageToGallery(
                 resolver.update(imageUri, contentValues, null, null)
             }
 
-            Toast
-                .makeText(
-                    context,
-                    "图片已保存到相册",
-                    Toast.LENGTH_SHORT,
-                ).show()
+            userMessages.showShortMessage("图片已保存到相册")
         }
     } catch (e: Exception) {
-        Toast
-            .makeText(
-                context,
-                "保存失败: ${e.message}",
-                Toast.LENGTH_SHORT,
-            ).show()
+        userMessages.showShortMessage("保存失败: ${e.message}")
     }
 }
 
@@ -133,6 +124,7 @@ suspend fun shareImage(
     httpClient: HttpClient,
     imageUrl: String,
 ) {
+    val userMessages = androidUserMessageSink(context)
     try {
         val response = httpClient.get(imageUrl)
         val bytes = response.readRawBytes()
@@ -148,12 +140,7 @@ suspend fun shareImage(
         }
         context.startActivity(Intent.createChooser(shareIntent, "分享图片"))
     } catch (e: Exception) {
-        Toast
-            .makeText(
-                context,
-                "分享失败: ${e.message}",
-                Toast.LENGTH_SHORT,
-            ).show()
+        userMessages.showShortMessage("分享失败: ${e.message}")
     }
 }
 
