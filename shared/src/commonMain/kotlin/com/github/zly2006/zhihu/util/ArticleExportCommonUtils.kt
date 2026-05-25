@@ -12,6 +12,11 @@ package com.github.zly2006.zhihu.util
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -20,6 +25,7 @@ import kotlin.time.Instant
 
 const val ARTICLE_EXPORT_TEMPLATE_ASSET = "article_export_template.html"
 const val ARTICLE_EXPORT_GITHUB_URL = "https://github.com/zly2006/zhihu-plus-plus"
+private const val ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY = 6
 
 data class ArticleExportFooterData(
     val exportEpochMillis: Long = Clock.System.now().toEpochMilliseconds(),
@@ -231,6 +237,77 @@ fun prepareArticleExportContentHtml(content: String): String {
         anchor.attr("href", normalizeArticleExportUrl(anchor.attr("href")))
     }
     return document.body().html()
+}
+
+suspend fun inlineArticleExportImagesInHtml(
+    html: String,
+    includeImages: Boolean = true,
+    useOriginalOnImageFetchFailure: Boolean = false,
+    resolveDataUrl: suspend (String) -> String,
+): String {
+    if (!includeImages) {
+        return html
+    }
+    val document = Ksoup.parse(html)
+    inlineArticleExportImages(
+        imageNodes = document.select("img"),
+        useOriginalOnImageFetchFailure = useOriginalOnImageFetchFailure,
+        resolveDataUrl = resolveDataUrl,
+    )
+    return document.outerHtml()
+}
+
+suspend fun inlineArticleExportImages(
+    imageNodes: Iterable<Element>,
+    useOriginalOnImageFetchFailure: Boolean = false,
+    resolveDataUrl: suspend (String) -> String,
+) {
+    val imagesByUrl = linkedMapOf<String, MutableList<Element>>()
+    imageNodes.forEach { image ->
+        val imageUrl = extractArticleExportImageUrl(image)
+            ?.let(::normalizeArticleExportUrl)
+            ?: image
+                .attr("src")
+                .takeIf { it.isNotBlank() && !it.startsWith("data:") }
+                ?.let(::normalizeArticleExportUrl)
+            ?: return@forEach
+        imagesByUrl.getOrPut(imageUrl) { mutableListOf() }.add(image)
+    }
+    if (imagesByUrl.isEmpty()) {
+        return
+    }
+
+    val dataUrlsByUrl = coroutineScope {
+        val semaphore = Semaphore(ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY)
+        imagesByUrl.keys
+            .map { imageUrl ->
+                async {
+                    imageUrl to if (useOriginalOnImageFetchFailure) {
+                        runCatching {
+                            semaphore.withPermit {
+                                resolveDataUrl(imageUrl)
+                            }
+                        }.getOrDefault(imageUrl)
+                    } else {
+                        semaphore.withPermit {
+                            resolveDataUrl(imageUrl)
+                        }
+                    }
+                }
+            }.awaitAll()
+            .toMap()
+    }
+
+    imagesByUrl.forEach { (imageUrl, images) ->
+        val dataUrl = dataUrlsByUrl.getValue(imageUrl)
+        images.forEach { image ->
+            image.attr("src", dataUrl)
+            image.removeClass("lazy")
+            image.removeAttr("srcset")
+            image.removeAttr("sizes")
+            image.attr("loading", "eager")
+        }
+    }
 }
 
 fun normalizeArticleExportUrl(url: String): String = when {

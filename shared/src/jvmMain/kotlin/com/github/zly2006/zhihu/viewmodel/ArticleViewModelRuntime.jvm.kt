@@ -1,7 +1,5 @@
 package com.github.zly2006.zhihu.viewmodel
 
-import com.fleeksoft.ksoup.Ksoup
-import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
@@ -20,6 +18,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.util.ARTICLE_EXPORT_TEMPLATE_ASSET
 import com.github.zly2006.zhihu.util.buildArticleExportData
+import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
@@ -32,11 +31,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -275,11 +269,12 @@ class DesktopArticleViewModelRuntime(
         includeAppAttribution: Boolean,
         httpClient: HttpClient,
     ): String = inlineArticleExportImagesInHtml(
-        buildArticleExportHtml(
+        html = buildArticleExportHtml(
             content = content,
             includeAppAttribution = includeAppAttribution,
             extraSectionsHtml = "",
         ),
+        useOriginalOnImageFetchFailure = true,
     ) { imageUrl ->
         fetchArticleExportImageDataUrl(httpClient, imageUrl)
     }
@@ -319,57 +314,6 @@ class DesktopArticleViewModelRuntime(
         DesktopArticleExportRenderer()
 }
 
-private const val ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY = 6
-
-private suspend fun inlineArticleExportImagesInHtml(
-    html: String,
-    resolveDataUrl: suspend (String) -> String,
-): String {
-    val document = Ksoup.parse(html)
-    inlineArticleExportImages(document.select("img"), resolveDataUrl)
-    return document.outerHtml()
-}
-
-private suspend fun inlineArticleExportImages(
-    imageNodes: Iterable<Element>,
-    resolveDataUrl: suspend (String) -> String,
-) {
-    val imagesByUrl = linkedMapOf<String, MutableList<Element>>()
-    imageNodes.forEach { image ->
-        val imageUrl = resolveArticleExportImageUrl(image) ?: return@forEach
-        imagesByUrl.getOrPut(imageUrl) { mutableListOf() }.add(image)
-    }
-    if (imagesByUrl.isEmpty()) {
-        return
-    }
-
-    val dataUrlsByUrl = coroutineScope {
-        val semaphore = Semaphore(ARTICLE_EXPORT_IMAGE_FETCH_CONCURRENCY)
-        imagesByUrl.keys
-            .map { imageUrl ->
-                async {
-                    imageUrl to runCatching {
-                        semaphore.withPermit {
-                            resolveDataUrl(imageUrl)
-                        }
-                    }.getOrDefault(imageUrl)
-                }
-            }.awaitAll()
-            .toMap()
-    }
-
-    imagesByUrl.forEach { (imageUrl, images) ->
-        val dataUrl = dataUrlsByUrl.getValue(imageUrl)
-        images.forEach { image ->
-            image.attr("src", dataUrl)
-            image.removeClass("lazy")
-            image.removeAttr("srcset")
-            image.removeAttr("sizes")
-            image.attr("loading", "eager")
-        }
-    }
-}
-
 private suspend fun fetchArticleExportImageDataUrl(
     httpClient: HttpClient,
     imageUrl: String,
@@ -392,20 +336,6 @@ private suspend fun fetchArticleExportImageDataUrl(
     return "data:$mimeType;base64,${Base64.getEncoder().encodeToString(bytes)}"
 }
 
-private fun resolveArticleExportImageUrl(image: Element): String? =
-    extractImageUrl(image)
-        ?.let(::normalizeExportUrl)
-        ?: image
-            .attr("src")
-            .takeIf { it.isNotBlank() && !it.startsWith("data:") }
-            ?.let(::normalizeExportUrl)
-
-private fun extractImageUrl(image: Element): String? =
-    image.attr("data-original").takeIf { it.isNotBlank() }
-        ?: image.attr("data-actualsrc").takeIf { it.isNotBlank() }
-        ?: image.attr("data-src").takeIf { it.isNotBlank() }
-        ?: image.attr("src").takeIf { it.isNotBlank() && !it.startsWith("data:") }
-
 private fun resolveArticleExportImageMimeType(
     contentTypeHeader: String?,
     imageUrl: String,
@@ -423,11 +353,6 @@ private fun resolveArticleExportImageMimeType(
     }
 
     return "image/jpeg"
-}
-
-private fun normalizeExportUrl(url: String): String = when {
-    url.startsWith("//") -> "https:$url"
-    else -> url
 }
 
 private data class DesktopPreparedExportContent(

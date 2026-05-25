@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.util
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class ArticleExportCommonUtilsTest {
     @Test
@@ -63,5 +64,28 @@ class ArticleExportCommonUtilsTest {
             "<img data-actualsrc=\"//pic.example/a.png\" src=\"https://pic.example/a.png\" loading=\"eager\">",
             html,
         )
+    }
+
+    @Test
+    fun inlineArticleExportImagesInHtmlUsesOriginalUrlWhenConfigured() = kotlinx.coroutines.test.runTest {
+        val html = inlineArticleExportImagesInHtml(
+            html = "<html><body><img src=\"https://pic.example/a.jpg\"></body></html>",
+            useOriginalOnImageFetchFailure = true,
+        ) {
+            error("download failed")
+        }
+
+        assertContains(html, "src=\"https://pic.example/a.jpg\"")
+    }
+
+    @Test
+    fun inlineArticleExportImagesInHtmlPropagatesFailureByDefault() = kotlinx.coroutines.test.runTest {
+        assertFailsWith<IllegalStateException> {
+            inlineArticleExportImagesInHtml(
+                html = "<html><body><img src=\"https://pic.example/a.jpg\"></body></html>",
+            ) {
+                error("download failed")
+            }
+        }
     }
 }
