@@ -5,6 +5,7 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 
 data class PinLikeResult(
     val isLiked: Boolean,
@@ -26,11 +27,17 @@ expect fun rememberPinScreenRuntime(): PinScreenRuntime
 expect fun PinHtmlContent(html: String)
 
 @Composable
-expect fun PinCommentsSheet(
+fun PinCommentsSheet(
     showComments: Boolean,
     onDismiss: () -> Unit,
     content: Pin,
-)
+) {
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = onDismiss,
+        content = content,
+    )
+}
 
 @Composable
 expect fun PinShareDialog(

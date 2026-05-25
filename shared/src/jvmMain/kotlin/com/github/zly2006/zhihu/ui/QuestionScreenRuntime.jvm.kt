@@ -15,7 +15,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
 import kotlinx.serialization.json.JsonPrimitive
@@ -79,19 +78,6 @@ actual fun QuestionDetailContent(
     html: String,
 ) {
     RenderMarkdown(html)
-}
-
-@Composable
-actual fun QuestionCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Question,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
 }
 
 @Composable

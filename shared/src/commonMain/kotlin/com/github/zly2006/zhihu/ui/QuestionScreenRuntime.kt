@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
+import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 
 data class LoadedQuestionScreenData(
     val uiState: QuestionScreenUiState,
@@ -29,11 +30,17 @@ expect fun QuestionDetailContent(
 )
 
 @Composable
-expect fun QuestionCommentsSheet(
+fun QuestionCommentsSheet(
     showComments: Boolean,
     onDismiss: () -> Unit,
     content: Question,
-)
+) {
+    CommentScreenComponent(
+        showComments = showComments,
+        onDismiss = onDismiss,
+        content = content,
+    )
+}
 
 @Composable
 expect fun QuestionShareDialog(

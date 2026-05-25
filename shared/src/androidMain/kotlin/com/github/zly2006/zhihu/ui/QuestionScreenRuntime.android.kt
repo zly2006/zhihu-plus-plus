@@ -13,7 +13,6 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
@@ -97,19 +96,6 @@ actual fun QuestionDetailContent(
             enableScroll = false,
         )
     }
-}
-
-@Composable
-actual fun QuestionCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Question,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
 }
 
 @Composable

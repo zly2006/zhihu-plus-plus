@@ -19,7 +19,6 @@ import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
 import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
@@ -97,19 +96,6 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
 @Composable
 actual fun PinHtmlContent(html: String) {
     RenderMarkdown(html)
-}
-
-@Composable
-actual fun PinCommentsSheet(
-    showComments: Boolean,
-    onDismiss: () -> Unit,
-    content: Pin,
-) {
-    CommentScreenComponent(
-        showComments = showComments,
-        onDismiss = onDismiss,
-        content = content,
-    )
 }
 
 @Composable
