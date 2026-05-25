@@ -317,6 +317,21 @@ class LocalRecommendationSupportTest {
     }
 
     @Test
+    fun localContentInitializerCreatesColdStartTasks() = runTest {
+        val database = testLocalContentDatabase()
+        val dao = database.contentDao()
+
+        LocalContentInitializer(dao).initializeIfNeeded()
+
+        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Following, CrawlingStatus.NotStarted))
+        assertEquals(3, dao.getTaskCountByReasonAndStatus(CrawlingReason.Trending, CrawlingStatus.NotStarted))
+        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.UpvotedQuestion, CrawlingStatus.NotStarted))
+        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.FollowingUpvote, CrawlingStatus.NotStarted))
+        assertEquals(2, dao.getTaskCountByReasonAndStatus(CrawlingReason.CollaborativeFiltering, CrawlingStatus.NotStarted))
+        database.close()
+    }
+
+    @Test
     fun getFreshnessWeightUsesSameAgeBuckets() {
         val now = 10_000L * 60L * 60L * 1000L
 

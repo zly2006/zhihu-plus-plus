@@ -17,16 +17,14 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 class LocalContentInitializer(
-    private val context: Context,
+    private val dao: LocalContentDao,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
-    private val database by lazy { getLocalContentDatabase(context) }
-    private val dao by lazy { database.contentDao() }
-
     suspend fun initializeIfNeeded() {
         withContext(Dispatchers.IO) {
             val isInitialized = checkDatabaseHasSufficientData()
@@ -127,7 +125,7 @@ class LocalContentInitializer(
 
     private suspend fun initializeUpvotedQuestionTasks(tasks: MutableList<CrawlingTask>) {
         // 基于用户的历史点赞行为创建相关问题的爬虫任务
-        val recentLikes = dao.getBehaviorsByActionSince("like", System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L)
+        val recentLikes = dao.getBehaviorsByActionSince("like", nowMillis() - 30 * 24 * 60 * 60 * 1000L)
 
         // 提取问题ID并创建任务
         val questionIds = recentLikes
