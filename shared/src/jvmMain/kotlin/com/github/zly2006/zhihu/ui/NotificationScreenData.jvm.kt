@@ -9,6 +9,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
@@ -94,16 +95,14 @@ private class JvmNotificationPaginationEnvironment(
         item: JsonElement,
         error: Exception,
     ) {
-        println("${tag ?: "NotificationViewModel"} failed to decode item: $item")
-        error.printStackTrace()
+        Log.e(tag ?: "NotificationViewModel", "Failed to decode item: $item", error)
     }
 
     override suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
     ) {
-        println("${tag ?: "NotificationViewModel"} failed to fetch notifications")
-        error.printStackTrace()
+        Log.e(tag ?: "NotificationViewModel", "Failed to fetch notifications", error)
         showMessage("加载失败: ${error.message}")
     }
 

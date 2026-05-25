@@ -9,6 +9,7 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.platform.SettingsStore
+import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
@@ -68,14 +69,14 @@ class DesktopPaginationEnvironment(
         item: JsonElement,
         error: Exception,
     ) {
-        println("${tag ?: "PaginationViewModel"} failed to decode item: $error")
+        Log.e(tag ?: "PaginationViewModel", "Failed to decode item: $item", error)
     }
 
     override suspend fun handleFetchFailure(
         tag: String?,
         error: Exception,
     ) {
-        println("${tag ?: "PaginationViewModel"} failed to fetch feeds: ${error.message}")
+        Log.e(tag ?: "PaginationViewModel", "Failed to fetch feeds", error)
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
@@ -165,8 +166,8 @@ class DesktopPaginationEnvironment(
             startScheduling = { taskScheduler.startScheduling() },
             stopScheduling = { taskScheduler.stopScheduling() },
             executeTask = { task -> crawlingExecutor.executeTask(task) },
-            logWarning = { message -> println("LocalRecommendationEngine warning: $message") },
-            logError = { message, throwable -> println("LocalRecommendationEngine error: $message: $throwable") },
+            logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
+            logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
         )
     }
 
