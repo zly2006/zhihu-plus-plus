@@ -17,7 +17,6 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
-import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,12 +28,9 @@ import kotlinx.coroutines.launch
  * 智能任务调度器，负责管理爬虫任务的执行
  */
 class TaskScheduler(
-    private val context: Context,
+    private val dao: LocalContentDao,
+    private val executeTask: suspend (CrawlingTask) -> Unit,
 ) {
-    private val database by lazy { getLocalContentDatabase(context) }
-    private val dao by lazy { database.contentDao() }
-    private val crawlingExecutor by lazy { CrawlingExecutor(context) }
-
     private var schedulerJob: Job? = null
 
     /**
@@ -73,7 +69,7 @@ class TaskScheduler(
         // 限制并发执行的任务数量
         pendingTasks.take(3).forEach { task ->
             try {
-                crawlingExecutor.executeTask(task)
+                executeTask(task)
             } catch (e: Exception) {
                 // 忽略单个任务的执行错误
             }
