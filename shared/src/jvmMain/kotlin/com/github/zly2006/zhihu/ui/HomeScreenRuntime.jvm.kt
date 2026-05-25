@@ -11,6 +11,7 @@ import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
+import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -22,9 +23,9 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
     var account by remember { mutableStateOf(accountStore.load()) }
     val viewModel: BaseFeedViewModel = when (recommendationMode) {
         RecommendationMode.ANDROID -> viewModel<AndroidHomeFeedViewModel>()
+        RecommendationMode.MIXED -> viewModel<MixedHomeFeedViewModel>()
         RecommendationMode.WEB,
         RecommendationMode.LOCAL,
-        RecommendationMode.MIXED,
         -> viewModel<HomeFeedViewModel>()
     }
     return HomeScreenRuntime(
