@@ -38,6 +38,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -47,8 +49,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportHtml
 import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import kotlinx.serialization.json.JsonElement
@@ -67,7 +68,7 @@ class AndroidArticleViewModelRuntime(
         questionId: Long?,
     ) {
         ContentOpenEventSupport.recordOpenEvent(
-            context = context,
+            database = getContentFilterDatabase(context),
             destination = destination,
             questionId = questionId,
             openFrom = context.articleHost()?.consumePendingContentOpenFrom(destination)

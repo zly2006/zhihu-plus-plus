@@ -16,6 +16,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
@@ -26,8 +28,7 @@ import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +53,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
                 } else {
                     ContentOpenEventSupport.recordOpenEvent(
-                        context = context,
+                        database = getContentFilterDatabase(context),
                         destination = pin,
                         openFrom = context.articleHost()?.consumePendingContentOpenFrom(pin) ?: ContentOpenFrom.UNKNOWN,
                     )

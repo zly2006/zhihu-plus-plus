@@ -25,6 +25,9 @@ import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

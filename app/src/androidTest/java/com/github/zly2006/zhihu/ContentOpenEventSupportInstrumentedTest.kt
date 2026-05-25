@@ -19,9 +19,9 @@ package com.github.zly2006.zhihu
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEvent
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenEventSupport
-import com.github.zly2006.zhihu.viewmodel.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.runBlocking
@@ -47,7 +47,7 @@ class ContentOpenEventSupportInstrumentedTest {
         )
 
         val viewedIds = ContentOpenEventSupport.getAlreadyOpenedContentIds(
-            context = context,
+            database = database,
             content = listOf(ContentType.ANSWER to contentId),
         )
 
