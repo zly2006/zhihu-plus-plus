@@ -1,10 +1,9 @@
 package com.github.zly2006.zhihu.shared.desktop
 
-import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountRepository
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
-import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuProfile
+import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
@@ -45,20 +44,8 @@ class DesktopAccountStore(
 
     suspend fun verifyAndSave(cookies: MutableMap<String, String>): Boolean {
         createHttpClient(cookies).use { client ->
-            val profile = fetchVerifiedZhihuProfile(client) ?: return false
-            save(
-                DesktopAccountData(
-                    login = true,
-                    username = profile.name,
-                    cookies = cookies,
-                    profile = ZhihuAccountProfileSnapshot(
-                        id = profile.id,
-                        name = profile.name,
-                        urlToken = profile.urlToken,
-                        userType = profile.userType,
-                    ),
-                ),
-            )
+            val session = fetchVerifiedZhihuSession(client, cookies, load().userAgent) ?: return false
+            save(session)
             return true
         }
     }

@@ -1,5 +1,8 @@
 package com.github.zly2006.zhihu.shared.data
 
+import com.github.zly2006.zhihu.shared.account.DEFAULT_ZHIHU_USER_AGENT
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountProfileSnapshot
+import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
@@ -54,3 +57,25 @@ suspend fun fetchVerifiedZhihuAccount(client: HttpClient): JsonObject? {
 
 suspend fun fetchVerifiedZhihuProfile(client: HttpClient): ZhihuAccountProfile? =
     fetchVerifiedZhihuAccount(client)?.let { ZhihuJson.decodeJson<ZhihuAccountProfile>(it) }
+
+suspend fun fetchVerifiedZhihuSession(
+    client: HttpClient,
+    cookies: Map<String, String>,
+    userAgent: String = DEFAULT_ZHIHU_USER_AGENT,
+): ZhihuAccountSession? {
+    val account = fetchVerifiedZhihuAccount(client) ?: return null
+    val profile = ZhihuJson.decodeJson<ZhihuAccountProfile>(account)
+    return ZhihuAccountSession(
+        login = true,
+        username = profile.name,
+        cookies = cookies.toMutableMap(),
+        userAgent = userAgent,
+        profile = ZhihuAccountProfileSnapshot(
+            id = profile.id,
+            name = profile.name,
+            urlToken = profile.urlToken,
+            userType = profile.userType,
+        ),
+        self = account,
+    )
+}

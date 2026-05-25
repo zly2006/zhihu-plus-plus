@@ -34,7 +34,7 @@ import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
-import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuAccount
+import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
@@ -171,16 +171,10 @@ object AccountData {
     suspend fun verifyLogin(context: Context, cookies: Map<String, String>): Boolean {
         val map = cookies.toMutableMap()
         val httpClient = httpClient(context, map)
-        val jojo = fetchVerifiedZhihuAccount(httpClient) ?: return false
-        val person = decodeJson<Person>(jojo)
+        val session = fetchVerifiedZhihuSession(httpClient, map, data.userAgent) ?: return false
         saveData(
             context,
-            Data(
-                login = true,
-                cookies = map,
-                username = person.name,
-                self = person,
-            ),
+            session.toAndroidData(),
         )
         return true
     }
