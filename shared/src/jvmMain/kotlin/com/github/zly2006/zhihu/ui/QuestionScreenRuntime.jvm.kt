@@ -77,7 +77,11 @@ actual fun QuestionDetailContent(
     questionId: Long,
     html: String,
 ) {
-    RenderMarkdown(html)
+    RenderMarkdown(
+        html = html,
+        selectable = true,
+        enableScroll = false,
+    )
 }
 
 @Composable
