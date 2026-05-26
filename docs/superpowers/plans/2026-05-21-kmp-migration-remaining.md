@@ -82,7 +82,7 @@
 - JVM QR 登录使用 shared 流程并通过 `DesktopAccountStore` 备份 cookie。
 - KMP Room 已用于内容过滤和本地内容数据库。
 - `NavDestination`、`LocalNavigator.kt`、`AnswerNavigator.kt` 已迁回 shared；`AnswerNavigator` 的 Android 数据访问通过 Android 平台 adapter 留在平台侧。
-- `ZhihuMain.kt` 主导航壳已迁入 shared；但 route 注册仍需按 `master` 的大函数结构继续收回 shared。Android 只应保留偏好读取、`MainActivity`、ViewModel 创建和其他平台副作用 adapter，不得保留完整页面实现。
+- `ZhihuMain.kt` 主导航壳已迁入 shared，且 route 注册已按 `master` 的大函数结构收回到 shared `ZhihuMain` 内。Android 只应保留偏好读取、`MainActivity`、ViewModel 创建、variant slot 和其他平台副作用 adapter，不得保留完整页面实现。
 - `ThemeManager` / `ZhihuTheme` 的主题状态和 Material3 主题壳已迁入 shared；Android 持久化、system dark、dynamic color 和 system bar 副作用留在 androidMain adapter。
 - bottom navigation preference 规则已在 shared；Android 偏好页和 `ZhihuMain` adapter 复用该规则。
 - 账号 session JSON 持久化核心已在 shared；Android/JVM 是文件路径 adapter。
