@@ -6,6 +6,8 @@ import java.io.File
 
 @Composable
 actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
-    val databasePath = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
-    getContentFilterDatabase(databasePath).blockedFeedRecordDao()
+    getContentFilterDatabase(desktopContentFilterDatabaseFile()).blockedFeedRecordDao()
 }
+
+fun desktopContentFilterDatabaseFile(): File =
+    File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")

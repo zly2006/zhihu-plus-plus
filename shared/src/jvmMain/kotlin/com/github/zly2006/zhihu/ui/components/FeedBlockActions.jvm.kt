@@ -12,9 +12,9 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
-import java.io.File
 
 @Composable
 actual fun rememberFeedBlockActions(): FeedBlockActions {
@@ -103,7 +103,7 @@ actual fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime {
 
 @Composable
 private fun rememberDesktopBlocklistManager() = remember {
-    val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
+    val databaseFile = desktopContentFilterDatabaseFile()
     databaseFile.parentFile?.mkdirs()
     val database = getContentFilterDatabase(databaseFile)
     database.createBlocklistManager()
@@ -158,7 +158,7 @@ private fun extractDesktopKeywordsWithWeight(
 }
 
 private fun createDesktopBlockedKeywordService(): BlockedKeywordService {
-    val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
+    val databaseFile = desktopContentFilterDatabaseFile()
     databaseFile.parentFile?.mkdirs()
     val database = getContentFilterDatabase(databaseFile)
     return BlockedKeywordService(

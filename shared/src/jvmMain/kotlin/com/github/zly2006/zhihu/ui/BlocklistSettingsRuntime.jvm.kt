@@ -6,6 +6,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.coroutines.launch
 import java.io.File
@@ -62,10 +63,7 @@ actual fun rememberBlocklistSettingsPlatformRuntime(
     }
 }
 
-private fun blocklistDatabaseFile(): File {
-    val home = System.getProperty("user.home")
-    return File(home, ".zhihu-plus/content-filter.db")
-}
+private fun blocklistDatabaseFile(): File = desktopContentFilterDatabaseFile()
 
 private fun chooseBlocklistImportFile(): File? {
     val chooser = JFileChooser().apply {

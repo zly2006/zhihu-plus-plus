@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.util.buildArticleExportData
 import com.github.zly2006.zhihu.util.inlineArticleExportImagesInHtml
 import com.github.zly2006.zhihu.util.renderArticleExportHtml
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
+import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -91,9 +92,7 @@ class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
     private val userMessages: UserMessageSink,
 ) : ArticleViewModelRuntime {
-    private val contentFilterDatabase = getContentFilterDatabase(
-        File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
-    )
+    private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
     private val historyStorage = DesktopHistoryStorage()
 
     override suspend fun getContentDetail(article: Article): DataHolder.Content? =

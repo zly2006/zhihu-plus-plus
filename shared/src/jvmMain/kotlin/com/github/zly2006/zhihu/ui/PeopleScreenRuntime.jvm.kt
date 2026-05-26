@@ -14,6 +14,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
+import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.call.body
 import io.ktor.client.request.parameter
@@ -22,7 +23,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import java.awt.Desktop
-import java.io.File
 import java.net.URI
 
 @Composable
@@ -31,7 +31,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
     return remember(userMessages) {
         val store = DesktopAccountStore()
         val historyStorage = DesktopHistoryStorage()
-        val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
+        val databaseFile = desktopContentFilterDatabaseFile()
         databaseFile.parentFile?.mkdirs()
         val database = getContentFilterDatabase(databaseFile)
         val blocklistManager = database.createBlocklistManager()

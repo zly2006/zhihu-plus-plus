@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.applyContentFilterToDisplayItems
 import com.github.zly2006.zhihu.viewmodel.filter.applyForegroundReadFilterToDisplayItems
+import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
@@ -75,9 +76,7 @@ class DesktopPaginationEnvironment(
     CollectionContentEnvironment {
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
-    private val contentFilterDatabase = getContentFilterDatabase(
-        File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"),
-    )
+    private val contentFilterDatabase = getContentFilterDatabase(desktopContentFilterDatabaseFile())
     private val localRecommendationEngine by lazy { createLocalRecommendationEngine() }
 
     override fun httpClient(): HttpClient = store.createHttpClient(store.load().cookies)
