@@ -2,7 +2,7 @@ package com.github.zly2006.zhihu.shared.notification
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import java.io.File
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import java.util.Properties
 
 @Composable
@@ -11,7 +11,7 @@ actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = reme
 }
 
 private class DesktopNotificationSettingsStore : NotificationSettingsStore {
-    private val settingsFile = File(System.getProperty("user.home"), ".zhihu-plus/notification_settings.properties")
+    private val settingsFile = desktopZhihuDataFile("notification_settings.properties")
     private val properties = Properties()
 
     init {

@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.viewmodel.filter
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import java.io.File
 
 @Composable
@@ -10,4 +11,4 @@ actual fun rememberBlockedFeedRecordDao(): BlockedFeedRecordDao = remember {
 }
 
 fun desktopContentFilterDatabaseFile(): File =
-    File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db")
+    desktopZhihuDataFile("content-filter.db")

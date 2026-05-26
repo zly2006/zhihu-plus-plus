@@ -17,6 +17,7 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
@@ -410,7 +411,7 @@ class DesktopPaginationEnvironment(
     }
 
     private fun createLocalRecommendationEngine(): LocalRecommendationEngine {
-        val databaseFile = File(System.getProperty("user.home"), ".zhihu-plus/local-content.db")
+        val databaseFile = desktopZhihuDataFile("local-content.db")
         databaseFile.parentFile?.mkdirs()
         val dao = getLocalContentDatabase(databaseFile).contentDao()
         val crawlingExecutor = CrawlingExecutor(
@@ -482,7 +483,7 @@ private suspend fun CollectionItem.resolveDesktopExportContent(
 }
 
 private fun desktopCollectionExportCacheDir(): File =
-    File(System.getProperty("user.home"), ".zhihu-plus/collection-html-export-cache").also { directory ->
+    desktopZhihuDataFile("collection-html-export-cache").also { directory ->
         if (!directory.exists()) {
             directory.mkdirs()
         }

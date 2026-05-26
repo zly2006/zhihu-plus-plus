@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
@@ -135,7 +136,7 @@ private suspend fun downloadDesktopMathFont(
 }
 
 private fun desktopLatexFontDir(): File =
-    File(System.getProperty("user.home"), ".zhihu-plus/latex-fonts/v$FONT_VERSION")
+    desktopZhihuDataFile("latex-fonts/v$FONT_VERSION")
 
 private fun isOpenTypeFont(bytes: ByteArray): Boolean =
     bytes.size > 4 &&

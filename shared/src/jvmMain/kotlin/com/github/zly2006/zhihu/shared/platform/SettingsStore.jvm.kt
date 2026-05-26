@@ -2,7 +2,7 @@ package com.github.zly2006.zhihu.shared.platform
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import java.io.File
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import java.util.Properties
 
 @Composable
@@ -11,7 +11,7 @@ actual fun rememberSettingsStore(): SettingsStore = remember {
 }
 
 fun desktopSettingsStore(): SettingsStore {
-    val settingsFile = File(System.getProperty("user.home"), ".zhihu-plus/settings.properties")
+    val settingsFile = desktopZhihuDataFile("settings.properties")
     val properties = Properties()
 
     fun load() {
