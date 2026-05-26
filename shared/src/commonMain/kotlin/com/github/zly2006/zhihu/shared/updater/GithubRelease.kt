@@ -66,3 +66,16 @@ suspend fun fetchLatestZhihuRelease(
         }
     }.raiseForStatus()
     .body<GithubRelease>()
+
+suspend fun fetchNightlyZhihuRelease(
+    client: HttpClient,
+    githubToken: String?,
+): GithubRelease = client
+    .get(ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL) {
+        githubToken?.let { token ->
+            headers {
+                append(HttpHeaders.Authorization, "Bearer $token")
+            }
+        }
+    }.raiseForStatus()
+    .body<GithubRelease>()

@@ -26,14 +26,12 @@ import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
-import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.shared.updater.fetchLatestZhihuRelease
+import com.github.zly2006.zhihu.shared.updater.fetchNightlyZhihuRelease
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
@@ -215,14 +213,7 @@ object UpdateManager {
             // 如果启用了nightly检查，也检查nightly版本
             if (checkNightly) {
                 try {
-                    val nightlyResponse = client
-                        .get(ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL) {
-                            getGitHubToken(context)?.let { token ->
-                                headers {
-                                    append(HttpHeaders.Authorization, "Bearer $token")
-                                }
-                            }
-                        }.body<GithubRelease>()
+                    val nightlyResponse = fetchNightlyZhihuRelease(client, getGitHubToken(context))
 
                     // 如果nightly版本比正式版本新，则使用nightly版本
                     if (nightlyResponse.tagName == "nightly") {
