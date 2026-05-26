@@ -34,6 +34,9 @@ import com.github.zly2006.zhihu.shared.data.toFeedDisplayItemNavDestinationJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.reflect.typeOf
 
 data class CollectionHtmlExportProgress(
@@ -74,6 +77,16 @@ fun zhihuCollectionItemsUrl(collectionId: String): String =
 
 fun zhihuCollectionsUrl(): String =
     "https://www.zhihu.com/api/v4/collections"
+
+fun zhihuCollectionCreateBody(
+    title: String,
+    description: String = "",
+    isPublic: Boolean = false,
+): JsonObject = buildJsonObject {
+    put("title", title)
+    put("description", description)
+    put("is_public", isPublic)
+}
 
 fun zhihuPeopleCollectionsUrl(urlToken: String, limit: Int? = null): String =
     buildString {

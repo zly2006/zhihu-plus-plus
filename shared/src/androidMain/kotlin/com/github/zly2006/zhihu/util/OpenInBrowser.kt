@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionContentUrl
+import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionsUrl
 import com.github.zly2006.zhihu.viewmodel.zhihuPeopleCollectionsUrl
 import io.ktor.client.request.setBody
@@ -31,8 +32,6 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
@@ -45,11 +44,11 @@ object OpenInBrowser {
                 AccountData.fetchPost(context, zhihuCollectionsUrl()) {
                     contentType(ContentType.Application.Json)
                     setBody(
-                        buildJsonObject {
-                            put("title", "Zhihu++: 要在浏览器中打开的内容")
-                            put("description", "com.github.zly2006.zhplus.openinbrowser")
-                            put("is_public", false)
-                        },
+                        zhihuCollectionCreateBody(
+                            title = "Zhihu++: 要在浏览器中打开的内容",
+                            description = "com.github.zly2006.zhplus.openinbrowser",
+                            isPublic = false,
+                        ),
                     )
                     signFetchRequest()
                 }!!["collection"]!!,
