@@ -14,6 +14,7 @@ import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
@@ -324,13 +325,7 @@ class DesktopArticleViewModelRuntime(
         displayName: String,
         htmlContent: String,
     ): String {
-        val downloadsDir = File(
-            System.getProperty("user.home"),
-            "Downloads/Zhihu++",
-        )
-        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-            throw IllegalStateException("无法创建下载目录")
-        }
+        val downloadsDir = desktopZhihuDownloadsDir()
         val file = File(downloadsDir, displayName)
         file.writeText(htmlContent)
         return file.absolutePath
@@ -340,13 +335,7 @@ class DesktopArticleViewModelRuntime(
         displayName: String,
         bitmap: Any,
     ) {
-        val downloadsDir = File(
-            System.getProperty("user.home"),
-            "Downloads/Zhihu++",
-        )
-        if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-            throw IllegalStateException("无法创建下载目录")
-        }
+        val downloadsDir = desktopZhihuDownloadsDir()
         val file = File(downloadsDir, displayName)
         ImageIO.write(bitmap as BufferedImage, "png", file)
     }

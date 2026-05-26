@@ -11,6 +11,7 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -143,10 +144,7 @@ private suspend fun saveDesktopCommentImage(
     val imageBytes = store.createHttpClient(account.cookies).use { client ->
         client.get(imageUrl).body<ByteArray>()
     }
-    val downloadsDir = File(System.getProperty("user.home"), "Downloads/Zhihu++")
-    if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-        throw IllegalStateException("无法创建下载目录")
-    }
+    val downloadsDir = desktopZhihuDownloadsDir()
     val file = File(downloadsDir, desktopCommentImageFileName(imageUrl))
     file.writeBytes(imageBytes)
     file

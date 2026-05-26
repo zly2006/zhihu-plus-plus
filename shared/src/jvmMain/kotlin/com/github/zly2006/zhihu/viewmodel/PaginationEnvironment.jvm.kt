@@ -17,6 +17,7 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
@@ -488,7 +489,7 @@ private fun desktopCollectionExportCacheDir(): File =
     }
 
 private fun desktopCollectionExportOutputDir(): File =
-    File(System.getProperty("user.home"), "Downloads/Zhihu++")
+    desktopZhihuDownloadsDir("无法创建导出 ZIP 目录")
 
 private fun buildDesktopCollectionExportZipFileName(
     collectionTitle: String,

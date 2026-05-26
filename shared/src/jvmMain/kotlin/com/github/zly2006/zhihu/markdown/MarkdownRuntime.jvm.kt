@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
@@ -85,10 +86,7 @@ private suspend fun saveDesktopMarkdownImage(
     val imageBytes = store.createHttpClient(account.cookies).use { client ->
         client.get(url).body<ByteArray>()
     }
-    val downloadsDir = File(System.getProperty("user.home"), "Downloads/Zhihu++")
-    if (!downloadsDir.exists() && !downloadsDir.mkdirs()) {
-        throw IllegalStateException("无法创建下载目录")
-    }
+    val downloadsDir = desktopZhihuDownloadsDir()
     val file = File(downloadsDir, desktopMarkdownImageFileName(url))
     file.writeBytes(imageBytes)
     file
