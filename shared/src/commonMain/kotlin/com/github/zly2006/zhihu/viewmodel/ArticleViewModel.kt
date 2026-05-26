@@ -285,7 +285,7 @@ class ArticleViewModel(
                     ArticleType.Article -> "article"
                 }
                 val action = if (remove) "remove" else "add"
-                val url = "https://api.zhihu.com/collections/contents/$contentType/${article.id}"
+                val url = zhihuCollectionContentUrl(contentType, article.id)
                 val body = "${action}_collections=$collectionId"
 
                 val response = httpClient.put(url) {
@@ -438,7 +438,7 @@ class ArticleViewModel(
                         ArticleType.Answer -> "answer"
                         ArticleType.Article -> "article"
                     }
-                    val collectionsUrl = "https://api.zhihu.com/collections/contents/$contentType/${article.id}?limit=50"
+                    val collectionsUrl = zhihuCollectionContentUrl(contentType, article.id, limit = 50)
                     val jojo = context.fetchGet(collectionsUrl) {
                         context.configureSignedRequest(this)
                     }!!
@@ -475,7 +475,7 @@ class ArticleViewModel(
     ) {
         if (httpClient == null) return
         viewModelScope.launch {
-            context.fetchPost("https://www.zhihu.com/api/v4/collections") {
+            context.fetchPost(zhihuCollectionsUrl()) {
                 contentType(ContentType.Application.Json)
                 setBody(
                     buildJsonObject {

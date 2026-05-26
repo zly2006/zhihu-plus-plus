@@ -23,6 +23,9 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.viewmodel.zhihuCollectionContentUrl
+import com.github.zly2006.zhihu.viewmodel.zhihuCollectionsUrl
+import com.github.zly2006.zhihu.viewmodel.zhihuPeopleCollectionsUrl
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
@@ -34,12 +37,12 @@ import kotlinx.serialization.json.put
 object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
-        val jojo = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/people/$urlToken/collections?limit=50")!!
+        val jojo = AccountData.fetchGet(context, zhihuPeopleCollectionsUrl(urlToken, limit = 50))!!
         val collection = AccountData
             .decodeJson<List<Collection>>(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: AccountData.decodeJson<Collection>(
-                AccountData.fetchPost(context, "https://www.zhihu.com/api/v4/collections") {
+                AccountData.fetchPost(context, zhihuCollectionsUrl()) {
                     contentType(ContentType.Application.Json)
                     setBody(
                         buildJsonObject {
@@ -56,7 +59,7 @@ object OpenInBrowser {
                 ArticleType.Answer -> "answer"
                 ArticleType.Article -> "article"
             }
-            val url = "https://api.zhihu.com/collections/contents/$contentType/${destination.id}"
+            val url = zhihuCollectionContentUrl(contentType, destination.id)
             val body = "add_collections=${collection.id}"
             return AccountData.withAuthenticatedResponse(
                 context = context,

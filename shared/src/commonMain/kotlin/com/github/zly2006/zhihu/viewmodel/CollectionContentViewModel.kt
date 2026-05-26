@@ -72,6 +72,29 @@ fun zhihuCollectionUrl(collectionId: String): String =
 fun zhihuCollectionItemsUrl(collectionId: String): String =
     "${zhihuCollectionUrl(collectionId)}/items"
 
+fun zhihuCollectionsUrl(): String =
+    "https://www.zhihu.com/api/v4/collections"
+
+fun zhihuPeopleCollectionsUrl(urlToken: String, limit: Int? = null): String =
+    buildString {
+        append("https://www.zhihu.com/api/v4/people/")
+        append(urlToken)
+        append("/collections")
+        limit?.let { append("?limit=$it") }
+    }
+
+fun zhihuCollectionContentUrl(
+    contentType: String,
+    contentId: Long,
+    limit: Int? = null,
+): String = buildString {
+    append("https://api.zhihu.com/collections/contents/")
+    append(contentType)
+    append("/")
+    append(contentId)
+    limit?.let { append("?limit=$it") }
+}
+
 class CollectionContentViewModel(
     val collectionId: String,
 ) : PaginationViewModel<CollectionItem>(typeOf<CollectionItem>()) {
