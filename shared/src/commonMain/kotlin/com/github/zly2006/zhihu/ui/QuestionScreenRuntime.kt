@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import com.fleeksoft.ksoup.Ksoup
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.zhihuQuestionUrl
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
@@ -23,7 +24,7 @@ data class QuestionScreenRuntime(
 
 fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
-fun zhihuQuestionLogUrl(question: Question): String = "https://www.zhihu.com/question/${question.questionId}/log"
+fun zhihuQuestionLogUrl(question: Question): String = "${zhihuQuestionUrl(question.questionId)}/log"
 
 @Composable
 expect fun rememberQuestionScreenRuntime(): QuestionScreenRuntime
