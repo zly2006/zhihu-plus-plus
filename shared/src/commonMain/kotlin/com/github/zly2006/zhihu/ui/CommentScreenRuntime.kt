@@ -25,7 +25,3 @@ expect fun rememberCommentEmojiInlineContent(emojiKeys: Set<String>): Map<String
 expect fun commentEmojiInlineKey(placeholder: String): String?
 
 expect fun Modifier.commentSelectionWorkaround(): Modifier
-
-expect object YMDHMS {
-    fun format(date: Any): String
-}

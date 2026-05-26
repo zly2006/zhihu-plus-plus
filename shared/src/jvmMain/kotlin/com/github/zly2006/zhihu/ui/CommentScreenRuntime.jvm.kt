@@ -13,9 +13,6 @@ import kotlinx.serialization.json.Json
 import java.awt.Desktop
 import java.io.File
 import java.net.URI
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.imageio.ImageIO
 
 @Composable
@@ -81,12 +78,6 @@ actual fun commentEmojiInlineKey(placeholder: String): String? {
 }
 
 actual fun Modifier.commentSelectionWorkaround(): Modifier = this
-
-actual object YMDHMS {
-    private val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
-
-    actual fun format(date: Any): String = formatter.format(date as Date)
-}
 
 private fun desktopEmojiFileByInlineKey(emojiKey: String): File? {
     val fileName = emojiKey.removePrefix("emoji_")

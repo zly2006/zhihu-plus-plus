@@ -16,9 +16,6 @@ import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.saveImageToGallery
 import com.github.zly2006.zhihu.util.shareImage
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
@@ -64,9 +61,3 @@ actual fun commentEmojiInlineKey(placeholder: String): String? {
 }
 
 actual fun Modifier.commentSelectionWorkaround(): Modifier = fuckHonorService()
-
-actual object YMDHMS {
-    private val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ENGLISH)
-
-    actual fun format(date: Any): String = formatter.format(date as Date)
-}
