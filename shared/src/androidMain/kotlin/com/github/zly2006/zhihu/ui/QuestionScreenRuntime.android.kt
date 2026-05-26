@@ -18,6 +18,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.fuckHonorService
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import org.jsoup.Jsoup
@@ -27,7 +28,9 @@ private const val WEBVIEW_ACTIVITY_CLASS = "com.github.zly2006.zhihu.WebviewActi
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val context = LocalContext.current
-    return remember(context) {
+    val settings = rememberSettingsStore()
+    val shareRuntime = rememberShareDialogRuntime()
+    return remember(context, settings, shareRuntime) {
         val userMessages = androidUserMessageSink(context)
         QuestionScreenRuntime(
             loadQuestion = { question ->
@@ -67,7 +70,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 context.startActivity(intent)
             },
             handleShareAction = { question, onShowDialog ->
-                handleShareAction(context, question, onShowDialog)
+                handleShareAction(question, settings, shareRuntime, onShowDialog)
             },
             showShortMessage = { message ->
                 userMessages.showShortMessage(message)

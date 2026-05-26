@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
@@ -41,7 +42,9 @@ import org.jsoup.Jsoup
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val context = LocalContext.current
-    return remember(context) {
+    val settings = rememberSettingsStore()
+    val shareRuntime = rememberShareDialogRuntime()
+    return remember(context, settings, shareRuntime) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val userMessages = androidUserMessageSink(context)
         PinScreenRuntime(
@@ -85,7 +88,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                 }
             },
             handleShareAction = { pin, onShowDialog ->
-                handleShareAction(context, pin, onShowDialog)
+                handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },
             fetchLinkCardPreview = { linkCard ->
                 fetchAndroidLinkCardPreview(context, linkCard)

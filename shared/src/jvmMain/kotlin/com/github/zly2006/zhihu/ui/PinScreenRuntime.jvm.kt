@@ -22,7 +22,8 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
@@ -34,8 +35,6 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
@@ -43,9 +42,10 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val scope = rememberCoroutineScope()
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
+    val shareRuntime = rememberShareDialogRuntime()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
-    return remember(scope, settings, userMessages) {
+    return remember(scope, settings, userMessages, shareRuntime) {
         PinScreenRuntime(
             loadPinDetail = { pin ->
                 addDesktopReadHistory(store, pin.id.toString(), "pin")
@@ -80,12 +80,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                 }
             },
             handleShareAction = { pin, onShowDialog ->
-                handleDesktopShareAction(
-                    shareText = getShareText(pin),
-                    settings = settings,
-                    userMessages = userMessages,
-                    onShowDialog = onShowDialog,
-                )
+                handleShareAction(pin, settings, shareRuntime, onShowDialog)
             },
             fetchLinkCardPreview = { linkCard ->
                 fetchDesktopLinkCardPreview(store, userMessages, linkCard)
@@ -103,33 +98,6 @@ actual fun PinHtmlContent(html: String) {
         selectable = true,
         enableScroll = false,
     )
-}
-
-private fun copyDesktopText(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-}
-
-private fun handleDesktopShareAction(
-    shareText: String?,
-    settings: com.github.zly2006.zhihu.shared.platform.SettingsStore,
-    userMessages: com.github.zly2006.zhihu.shared.platform.UserMessageSink,
-    onShowDialog: () -> Unit,
-) {
-    when (settings.getString("shareActionMode", "ask")) {
-        "copy" -> {
-            if (shareText != null) {
-                copyDesktopText(shareText)
-                userMessages.showMessage("已复制链接")
-            }
-        }
-        "share" -> {
-            if (shareText != null) {
-                copyDesktopText(shareText)
-                userMessages.showMessage("已复制分享文本")
-            }
-        }
-        else -> onShowDialog()
-    }
 }
 
 private suspend fun fetchDesktopPinDetail(

@@ -12,23 +12,23 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.getShareText
+import com.github.zly2006.zhihu.ui.components.handleShareAction
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val settings = rememberSettingsStore()
     val userMessages = rememberUserMessageSink()
+    val shareRuntime = rememberShareDialogRuntime()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
-    return remember(settings, userMessages) {
+    return remember(settings, userMessages, shareRuntime) {
         QuestionScreenRuntime(
             loadQuestion = { question ->
                 addDesktopReadHistory(store, question.questionId.toString(), "question")
@@ -56,12 +56,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
             },
             handleShareAction = { question, onShowDialog ->
-                handleDesktopShareAction(
-                    shareText = getShareText(question),
-                    settings = settings,
-                    userMessages = userMessages,
-                    onShowDialog = onShowDialog,
-                )
+                handleShareAction(question, settings, shareRuntime, onShowDialog)
             },
             showShortMessage = { message -> userMessages.showShortMessage(message) },
         )
@@ -78,33 +73,6 @@ actual fun QuestionDetailContent(
         selectable = true,
         enableScroll = false,
     )
-}
-
-private fun copyDesktopText(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-}
-
-private fun handleDesktopShareAction(
-    shareText: String?,
-    settings: com.github.zly2006.zhihu.shared.platform.SettingsStore,
-    userMessages: com.github.zly2006.zhihu.shared.platform.UserMessageSink,
-    onShowDialog: () -> Unit,
-) {
-    when (settings.getString("shareActionMode", "ask")) {
-        "copy" -> {
-            if (shareText != null) {
-                copyDesktopText(shareText)
-                userMessages.showMessage("已复制链接")
-            }
-        }
-        "share" -> {
-            if (shareText != null) {
-                copyDesktopText(shareText)
-                userMessages.showMessage("已复制分享文本")
-            }
-        }
-        else -> onShowDialog()
-    }
 }
 
 private suspend fun fetchDesktopQuestionDetail(

@@ -18,56 +18,13 @@
 package com.github.zly2006.zhihu.ui.components
 
 import android.content.ClipData
-import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.articleHost
 import com.github.zly2006.zhihu.util.clipboardManager
-
-/**
- * 根据用户设置处理分享操作
- * @param context Android Context
- * @param content 要分享的内容
- * @param onShowDialog 当需要显示对话框时调用
- */
-fun handleShareAction(
-    context: Context,
-    content: NavDestination,
-    onShowDialog: () -> Unit,
-) {
-    val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    val shareActionMode = preferences.getString("shareActionMode", "ask") ?: "ask"
-
-    when (shareActionMode) {
-        "ask" -> {
-            // 显示对话框询问
-            onShowDialog()
-        }
-        "copy" -> {
-            // 直接复制链接
-            context.articleHost()?.clipboardDestination = content
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", getShareText(content)))
-            androidUserMessageSink(context).showShortMessage("已复制链接")
-        }
-        "share" -> {
-            // 直接调用系统分享
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, getShareText(content))
-                putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
-            }
-            val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-            chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(chooserIntent)
-        }
-    }
-}
 
 @Composable
 actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
@@ -79,6 +36,17 @@ actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
                     action = Intent.ACTION_SEND
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooserIntent)
+            },
+            directShare = { content, shareText ->
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    putExtra(Intent.EXTRA_TITLE, getShareTitle(content))
                 }
                 val chooserIntent = Intent.createChooser(shareIntent, "分享到")
                 chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

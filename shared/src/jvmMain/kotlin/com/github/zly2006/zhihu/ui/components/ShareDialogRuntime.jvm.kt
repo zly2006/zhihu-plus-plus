@@ -15,6 +15,10 @@ actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
                 copyDesktopShareText(shareText)
                 userMessages.showMessage("已复制分享文本")
             },
+            directShare = { _, shareText ->
+                copyDesktopShareText(shareText)
+                userMessages.showMessage("已复制分享文本")
+            },
             copyLink = { _, shareText ->
                 copyDesktopShareText(shareText)
                 userMessages.showMessage("已复制链接")
