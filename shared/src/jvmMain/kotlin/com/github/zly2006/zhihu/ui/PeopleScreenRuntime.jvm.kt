@@ -16,9 +16,8 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
 import io.ktor.client.request.parameter
-import io.ktor.client.request.post
+import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -74,47 +73,61 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 )
             },
             toggleFollow = { person, isFollowing, followerCount ->
-                val client = store.createHttpClient(store.load().cookies)
-                client.use {
-                    if (isFollowing) {
-                        val jojo = it
-                            .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                                store.load().cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
-                            }.raiseForStatus()
-                            .body<JsonObject>()
-                        PeopleFollowResult(
-                            isFollowing = false,
-                            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1),
-                        )
-                    } else {
-                        val jojo = it
-                            .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
-                                store.load().cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
-                            }.raiseForStatus()
-                            .body<JsonObject>()
-                        PeopleFollowResult(
-                            isFollowing = true,
-                            followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1),
-                        )
+                val account = store.load()
+                if (isFollowing) {
+                    val jojo = store.withAuthenticatedResponse(
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        block = {
+                            method = HttpMethod.Delete
+                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                        },
+                    ) { response ->
+                        response.raiseForStatus().body<JsonObject>()
                     }
+                    PeopleFollowResult(
+                        isFollowing = false,
+                        followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1),
+                    )
+                } else {
+                    val jojo = store.withAuthenticatedResponse(
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        block = {
+                            method = HttpMethod.Post
+                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                        },
+                    ) { response ->
+                        response.raiseForStatus().body<JsonObject>()
+                    }
+                    PeopleFollowResult(
+                        isFollowing = true,
+                        followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1),
+                    )
                 }
             },
             toggleBlock = { person, isBlocking ->
-                val client = store.createHttpClient(store.load().cookies)
-                client.use {
-                    if (isBlocking) {
-                        it
-                            .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                                store.load().cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
-                            }.raiseForStatus()
-                        false
-                    } else {
-                        it
-                            .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
-                                store.load().cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
-                            }.raiseForStatus()
-                        true
+                val account = store.load()
+                if (isBlocking) {
+                    store.withAuthenticatedResponse(
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        block = {
+                            method = HttpMethod.Delete
+                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                        },
+                    ) { response ->
+                        response.raiseForStatus()
                     }
+                    false
+                } else {
+                    store.withAuthenticatedResponse(
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        block = {
+                            method = HttpMethod.Post
+                            account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
+                        },
+                    ) { response ->
+                        response.raiseForStatus()
+                    }
+                    true
                 }
             },
             toggleRecommendationBlock = { request ->

@@ -5,6 +5,7 @@ import com.github.zly2006.zhihu.shared.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.shared.account.ZhihuAccountSessionStore
 import com.github.zly2006.zhihu.shared.data.ZHIHU_READ_HISTORY_ADD_URL
 import com.github.zly2006.zhihu.shared.data.buildZhihuReadHistoryBody
+import com.github.zly2006.zhihu.shared.data.executeZhihuAuthenticatedRequest
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.data.fetchZhihuAuthenticatedJson
 import com.github.zly2006.zhihu.shared.data.installZhihuCommonClientConfig
@@ -13,6 +14,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
@@ -66,6 +68,24 @@ class DesktopAccountStore(
                 updateLastRefreshMillis = { lastRefreshCookie = it },
                 block = block,
             )
+        }
+    }
+
+    suspend fun <T> withAuthenticatedResponse(
+        url: String,
+        block: suspend HttpRequestBuilder.() -> Unit = {},
+        transform: suspend (HttpResponse) -> T,
+    ): T {
+        val account = load()
+        return createHttpClient(account.cookies).use { client ->
+            val response = executeZhihuAuthenticatedRequest(
+                client = client,
+                url = url,
+                lastRefreshMillis = lastRefreshCookie,
+                updateLastRefreshMillis = { lastRefreshCookie = it },
+                block = block,
+            )
+            transform(response)
         }
     }
 

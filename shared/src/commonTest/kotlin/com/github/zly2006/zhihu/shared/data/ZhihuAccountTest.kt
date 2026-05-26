@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.shared.data
 
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -124,6 +125,71 @@ class ZhihuAccountTest {
                 "POST /api/account/prod/token/refresh",
                 "POST /api/v3/oauth/sign_in",
                 "GET /api/v4/test",
+            ),
+            requests,
+        )
+    }
+
+    @Test
+    fun executeAuthenticatedRequestKeepsCallerOwnedResponseBody() = runTest {
+        val requests = mutableListOf<String>()
+        val cookies = mutableMapOf("z_c0" to "token")
+        val client = HttpClient(
+            MockEngine { request ->
+                requests += "${request.method.value} ${request.url.encodedPath}"
+                when (requests.size) {
+                    1 -> respond(
+                        content = """{"error":"unauthorized"}""",
+                        status = HttpStatusCode.Unauthorized,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                    2 -> respond(
+                        content = """{"refresh_token":"refresh-token"}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                    3 -> respond(
+                        content = """{"access_token":"access-token"}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                    else -> respond(
+                        content = """{"follower_count":42}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                }
+            },
+        ) {
+            installZhihuCommonClientConfig(
+                cookies = cookies,
+                userAgent = "test-agent",
+            )
+        }
+        var refreshedAt = 0L
+
+        val response = executeZhihuAuthenticatedRequest(
+            client = client,
+            url = "https://www.zhihu.com/api/v4/members/alice/followers",
+            lastRefreshMillis = 0L,
+            updateLastRefreshMillis = { refreshedAt = it },
+            nowMillis = { 30_000L },
+        ) {
+            method = HttpMethod.Post
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            "42",
+            response.body<kotlinx.serialization.json.JsonObject>()["follower_count"]?.jsonPrimitive?.content,
+        )
+        assertEquals(30_000L, refreshedAt)
+        assertEquals(
+            listOf(
+                "POST /api/v4/members/alice/followers",
+                "POST /api/account/prod/token/refresh",
+                "POST /api/v3/oauth/sign_in",
+                "POST /api/v4/members/alice/followers",
             ),
             requests,
         )
