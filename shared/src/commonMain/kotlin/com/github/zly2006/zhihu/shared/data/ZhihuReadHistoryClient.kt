@@ -24,6 +24,23 @@ fun buildZhihuReadHistoryBody(
 fun encodeZhihuLastReadTouchItems(items: List<List<String>>): String =
     ZhihuJson.json.encodeToString(items)
 
+fun zhihuLastReadTouchItem(
+    feed: Feed,
+    action: String,
+): List<String>? = when (val target = feed.target) {
+    is Feed.AnswerTarget -> listOf("answer", target.id.toString(), action)
+    is Feed.ArticleTarget -> listOf("article", target.id.toString(), action)
+    is Feed.PinTarget -> listOf("pin", target.id.toString(), action)
+    else -> null
+}
+
+fun zhihuLastReadTouchItems(
+    items: Set<Pair<String, String>>,
+    action: String,
+): List<List<String>> = items.map { (type, id) ->
+    listOf(type, id, action)
+}
+
 suspend fun addZhihuReadHistory(
     client: HttpClient,
     contentToken: String,

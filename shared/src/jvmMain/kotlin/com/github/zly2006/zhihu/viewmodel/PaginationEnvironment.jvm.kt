@@ -22,6 +22,8 @@ import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
+import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
@@ -205,13 +207,7 @@ class DesktopPaginationEnvironment(
     }
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
-        val target = feed.target
-        val payloadItem = when (target) {
-            is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
-            is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
-            is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
-            else -> return
-        }
+        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
         postDesktopLastReadTouch(listOf(payloadItem))
     }
 
@@ -248,9 +244,7 @@ class DesktopPaginationEnvironment(
 
     override suspend fun markItemsAsTouched(items: Set<Pair<String, String>>): Set<Pair<String, String>> {
         if (items.isEmpty()) return emptySet()
-        val payload = items.map { (type, id) ->
-            listOf(type, id, "touch")
-        }
+        val payload = zhihuLastReadTouchItems(items, "touch")
         return if (postDesktopLastReadTouch(payload)) {
             items
         } else {

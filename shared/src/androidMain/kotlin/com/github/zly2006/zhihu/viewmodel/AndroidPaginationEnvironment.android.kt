@@ -48,6 +48,8 @@ import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.encodeZhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItem
+import com.github.zly2006.zhihu.shared.data.zhihuLastReadTouchItems
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
@@ -252,13 +254,7 @@ open class SharedAndroidPaginationEnvironment(
     }
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
-        val target = feed.target
-        val payloadItem = when (target) {
-            is Feed.AnswerTarget -> listOf("answer", target.id.toString(), "read")
-            is Feed.ArticleTarget -> listOf("article", target.id.toString(), "read")
-            is Feed.PinTarget -> listOf("pin", target.id.toString(), "read")
-            else -> return
-        }
+        val payloadItem = zhihuLastReadTouchItem(feed, "read") ?: return
         AccountData.fetchPost(context, ZHIHU_LAST_READ_TOUCH_URL) {
             header("x-requested-with", "fetch")
             signFetchRequest()
@@ -310,9 +306,7 @@ open class SharedAndroidPaginationEnvironment(
                 setBody(
                     MultiPartFormDataContent(
                         formData {
-                            val payload = items.map { (type, id) ->
-                                listOf(type, id, "touch")
-                            }
+                            val payload = zhihuLastReadTouchItems(items, "touch")
                             append("items", encodeZhihuLastReadTouchItems(payload))
                         },
                     ),
