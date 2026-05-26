@@ -93,6 +93,13 @@ class SearchScreenInstrumentedTest {
         composeRule.waitForIdle()
         assertEquals(listOf(Search(query = "jetpack compose")), recordingNavigator.destinations)
 
+        assertEquals(
+            """["jetpack compose"]""",
+            composeRule.activity
+                .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+                .getString("searchHistoryQueries", null),
+        )
+
         // Clearing should return the field to an empty state and restore the placeholder.
         composeRule.onNodeWithTag("search_clear_button").performClick()
         composeRule.onAllNodesWithTag("search_clear_button").assertCountEquals(0)
@@ -103,6 +110,62 @@ class SearchScreenInstrumentedTest {
         composeRule.waitForIdle()
         assertEquals(1, recordingNavigator.backCount)
         assertEquals(listOf(Search(query = "jetpack compose")), recordingNavigator.destinations)
+    }
+
+    @Test
+    fun searchHistoryRendersRecordsSearchesAndSupportsMenuActions() {
+        // This disables hot-search so the history surface can be tested without network requests.
+        // Expected behavior:
+        // 1. Existing history renders above the empty search state in most-recent-first order.
+        // 2. Clicking a history row navigates to that query and keeps it as the most recent entry.
+        // 3. Typing a new query records it without duplicating old entries.
+        // 4. The overflow menu can clear history and can navigate to the related appearance setting.
+        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        preferences
+            .edit()
+            .putBoolean("showSearchHotSearch", false)
+            .putString("searchHistoryQueries", """["old query","older query"]""")
+            .commit()
+
+        val recordingNavigator = composeRule.setScreenContent {
+            SearchScreen(
+                search = Search(),
+            )
+        }
+
+        composeRule.onNodeWithText("搜索历史").assertIsDisplayed()
+        composeRule.onNodeWithText("old query").assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf(Search(query = "old query")), recordingNavigator.destinations)
+        assertEquals("""["old query","older query"]""", preferences.getString("searchHistoryQueries", null))
+
+        val searchInput = composeRule.onNodeWithTag("search_input")
+        searchInput.performTextInput("new query")
+        searchInput.performImeAction()
+        composeRule.waitForIdle()
+        assertEquals(
+            listOf(Search(query = "old query"), Search(query = "new query")),
+            recordingNavigator.destinations,
+        )
+        assertEquals("""["new query","old query","older query"]""", preferences.getString("searchHistoryQueries", null))
+
+        composeRule.onNodeWithTag("search_history_more_button").performClick()
+        composeRule.onNodeWithText("清空搜索历史").assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("暂无搜索历史，输入关键词搜索后会保存在这里").assertIsDisplayed()
+        assertEquals("[]", preferences.getString("searchHistoryQueries", null))
+
+        composeRule.onNodeWithTag("search_history_more_button").performClick()
+        composeRule.onNodeWithText("前往设置关闭搜索历史").assertIsDisplayed().performClick()
+        composeRule.waitForIdle()
+        assertEquals(
+            listOf(
+                Search(query = "old query"),
+                Search(query = "new query"),
+                Account.AppearanceSettings("showSearchHistory"),
+            ),
+            recordingNavigator.destinations,
+        )
     }
 
     @Test
