@@ -7,6 +7,10 @@ import java.util.Properties
 
 @Composable
 actual fun rememberSettingsStore(): SettingsStore = remember {
+    desktopSettingsStore()
+}
+
+fun desktopSettingsStore(): SettingsStore {
     val settingsFile = File(System.getProperty("user.home"), ".zhihu-plus/settings.properties")
     val properties = Properties()
 
@@ -25,7 +29,7 @@ actual fun rememberSettingsStore(): SettingsStore = remember {
 
     load()
 
-    SettingsStore(
+    return SettingsStore(
         getBoolean = { key, defaultValue ->
             properties.getProperty(key)?.toBooleanStrictOrNull() ?: defaultValue
         },

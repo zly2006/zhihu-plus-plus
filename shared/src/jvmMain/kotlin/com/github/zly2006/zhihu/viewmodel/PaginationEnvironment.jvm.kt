@@ -17,8 +17,8 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.shared.platform.SettingsStore
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
+import com.github.zly2006.zhihu.shared.platform.desktopSettingsStore
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.buildArticleExportFileName
@@ -65,7 +65,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.Properties
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import io.ktor.http.ContentType as KtorContentType
@@ -578,79 +577,3 @@ private fun extractDesktopSemanticTokens(text: String): List<String> =
         .map { it.value.trim() }
         .filter { it.length >= 2 }
         .toList()
-
-private fun desktopSettingsStore(): SettingsStore {
-    val settingsFile = File(System.getProperty("user.home"), ".zhihu-plus/settings.properties")
-    val properties = Properties()
-
-    fun load() {
-        if (settingsFile.isFile) {
-            settingsFile.inputStream().use(properties::load)
-        }
-    }
-
-    fun save() {
-        settingsFile.parentFile?.mkdirs()
-        settingsFile.outputStream().use { output ->
-            properties.store(output, "Zhihu++ desktop settings")
-        }
-    }
-
-    load()
-
-    return SettingsStore(
-        getBoolean = { key, defaultValue ->
-            properties.getProperty(key)?.toBooleanStrictOrNull() ?: defaultValue
-        },
-        putBoolean = { key, value ->
-            properties.setProperty(key, value.toString())
-            save()
-        },
-        getString = { key, defaultValue ->
-            properties.getProperty(key) ?: defaultValue
-        },
-        putString = { key, value ->
-            properties.setProperty(key, value)
-            save()
-        },
-        getStringOrNull = { key ->
-            properties.getProperty(key)
-        },
-        putStringSet = { key, value ->
-            properties.setProperty(key, value.joinToString("\u001F"))
-            save()
-        },
-        getStringSet = { key, defaultValue ->
-            properties
-                .getProperty(key)
-                ?.split("\u001F")
-                ?.filter { it.isNotEmpty() }
-                ?.toSet() ?: defaultValue
-        },
-        getInt = { key, defaultValue ->
-            properties.getProperty(key)?.toIntOrNull() ?: defaultValue
-        },
-        putInt = { key, value ->
-            properties.setProperty(key, value.toString())
-            save()
-        },
-        getLong = { key, defaultValue ->
-            properties.getProperty(key)?.toLongOrNull() ?: defaultValue
-        },
-        putLong = { key, value ->
-            properties.setProperty(key, value.toString())
-            save()
-        },
-        getFloat = { key, defaultValue ->
-            properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
-        },
-        putFloat = { key, value ->
-            properties.setProperty(key, value.toString())
-            save()
-        },
-        remove = { key ->
-            properties.remove(key)
-            save()
-        },
-    )
-}
