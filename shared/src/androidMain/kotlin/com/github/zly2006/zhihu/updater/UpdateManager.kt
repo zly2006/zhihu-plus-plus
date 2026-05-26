@@ -23,6 +23,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
+import com.github.zly2006.zhihu.shared.platform.isAndroidLiteVariantPackageName
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
@@ -86,7 +87,7 @@ object UpdateManager {
 
     private fun shouldCheckNightly(context: Context): Boolean = androidSettingsStore(context).getBoolean("checkNightlyUpdates", false)
 
-    private fun Context.isLiteVariant(): Boolean = packageName.endsWith(".lite")
+    private fun Context.isLiteVariant(): Boolean = isAndroidLiteVariantPackageName(packageName)
 
     private fun Context.versionName(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName

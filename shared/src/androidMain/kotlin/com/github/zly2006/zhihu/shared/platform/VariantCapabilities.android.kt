@@ -7,5 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 actual fun rememberIsLiteVariant(): Boolean {
     val context = LocalContext.current
-    return remember(context) { context.packageName.endsWith(".lite") }
+    return remember(context) { isAndroidLiteVariantPackageName(context.packageName) }
 }
+
+internal fun isAndroidLiteVariantPackageName(packageName: String): Boolean = packageName.endsWith(".lite")
