@@ -31,6 +31,7 @@ import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.Log
+import com.github.zly2006.zhihu.viewmodel.zhihuCollectionItemsUrl
 
 interface AnswerNavigatorRepository {
     suspend fun fetchAnswerContent(article: Article): DataHolder.Answer?
@@ -364,7 +365,7 @@ class CollectionAnswerNavigator(
         }
     }
 
-    private var nextPageUrl: String = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
+    private var nextPageUrl: String = zhihuCollectionItemsUrl(collectionId)
     private var prefetchedArticle: Article? = null
 
     override val previousAnswerPreview: CachedAnswerContent?

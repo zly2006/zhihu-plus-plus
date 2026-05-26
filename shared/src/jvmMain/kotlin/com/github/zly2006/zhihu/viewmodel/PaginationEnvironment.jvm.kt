@@ -291,7 +291,7 @@ class DesktopPaginationEnvironment(
     override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
 
     override suspend fun fetchCollection(collectionId: String): Collection {
-        val json = fetchJson("https://www.zhihu.com/api/v4/collections/$collectionId", "")
+        val json = fetchJson(zhihuCollectionUrl(collectionId), "")
             ?: throw IllegalStateException("收藏夹信息加载失败")
         return ZhihuJson.decodeJson(json["collection"] ?: throw IllegalStateException("收藏夹信息为空"))
     }

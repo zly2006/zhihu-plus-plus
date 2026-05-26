@@ -66,6 +66,12 @@ interface CollectionContentEnvironment : PaginationEnvironment {
     suspend fun handleCollectionExportFailure(error: Exception)
 }
 
+fun zhihuCollectionUrl(collectionId: String): String =
+    "https://www.zhihu.com/api/v4/collections/$collectionId"
+
+fun zhihuCollectionItemsUrl(collectionId: String): String =
+    "${zhihuCollectionUrl(collectionId)}/items"
+
 class CollectionContentViewModel(
     val collectionId: String,
 ) : PaginationViewModel<CollectionItem>(typeOf<CollectionItem>()) {
@@ -78,7 +84,7 @@ class CollectionContentViewModel(
         private set
 
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
+        get() = zhihuCollectionItemsUrl(collectionId)
 
     override fun processResponse(environment: PaginationEnvironment, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
