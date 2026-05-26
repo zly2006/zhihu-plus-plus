@@ -5,11 +5,8 @@ import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
-import com.github.zly2006.zhihu.shared.data.officialBadge
-import com.github.zly2006.zhihu.shared.data.officialBadgeDetails
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
-import com.github.zly2006.zhihu.shared.people.PeopleProfileUiState
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -20,8 +17,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonPrimitive
 import java.awt.Desktop
 import java.net.URI
 
@@ -42,7 +37,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 val jojo = store.fetchAuthenticatedJson(peopleProfileUrl(person)) {
                     parameter(
                         "include",
-                        "allow_message,is_followed,is_following,is_org,is_blocking,badge_v2,answer_count,follower_count,following_count,articles_count,question_count,pins_count",
+                        peopleProfileIncludePath,
                     )
                     account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
                 } ?: error("Empty people profile response")
@@ -54,22 +49,9 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                         urlToken = loadedPerson.urlToken ?: "",
                     ),
                 )
-                PeopleProfileLoadResult(
-                    profile = PeopleProfileUiState(
-                        avatar = loadedPerson.avatarUrl,
-                        name = loadedPerson.name,
-                        headline = loadedPerson.headline,
-                        officialBadge = loadedPerson.badgeV2.officialBadge(),
-                        officialBadgeDetails = loadedPerson.badgeV2.officialBadgeDetails(),
-                        followerCount = loadedPerson.followerCount,
-                        followingCount = loadedPerson.followingCount,
-                        answerCount = loadedPerson.answerCount,
-                        articleCount = loadedPerson.articlesCount,
-                        isFollowing = loadedPerson.isFollowing,
-                        isBlocking = loadedPerson.isBlocking,
-                        isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
-                    ),
-                    urlToken = loadedPerson.urlToken,
+                toPeopleProfileLoadResult(
+                    loadedPerson = loadedPerson,
+                    isBlockedInRecommendations = blocklistManager.isUserBlocked(loadedPerson.id),
                 )
             },
             toggleFollow = { person, isFollowing, followerCount ->
@@ -84,9 +66,10 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     ) { response ->
                         response.raiseForStatus().body<JsonObject>()
                     }
-                    PeopleFollowResult(
-                        isFollowing = false,
-                        followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1),
+                    peopleFollowResult(
+                        isFollowingBefore = isFollowing,
+                        followerCountBefore = followerCount,
+                        responseJson = jojo,
                     )
                 } else {
                     val jojo = store.withAuthenticatedResponse(
@@ -98,9 +81,10 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     ) { response ->
                         response.raiseForStatus().body<JsonObject>()
                     }
-                    PeopleFollowResult(
-                        isFollowing = true,
-                        followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1),
+                    peopleFollowResult(
+                        isFollowingBefore = isFollowing,
+                        followerCountBefore = followerCount,
+                        responseJson = jojo,
                     )
                 }
             },
