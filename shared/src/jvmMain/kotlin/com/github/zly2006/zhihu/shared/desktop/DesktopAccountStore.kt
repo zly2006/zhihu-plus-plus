@@ -116,10 +116,7 @@ class DesktopAccountStore(
     }
 }
 
-private fun defaultAccountFile(): Path {
-    val home = System.getProperty("user.home")
-    return Path.of(home, ".zhihu-plus-plus", "account.json")
-}
+private fun defaultAccountFile(): Path = desktopZhihuLegacyAccountFile()
 
 private class PathAccountSessionStore(
     private val accountFile: Path,

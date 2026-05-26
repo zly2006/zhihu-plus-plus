@@ -1,6 +1,7 @@
 package com.github.zly2006.zhihu.shared.desktop
 
 import java.io.File
+import java.nio.file.Path
 
 fun desktopZhihuDataDir(): File =
     File(System.getProperty("user.home"), ".zhihu-plus")
@@ -14,3 +15,6 @@ fun desktopZhihuDownloadsDir(errorMessage: String = "无法创建下载目录"):
             throw IllegalStateException(errorMessage)
         }
     }
+
+fun desktopZhihuLegacyAccountFile(): Path =
+    Path.of(System.getProperty("user.home"), ".zhihu-plus-plus", "account.json")
