@@ -14,6 +14,7 @@ import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -45,6 +46,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                         database = contentFilterDatabase,
                         destination = question,
                         questionId = question.questionId,
+                        openFrom = consumeDesktopPendingContentOpenFrom(question),
                     )
                     LoadedQuestionScreenData(
                         uiState = QuestionScreenUiState(

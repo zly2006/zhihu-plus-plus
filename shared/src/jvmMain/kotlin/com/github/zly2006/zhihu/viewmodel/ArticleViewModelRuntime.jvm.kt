@@ -5,6 +5,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorPage
 import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.CollectionResponse
@@ -14,6 +15,8 @@ import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
+import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
+import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
@@ -54,6 +57,35 @@ import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
 
 internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
+private var desktopPendingContentOpenIdentity: TrackedContentIdentity? = null
+private var desktopPendingContentOpenFrom: String? = null
+
+internal fun prepareDesktopPendingContentOpen(
+    target: NavDestination,
+    currentMainTabOpenFrom: String?,
+    source: NavDestination?,
+) {
+    val identity = ContentOpenEventSupport.toTrackedContentIdentity(target)
+    if (identity == null) {
+        desktopPendingContentOpenIdentity = null
+        desktopPendingContentOpenFrom = null
+        return
+    }
+    desktopPendingContentOpenIdentity = identity
+    desktopPendingContentOpenFrom = currentMainTabOpenFrom
+        ?: ContentOpenEventSupport.inferOpenFrom(source, target)
+}
+
+internal fun consumeDesktopPendingContentOpenFrom(destination: NavDestination): String {
+    val identity = ContentOpenEventSupport.toTrackedContentIdentity(destination) ?: return ContentOpenFrom.UNKNOWN
+    if (identity != desktopPendingContentOpenIdentity) {
+        return ContentOpenFrom.UNKNOWN
+    }
+    val openFrom = desktopPendingContentOpenFrom ?: ContentOpenFrom.UNKNOWN
+    desktopPendingContentOpenIdentity = null
+    desktopPendingContentOpenFrom = null
+    return openFrom
+}
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
@@ -106,6 +138,7 @@ class DesktopArticleViewModelRuntime(
             database = contentFilterDatabase,
             destination = destination,
             questionId = questionId,
+            openFrom = consumeDesktopPendingContentOpenFrom(destination),
         )
     }
 

@@ -21,6 +21,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
+import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
@@ -58,6 +59,7 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     ContentOpenEventSupport.recordOpenEvent(
                         database = contentFilterDatabase,
                         destination = pin,
+                        openFrom = consumeDesktopPendingContentOpenFrom(pin),
                     )
                     PinScreenUiState(
                         isLoading = false,

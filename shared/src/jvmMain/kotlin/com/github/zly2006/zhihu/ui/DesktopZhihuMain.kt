@@ -20,13 +20,17 @@ import androidx.navigation.toRoute
 import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
+import com.github.zly2006.zhihu.navigation.CollectionContent
 import com.github.zly2006.zhihu.navigation.Daily
 import com.github.zly2006.zhihu.navigation.Follow
+import com.github.zly2006.zhihu.navigation.History
 import com.github.zly2006.zhihu.navigation.Home
 import com.github.zly2006.zhihu.navigation.HotList
 import com.github.zly2006.zhihu.navigation.MainTabs
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.navigation.OnlineHistory
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.navigation.Video
@@ -38,6 +42,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.desktopArticleAnswerSwitchState
+import com.github.zly2006.zhihu.viewmodel.prepareDesktopPendingContentOpen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,6 +57,7 @@ fun DesktopZhihuMain() {
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
     var mainTabNavigationTarget by remember { mutableStateOf<TopLevelDestination?>(null) }
+    var currentMainTabOpenFrom by remember { mutableStateOf<String?>(null) }
 
     fun navigateToMainTabs() {
         navController.navigate(MainTabs) {
@@ -61,6 +67,31 @@ fun DesktopZhihuMain() {
                 saveState = true
             }
         }
+    }
+
+    fun currentMainTabOpenFrom(): String? = if (
+        runCatching { navController.currentBackStackEntry?.toRoute<MainTabs>() }.getOrNull() != null
+    ) {
+        currentMainTabOpenFrom
+    } else {
+        null
+    }
+
+    fun currentContentOpenSource(): NavDestination? {
+        val currentEntry = navController.currentBackStackEntry
+        return runCatching {
+            currentEntry?.toRoute<Article>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Question>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Pin>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<CollectionContent>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<History>()
+        }.getOrNull() ?: runCatching {
+            currentEntry?.toRoute<Notification>()
+        }.getOrNull()
     }
 
     fun navigate(route: NavDestination) {
@@ -113,7 +144,14 @@ fun DesktopZhihuMain() {
                 mainTabNavigationTarget = Home
                 navigateToMainTabs()
             }
-            else -> navController.navigate(route)
+            else -> {
+                prepareDesktopPendingContentOpen(
+                    target = route,
+                    currentMainTabOpenFrom = currentMainTabOpenFrom(),
+                    source = currentContentOpenSource(),
+                )
+                navController.navigate(route)
+            }
         }
     }
 
@@ -122,7 +160,7 @@ fun DesktopZhihuMain() {
         navigationState = ZhihuMainNavigationState(
             mainTabNavigationTarget = mainTabNavigationTarget,
             navigate = ::navigate,
-            setCurrentMainTabOpenFrom = {},
+            setCurrentMainTabOpenFrom = { currentMainTabOpenFrom = it },
             consumeMainTabNavigationTarget = { destination ->
                 if (mainTabNavigationTarget == destination) {
                     mainTabNavigationTarget = null
