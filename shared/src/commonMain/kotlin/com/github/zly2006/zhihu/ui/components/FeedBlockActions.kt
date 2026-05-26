@@ -46,14 +46,43 @@ data class BlockByKeywordsRuntime(
 @Composable
 expect fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime
 
+data class BlockUserConfirmRuntime(
+    val blockUser: suspend (BlockedFeedAuthor) -> Unit,
+)
+
 @Composable
-expect fun BlockUserConfirmDialog(
+expect fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime
+
+@Composable
+fun BlockUserConfirmDialog(
     showDialog: Boolean,
     userToBlock: Pair<String, String>?,
     displayItems: List<FeedDisplayItem>,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
-)
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val runtime = rememberBlockUserConfirmRuntime()
+    BlockUserConfirmDialogContent(
+        showDialog = showDialog,
+        userToBlock = userToBlock,
+        displayItems = displayItems,
+        onDismiss = onDismiss,
+        onConfirmBlock = { author ->
+            coroutineScope.launch {
+                try {
+                    runtime.blockUser(author)
+                    onConfirm()
+                    userMessages.showShortMessage("已屏蔽用户：${author.name}")
+                } catch (e: Exception) {
+                    Log.e("FeedBlockActions", "Failed to block user", e)
+                    userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
+                }
+            }
+        },
+    )
+}
 
 @Composable
 fun BlockByKeywordsDialog(

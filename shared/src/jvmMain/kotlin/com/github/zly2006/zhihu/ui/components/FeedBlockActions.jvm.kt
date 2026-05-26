@@ -2,7 +2,6 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -10,7 +9,6 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
@@ -87,39 +85,20 @@ actual fun rememberBlockByKeywordsRuntime(): BlockByKeywordsRuntime = remember {
 }
 
 @Composable
-actual fun BlockUserConfirmDialog(
-    showDialog: Boolean,
-    userToBlock: Pair<String, String>?,
-    displayItems: List<FeedDisplayItem>,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-) {
+actual fun rememberBlockUserConfirmRuntime(): BlockUserConfirmRuntime {
     val blocklistManager = rememberDesktopBlocklistManager()
-    val coroutineScope = rememberCoroutineScope()
-    val userMessages = rememberUserMessageSink()
-    BlockUserConfirmDialogContent(
-        showDialog = showDialog,
-        userToBlock = userToBlock,
-        displayItems = displayItems,
-        onDismiss = onDismiss,
-        onConfirmBlock = { author ->
-            coroutineScope.launch {
-                try {
-                    blocklistManager.addBlockedUser(
-                        userId = author.id,
-                        userName = author.name,
-                        urlToken = author.urlToken,
-                        avatarUrl = author.avatarUrl,
-                    )
-                    onConfirm()
-                    userMessages.showShortMessage("已屏蔽用户：${author.name}")
-                } catch (e: Exception) {
-                    Log.e("FeedBlockActions", "Failed to block user", e)
-                    userMessages.showShortMessage("屏蔽用户失败: ${e.message}")
-                }
-            }
-        },
-    )
+    return remember(blocklistManager) {
+        BlockUserConfirmRuntime(
+            blockUser = { author ->
+                blocklistManager.addBlockedUser(
+                    userId = author.id,
+                    userName = author.name,
+                    urlToken = author.urlToken,
+                    avatarUrl = author.avatarUrl,
+                )
+            },
+        )
+    }
 }
 
 @Composable
