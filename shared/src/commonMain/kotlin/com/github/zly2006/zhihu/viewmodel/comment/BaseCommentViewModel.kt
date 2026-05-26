@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.comment.CommentSortOrder
+import com.github.zly2006.zhihu.shared.comment.commentLikeUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
@@ -93,12 +94,12 @@ abstract class BaseCommentViewModel(
                 val httpClient = environment.httpClient()
                 val response = if (newLikeState) {
                     // 点赞
-                    httpClient.post("https://www.zhihu.com/api/v4/comments/$commentId/like") {
+                    httpClient.post(commentLikeUrl(commentId)) {
                         environment.configureSignedRequest(this)
                     }
                 } else {
                     // 取消点赞
-                    httpClient.delete("https://www.zhihu.com/api/v4/comments/$commentId/like") {
+                    httpClient.delete(commentLikeUrl(commentId)) {
                         environment.configureSignedRequest(this)
                     }
                 }

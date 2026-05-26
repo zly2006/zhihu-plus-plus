@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.comment
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.navigation.CommentHolder
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.shared.comment.childCommentUrl
 import com.github.zly2006.zhihu.shared.comment.submitCommentUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -43,9 +44,7 @@ class ChildCommentViewModel(
     content: NavDestination,
 ) : BaseCommentViewModel(content) {
     override val initialUrl: String = when (content) {
-        is CommentHolder -> {
-            "https://www.zhihu.com/api/v4/comment_v5/comment/${content.commentId}/child_comment"
-        }
+        is CommentHolder -> childCommentUrl(content.commentId)
 
         else -> ""
     }

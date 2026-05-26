@@ -12,6 +12,12 @@ enum class CommentSortOrder {
     TIME, // 按时间
 }
 
+fun commentLikeUrl(commentId: String): String =
+    "https://www.zhihu.com/api/v4/comments/$commentId/like"
+
+fun childCommentUrl(commentId: String): String =
+    "https://www.zhihu.com/api/v4/comment_v5/comment/$commentId/child_comment"
+
 val NavDestination.submitCommentUrl: String
     get() = when (this) {
         is Article -> {
