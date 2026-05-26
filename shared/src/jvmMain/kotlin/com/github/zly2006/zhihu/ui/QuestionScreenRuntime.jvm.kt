@@ -2,6 +2,7 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -89,8 +90,7 @@ private suspend fun fetchDesktopQuestionDetail(
     question: Question,
 ): DataHolder.Question? {
     val account = store.load()
-    val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
-        "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    val apiUrl = zhihuQuestionContentDetailUrl(question)
 
     return runCatching {
         val jo = store.fetchAuthenticatedJson(apiUrl) {

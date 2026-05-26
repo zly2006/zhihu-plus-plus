@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import com.github.zly2006.zhihu.data.zhihuPinContentDetailUrl
+import com.github.zly2006.zhihu.data.zhihuQuestionContentDetailUrl
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
@@ -141,8 +142,7 @@ internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
     question: Question,
 ): DataHolder.Question? {
     val account = store.load()
-    val apiUrl = "https://www.zhihu.com/api/v4/questions/${question.questionId}" +
-        "?include=read_count,visit_count,answer_count,voteup_count,comment_count,follower_count,detail,excerpt,author,relationship.is_following,topics"
+    val apiUrl = zhihuQuestionContentDetailUrl(question)
 
     return runCatching {
         val jo = store.fetchAuthenticatedJson(apiUrl) {
