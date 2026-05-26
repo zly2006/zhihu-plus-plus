@@ -2,34 +2,60 @@ package com.github.zly2006.zhihu.shared.notification
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import java.io.File
+import java.util.Properties
 
 @Composable
 actual fun rememberNotificationSettingsStore(): NotificationSettingsStore = remember {
-    InMemoryNotificationSettingsStore()
+    DesktopNotificationSettingsStore()
 }
 
-private class InMemoryNotificationSettingsStore : NotificationSettingsStore {
-    private val systemNotificationSettings = mutableMapOf<NotificationType, Boolean>()
-    private val displayInAppSettings = mutableMapOf<NotificationType, Boolean>()
-    private var autoMarkAsRead = true
+private class DesktopNotificationSettingsStore : NotificationSettingsStore {
+    private val settingsFile = File(System.getProperty("user.home"), ".zhihu-plus/notification_settings.properties")
+    private val properties = Properties()
+
+    init {
+        load()
+    }
+
+    private fun load() {
+        if (settingsFile.isFile) {
+            settingsFile.inputStream().use(properties::load)
+        }
+    }
+
+    private fun save() {
+        settingsFile.parentFile?.mkdirs()
+        settingsFile.outputStream().use { output ->
+            properties.store(output, "Zhihu++ desktop notification settings")
+        }
+    }
 
     override fun getSystemNotificationEnabled(type: NotificationType): Boolean =
-        systemNotificationSettings[type] ?: false
+        properties.getProperty("$KEY_SYSTEM_NOTIFICATION${type.name}")?.toBooleanStrictOrNull() ?: false
 
     override fun setSystemNotificationEnabled(type: NotificationType, enabled: Boolean) {
-        systemNotificationSettings[type] = enabled
+        properties.setProperty("$KEY_SYSTEM_NOTIFICATION${type.name}", enabled.toString())
+        save()
     }
 
     override fun getDisplayInAppEnabled(type: NotificationType): Boolean =
-        displayInAppSettings[type] ?: type.defaultValue
+        properties.getProperty("$KEY_DISPLAY_IN_APP${type.name}")?.toBooleanStrictOrNull() ?: type.defaultValue
 
     override fun setDisplayInAppEnabled(type: NotificationType, enabled: Boolean) {
-        displayInAppSettings[type] = enabled
+        properties.setProperty("$KEY_DISPLAY_IN_APP${type.name}", enabled.toString())
+        save()
     }
 
-    override fun getAutoMarkAsReadEnabled(): Boolean = autoMarkAsRead
+    override fun getAutoMarkAsReadEnabled(): Boolean =
+        properties.getProperty(KEY_AUTO_MARK_AS_READ)?.toBooleanStrictOrNull() ?: true
 
     override fun setAutoMarkAsReadEnabled(enabled: Boolean) {
-        autoMarkAsRead = enabled
+        properties.setProperty(KEY_AUTO_MARK_AS_READ, enabled.toString())
+        save()
     }
 }
+
+private const val KEY_SYSTEM_NOTIFICATION = "system_notification_"
+private const val KEY_DISPLAY_IN_APP = "display_in_app_"
+private const val KEY_AUTO_MARK_AS_READ = "auto_mark_notifications_read"
