@@ -23,6 +23,7 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import com.github.zly2006.zhihu.data.AccountData
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
@@ -87,15 +88,9 @@ object UpdateManager {
 
     val updateState = MutableStateFlow<UpdateState>(UpdateState.NoUpdate)
 
-    private fun getGitHubToken(context: Context): String? {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getString("githubToken", null)?.takeIf { it.isNotBlank() }
-    }
+    private fun getGitHubToken(context: Context): String? = androidSettingsStore(context).getStringOrNull("githubToken")?.takeIf { it.isNotBlank() }
 
-    private fun shouldCheckNightly(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean("checkNightlyUpdates", false)
-    }
+    private fun shouldCheckNightly(context: Context): Boolean = androidSettingsStore(context).getBoolean("checkNightlyUpdates", false)
 
     private fun Context.isLiteVariant(): Boolean = packageName.endsWith(".lite")
 
@@ -106,27 +101,19 @@ object UpdateManager {
     /**
      * 获取跳过的版本
      */
-    private fun getSkippedVersion(context: Context): String? {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getString(PREF_SKIPPED_VERSION, null)
-    }
+    private fun getSkippedVersion(context: Context): String? = androidSettingsStore(context).getStringOrNull(PREF_SKIPPED_VERSION)
 
     /**
      * 设置跳过的版本
      */
     fun skipVersion(context: Context, version: String) {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        preferences.edit { putString(PREF_SKIPPED_VERSION, version) }
+        androidSettingsStore(context).putString(PREF_SKIPPED_VERSION, version)
     }
 
-    fun isAutoCheckEnabled(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        return preferences.getBoolean(PREF_AUTO_CHECK_UPDATES, true)
-    }
+    fun isAutoCheckEnabled(context: Context): Boolean = androidSettingsStore(context).getBoolean(PREF_AUTO_CHECK_UPDATES, true)
 
     fun setAutoCheckEnabled(context: Context, enabled: Boolean) {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        preferences.edit { putBoolean(PREF_AUTO_CHECK_UPDATES, enabled) }
+        androidSettingsStore(context).putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
     }
 
     /**
