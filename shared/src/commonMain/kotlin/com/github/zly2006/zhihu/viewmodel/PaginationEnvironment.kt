@@ -60,6 +60,12 @@ interface PaginationEnvironment {
 
     fun localHistory(): List<NavDestination> = emptyList()
 
+    suspend fun addReadHistory(
+        contentToken: String,
+        contentTypeName: String,
+    ) {
+    }
+
     suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,

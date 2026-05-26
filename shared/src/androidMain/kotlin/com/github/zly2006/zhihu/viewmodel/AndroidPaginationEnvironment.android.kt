@@ -198,6 +198,13 @@ open class SharedAndroidPaginationEnvironment(
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history
 
+    override suspend fun addReadHistory(
+        contentToken: String,
+        contentTypeName: String,
+    ) {
+        AccountData.addReadHistory(context, contentToken, contentTypeName)
+    }
+
     override suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,

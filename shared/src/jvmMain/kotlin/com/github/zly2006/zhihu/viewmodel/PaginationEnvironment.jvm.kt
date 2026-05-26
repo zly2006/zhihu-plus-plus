@@ -122,6 +122,16 @@ class DesktopPaginationEnvironment(
     override fun localHistory(): List<NavDestination> =
         historyStorage.history
 
+    override suspend fun addReadHistory(
+        contentToken: String,
+        contentTypeName: String,
+    ) {
+        store.addReadHistory(
+            contentToken = contentToken,
+            contentTypeName = contentTypeName,
+        )
+    }
+
     override suspend fun followQuestion(
         questionId: Long,
         follow: Boolean,
