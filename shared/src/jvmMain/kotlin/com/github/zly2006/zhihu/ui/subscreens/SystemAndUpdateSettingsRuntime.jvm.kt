@@ -23,24 +23,25 @@ import java.io.File
 import java.net.URI
 import java.util.Properties
 
+internal val desktopSystemUpdateState = MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate)
+
 @Composable
 actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
     val settings = rememberSettingsStore()
-    val state = remember { MutableStateFlow<SystemUpdateState>(SystemUpdateState.NoUpdate) }
     val accountStore = remember { DesktopAccountStore() }
     val account = remember(accountStore) { accountStore.load() }
     val client = remember(accountStore, account) { accountStore.createHttpClient(account.cookies) }
     DisposableEffect(client) {
         onDispose { client.close() }
     }
-    return remember(settings, state, client) {
+    return remember(settings, client) {
         SystemUpdateRuntime(
-            state = state,
+            state = desktopSystemUpdateState,
             autoCheckEnabled = { settings.getBoolean(PREF_AUTO_CHECK_UPDATES, true) },
             setAutoCheckEnabled = { enabled ->
                 settings.putBoolean(PREF_AUTO_CHECK_UPDATES, enabled)
                 if (!enabled) {
-                    state.value = SystemUpdateState.NoUpdate
+                    desktopSystemUpdateState.value = SystemUpdateState.NoUpdate
                 }
             },
             checkForUpdate = {
@@ -48,22 +49,22 @@ actual fun rememberSystemUpdateRuntime(): SystemUpdateRuntime {
                     client = client,
                     githubToken = settings.getStringOrNull("githubToken")?.takeIf { it.isNotBlank() },
                     checkNightly = settings.getBoolean("checkNightlyUpdates", false),
-                    state = state,
+                    state = desktopSystemUpdateState,
                 )
             },
-            skipVersion = { state.value = SystemUpdateState.Latest },
-            resetToNoUpdate = { state.value = SystemUpdateState.NoUpdate },
+            skipVersion = { desktopSystemUpdateState.value = SystemUpdateState.Latest },
+            resetToNoUpdate = { desktopSystemUpdateState.value = SystemUpdateState.NoUpdate },
             downloadUpdate = { url ->
                 runCatching {
                     openDesktopUrl(url)
                 }.onFailure {
-                    state.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
+                    desktopSystemUpdateState.value = SystemUpdateState.Error(it.message ?: "无法打开浏览器")
                 }
             },
             installDownloadedUpdate = {
-                state.value = SystemUpdateState.Error("桌面端不支持 APK 更新安装")
+                desktopSystemUpdateState.value = SystemUpdateState.Error("桌面端不支持 APK 更新安装")
             },
-            setError = { message -> state.value = SystemUpdateState.Error(message) },
+            setError = { message -> desktopSystemUpdateState.value = SystemUpdateState.Error(message) },
             supportsApkInstall = false,
         )
     }
