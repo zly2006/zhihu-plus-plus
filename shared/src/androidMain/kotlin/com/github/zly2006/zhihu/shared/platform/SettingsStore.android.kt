@@ -27,6 +27,8 @@ fun androidSettingsStore(context: Context): SettingsStore {
         getStringSet = { key, defaultValue -> preferences.getStringSet(key, defaultValue)?.toSet() ?: defaultValue },
         getInt = { key, defaultValue -> preferences.getInt(key, defaultValue) },
         putInt = { key, value -> preferences.edit { putInt(key, value) } },
+        getLong = { key, defaultValue -> preferences.getLong(key, defaultValue) },
+        putLong = { key, value -> preferences.edit { putLong(key, value) } },
         getFloat = { key, defaultValue -> preferences.getFloat(key, defaultValue) },
         putFloat = { key, value -> preferences.edit { putFloat(key, value) } },
         remove = { key -> preferences.edit { remove(key) } },

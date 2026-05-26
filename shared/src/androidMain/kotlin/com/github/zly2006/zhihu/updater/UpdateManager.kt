@@ -21,7 +21,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import androidx.core.content.FileProvider
-import androidx.core.content.edit
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
@@ -32,7 +31,6 @@ import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RE
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -120,17 +118,16 @@ object UpdateManager {
      * 检查是否需要进行自动更新检查（避免频繁检查）
      */
     private fun shouldPerformAutoCheck(context: Context): Boolean {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+        val settings = androidSettingsStore(context)
         if (!isAutoCheckEnabled(context)) return false
-        return (System.currentTimeMillis() - preferences.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
+        return (System.currentTimeMillis() - settings.getLong(PREF_LAST_UPDATE_CHECK, 0)) >= AUTO_CHECK_INTERVAL_MILLIS
     }
 
     /**
      * 更新最后检查时间
      */
     private fun updateLastCheckTime(context: Context) {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        preferences.edit { putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis()) }
+        androidSettingsStore(context).putLong(PREF_LAST_UPDATE_CHECK, System.currentTimeMillis())
     }
 
     private fun GithubRelease.extractDownloadInfo(context: Context): DownloadInfo {

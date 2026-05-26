@@ -52,6 +52,8 @@ class FeedFilterSettingsTest {
             },
             getInt = { key, default -> map[key] as? Int ?: default },
             putInt = { _, _ -> },
+            getLong = { key, default -> map[key] as? Long ?: default },
+            putLong = { _, _ -> },
             getFloat = { key, default -> map[key] as? Float ?: default },
             putFloat = { _, _ -> },
             remove = { _ -> },

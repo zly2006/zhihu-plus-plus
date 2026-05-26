@@ -17,14 +17,12 @@
 
 package com.github.zly2006.zhihu.util
 
-import android.content.Context
 import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.util.ContinuousUsageReminderPolicy
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -33,13 +31,11 @@ import kotlinx.coroutines.launch
 class ContinuousUsageReminderManager(
     private val activity: ComponentActivity,
 ) {
-    private val preferences by lazy {
-        activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-    }
+    private val settingsStore by lazy { androidSettingsStore(activity) }
 
     private var policy = ContinuousUsageReminderPolicy(loadIntervalMinutes())
     private var sessionAccumulatedForegroundMs =
-        preferences.getLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L).coerceAtLeast(0L)
+        settingsStore.getLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L).coerceAtLeast(0L)
     private var foregroundStartElapsedMs: Long? = null
     private var checkJob: Job? = null
     private var reminderDialog: AlertDialog? = null
@@ -63,10 +59,8 @@ class ContinuousUsageReminderManager(
             val foregroundDuration = SystemClock.elapsedRealtime() - startElapsed
             sessionAccumulatedForegroundMs += foregroundDuration
             sessionAccumulatedForegroundMs = sessionAccumulatedForegroundMs.coerceAtLeast(0L)
-            preferences.edit {
-                putLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, sessionAccumulatedForegroundMs)
-                putLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, System.currentTimeMillis())
-            }
+            settingsStore.putLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, sessionAccumulatedForegroundMs)
+            settingsStore.putLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, System.currentTimeMillis())
         }
         foregroundStartElapsedMs = null
 
@@ -111,19 +105,19 @@ class ContinuousUsageReminderManager(
 
     private fun restoreSessionForForegroundStart() {
         val now = System.currentTimeMillis()
-        val lastBackgroundWallClockMs = preferences.getLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, 0L)
+        val lastBackgroundWallClockMs = settingsStore.getLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, 0L)
         val shouldContinueSession = shouldContinueSession(lastBackgroundWallClockMs, now)
 
         if (shouldContinueSession) {
             sessionAccumulatedForegroundMs =
-                preferences.getLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L).coerceAtLeast(0L)
+                settingsStore.getLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L).coerceAtLeast(0L)
         } else {
             sessionAccumulatedForegroundMs = 0L
             policy.resetSession()
-            preferences.edit { putLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L) }
+            settingsStore.putLong(KEY_SESSION_ACCUMULATED_FOREGROUND_MS, 0L)
         }
 
-        preferences.edit { putLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, 0L) }
+        settingsStore.putLong(KEY_SESSION_LAST_BACKGROUND_WALL_CLOCK_MS, 0L)
     }
 
     fun currentElapsedForegroundMs(): Long {
@@ -141,7 +135,7 @@ class ContinuousUsageReminderManager(
     }
 
     private fun loadIntervalMinutes(): Int {
-        val storedInterval = preferences.getInt(KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES, 0)
+        val storedInterval = settingsStore.getInt(KEY_CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES, 0)
         return ContinuousUsageReminderPolicy.normalizeIntervalMinutes(storedInterval)
     }
 

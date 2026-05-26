@@ -624,6 +624,13 @@ private fun desktopSettingsStore(): SettingsStore {
             properties.setProperty(key, value.toString())
             save()
         },
+        getLong = { key, defaultValue ->
+            properties.getProperty(key)?.toLongOrNull() ?: defaultValue
+        },
+        putLong = { key, value ->
+            properties.setProperty(key, value.toString())
+            save()
+        },
         getFloat = { key, defaultValue ->
             properties.getProperty(key)?.toFloatOrNull() ?: defaultValue
         },

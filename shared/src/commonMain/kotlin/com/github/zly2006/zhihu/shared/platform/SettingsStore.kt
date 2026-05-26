@@ -12,6 +12,8 @@ data class SettingsStore(
     val getStringSet: (String, Set<String>) -> Set<String>,
     val getInt: (String, Int) -> Int,
     val putInt: (String, Int) -> Unit,
+    val getLong: (String, Long) -> Long,
+    val putLong: (String, Long) -> Unit,
     val getFloat: (String, Float) -> Float,
     val putFloat: (String, Float) -> Unit,
     val remove: (String) -> Unit,
