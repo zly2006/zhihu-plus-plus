@@ -40,7 +40,6 @@ import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpMethod
@@ -382,8 +381,10 @@ class DesktopPaginationEnvironment(
     private suspend fun postDesktopLastReadTouch(payload: List<List<String>>): Boolean {
         val account = store.load()
         val dc0 = account.cookies["d_c0"] ?: return false
-        return store.createHttpClient(account.cookies).use { client ->
-            val response = client.post("https://www.zhihu.com/lastread/touch") {
+        return store.withAuthenticatedResponse(
+            url = "https://www.zhihu.com/lastread/touch",
+            block = {
+                method = HttpMethod.Post
                 header("x-requested-with", "fetch")
                 signZhihuFetchRequest(dc0 = dc0)
                 setBody(
@@ -393,7 +394,8 @@ class DesktopPaginationEnvironment(
                         },
                     ),
                 )
-            }
+            },
+        ) { response ->
             if (response.status.isSuccess()) {
                 true
             } else {
