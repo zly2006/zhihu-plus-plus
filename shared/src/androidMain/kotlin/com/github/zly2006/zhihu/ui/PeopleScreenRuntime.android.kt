@@ -69,7 +69,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 if (isFollowing) {
                     val jojo = AccountData.withAuthenticatedResponse(
                         context = context,
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Delete
                             signFetchRequest()
@@ -84,7 +84,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 } else {
                     val jojo = AccountData.withAuthenticatedResponse(
                         context = context,
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Post
                             signFetchRequest()
@@ -102,7 +102,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 if (isBlocking) {
                     AccountData.withAuthenticatedResponse(
                         context = context,
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Delete
                             signFetchRequest()
@@ -114,7 +114,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 } else {
                     AccountData.withAuthenticatedResponse(
                         context = context,
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Post
                             signFetchRequest()

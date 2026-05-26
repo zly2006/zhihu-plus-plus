@@ -445,6 +445,12 @@ internal fun peopleProfileUrl(person: Person): String {
     return "https://api.zhihu.com/people/$identifier"
 }
 
+internal fun peopleFollowersUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers"
+
+internal fun peopleBlockUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block"
+
 /**
  * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
  * here so PeopleScreen can be exercised without touching remote profile fetches or mutations.

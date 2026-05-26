@@ -76,7 +76,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 val account = store.load()
                 if (isFollowing) {
                     val jojo = store.withAuthenticatedResponse(
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Delete
                             account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
@@ -90,7 +90,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     )
                 } else {
                     val jojo = store.withAuthenticatedResponse(
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        url = peopleFollowersUrl(person),
                         block = {
                             method = HttpMethod.Post
                             account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
@@ -108,7 +108,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 val account = store.load()
                 if (isBlocking) {
                     store.withAuthenticatedResponse(
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Delete
                             account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
@@ -119,7 +119,7 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                     false
                 } else {
                     store.withAuthenticatedResponse(
-                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        url = peopleBlockUrl(person),
                         block = {
                             method = HttpMethod.Post
                             account.cookies["d_c0"]?.let { dc0 -> signZhihuFetchRequest(dc0 = dc0) }
