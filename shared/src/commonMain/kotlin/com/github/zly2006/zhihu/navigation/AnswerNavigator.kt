@@ -32,6 +32,10 @@ import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionItemsUrl
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 interface AnswerNavigatorRepository {
     suspend fun fetchAnswerContent(article: Article): DataHolder.Answer?
@@ -50,6 +54,24 @@ data class AnswerNavigatorPage<T>(
     val items: List<T>,
     val nextUrl: String,
 )
+
+fun <T> answerNavigatorPageFromJson(
+    response: JsonObject,
+    decodeItems: (JsonElement) -> List<T>,
+): AnswerNavigatorPage<T> {
+    val data = response["data"] ?: return AnswerNavigatorPage(emptyList(), "")
+    return AnswerNavigatorPage(
+        items = decodeItems(data),
+        nextUrl = response.answerNavigatorNextUrl(),
+    )
+}
+
+private fun JsonObject.answerNavigatorNextUrl(): String =
+    this["paging"]
+        ?.jsonObject
+        ?.get("next")
+        ?.jsonPrimitive
+        ?.content ?: ""
 
 fun zhihuQuestionFeedsUrl(
     questionId: Long,

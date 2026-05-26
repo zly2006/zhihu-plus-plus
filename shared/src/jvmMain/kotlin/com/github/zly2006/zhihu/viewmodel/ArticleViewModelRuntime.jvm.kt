@@ -8,6 +8,7 @@ import com.github.zly2006.zhihu.navigation.AnswerNavigatorRepository
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
@@ -42,12 +43,9 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -143,40 +141,22 @@ class DesktopArticleViewModelRuntime(
                 val jojo = fetchGet(url) {
                     configureSignedRequest(this)
                 } ?: return AnswerNavigatorPage(emptyList(), "")
-                return AnswerNavigatorPage(
-                    items = ZhihuJson.json
-                        .decodeFromJsonElement(
-                            JsonArray.serializer(),
-                            jojo["data"] ?: return AnswerNavigatorPage(emptyList(), ""),
-                        ).mapNotNull { element ->
-                            runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
-                        },
-                    nextUrl = jojo["paging"]
-                        ?.jsonObject
-                        ?.get("next")
-                        ?.jsonPrimitive
-                        ?.content ?: "",
-                )
+                return answerNavigatorPageFromJson(jojo) { data ->
+                    data.jsonArray.mapNotNull { element ->
+                        runCatching { ZhihuJson.decodeJson<Feed>(element) }.getOrNull()
+                    }
+                }
             }
 
             override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> =
                 fetchGet(pageUrl) {
                     configureSignedRequest(this)
                 }?.let { jojo ->
-                    AnswerNavigatorPage(
-                        items = ZhihuJson.json
-                            .decodeFromJsonElement(
-                                JsonArray.serializer(),
-                                jojo["data"] ?: return AnswerNavigatorPage(emptyList(), ""),
-                            ).mapNotNull { element ->
-                                runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
-                            },
-                        nextUrl = jojo["paging"]
-                            ?.jsonObject
-                            ?.get("next")
-                            ?.jsonPrimitive
-                            ?.content ?: "",
-                    )
+                    answerNavigatorPageFromJson(jojo) { data ->
+                        data.jsonArray.mapNotNull { element ->
+                            runCatching { ZhihuJson.decodeJson<CollectionItem>(element) }.getOrNull()
+                        }
+                    }
                 } ?: AnswerNavigatorPage(emptyList(), "")
 
             override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =

@@ -11,8 +11,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.ContentType
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 class AndroidAnswerNavigatorRepository(
     context: Context,
@@ -31,14 +29,9 @@ class AndroidAnswerNavigatorRepository(
             items = emptyList(),
             nextUrl = "",
         )
-        return AnswerNavigatorPage(
-            items = AccountData.decodeJson<List<Feed>>(jojo["data"] ?: return AnswerNavigatorPage(emptyList(), "")),
-            nextUrl = jojo["paging"]
-                ?.jsonObject
-                ?.get("next")
-                ?.jsonPrimitive
-                ?.content ?: "",
-        )
+        return answerNavigatorPageFromJson(jojo) { data ->
+            AccountData.decodeJson<List<Feed>>(data)
+        }
     }
 
     override suspend fun fetchCollectionItems(pageUrl: String): AnswerNavigatorPage<CollectionItem> {
@@ -46,14 +39,9 @@ class AndroidAnswerNavigatorRepository(
             items = emptyList(),
             nextUrl = "",
         )
-        return AnswerNavigatorPage(
-            items = AccountData.decodeJson<List<CollectionItem>>(jojo["data"] ?: return AnswerNavigatorPage(emptyList(), "")),
-            nextUrl = jojo["paging"]
-                ?.jsonObject
-                ?.get("next")
-                ?.jsonPrimitive
-                ?.content ?: "",
-        )
+        return answerNavigatorPageFromJson(jojo) { data ->
+            AccountData.decodeJson<List<CollectionItem>>(data)
+        }
     }
 
     override suspend fun getAlreadyOpenedAnswerIds(answerIds: List<Long>): Set<Long> =
