@@ -17,6 +17,12 @@
 
 package com.github.zly2006.zhihu.shared.updater
 
+import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import io.ktor.client.request.headers
+import io.ktor.http.HttpHeaders
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -45,3 +51,18 @@ fun extractGithubReleaseNotes(body: String): String = body
     .substringAfter("## What's Changed\n")
     .substringBefore("\n**Full Changelog**:")
     .trimEnd('\n')
+
+suspend fun fetchLatestZhihuRelease(
+    client: HttpClient,
+    githubToken: String?,
+): GithubRelease = runCatching {
+    client.get(ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL).raiseForStatus().body<GithubRelease>()
+}.getOrNull() ?: client
+    .get(ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL) {
+        githubToken?.let { token ->
+            headers {
+                append(HttpHeaders.Authorization, "Bearer $token")
+            }
+        }
+    }.raiseForStatus()
+    .body<GithubRelease>()

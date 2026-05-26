@@ -26,11 +26,9 @@ import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubAsset
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
-import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
-import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
-import com.github.zly2006.zhihu.shared.util.raiseForStatus
+import com.github.zly2006.zhihu.shared.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.updater.UpdateManager.UpdateState.Downloading
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -144,19 +142,7 @@ object UpdateManager {
 
     suspend fun getLatestVersion(context: Context): GithubRelease {
         val client = AccountData.httpClient(context)
-        return runCatching {
-            client.get(ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL).raiseForStatus().body<GithubRelease>()
-        }.getOrNull() ?: run {
-            client
-                .get(ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL) {
-                    getGitHubToken(context)?.let { token ->
-                        headers {
-                            append(HttpHeaders.Authorization, "Bearer $token")
-                        }
-                    }
-                }.raiseForStatus()
-                .body<GithubRelease>()
-        }
+        return fetchLatestZhihuRelease(client, getGitHubToken(context))
     }
 
     /**

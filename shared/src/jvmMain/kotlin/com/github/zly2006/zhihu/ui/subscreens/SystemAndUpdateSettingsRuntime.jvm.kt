@@ -8,10 +8,9 @@ import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.updater.GithubRelease
 import com.github.zly2006.zhihu.shared.updater.SchematicVersion
-import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL
-import com.github.zly2006.zhihu.shared.updater.ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL
 import com.github.zly2006.zhihu.shared.updater.extractGithubReleaseNotes
+import com.github.zly2006.zhihu.shared.updater.fetchLatestZhihuRelease
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -91,7 +90,7 @@ private suspend fun checkDesktopUpdate(
     try {
         state.value = SystemUpdateState.Checking
         val currentVersion = SchematicVersion.fromString(desktopVersionName())
-        var latestResponse = getLatestDesktopVersion(client, githubToken)
+        var latestResponse = fetchLatestZhihuRelease(client, githubToken)
         var latestVersion = latestResponse.tagName.takeIf { it.isNotBlank() }?.let { SchematicVersion.fromString(it) }
         var isNightly = false
         var releaseNotes = latestResponse.body?.let(::extractGithubReleaseNotes)
@@ -145,21 +144,6 @@ private suspend fun checkDesktopUpdate(
         state.value = SystemUpdateState.Error(e.message ?: "Unknown error")
     }
 }
-
-private suspend fun getLatestDesktopVersion(
-    client: HttpClient,
-    githubToken: String?,
-): GithubRelease = runCatching {
-    client.get(ZHIHU_PLUS_PLUS_REDEN_LATEST_RELEASE_URL).raiseForStatus().body<GithubRelease>()
-}.getOrNull() ?: client
-    .get(ZHIHU_PLUS_PLUS_GITHUB_LATEST_RELEASE_URL) {
-        githubToken?.let { token ->
-            headers {
-                append(HttpHeaders.Authorization, "Bearer $token")
-            }
-        }
-    }.raiseForStatus()
-    .body<GithubRelease>()
 
 private fun desktopVersionName(): String =
     System.getProperty("zhihu.version")
