@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 
+fun zhihuMobileTopstoryRecommendUrl(): String = "https://api.zhihu.com/topstory/recommend"
+
 class HomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {
@@ -36,7 +38,7 @@ class HomeFeedViewModel :
 
     override val initialUrl: String
 //        get() = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10"
-        get() = "https://api.zhihu.com/topstory/recommend"
+        get() = zhihuMobileTopstoryRecommendUrl()
 
     init {
         allowGuestAccess = true

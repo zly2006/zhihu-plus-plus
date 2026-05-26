@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.zhihuMobileTopstoryRecommendUrl
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.isSuccess
@@ -40,7 +41,7 @@ class AndroidHomeFeedViewModel :
     BaseFeedViewModel(),
     HomeFeedInteractionViewModel {
     override val initialUrl: String
-        get() = "https://api.zhihu.com/topstory/recommend"
+        get() = zhihuMobileTopstoryRecommendUrl()
 
     override fun httpClient(environment: PaginationEnvironment) = environment.mobileHomeFeedHttpClient()
 
