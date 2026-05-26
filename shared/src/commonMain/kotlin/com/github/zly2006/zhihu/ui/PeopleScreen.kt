@@ -106,7 +106,7 @@ class PeopleAnswersViewModel(
         private set
 
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sortBy"
+        get() = peopleAnswersUrl(person, sortBy)
 
     override val include: String
         get() = "data[*].is_normal,admin_closed_comment,reward_info,is_collapsed,annotation_action,annotation_detail,collapse_reason,collapsed_by,suggest_edit,comment_count,thanks_count,can_comment,content,editable_content,attachment,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,excerpt,paid_info,reaction_instruction,is_labeled,label_info,relationship.is_authorized,voting,is_author,is_thanked,is_nothelp,author.badge_v2"
@@ -128,7 +128,7 @@ class PeopleArticlesViewModel(
         private set
 
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sortBy"
+        get() = peopleArticlesUrl(person, sortBy)
 
     override val include: String
         get() = "data[*].comment_count,suggest_edit,is_normal,thumbnail_extra_info,thumbnail,can_comment,comment_permission,admin_closed_comment,content,voteup_count,created,updated,upvoted_followees,voting,review_info,reaction_instruction,is_labeled,label_info,author.badge_v2;data[*].vessay_info;data[*].author.badge[?(type=best_answerer)].topics;"
@@ -146,7 +146,7 @@ class PeopleActivitiesViewModel(
     val sort: String = "created",
 ) : BaseFeedViewModel() {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v3/moments/${person.userTokenOrId}/activities"
+        get() = peopleActivitiesUrl(person)
 }
 
 class PeopleFollowersViewModel(
@@ -157,7 +157,7 @@ class PeopleFollowersViewModel(
     override val initialUrl: String
         // 签名有bug，暂时无法使用新的API，先回退到旧的API
         // get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followers"
-        get() = "https://api.zhihu.com/people/${person.id}/followers"
+        get() = peopleLegacyFollowersUrl(person)
 
     override val include: String
         get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge_v2,badge[?(type=best_answerer)].topics"
@@ -169,7 +169,7 @@ class PeopleFollowingViewModel(
         typeOf<DataHolder.People>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followees"
+        get() = peopleFollowingUrl(person)
 
     override val include: String
         get() = "data[*].answer_count,articles_count,gender,follower_count,is_followed,is_following,badge_v2,badge[?(type=best_answerer)].topics"
@@ -181,7 +181,7 @@ class PeopleCollectionsViewModel(
         typeOf<DataHolder.Collection>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/favlists"
+        get() = peopleCollectionsUrl(person)
 
     override val include: String
         get() = "data[*].updated_time,answer_count,follower_count,creator"
@@ -193,7 +193,7 @@ class PeopleQuestionsViewModel(
         typeOf<DataHolder.Question>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/questions"
+        get() = peopleQuestionsUrl(person)
 
     override val include: String
         get() = "data[*].created,answer_count,follower_count,author,visit_count,comment_count,detail,relationship,topics,voteup_count"
@@ -205,7 +205,7 @@ class PeoplePinsViewModel(
         typeOf<DataHolder.Pin>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/v2/pins/${person.userTokenOrId}/moments"
+        get() = peoplePinsUrl(person)
 
     override val include: String
         get() = "data[*].like_count,comment_count,created,updated,content"
@@ -217,7 +217,7 @@ class PeopleColumnContributionsViewModel(
         typeOf<DataHolder.Column>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/column-contributions"
+        get() = peopleColumnContributionsUrl(person)
 
     override val include: String
         get() = "data[*].articles_count,followers,author"
@@ -229,7 +229,7 @@ class PeopleFollowingCollectionsViewModel(
         typeOf<DataHolder.Collection>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-favlists"
+        get() = peopleFollowingCollectionsUrl(person)
 
     override val include: String
         get() = "data[*].updated_time,answer_count,follower_count,creator"
@@ -241,7 +241,7 @@ class PeopleFollowingQuestionsViewModel(
         typeOf<FollowedQuestion>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-questions"
+        get() = peopleFollowingQuestionsUrl(person)
 
     override val include: String
         get() = ""
@@ -253,7 +253,7 @@ class PeopleFollowingTopicsViewModel(
         typeOf<FollowedTopic>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-topic-contributions"
+        get() = peopleFollowingTopicsUrl(person)
 
     override val include: String
         get() = ""
@@ -265,7 +265,7 @@ class PeopleFollowingColumnsViewModel(
         typeOf<DataHolder.Column>(),
     ) {
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-columns"
+        get() = peopleFollowingColumnsUrl(person)
 
     override val include: String
         get() = "data[*].articles_count,followers,author"
@@ -445,11 +445,53 @@ internal fun peopleProfileUrl(person: Person): String {
     return "https://api.zhihu.com/people/$identifier"
 }
 
+internal fun peopleAnswersUrl(person: Person, sortBy: String): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/answers?sort_by=$sortBy"
+
+internal fun peopleArticlesUrl(person: Person, sortBy: String): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/articles?sort_by=$sortBy"
+
+internal fun peopleActivitiesUrl(person: Person): String =
+    "https://www.zhihu.com/api/v3/moments/${person.userTokenOrId}/activities"
+
+internal fun peopleLegacyFollowersUrl(person: Person): String =
+    "https://api.zhihu.com/people/${person.id}/followers"
+
+internal fun peopleFollowingUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/followees"
+
+internal fun peopleCollectionsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/favlists"
+
+internal fun peopleQuestionsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/questions"
+
+internal fun peoplePinsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/v2/pins/${person.userTokenOrId}/moments"
+
+internal fun peopleColumnContributionsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/column-contributions"
+
+internal fun peopleFollowingCollectionsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-favlists"
+
+internal fun peopleFollowingQuestionsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-questions"
+
+internal fun peopleFollowingTopicsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-topic-contributions"
+
+internal fun peopleFollowingColumnsUrl(person: Person): String =
+    "https://www.zhihu.com/api/v4/members/${person.userTokenOrId}/following-columns"
+
 internal fun peopleFollowersUrl(person: Person): String =
     "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers"
 
 internal fun peopleBlockUrl(person: Person): String =
     "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block"
+
+internal fun peopleTopicUrl(topicId: String): String =
+    "https://www.zhihu.com/topic/$topicId"
 
 /**
  * Instrumented tests inject a fixed profile snapshot, seeded tab contents, and offline callbacks
@@ -1279,7 +1321,7 @@ private fun FollowedTopicListItem(topic: FollowedTopic) {
             .fillMaxWidth()
             .testTag(peopleScreenFollowedTopicItemTag(topic.displayId))
             .clickable {
-                runtime.openWebUrl("https://www.zhihu.com/topic/${topic.displayId}")
+                runtime.openWebUrl(peopleTopicUrl(topic.displayId))
             }.padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
