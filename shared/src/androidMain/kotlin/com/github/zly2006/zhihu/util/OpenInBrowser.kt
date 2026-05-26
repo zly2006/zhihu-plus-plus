@@ -23,9 +23,9 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
-import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.buildJsonObject
@@ -58,11 +58,17 @@ object OpenInBrowser {
             }
             val url = "https://api.zhihu.com/collections/contents/$contentType/${destination.id}"
             val body = "add_collections=${collection.id}"
-            val response = AccountData.httpClient(context).put(url) {
-                contentType(ContentType.Application.FormUrlEncoded)
-                setBody(body)
+            return AccountData.withAuthenticatedResponse(
+                context = context,
+                url = url,
+                block = {
+                    method = HttpMethod.Put
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody(body)
+                },
+            ) { response ->
+                response.status.isSuccess()
             }
-            return response.status.isSuccess()
         }
         return false
     }
