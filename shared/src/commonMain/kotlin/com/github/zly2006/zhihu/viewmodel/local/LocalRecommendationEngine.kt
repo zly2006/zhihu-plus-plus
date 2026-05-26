@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
 
 class LocalRecommendationEngine(
     private val dao: LocalContentDao,
@@ -155,4 +156,34 @@ class LocalRecommendationEngine(
                 }
             }
     }
+}
+
+fun buildLocalRecommendationEngine(
+    dao: LocalContentDao,
+    fetchFeedArray: suspend (String) -> JsonArray,
+    isNetworkAvailable: () -> Boolean = { true },
+    logWarning: (String) -> Unit = {},
+    logError: (String, Throwable) -> Unit = { _, _ -> },
+): LocalRecommendationEngine {
+    val crawlingExecutor = CrawlingExecutor(
+        dao = dao,
+        fetchFeedArray = fetchFeedArray,
+    )
+    val taskScheduler = TaskScheduler(
+        dao = dao,
+        executeTask = { task -> crawlingExecutor.executeTask(task) },
+    )
+    val contentInitializer = LocalContentInitializer(dao)
+    return LocalRecommendationEngine(
+        dao = dao,
+        feedGenerator = FeedGenerator(dao),
+        userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
+        initializeContentIfNeeded = { contentInitializer.initializeIfNeeded() },
+        startScheduling = { taskScheduler.startScheduling() },
+        stopScheduling = { taskScheduler.stopScheduling() },
+        executeTask = { task -> crawlingExecutor.executeTask(task) },
+        isNetworkAvailable = isNetworkAvailable,
+        logWarning = logWarning,
+        logError = logError,
+    )
 }

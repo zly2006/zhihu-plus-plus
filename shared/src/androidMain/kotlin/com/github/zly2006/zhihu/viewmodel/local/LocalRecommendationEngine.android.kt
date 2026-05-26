@@ -21,21 +21,18 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
+import com.github.zly2006.zhihu.data.AccountData
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.jsonArray
 import kotlin.jvm.java
 
 fun LocalRecommendationEngine(context: Context): LocalRecommendationEngine {
     val dao = getLocalContentDatabase(context).contentDao()
-    val contentInitializer = LocalContentInitializer(context)
-    val taskScheduler = TaskScheduler(context)
-    val crawlingExecutor = CrawlingExecutor(context)
-    return LocalRecommendationEngine(
+    return buildLocalRecommendationEngine(
         dao = dao,
-        feedGenerator = FeedGenerator(dao),
-        userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
-        initializeContentIfNeeded = { contentInitializer.initializeIfNeeded() },
-        startScheduling = { taskScheduler.startScheduling() },
-        stopScheduling = { taskScheduler.stopScheduling() },
-        executeTask = { task -> crawlingExecutor.executeTask(task) },
+        fetchFeedArray = { url ->
+            AccountData.fetchGet(context, url)?.get("data")?.jsonArray ?: JsonArray(emptyList())
+        },
         isNetworkAvailable = { isLocalRecommendationNetworkAvailable(context) },
         logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
         logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },

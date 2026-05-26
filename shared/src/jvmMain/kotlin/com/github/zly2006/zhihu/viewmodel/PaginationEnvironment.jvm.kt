@@ -41,12 +41,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.desktopKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.recordContentInteraction
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
-import com.github.zly2006.zhihu.viewmodel.local.CrawlingExecutor
-import com.github.zly2006.zhihu.viewmodel.local.FeedGenerator
-import com.github.zly2006.zhihu.viewmodel.local.LocalContentInitializer
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.TaskScheduler
-import com.github.zly2006.zhihu.viewmodel.local.UserBehaviorAnalyzer
+import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -400,23 +396,9 @@ class DesktopPaginationEnvironment(
         val databaseFile = desktopZhihuDataFile("local-content.db")
         databaseFile.parentFile?.mkdirs()
         val dao = getLocalContentDatabase(databaseFile).contentDao()
-        val crawlingExecutor = CrawlingExecutor(
+        return buildLocalRecommendationEngine(
             dao = dao,
             fetchFeedArray = { url -> fetchDesktopLocalFeedArray(url) },
-        )
-        val taskScheduler = TaskScheduler(
-            dao = dao,
-            executeTask = { task -> crawlingExecutor.executeTask(task) },
-        )
-        val contentInitializer = LocalContentInitializer(dao)
-        return LocalRecommendationEngine(
-            dao = dao,
-            feedGenerator = FeedGenerator(dao),
-            userBehaviorAnalyzer = UserBehaviorAnalyzer(dao),
-            initializeContentIfNeeded = { contentInitializer.initializeIfNeeded() },
-            startScheduling = { taskScheduler.startScheduling() },
-            stopScheduling = { taskScheduler.stopScheduling() },
-            executeTask = { task -> crawlingExecutor.executeTask(task) },
             logWarning = { message -> Log.w("LocalRecommendationEngine", message) },
             logError = { message, throwable -> Log.e("LocalRecommendationEngine", message, throwable) },
         )
