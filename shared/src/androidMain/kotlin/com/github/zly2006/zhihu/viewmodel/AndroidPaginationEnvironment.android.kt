@@ -42,6 +42,8 @@ import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
+import com.github.zly2006.zhihu.shared.data.buildZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
@@ -81,14 +83,11 @@ import io.ktor.util.appendAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import com.github.zly2006.zhihu.navigation.Article as ArticleDestination
 import io.ktor.http.ContentType as KtorContentType
 
@@ -330,15 +329,10 @@ open class SharedAndroidPaginationEnvironment(
 
     override suspend fun clearAllHistory() {
         HistoryStorage(context).clearAndSave()
-        AccountData.fetchPost(context, "https://api.zhihu.com/read_history/batch_del") {
+        AccountData.fetchPost(context, ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             signFetchRequest()
             contentType(KtorContentType.Application.Json)
-            setBody(
-                buildJsonObject {
-                    put("pairs", JsonArray(emptyList()))
-                    put("clear", true)
-                },
-            )
+            setBody(buildZhihuClearOnlineHistoryBody())
         }
     }
 

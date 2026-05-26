@@ -12,7 +12,9 @@ import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
+import com.github.zly2006.zhihu.shared.data.ZHIHU_CLEAR_ONLINE_HISTORY_URL
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.encodeZhihuClearOnlineHistoryBody
 import com.github.zly2006.zhihu.shared.data.navDestination
 import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
@@ -276,12 +278,8 @@ class DesktopPaginationEnvironment(
         historyStorage.clearAndSave()
         val account = store.load()
         val dc0 = account.cookies["d_c0"] ?: return
-        val body = buildJsonObject {
-            put("pairs", JsonArray(emptyList()))
-            put("clear", true)
-        }
-        val bodyText = ZhihuJson.json.encodeToString(JsonObject.serializer(), body)
-        store.fetchAuthenticatedJson("https://api.zhihu.com/read_history/batch_del") {
+        val bodyText = encodeZhihuClearOnlineHistoryBody()
+        store.fetchAuthenticatedJson(ZHIHU_CLEAR_ONLINE_HISTORY_URL) {
             signZhihuFetchRequest(dc0 = dc0, body = bodyText)
             contentType(KtorContentType.Application.Json)
             setBody(bodyText)

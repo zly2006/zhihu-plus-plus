@@ -8,10 +8,13 @@ import io.ktor.http.appendPathSegments
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 
 const val ZHIHU_ONLINE_HISTORY_URL = "https://api.zhihu.com/unify-consumption/read_history"
+const val ZHIHU_CLEAR_ONLINE_HISTORY_URL = "https://api.zhihu.com/read_history/batch_del"
 
 @Serializable
 data class OnlineHistoryPage(
@@ -28,6 +31,14 @@ fun zhihuOnlineHistoryUrl(
         parameters.append("offset", offset.toString())
         parameters.append("limit", limit.toString())
     }.buildString()
+
+fun buildZhihuClearOnlineHistoryBody(): JsonObject = buildJsonObject {
+    put("pairs", JsonArray(emptyList()))
+    put("clear", true)
+}
+
+fun encodeZhihuClearOnlineHistoryBody(): String =
+    ZhihuJson.json.encodeToString(JsonObject.serializer(), buildZhihuClearOnlineHistoryBody())
 
 suspend fun fetchOnlineHistoryPage(
     client: HttpClient,
