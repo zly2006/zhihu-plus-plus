@@ -9,19 +9,19 @@ import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.net.URI
 
 @Composable
 actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val userMessages = rememberUserMessageSink()
     val coroutineScope = rememberCoroutineScope()
-    return remember(userMessages, coroutineScope) {
+    val shareRuntime = rememberShareDialogRuntime()
+    return remember(userMessages, coroutineScope, shareRuntime) {
         object : ArticleActionsRuntime {
             private var speechProcess: Process? = null
             private var currentTtsState by mutableStateOf(
@@ -61,8 +61,8 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                 title: String,
                 authorName: String,
             ) {
-                copyText(articleActionText(article, questionId, title, authorName))
-                userMessages.showMessage("已复制分享文本")
+                val text = articleActionText(article, questionId, title, authorName)
+                shareRuntime.share(article, text)
             }
 
             override fun copyArticleLink(
@@ -71,8 +71,8 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                 title: String,
                 authorName: String,
             ) {
-                copyText(articleActionText(article, questionId, title, authorName))
-                userMessages.showMessage("已复制链接")
+                val text = articleActionText(article, questionId, title, authorName)
+                shareRuntime.copyLink(article, text)
             }
 
             override fun openArticleInBrowser(article: Article) {
@@ -80,10 +80,6 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                     Desktop.getDesktop().browse(URI(articleUrl(article)))
                     userMessages.showMessage("已发送到浏览器")
                 }
-            }
-
-            private fun copyText(text: String) {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
             }
 
             private fun articleUrl(article: Article): String =

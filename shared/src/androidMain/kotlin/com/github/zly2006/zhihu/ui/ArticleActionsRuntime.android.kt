@@ -1,15 +1,13 @@
 package com.github.zly2006.zhihu.ui
 
-import android.content.ClipData
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.util.OpenInBrowser
-import com.github.zly2006.zhihu.util.clipboardManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -19,9 +17,10 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
     val context = LocalContext.current.applicationContext
     val coroutineScope = rememberCoroutineScope()
     val userMessages = rememberUserMessageSink()
+    val shareRuntime = rememberShareDialogRuntime()
     val articleHost = context.articleHost()
     val ttsState = articleHost?.articleTtsState ?: TtsState.Uninitialized
-    return remember(context, coroutineScope, userMessages, articleHost, ttsState) {
+    return remember(context, coroutineScope, userMessages, shareRuntime, articleHost, ttsState) {
         object : ArticleActionsRuntime {
             override val ttsState: TtsState = ttsState
 
@@ -62,14 +61,7 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                 authorName: String,
             ) {
                 val text = articleActionText(article, questionId, title, authorName)
-                val shareIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, text)
-                }
-                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(chooserIntent)
+                shareRuntime.share(article, text)
             }
 
             override fun copyArticleLink(
@@ -79,9 +71,7 @@ actual fun rememberArticleActionsRuntime(): ArticleActionsRuntime {
                 authorName: String,
             ) {
                 val text = articleActionText(article, questionId, title, authorName)
-                context.articleHost()?.clipboardDestination = article
-                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", text))
-                userMessages.showMessage("已复制链接")
+                shareRuntime.copyLink(article, text)
             }
 
             override fun openArticleInBrowser(article: Article) {
