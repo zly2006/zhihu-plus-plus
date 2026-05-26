@@ -12,7 +12,6 @@ import com.github.zly2006.zhihu.navigation.answerNavigatorPageFromJson
 import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.comment.rootCommentUrl
 import com.github.zly2006.zhihu.shared.data.CollectionItem
-import com.github.zly2006.zhihu.shared.data.CollectionResponse
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
@@ -43,7 +42,6 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import java.awt.image.BufferedImage
@@ -190,9 +188,6 @@ class DesktopArticleViewModelRuntime(
         block()
         method = HttpMethod.Post
     }
-
-    override fun decodeCollectionResponse(json: JsonElement): CollectionResponse =
-        ZhihuJson.json.decodeFromJsonElement(CollectionResponse.serializer(), json)
 
     override fun configureSignedRequest(builder: HttpRequestBuilder) {
         store.load().cookies["d_c0"]?.let { dc0 ->

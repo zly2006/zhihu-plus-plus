@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.data.Collection
+import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionList
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionContentUrl
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionCreateBody
 import com.github.zly2006.zhihu.viewmodel.zhihuCollectionsUrl
@@ -37,8 +38,7 @@ object OpenInBrowser {
     suspend fun openUrlInBrowser(context: Context, destination: NavDestination): Boolean {
         val urlToken = AccountData.data.self?.urlToken ?: return false
         val jojo = AccountData.fetchGet(context, zhihuPeopleCollectionsUrl(urlToken, limit = 50))!!
-        val collection = AccountData
-            .decodeJson<List<Collection>>(jojo["data"]!!)
+        val collection = decodeZhihuCollectionList(jojo["data"]!!)
             .firstOrNull { it.description == "com.github.zly2006.zhplus.openinbrowser" }
             ?: AccountData.decodeJson<Collection>(
                 AccountData.fetchPost(context, zhihuCollectionsUrl()) {

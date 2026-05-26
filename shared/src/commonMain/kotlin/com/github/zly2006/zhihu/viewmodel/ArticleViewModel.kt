@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
+import com.github.zly2006.zhihu.shared.data.decodeZhihuCollectionResponse
 import com.github.zly2006.zhihu.shared.data.officialBadge
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.ZhidaSummarySsePayload
@@ -442,7 +443,7 @@ class ArticleViewModel(
                     val jojo = context.fetchGet(collectionsUrl) {
                         context.configureSignedRequest(this)
                     }!!
-                    val collectionsData = context.decodeCollectionResponse(jojo)
+                    val collectionsData = decodeZhihuCollectionResponse(jojo)
                     collections.clear()
                     collections.addAll(
                         collectionsData.data
