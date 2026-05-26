@@ -38,7 +38,7 @@ private suspend fun toggleSegmentLike(
 ): SegmentInfoMeta {
     val contentId = highlight.contentId ?: return highlight.meta
     val targetType = highlight.contentType ?: return highlight.meta
-    val url = "https://www.zhihu.com/api/v4/reaction/${targetType}s/$contentId/segment_reaction"
+    val url = zhihuSegmentReactionUrl(targetType, contentId)
     val account = store.load()
     val dc0 = account.cookies["d_c0"] ?: return highlight.meta
 
