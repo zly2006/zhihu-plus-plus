@@ -27,6 +27,7 @@ const val ZHIHU_PLUS_PLUS_GITHUB_NIGHTLY_RELEASE_URL = "https://api.github.com/r
 @Serializable
 data class GithubRelease(
     @SerialName("tag_name") val tagName: String = "",
+    @SerialName("html_url") val htmlUrl: String? = null,
     val body: String? = null,
     val assets: List<GithubAsset> = emptyList(),
 )
