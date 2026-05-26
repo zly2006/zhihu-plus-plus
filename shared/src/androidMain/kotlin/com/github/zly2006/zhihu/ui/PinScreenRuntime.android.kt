@@ -25,11 +25,13 @@ import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 import com.github.zly2006.zhihu.util.luoTianYiUrlLauncher
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
+import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
@@ -67,10 +69,16 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     try {
                         val method = if (isLiked) HttpMethod.Delete else HttpMethod.Post
                         val endpoint = zhihuPinVotersUpUrl(pin)
-                        val jojo = AccountData.fetch(context, endpoint) {
-                            this.method = method
-                            signFetchRequest()
-                        } ?: return@launch
+                        val jojo = AccountData.withAuthenticatedResponse(
+                            context = context,
+                            url = endpoint,
+                            block = {
+                                this.method = method
+                                signFetchRequest()
+                            },
+                        ) { response ->
+                            response.body<JsonObject>()
+                        }
                         onResult(
                             PinLikeResult(
                                 isLiked = !isLiked,
