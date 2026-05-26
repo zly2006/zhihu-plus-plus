@@ -7,14 +7,12 @@ import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import kotlinx.coroutines.flow.MutableStateFlow
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
-import java.net.URI
 
 @Composable
 actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
@@ -55,14 +53,12 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         appVersionInfo = { "desktop" },
         copyText = { _, text ->
             runCatching {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+                copyDesktopPlainText(text)
             }
         },
         openExternalUrl = { url ->
             runCatching {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI(url))
-                }
+                openDesktopExternalUrl(url)
             }
         },
         selectMainTab = { _: TopLevelDestination -> },

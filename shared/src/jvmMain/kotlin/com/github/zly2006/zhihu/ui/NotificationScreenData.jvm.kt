@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
@@ -15,8 +16,6 @@ import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.parameter
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 @Composable
 actual fun rememberNotificationScreenRuntime(
@@ -43,7 +42,7 @@ actual fun rememberNotificationScreenRuntime(
         showDebugCopy = true,
         copyDebugText = { _, text ->
             runCatching {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+                copyDesktopPlainText(text)
             }
         },
     )

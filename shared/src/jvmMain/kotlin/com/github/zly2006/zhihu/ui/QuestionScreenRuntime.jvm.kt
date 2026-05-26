@@ -18,8 +18,7 @@ import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.consumeDesktopPendingContentOpenFrom
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import java.awt.Desktop
-import java.net.URI
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl as browseDesktopExternalUrl
 
 @Composable
 actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
@@ -89,9 +88,7 @@ private suspend fun fetchDesktopQuestionDetail(
 
 private fun openDesktopExternalUrl(url: String) {
     runCatching {
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(URI(url))
-        }
+        browseDesktopExternalUrl(url)
     }
 }
 

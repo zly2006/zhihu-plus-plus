@@ -32,8 +32,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
-import java.awt.Desktop
-import java.net.URI
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl as browseDesktopExternalUrl
 
 @Composable
 actual fun rememberPinScreenRuntime(): PinScreenRuntime {
@@ -172,9 +171,7 @@ private suspend fun fetchDesktopLinkCardPreview(
 
 private fun openDesktopExternalUrl(url: String) {
     runCatching {
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(URI(url))
-        }
+        browseDesktopExternalUrl(url)
     }
 }
 

@@ -4,14 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.shared.data.SegmentInfoMeta
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.util.SegmentHighlightSpan
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 @Composable
 actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
@@ -19,7 +18,7 @@ actual fun rememberSegmentedTextRuntime(): SegmentedTextRuntime = remember {
     SegmentedTextRuntime(
         copyText = { _, text ->
             runCatching {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+                copyDesktopPlainText(text)
             }
         },
         toggleSegmentLike = { highlight ->

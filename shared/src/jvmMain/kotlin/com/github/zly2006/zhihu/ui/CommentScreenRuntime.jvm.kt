@@ -11,7 +11,9 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.em
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -19,9 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.net.URI
 import javax.imageio.ImageIO
@@ -55,7 +54,7 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
 
             override fun shareImage(imageUrl: String) {
                 runCatching {
-                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(imageUrl), null)
+                    copyDesktopPlainText(imageUrl)
                     userMessages.showShortMessage("已复制图片链接")
                 }.onFailure { error ->
                     userMessages.showShortMessage("分享失败: ${error.message}")
@@ -64,9 +63,7 @@ actual fun rememberCommentScreenRuntime(): CommentScreenRuntime {
 
             override fun openExternalUrl(url: String) {
                 runCatching {
-                    if (Desktop.isDesktopSupported()) {
-                        Desktop.getDesktop().browse(URI(url))
-                    }
+                    openDesktopExternalUrl(url)
                 }
             }
         }

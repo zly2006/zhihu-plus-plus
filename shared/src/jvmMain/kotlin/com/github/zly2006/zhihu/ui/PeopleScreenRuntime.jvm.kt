@@ -7,6 +7,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.raiseForStatus
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
@@ -17,8 +18,6 @@ import io.ktor.client.call.body
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonObject
-import java.awt.Desktop
-import java.net.URI
 
 @Composable
 actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
@@ -156,8 +155,6 @@ private suspend fun addDesktopReadHistory(
 
 private fun openDesktopUri(url: String) {
     runCatching {
-        if (Desktop.isDesktopSupported()) {
-            Desktop.getDesktop().browse(URI(url))
-        }
+        openDesktopExternalUrl(url)
     }
 }

@@ -10,6 +10,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.zly2006.zhihu.shared.data.RecommendationMode
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopLoginRequests
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.ui.subscreens.SystemUpdateState
 import com.github.zly2006.zhihu.ui.subscreens.desktopSystemUpdateState
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
@@ -17,10 +19,6 @@ import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
-import java.net.URI
 
 @Composable
 actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): HomeScreenRuntime {
@@ -55,14 +53,12 @@ actual fun rememberHomeScreenRuntime(recommendationMode: RecommendationMode): Ho
         },
         openExternalUrl = { url ->
             runCatching {
-                if (Desktop.isDesktopSupported()) {
-                    Desktop.getDesktop().browse(URI(url))
-                }
+                openDesktopExternalUrl(url)
             }
         },
         copyDebugData = { data ->
             runCatching {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(data), null)
+                copyDesktopPlainText(data)
             }
         },
         recordLocalItemOpened = { item ->

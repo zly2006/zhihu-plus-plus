@@ -9,17 +9,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.platform.asComposeFontFamily
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDataFile
 import com.github.zly2006.zhihu.shared.desktop.desktopZhihuDownloadsDir
+import com.github.zly2006.zhihu.shared.desktop.openDesktopExternalUrl
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.hrm.latex.renderer.font.MathFont
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.awt.Desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.io.File
 import java.net.URI
 
@@ -51,9 +50,7 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
             override fun openInBrowser(url: String) {
                 runCatching {
-                    if (Desktop.isDesktopSupported()) {
-                        Desktop.getDesktop().browse(URI(url))
-                    }
+                    openDesktopExternalUrl(url)
                 }
             }
 
@@ -69,7 +66,7 @@ actual fun rememberMarkdownRuntime(): MarkdownRuntime {
 
             override suspend fun shareMarkdownImage(url: String) {
                 runCatching {
-                    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(url), null)
+                    copyDesktopPlainText(url)
                     userMessages.showShortMessage("已复制图片链接")
                 }.onFailure { error ->
                     userMessages.showShortMessage("分享失败: ${error.message}")

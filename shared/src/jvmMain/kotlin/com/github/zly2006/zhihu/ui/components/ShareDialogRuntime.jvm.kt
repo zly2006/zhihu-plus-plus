@@ -2,9 +2,8 @@ package com.github.zly2006.zhihu.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.shared.desktop.copyDesktopPlainText
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 @Composable
 actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
@@ -28,5 +27,5 @@ actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
 }
 
 private fun copyDesktopShareText(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+    copyDesktopPlainText(text)
 }
