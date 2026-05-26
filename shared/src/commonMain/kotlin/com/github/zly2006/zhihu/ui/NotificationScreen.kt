@@ -57,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -77,8 +79,16 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.NotificationItem
 import com.github.zly2006.zhihu.shared.data.NotificationTarget
 import com.github.zly2006.zhihu.shared.data.navDestination
+import com.github.zly2006.zhihu.shared.notification.NotificationSettingsStore
+import com.github.zly2006.zhihu.shared.notification.rememberNotificationSettingsStore
+import com.github.zly2006.zhihu.shared.platform.UserMessageDuration
+import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.formatRelativeTime
 import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
+import com.github.zly2006.zhihu.viewmodel.NotificationPaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.NotificationViewModel
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 data class NotificationScreenData(
     val notifications: List<NotificationItem>,
@@ -95,8 +105,51 @@ data class NotificationScreenData(
     val showMessage: (String) -> Unit,
 )
 
+data class NotificationScreenRuntime(
+    val environment: NotificationPaginationEnvironment,
+    val showDebugCopy: Boolean,
+    val copyDebugText: (label: String, text: String) -> Unit,
+)
+
 @Composable
-expect fun rememberNotificationScreenData(): NotificationScreenData
+expect fun rememberNotificationScreenRuntime(
+    viewModel: NotificationViewModel,
+    settingsStore: NotificationSettingsStore,
+): NotificationScreenRuntime
+
+@Composable
+fun rememberNotificationScreenData(): NotificationScreenData {
+    val settingsStore = rememberNotificationSettingsStore()
+    val viewModel = viewModel<NotificationViewModel>()
+    val coroutineScope = rememberCoroutineScope()
+    val userMessages = rememberUserMessageSink()
+    val runtime = rememberNotificationScreenRuntime(viewModel, settingsStore)
+    return NotificationScreenData(
+        notifications = viewModel.allData.filter { viewModel.shouldShowNotification(settingsStore, it) },
+        totalItemCount = viewModel.allData.size,
+        unreadCount = viewModel.unreadCount,
+        isLoading = viewModel.isLoading,
+        isEnd = viewModel.isEnd,
+        showDebugCopy = runtime.showDebugCopy,
+        refresh = { viewModel.refresh(runtime.environment) },
+        loadMore = { viewModel.loadMore(runtime.environment) },
+        markAsRead = { id -> viewModel.markAsRead(id) },
+        markAllAsRead = {
+            coroutineScope.launch {
+                viewModel.markAllAsRead(runtime.environment)
+                userMessages.showMessage("已全部标记为已读")
+            }
+        },
+        copyDebugData = {
+            val debugData = Json.encodeToString(viewModel.debugData)
+            runtime.copyDebugText("data", debugData)
+            userMessages.showMessage("已复制调试数据")
+        },
+        showMessage = { message ->
+            userMessages.showMessage(message, UserMessageDuration.Long)
+        },
+    )
+}
 
 @Composable
 fun NotificationDebugCopyButton(
