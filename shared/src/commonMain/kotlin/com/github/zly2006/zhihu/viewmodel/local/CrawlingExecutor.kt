@@ -74,7 +74,7 @@ class CrawlingExecutor(
 
     private suspend fun executeFollowingTask(task: CrawlingTask): List<CrawlingResult> {
         // 参考FollowRecommendViewModel的实现
-        val feedArray = fetchFeedArray("https://api.zhihu.com/moments_v3?feed_type=recommend")
+        val feedArray = fetchFeedArray(zhihuFollowingRecommendUrl())
 
         return feedArray.mapNotNull { feedElement ->
             try {
@@ -88,7 +88,7 @@ class CrawlingExecutor(
 
     private suspend fun executeTrendingTask(task: CrawlingTask): List<CrawlingResult> {
         // 参考HomeFeedViewModel的实现
-        val feedArray = fetchFeedArray("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20")
+        val feedArray = fetchFeedArray(zhihuTopstoryRecommendUrl(limit = 20))
 
         return feedArray.mapNotNull { feedElement ->
             try {
@@ -119,7 +119,7 @@ class CrawlingExecutor(
 
     private suspend fun executeFollowingUpvoteTask(task: CrawlingTask): List<CrawlingResult> {
         // 获取关注用户的点赞内容
-        val feedArray = fetchFeedArray("https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20")
+        val feedArray = fetchFeedArray(zhihuFollowingUpvoteRecommendUrl(limit = 20))
 
         return feedArray.mapNotNull { feedElement ->
             try {
@@ -147,7 +147,7 @@ class CrawlingExecutor(
         }
 
         // 基于最近点赞的内容获取相关推荐
-        val feedArray = fetchFeedArray("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20")
+        val feedArray = fetchFeedArray(zhihuTopstoryRecommendUrl(limit = 20))
 
         return feedArray.mapNotNull { feedElement ->
             try {

@@ -42,6 +42,36 @@ data class LocalRecommendationEntry(
     val navDestination: NavDestination?,
 )
 
+internal fun zhihuFollowingRecommendUrl(offset: Int? = null): String =
+    buildString {
+        append("https://api.zhihu.com/moments_v3?feed_type=recommend")
+        if (offset != null) {
+            append("&offset=$offset")
+        }
+    }
+
+internal fun zhihuTopstoryRecommendUrl(
+    limit: Int,
+    offset: Int? = null,
+): String =
+    buildString {
+        append("https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=$limit")
+        if (offset != null) {
+            append("&offset=$offset")
+        }
+    }
+
+internal fun zhihuFollowingUpvoteRecommendUrl(
+    limit: Int,
+    offset: Int? = null,
+): String =
+    buildString {
+        append("https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=$limit")
+        if (offset != null) {
+            append("&offset=$offset")
+        }
+    }
+
 internal fun createLocalFeedDisplayItem(entry: LocalRecommendationEntry): FeedDisplayItem = FeedDisplayItem(
     title = entry.feed.title,
     summary = entry.feed.summary,
@@ -210,7 +240,7 @@ internal fun extractQuestionIdFromUrl(url: String): String? {
 
 internal fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
     CrawlingTask(
-        url = "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=${index * 10}",
+        url = zhihuFollowingRecommendUrl(offset = index * 10),
         reason = CrawlingReason.Following,
         priority = 8,
     )
@@ -218,7 +248,7 @@ internal fun createFollowingTasks(count: Int): List<CrawlingTask> = (0 until cou
 
 internal fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
     CrawlingTask(
-        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=${index * 20}",
+        url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
         reason = CrawlingReason.Trending,
         priority = 7,
     )
@@ -226,7 +256,7 @@ internal fun createTrendingTasks(count: Int): List<CrawlingTask> = (0 until coun
 
 internal fun createDefaultUpvotedQuestionTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
     CrawlingTask(
-        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=${index * 10}",
+        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
         reason = CrawlingReason.UpvotedQuestion,
         priority = 6,
     )
@@ -240,7 +270,7 @@ internal fun createQuestionFeedTask(questionId: String): CrawlingTask = Crawling
 
 internal fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
     CrawlingTask(
-        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=${index * 20}",
+        url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
         reason = CrawlingReason.FollowingUpvote,
         priority = 5,
     )
@@ -248,7 +278,7 @@ internal fun createFollowingUpvoteTasks(count: Int): List<CrawlingTask> = (0 unt
 
 internal fun createCollaborativeFilteringTasks(count: Int): List<CrawlingTask> = (0 until count).map { index ->
     CrawlingTask(
-        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=${index * 15}",
+        url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
         reason = CrawlingReason.CollaborativeFiltering,
         priority = 4,
     )
@@ -386,11 +416,11 @@ internal fun getReasonDisplayText(reason: CrawlingReason): String = when (reason
 
 internal fun createTaskForReason(reason: CrawlingReason): CrawlingTask {
     val (url, priority) = when (reason) {
-        CrawlingReason.Following -> "https://api.zhihu.com/moments_v3?feed_type=recommend" to 8
-        CrawlingReason.Trending -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20" to 7
-        CrawlingReason.UpvotedQuestion -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15" to 6
-        CrawlingReason.FollowingUpvote -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=15" to 5
-        CrawlingReason.CollaborativeFiltering -> "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10" to 4
+        CrawlingReason.Following -> zhihuFollowingRecommendUrl() to 8
+        CrawlingReason.Trending -> zhihuTopstoryRecommendUrl(limit = 20) to 7
+        CrawlingReason.UpvotedQuestion -> zhihuTopstoryRecommendUrl(limit = 15) to 6
+        CrawlingReason.FollowingUpvote -> zhihuFollowingUpvoteRecommendUrl(limit = 15) to 5
+        CrawlingReason.CollaborativeFiltering -> zhihuTopstoryRecommendUrl(limit = 10) to 4
     }
 
     return CrawlingTask(

@@ -103,7 +103,7 @@ class LocalContentInitializer(
         repeat(3) { index ->
             tasks.add(
                 CrawlingTask(
-                    url = "https://api.zhihu.com/moments_v3?feed_type=recommend&offset=${index * 10}",
+                    url = zhihuFollowingRecommendUrl(offset = index * 10),
                     reason = CrawlingReason.Following,
                     priority = 8,
                 ),
@@ -116,7 +116,7 @@ class LocalContentInitializer(
         repeat(3) { index ->
             tasks.add(
                 CrawlingTask(
-                    url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=20&offset=${index * 20}",
+                    url = zhihuTopstoryRecommendUrl(limit = 20, offset = index * 20),
                     reason = CrawlingReason.Trending,
                     priority = 7,
                 ),
@@ -150,7 +150,7 @@ class LocalContentInitializer(
             repeat(2) { index ->
                 tasks.add(
                     CrawlingTask(
-                        url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=10&offset=${index * 10}",
+                        url = zhihuTopstoryRecommendUrl(limit = 10, offset = index * 10),
                         reason = CrawlingReason.UpvotedQuestion,
                         priority = 6,
                     ),
@@ -164,7 +164,7 @@ class LocalContentInitializer(
         repeat(2) { index ->
             tasks.add(
                 CrawlingTask(
-                    url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?action_feed=True&limit=20&offset=${index * 20}",
+                    url = zhihuFollowingUpvoteRecommendUrl(limit = 20, offset = index * 20),
                     reason = CrawlingReason.FollowingUpvote,
                     priority = 5,
                 ),
@@ -177,7 +177,7 @@ class LocalContentInitializer(
         repeat(2) { index ->
             tasks.add(
                 CrawlingTask(
-                    url = "https://www.zhihu.com/api/v3/feed/topstory/recommend?desktop=true&limit=15&offset=${index * 15}",
+                    url = zhihuTopstoryRecommendUrl(limit = 15, offset = index * 15),
                     reason = CrawlingReason.CollaborativeFiltering,
                     priority = 4,
                 ),
