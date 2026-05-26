@@ -17,8 +17,7 @@ import com.github.zly2006.zhihu.ui.components.OpenImageDialog
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.post
+import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
@@ -67,23 +66,32 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 )
             },
             toggleFollow = { person, isFollowing, followerCount ->
-                val client = AccountData.httpClient(context)
                 if (isFollowing) {
-                    val jojo = client
-                        .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
+                    val jojo = AccountData.withAuthenticatedResponse(
+                        context = context,
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        block = {
+                            method = HttpMethod.Delete
                             signFetchRequest()
-                        }.raiseForStatus()
-                        .body<JsonObject>()
+                        },
+                    ) { response ->
+                        response.raiseForStatus().body<JsonObject>()
+                    }
                     PeopleFollowResult(
                         isFollowing = false,
                         followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount - 1),
                     )
                 } else {
-                    val jojo = client
-                        .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/followers") {
+                    val jojo = AccountData.withAuthenticatedResponse(
+                        context = context,
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/followers",
+                        block = {
+                            method = HttpMethod.Post
                             signFetchRequest()
-                        }.raiseForStatus()
-                        .body<JsonObject>()
+                        },
+                    ) { response ->
+                        response.raiseForStatus().body<JsonObject>()
+                    }
                     PeopleFollowResult(
                         isFollowing = true,
                         followerCount = jojo["follower_count"]?.jsonPrimitive?.int ?: (followerCount + 1),
@@ -91,18 +99,29 @@ actual fun rememberPeopleScreenRuntime(): PeopleScreenRuntime {
                 }
             },
             toggleBlock = { person, isBlocking ->
-                val client = AccountData.httpClient(context)
                 if (isBlocking) {
-                    client
-                        .delete("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
+                    AccountData.withAuthenticatedResponse(
+                        context = context,
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        block = {
+                            method = HttpMethod.Delete
                             signFetchRequest()
-                        }.raiseForStatus()
+                        },
+                    ) { response ->
+                        response.raiseForStatus()
+                    }
                     false
                 } else {
-                    client
-                        .post("https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block") {
+                    AccountData.withAuthenticatedResponse(
+                        context = context,
+                        url = "https://www.zhihu.com/api/v4/members/${person.urlToken}/actions/block",
+                        block = {
+                            method = HttpMethod.Post
                             signFetchRequest()
-                        }.raiseForStatus()
+                        },
+                    ) { response ->
+                        response.raiseForStatus()
+                    }
                     true
                 }
             },
