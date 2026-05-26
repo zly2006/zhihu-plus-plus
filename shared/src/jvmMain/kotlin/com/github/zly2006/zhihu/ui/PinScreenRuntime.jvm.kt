@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.UserMessageSink
@@ -20,6 +21,7 @@ import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
@@ -30,6 +32,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
+import java.io.File
 import java.net.URI
 
 @Composable
@@ -40,6 +43,9 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
     val shareRuntime = rememberShareDialogRuntime()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
+    val contentFilterDatabase = remember {
+        getContentFilterDatabase(File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"))
+    }
     return remember(scope, settings, userMessages, shareRuntime) {
         PinScreenRuntime(
             loadPinDetail = { pin ->
@@ -49,6 +55,10 @@ actual fun rememberPinScreenRuntime(): PinScreenRuntime {
                     PinScreenUiState(isLoading = false, errorMessage = "无法加载想法详情")
                 } else {
                     historyStorage.add(pin)
+                    ContentOpenEventSupport.recordOpenEvent(
+                        database = contentFilterDatabase,
+                        destination = pin,
+                    )
                     PinScreenUiState(
                         isLoading = false,
                         pinContent = content,

@@ -7,17 +7,20 @@ import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.desktop.DesktopHistoryStorage
+import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.rememberShareDialogRuntime
+import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import java.awt.Desktop
+import java.io.File
 import java.net.URI
 
 @Composable
@@ -27,6 +30,9 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
     val shareRuntime = rememberShareDialogRuntime()
     val store = DesktopAccountStore()
     val historyStorage = DesktopHistoryStorage()
+    val contentFilterDatabase = remember {
+        getContentFilterDatabase(File(System.getProperty("user.home"), ".zhihu-plus/content-filter.db"))
+    }
     return remember(settings, userMessages, shareRuntime) {
         QuestionScreenRuntime(
             loadQuestion = { question ->
@@ -35,6 +41,11 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 if (questionData != null) {
                     val historyDestination = Question(question.questionId, questionData.title)
                     historyStorage.add(historyDestination)
+                    ContentOpenEventSupport.recordOpenEvent(
+                        database = contentFilterDatabase,
+                        destination = question,
+                        questionId = question.questionId,
+                    )
                     LoadedQuestionScreenData(
                         uiState = QuestionScreenUiState(
                             questionContent = questionData.detail,
