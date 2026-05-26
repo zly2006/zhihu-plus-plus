@@ -3,6 +3,7 @@ package com.github.zly2006.zhihu.ui.subscreens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.github.zly2006.zhihu.shared.platform.rememberIsLiteVariant
 import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.util.withContext
 
@@ -18,4 +19,4 @@ actual fun rememberOpenSourceLicensesLibraries(): Libs {
 }
 
 @Composable
-actual fun rememberShowFullVariantLicenses(): Boolean = !LocalContext.current.packageName.endsWith(".lite")
+actual fun rememberShowFullVariantLicenses(): Boolean = !rememberIsLiteVariant()

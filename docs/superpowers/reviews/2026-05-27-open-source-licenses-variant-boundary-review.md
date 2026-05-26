@@ -13,7 +13,7 @@ Reviewer: gpt-5.5 xhigh subagent `019e6607-87a7-7600-8cf5-41a8a225d9e0`
 
 ## Conclusion
 
-Do not replace `rememberShowFullVariantLicenses()` with `!rememberIsLiteVariant()` as a behavior-preserving migration.
+Do not replace common `rememberShowFullVariantLicenses()` usage with `!rememberIsLiteVariant()` as a behavior-preserving migration.
 
 The Android implementation is equivalent because both check whether the package is the lite variant. The JVM implementation is not equivalent: it currently returns `false`, while `!rememberIsLiteVariant()` would return `true` on desktop and display Android full-flavor manual license entries for `sentence_embeddings` and Rust/JNI components that desktop does not include.
 
@@ -44,7 +44,9 @@ Keep the existing call order: navigator, URI handler, scroll behavior, manual li
 
 ## Decision
 
-No code migration is applied for this target. Keeping the current small `rememberShowFullVariantLicenses()` platform capability is more accurate than reusing `rememberIsLiteVariant()` and changing desktop behavior.
+Keep the current small `rememberShowFullVariantLicenses()` platform capability because it is more accurate than reusing `rememberIsLiteVariant()` in common and changing desktop behavior.
+
+Follow-up implementation: the Android actual may delegate to `!rememberIsLiteVariant()` because the Android implementation is equivalent to the previous package-name check. The JVM actual must stay `false` so desktop does not display Android full-flavor manual license entries.
 
 ## Validation If Revisited
 
