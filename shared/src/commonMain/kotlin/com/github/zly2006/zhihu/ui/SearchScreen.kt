@@ -79,6 +79,7 @@ import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
 import com.github.zly2006.zhihu.viewmodel.feed.SearchViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.ZHIHU_HOT_SEARCH_URL
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -130,7 +131,7 @@ private fun SearchScreenContent(
     val useTestHotSearchQueries = testHotSearchQueries != null
 
     suspend fun fetchHotSearch() {
-        val json = paginationEnvironment.fetchJson("https://www.zhihu.com/api/v4/search/hot_search", "") ?: return
+        val json = paginationEnvironment.fetchJson(ZHIHU_HOT_SEARCH_URL, "") ?: return
         val queries = json["hot_search_queries"] as? JsonArray ?: return
         hotSearchItems.clear()
         queries.take(15).forEach { item ->

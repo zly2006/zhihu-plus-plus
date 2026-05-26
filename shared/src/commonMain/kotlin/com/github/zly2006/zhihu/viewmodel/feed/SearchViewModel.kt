@@ -24,14 +24,18 @@ import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.jsonArray
 
+const val ZHIHU_HOT_SEARCH_URL = "https://www.zhihu.com/api/v4/search/hot_search"
+
+fun zhihuSearchUrl(searchQuery: String): String {
+    val encodedQuery = searchQuery.encodeURLParameter(spaceToPlus = true)
+    return "https://www.zhihu.com/api/v4/search_v3?gk_version=gz-gaokao&t=general&q=$encodedQuery&correction=1&search_source=Normal&limit=10"
+}
+
 class SearchViewModel(
     val searchQuery: String,
 ) : BaseFeedViewModel() {
     override val initialUrl: String
-        get() {
-            val encodedQuery = searchQuery.encodeURLParameter(spaceToPlus = true)
-            return "https://www.zhihu.com/api/v4/search_v3?gk_version=gz-gaokao&t=general&q=$encodedQuery&correction=1&search_source=Normal&limit=10"
-        }
+        get() = zhihuSearchUrl(searchQuery)
 
     // Override include to request necessary fields for search results
     override val include = "data[*].highlight,object,type"
