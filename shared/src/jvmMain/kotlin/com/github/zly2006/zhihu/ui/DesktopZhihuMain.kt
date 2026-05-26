@@ -1,5 +1,13 @@
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +37,7 @@ import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.theme.ThemeManager
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
+import com.github.zly2006.zhihu.viewmodel.desktopArticleAnswerSwitchState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -123,6 +132,32 @@ fun DesktopZhihuMain() {
         preferenceState = rememberDesktopZhihuMainPreferenceState(),
         isDarkTheme = ThemeManager.isDarkTheme(),
         platformAdapter = ZhihuMainPlatformAdapter(
+            articleEnterTransition = {
+                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                        slideInVertically(tween(300)) { it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                        slideInVertically(tween(300)) { -it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                        slideInHorizontally(tween(300)) { it } + fadeIn(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                        slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300))
+                    else -> slideInHorizontally(tween(300)) { it }
+                }
+            },
+            articleExitTransition = {
+                when (desktopArticleAnswerSwitchState.answerTransitionDirection) {
+                    ArticleAnswerTransitionDirection.VERTICAL_NEXT ->
+                        slideOutVertically(tween(300)) { -it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.VERTICAL_PREVIOUS ->
+                        slideOutVertically(tween(300)) { it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_NEXT ->
+                        slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(300))
+                    ArticleAnswerTransitionDirection.HORIZONTAL_PREVIOUS ->
+                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(300))
+                    else -> ExitTransition.None
+                }
+            },
             article = { article: Article, navEntry ->
                 val articleViewModel: ArticleViewModel = viewModel(navEntry) {
                     ArticleViewModel(article, httpClient)

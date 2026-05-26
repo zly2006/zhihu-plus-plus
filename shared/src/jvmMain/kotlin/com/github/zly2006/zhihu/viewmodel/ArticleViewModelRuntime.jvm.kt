@@ -53,7 +53,7 @@ import javax.imageio.ImageIO
 import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
 
-private val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
+internal val desktopArticleAnswerSwitchState = ArticleAnswerSwitchData()
 
 class DesktopArticleViewModelRuntime(
     private val store: DesktopAccountStore = DesktopAccountStore(),
