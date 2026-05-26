@@ -26,9 +26,11 @@ import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.util.signFetchRequest
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import io.ktor.http.HttpMethod
+import kotlinx.serialization.json.JsonArray
 
-class QuestionFeedViewModel(
+open class QuestionFeedViewModel(
     private val questionId: Long,
 ) : BaseFeedViewModel() {
     var sortOrder by mutableStateOf("default")
@@ -41,6 +43,10 @@ class QuestionFeedViewModel(
         if (sortOrder != order) {
             sortOrder = order
         }
+    }
+
+    override suspend fun processResponse(context: Context, data: List<Feed>, rawData: JsonArray) {
+        super.processResponse(context, filterBlockedAnswers(context, data), rawData)
     }
 
     override fun createDisplayItem(context: Context, feed: Feed): FeedDisplayItem {
@@ -67,6 +73,15 @@ class QuestionFeedViewModel(
             }
         } catch (e: Exception) {
             Log.e("QuestionFeedViewModel", "Failed to follow/unfollow question: $questionId", e)
+        }
+    }
+
+    private suspend fun filterBlockedAnswers(context: Context, data: List<Feed>): List<Feed> {
+        val blockedUserIds = ContentFilterExtensions.getEnabledBlockedUserIds(context)
+        if (blockedUserIds.isEmpty()) return data
+        return data.filterNot { feed ->
+            val target = feed.target
+            target is Feed.AnswerTarget && target.author?.id in blockedUserIds
         }
     }
 }
