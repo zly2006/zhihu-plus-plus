@@ -113,5 +113,8 @@ data class HomeFeedFilterResult(
     val reverseBlock: Boolean,
 )
 
+fun zhihuQuestionFollowersUrl(questionId: Long): String =
+    "https://www.zhihu.com/api/v4/questions/$questionId/followers"
+
 @Composable
 expect fun rememberPaginationEnvironment(allowGuestAccess: Boolean): PaginationEnvironment

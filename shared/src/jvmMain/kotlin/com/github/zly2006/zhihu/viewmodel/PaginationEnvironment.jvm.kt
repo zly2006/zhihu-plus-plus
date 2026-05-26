@@ -141,7 +141,7 @@ class DesktopPaginationEnvironment(
     ) {
         val account = store.load()
         val dc0 = account.cookies["d_c0"] ?: return
-        store.fetchAuthenticatedJson("https://www.zhihu.com/api/v4/questions/$questionId/followers") {
+        store.fetchAuthenticatedJson(zhihuQuestionFollowersUrl(questionId)) {
             signZhihuFetchRequest(dc0 = dc0)
             method = if (follow) HttpMethod.Post else HttpMethod.Delete
         }
