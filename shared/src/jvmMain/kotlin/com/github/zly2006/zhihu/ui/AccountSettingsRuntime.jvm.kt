@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
@@ -27,7 +28,16 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         settings = settings,
         userMessages = userMessages,
         refreshProfile = {
-            accountState.value = store.load().toAccountSettingsAccountState()
+            val account = store.load()
+            val refreshed = store.createHttpClient(account.cookies).use { client ->
+                fetchVerifiedZhihuSession(client, account.cookies, account.userAgent)
+            }
+            if (refreshed != null) {
+                store.save(refreshed)
+                accountState.value = refreshed.toAccountSettingsAccountState()
+            } else {
+                accountState.value = account.toAccountSettingsAccountState()
+            }
         },
         requestLogin = {
             accountState.value = store.load().toAccountSettingsAccountState()
