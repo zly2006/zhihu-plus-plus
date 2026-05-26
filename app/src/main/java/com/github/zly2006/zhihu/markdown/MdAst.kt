@@ -94,10 +94,13 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
         currentParagraph = it
     }
 
-    for (node in this) {
+    for ((index, node) in this.withIndex()) {
         when (node) {
             is TextNode -> {
-                val text = node.text().trim()
+                val text = node.text().trimInlineBoundary(
+                    hasPreviousInline = currentParagraph != null,
+                    hasNextInline = drop(index + 1).hasNextInlineContent(),
+                )
                 if (text.isNotEmpty()) {
                     paragraph().appendChild(
                         Text(text),
@@ -137,6 +140,52 @@ private fun List<HtmlNode>.convertNodesToBlocks(): List<MarkdownNode> {
     }
 
     return blocks
+}
+
+private fun String.trimInlineBoundary(
+    hasPreviousInline: Boolean,
+    hasNextInline: Boolean,
+): String = when {
+    isBlank() -> if (hasPreviousInline && hasNextInline) " " else ""
+    hasPreviousInline && hasNextInline -> this
+    hasPreviousInline -> trimEnd()
+    hasNextInline -> trimStart()
+    else -> trim()
+}
+
+private fun List<HtmlNode>.hasNextInlineContent(): Boolean {
+    for (node in this) {
+        if (node is Element && node.isBlockBoundary()) {
+            return false
+        }
+        if (node.hasInlineContent()) {
+            return true
+        }
+    }
+    return false
+}
+
+private fun Element.isBlockBoundary(): Boolean = when (tagName().lowercase()) {
+    "br",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "blockquote",
+    "pre",
+    "ul",
+    "ol",
+    "hr",
+    "figure",
+    "table",
+    "div",
+    -> true
+    "img" -> attr("eeimg") == "2"
+    "a" -> attr("class").contains("video-box")
+    else -> false
 }
 
 private fun convertElementToBlock(element: Element): List<MarkdownNode> = when (element.tagName().lowercase()) {
@@ -379,7 +428,30 @@ private fun Element.toAlignment(): Table.Alignment = when (attr("align").lowerca
     else -> Table.Alignment.NONE
 }
 
-private fun extractInlineChildren(element: Element): List<MarkdownNode> = element.childNodes().flatMap(::extractInlineNode)
+private fun extractInlineChildren(element: Element): List<MarkdownNode> {
+    val childNodes = element.childNodes()
+    return childNodes.flatMapIndexed { index, child ->
+        if (child is TextNode && child.text().isBlank()) {
+            if (childNodes.take(index).any { it.hasInlineContent() } && childNodes.drop(index + 1).any { it.hasInlineContent() }) {
+                listOf(Text(" "))
+            } else {
+                emptyList()
+            }
+        } else {
+            extractInlineNode(child)
+        }
+    }
+}
+
+private fun HtmlNode.hasInlineContent(): Boolean = when (this) {
+    is TextNode -> text().isNotBlank()
+    is Element -> when (tagName().lowercase()) {
+        "br" -> false
+        "img" -> extractEquationTex(this) != null || extractImageUrl(this) != null
+        else -> childNodes().any { it.hasInlineContent() } || text().isNotBlank()
+    }
+    else -> false
+}
 
 private fun extractEquationTex(imgElement: Element): String? = extractImageUrl(imgElement)
     ?.takeIf { it.startsWith(ZHIHU_EQUATION_URL_PREFIX) }
