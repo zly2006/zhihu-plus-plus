@@ -2,8 +2,11 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.shared.data.Collection
 import com.github.zly2006.zhihu.shared.data.CollectionItem
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -52,8 +55,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import java.io.File
 import java.text.SimpleDateFormat
@@ -139,7 +145,7 @@ class DesktopPaginationEnvironment(
             settings = settings,
             database = contentFilterDatabase,
             items = foregroundItems,
-            contentDetailProvider = ContentDetailProvider { null },
+            contentDetailProvider = ContentDetailProvider(::fetchContentDetail),
             semanticMatcher = desktopKeywordSemanticMatcher,
         )
         return HomeFeedFilterResult(
@@ -147,6 +153,59 @@ class DesktopPaginationEnvironment(
             filteredItems = filteredItems,
             reverseBlock = settings.reverseBlock,
         )
+    }
+
+    private suspend fun fetchContentDetail(destination: NavDestination): DataHolder.Content? =
+        ContentDetailCache.getOrFetch(destination) { navDestination ->
+            when (navDestination) {
+                is Article -> fetchDesktopArticleContentDetail(navDestination)
+                is Pin -> fetchDesktopPinContentDetail(navDestination)
+                else -> null
+            }
+        }
+
+    private suspend fun fetchDesktopArticleContentDetail(article: Article): DataHolder.Content? {
+        val apiUrl = when (article.type) {
+            ArticleType.Article -> "https://www.zhihu.com/api/v4/articles/${article.id}?include=content,topics,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,relationship,ip_info,relationship.vote,author.badge_v2"
+            ArticleType.Answer -> "https://www.zhihu.com/api/v4/answers/${article.id}?include=content,paid_info,can_comment,excerpt,thanks_count,voteup_count,comment_count,visited_count,attachment,reaction,ip_info,pagination_info,question.topics,reaction.relation.voting,author.badge_v2"
+        }
+
+        return runCatching {
+            val account = store.load()
+            val jo = store.fetchAuthenticatedJson(apiUrl) {
+                account.cookies["d_c0"]?.let { dc0 ->
+                    signZhihuFetchRequest(dc0 = dc0)
+                }
+                method = HttpMethod.Get
+            } ?: return@runCatching null
+            val jojo = buildJsonObject {
+                jo.entries.forEach { (key, value) ->
+                    if (key == "id") {
+                        put(key, JsonPrimitive(value.jsonPrimitive.long))
+                    } else {
+                        put(key, value)
+                    }
+                }
+            }
+            when (article.type) {
+                ArticleType.Answer -> ZhihuJson.decodeJson<DataHolder.Answer>(jojo)
+                ArticleType.Article -> ZhihuJson.decodeJson<DataHolder.Article>(jojo)
+            }
+        }.getOrNull()
+    }
+
+    private suspend fun fetchDesktopPinContentDetail(pin: Pin): DataHolder.Pin? {
+        val account = store.load()
+        val endpoint = "https://www.zhihu.com/api/v4/pins/${pin.id}"
+        return runCatching {
+            val json = store.fetchAuthenticatedJson(endpoint) {
+                account.cookies["d_c0"]?.let { dc0 ->
+                    signZhihuFetchRequest(dc0 = dc0)
+                }
+                method = HttpMethod.Get
+            } ?: return@runCatching null
+            ZhihuJson.decodeJson<DataHolder.Pin>(json)
+        }.getOrNull()
     }
 
     override suspend fun sendFeedReadStatus(feed: Feed) {
