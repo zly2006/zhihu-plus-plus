@@ -23,6 +23,8 @@ data class QuestionScreenRuntime(
 
 fun questionDetailPreview(html: String): String = Ksoup.parse(html).text().trim()
 
+fun zhihuQuestionLogUrl(question: Question): String = "https://www.zhihu.com/question/${question.questionId}/log"
+
 @Composable
 expect fun rememberQuestionScreenRuntime(): QuestionScreenRuntime
 

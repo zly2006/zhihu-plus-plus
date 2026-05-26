@@ -66,7 +66,7 @@ actual fun rememberQuestionScreenRuntime(): QuestionScreenRuntime {
                 }
             },
             openLog = { question ->
-                openDesktopExternalUrl("https://www.zhihu.com/question/${question.questionId}/log")
+                openDesktopExternalUrl(zhihuQuestionLogUrl(question))
             },
             handleShareAction = { question, onShowDialog ->
                 handleShareAction(question, settings, shareRuntime, onShowDialog)
