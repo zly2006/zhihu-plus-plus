@@ -28,6 +28,7 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.util.signFetchRequest
 import com.github.zly2006.zhihu.viewmodel.CommentItem
 import com.github.zly2006.zhihu.viewmodel.PaginationViewModel
+import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import io.ktor.client.HttpClient
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
@@ -49,9 +50,9 @@ abstract class BaseCommentViewModel(
     protected val commentsMap = mutableMapOf<String, CommentItem>()
     var sortOrder by mutableStateOf(CommentSortOrder.SCORE)
 
-    override fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
+    override suspend fun processResponse(context: Context, data: List<DataHolder.Comment>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
-        data.forEach { comment ->
+        filterBlockedComments(context, data).forEach { comment ->
             if (allData.none { it.id == comment.id }) {
                 // 避免服务器返回重复评论时重复添加，造成LazyColumn key冲突
                 allData.add(comment)
@@ -62,6 +63,23 @@ abstract class BaseCommentViewModel(
             comment.childComments.forEach {
                 val childCommentItem = createCommentItem(it, article)
                 commentsMap[it.id] = childCommentItem
+            }
+        }
+    }
+
+    private suspend fun filterBlockedComments(
+        context: Context,
+        comments: List<DataHolder.Comment>,
+    ): List<DataHolder.Comment> {
+        val blockedUserIds = ContentFilterExtensions.getEnabledBlockedUserIds(context)
+        if (blockedUserIds.isEmpty()) return comments
+        return comments.mapNotNull { comment ->
+            if (comment.author.id in blockedUserIds) {
+                null
+            } else {
+                comment.copy(
+                    childComments = comment.childComments.filterNot { it.author.id in blockedUserIds },
+                )
             }
         }
     }

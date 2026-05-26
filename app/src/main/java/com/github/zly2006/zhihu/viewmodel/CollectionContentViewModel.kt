@@ -86,7 +86,7 @@ class CollectionContentViewModel(
     override val initialUrl: String
         get() = "https://www.zhihu.com/api/v4/collections/$collectionId/items"
 
-    override fun processResponse(context: Context, data: List<CollectionItem>, rawData: JsonArray) {
+    override suspend fun processResponse(context: Context, data: List<CollectionItem>, rawData: JsonArray) {
         super.processResponse(context, data, rawData)
         displayItems.addAll(data.map { createDisplayItem(it) }) // 展示用的已flatten数据
     }

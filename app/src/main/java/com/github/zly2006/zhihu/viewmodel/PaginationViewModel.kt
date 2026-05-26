@@ -126,7 +126,7 @@ abstract class PaginationViewModel<T : Any>(
         return AccountData.httpClient(context)
     }
 
-    protected open fun processResponse(context: Context, data: List<T>, rawData: JsonArray) {
+    protected open suspend fun processResponse(context: Context, data: List<T>, rawData: JsonArray) {
         debugData.addAll(rawData) // 保存原始JSON
         allData.addAll(data) // 保存未flatten的数据
     }

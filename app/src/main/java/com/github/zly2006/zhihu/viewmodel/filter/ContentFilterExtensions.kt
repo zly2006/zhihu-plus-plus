@@ -102,6 +102,15 @@ object ContentFilterExtensions {
         return preferences.getBoolean("enableUserBlocking", true)
     }
 
+    suspend fun getEnabledBlockedUserIds(context: Context): Set<String> {
+        if (!isUserBlockingEnabled(context)) return emptySet()
+        return BlocklistManager
+            .getInstance(context)
+            .getAllBlockedUsers()
+            .map { it.userId }
+            .toSet()
+    }
+
     /**
      * 检查是否启用了主题屏蔽功能
      */
