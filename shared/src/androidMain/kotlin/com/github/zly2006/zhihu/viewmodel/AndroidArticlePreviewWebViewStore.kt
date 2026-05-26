@@ -11,9 +11,9 @@ package com.github.zly2006.zhihu.viewmodel
 
 import android.content.Context
 import android.webkit.WebView
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.ui.ArticlePreviewWebViewStore
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.components.CustomWebView
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
 
@@ -106,8 +106,7 @@ class AndroidArticlePreviewWebViewStore : ArticlePreviewWebViewStore {
     }
 
     private fun createCachedWebView(context: Context): CustomWebView {
-        val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        val useHardwareAcceleration = preferences.getBoolean("webviewHardwareAcceleration", true)
+        val useHardwareAcceleration = androidSettingsStore(context).getBoolean("webviewHardwareAcceleration", true)
         return CustomWebView(context)
             .apply {
                 if (useHardwareAcceleration) {
