@@ -70,6 +70,8 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
+import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
+import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.data.OfficialBadge
 import com.github.zly2006.zhihu.shared.ui.AnswerDoubleTapAction
@@ -94,11 +96,11 @@ fun articleActionText(
 ): String =
     when (article.type) {
         ArticleType.Answer -> {
-            "https://www.zhihu.com/question/$questionId/answer/${article.id}\n【$title - $authorName 的回答】"
+            "${zhihuQuestionAnswerUrl(questionId, article.id)}\n【$title - $authorName 的回答】"
         }
 
         ArticleType.Article -> {
-            "https://zhuanlan.zhihu.com/p/${article.id}\n【$title - $authorName 的文章】"
+            "${zhihuArticleUrl(article.id)}\n【$title - $authorName 的文章】"
         }
     }
 

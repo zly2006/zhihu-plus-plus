@@ -33,6 +33,8 @@ import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.CollectionAnswerNavigator
 import com.github.zly2006.zhihu.navigation.PaginationInfoNavigator
 import com.github.zly2006.zhihu.navigation.QuestionAnswerNavigator
+import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
+import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.data.Collection
@@ -161,7 +163,7 @@ class ArticleViewModel(
                             content = applySegmentInfosToHtml(
                                 content = answer.content,
                                 segmentInfos = answer.segmentInfos,
-                                sourceUrl = "https://www.zhihu.com/question/${answer.question.id}/answer/${answer.id}",
+                                sourceUrl = zhihuQuestionAnswerUrl(answer.question.id, answer.id),
                                 contentId = answer.id.toString(),
                                 contentType = "answer",
                             )
@@ -230,7 +232,7 @@ class ArticleViewModel(
                             content = applySegmentInfosToHtml(
                                 content = article.content,
                                 segmentInfos = article.segmentInfos,
-                                sourceUrl = "https://zhuanlan.zhihu.com/p/${article.id}",
+                                sourceUrl = zhihuArticleUrl(article.id),
                                 contentId = article.id.toString(),
                                 contentType = "article",
                             )

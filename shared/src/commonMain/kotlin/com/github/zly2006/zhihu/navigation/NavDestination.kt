@@ -199,6 +199,15 @@ data class Article(
     override fun equals(other: Any?): Boolean = other is Article && other.id == id && other.type == type
 }
 
+fun zhihuAnswerUrl(answerId: Long): String = "https://www.zhihu.com/answer/$answerId"
+
+fun zhihuQuestionAnswerUrl(
+    questionId: Long,
+    answerId: Long,
+): String = "https://www.zhihu.com/question/$questionId/answer/$answerId"
+
+fun zhihuArticleUrl(articleId: Long): String = "https://zhuanlan.zhihu.com/p/$articleId"
+
 @Serializable
 data class CommentHolder(
     val commentId: String,
@@ -221,6 +230,8 @@ data class Question(
 
     override fun equals(other: Any?): Boolean = other is Question && other.questionId == questionId
 }
+
+fun zhihuQuestionUrl(questionId: Long): String = "https://www.zhihu.com/question/$questionId"
 
 @Serializable
 data class Person(
@@ -273,6 +284,8 @@ data class Pin(
 
     override fun equals(other: Any?): Boolean = other is Pin && other.id == id
 }
+
+fun zhihuPinUrl(pinId: Long): String = "https://www.zhihu.com/pin/$pinId"
 
 fun resolveContent(url: String): NavDestination? = runCatching { resolveContent(Url(url)) }.getOrNull()
 

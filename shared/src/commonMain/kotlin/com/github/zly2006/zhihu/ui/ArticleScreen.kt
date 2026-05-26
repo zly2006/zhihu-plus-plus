@@ -113,6 +113,8 @@ import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.zhihuArticleUrl
+import com.github.zly2006.zhihu.navigation.zhihuQuestionAnswerUrl
 import com.github.zly2006.zhihu.shared.article.CachedAnswerContent
 import com.github.zly2006.zhihu.shared.article.VoteUpState
 import com.github.zly2006.zhihu.shared.platform.PlatformBackHandler
@@ -271,11 +273,11 @@ fun ArticleActionsMenu(
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        "${zhihuQuestionAnswerUrl(viewModel.questionId, article.id)}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        "${zhihuArticleUrl(article.id)}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                     }
                 }
                 articleActionsRuntime.shareArticle(article, viewModel.questionId, viewModel.title, viewModel.authorName)
@@ -303,11 +305,11 @@ fun ArticleActionsMenu(
                 onDismissRequest()
                 val text = when (article.type) {
                     ArticleType.Answer -> {
-                        "https://www.zhihu.com/question/${viewModel.questionId}/answer/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
+                        "${zhihuQuestionAnswerUrl(viewModel.questionId, article.id)}\n【${viewModel.title} - ${viewModel.authorName} 的回答】"
                     }
 
                     ArticleType.Article -> {
-                        "https://zhuanlan.zhihu.com/p/${article.id}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
+                        "${zhihuArticleUrl(article.id)}\n【${viewModel.title} - ${viewModel.authorName} 的文章】"
                     }
                 }
                 articleActionsRuntime.copyArticleLink(article, viewModel.questionId, viewModel.title, viewModel.authorName)
