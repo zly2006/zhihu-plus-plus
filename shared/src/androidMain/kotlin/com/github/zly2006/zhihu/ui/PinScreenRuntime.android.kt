@@ -10,6 +10,7 @@ import com.github.zly2006.zhihu.data.getContentDetail
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.navigation.zhihuWebBaseUrl
 import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
@@ -101,7 +102,7 @@ actual fun PinHtmlWebViewContent(html: String) {
         it.isVerticalScrollBarEnabled = false
         it.setupUpWebviewClient()
         it.loadZhihu(
-            "https://www.zhihu.com",
+            zhihuWebBaseUrl(),
             Jsoup.parse(html),
         )
     }
