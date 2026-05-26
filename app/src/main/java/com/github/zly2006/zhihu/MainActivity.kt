@@ -37,7 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -73,13 +72,13 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenEventSupport
 import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.filter.TrackedContentIdentity
 import com.github.zly2006.zhihu.shared.nlp.KeywordWeightExtractor
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.theme.AndroidThemeSettings
 import com.github.zly2006.zhihu.theme.ZhihuTheme
 import com.github.zly2006.zhihu.ui.AndroidZhihuMain
 import com.github.zly2006.zhihu.ui.ArticleAnswerSwitchState
 import com.github.zly2006.zhihu.ui.ArticleHost
-import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.TtsState
 import com.github.zly2006.zhihu.ui.components.getHighestQualityVideoUrl
 import com.github.zly2006.zhihu.ui.subscreens.DeveloperRuntimeInfo
@@ -204,8 +203,8 @@ class MainActivity :
             NLPService.extractKeywordsWithWeight(text, topN)
         }
 
-        val preferences = getSharedPreferences(PREFERENCE_NAME, MODE_PRIVATE)
-        val lastLaunchTimestamp = preferences.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
+        val settings = androidSettingsStore(this)
+        val lastLaunchTimestamp = settings.getLong(KEY_LAST_LAUNCH_TIMESTAMP, 0L)
         val now = System.currentTimeMillis()
         if (now - lastLaunchTimestamp >= TimeUnit.DAYS.toMillis(1)) {
             val client = httpClient
@@ -234,7 +233,7 @@ class MainActivity :
                 }
             }
         }
-        preferences.edit { putLong(KEY_LAST_LAUNCH_TIMESTAMP, now) }
+        settings.putLong(KEY_LAST_LAUNCH_TIMESTAMP, now)
 
         // 应用启动时执行内容过滤数据库清理
         lifecycleScope.launch {
