@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.ui
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +85,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.ContentFilterExtensions
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import kotlinx.coroutines.launch
 
+private const val NLP_KEYWORD_MANAGEMENT_TAG = "NLPKeywordManagement"
+
 /**
  * NLP关键词管理界面
  * 支持从文本中提取关键词，并添加到屏蔽列表
@@ -125,7 +128,7 @@ fun NLPKeywordManagementScreen(
                 blockedKeywords = repository.getNLPSemanticKeywords()
                 blockedRecords = repository.getRecentBlockedRecords(100)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Load NLP keyword data failed", e)
                 Toast.makeText(context, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -174,7 +177,7 @@ fun NLPKeywordManagementScreen(
                                     Toast.makeText(context, "未能提取到关键词", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Extract NLP keywords failed", e)
                                 Toast.makeText(context, "提取失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             } finally {
                                 isExtracting = false
@@ -191,7 +194,7 @@ fun NLPKeywordManagementScreen(
                                 loadData()
                                 extractedKeywords = emptyList()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Add extracted NLP phrase failed", e)
                                 Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -209,7 +212,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Delete NLP keyword failed", e)
                                 Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -221,7 +224,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "已清空所有NLP短语", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Clear NLP keywords failed", e)
                                 Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -233,7 +236,7 @@ fun NLPKeywordManagementScreen(
                                 SentenceEmbeddingManager.ensureModel(context)
                                 Toast.makeText(context, "模型已加载", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Load NLP model failed", e)
                                 Toast.makeText(context, "模型加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -256,7 +259,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "已删除记录", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Delete blocked NLP record failed", e)
                                 Toast.makeText(context, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -268,7 +271,7 @@ fun NLPKeywordManagementScreen(
                                 Toast.makeText(context, "已清空所有记录", Toast.LENGTH_SHORT).show()
                                 loadData()
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Clear blocked NLP records failed", e)
                                 Toast.makeText(context, "清空失败: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
@@ -290,7 +293,7 @@ fun NLPKeywordManagementScreen(
                         loadData()
                         showAddDialog = false
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Add NLP phrase failed", e)
                         Toast.makeText(context, "添加失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -316,7 +319,7 @@ fun NLPKeywordManagementScreen(
                         showEditDialog = false
                         keywordToEdit = null
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        Log.e(NLP_KEYWORD_MANAGEMENT_TAG, "Update NLP phrase failed", e)
                         Toast.makeText(context, "更新失败: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
