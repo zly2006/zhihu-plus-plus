@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -137,7 +138,7 @@ class LocalContentInitializer(
         questionIds.forEach { questionId ->
             tasks.add(
                 CrawlingTask(
-                    url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
+                    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
                     reason = CrawlingReason.UpvotedQuestion,
                     priority = 6,
                 ),

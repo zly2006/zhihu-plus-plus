@@ -18,6 +18,7 @@
 package com.github.zly2006.zhihu.viewmodel.local
 
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.CommonFeed
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
@@ -232,7 +233,7 @@ internal fun createDefaultUpvotedQuestionTasks(count: Int): List<CrawlingTask> =
 }
 
 internal fun createQuestionFeedTask(questionId: String): CrawlingTask = CrawlingTask(
-    url = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20",
+    url = zhihuQuestionFeedsUrl(questionId, limit = 20),
     reason = CrawlingReason.UpvotedQuestion,
     priority = 6,
 )

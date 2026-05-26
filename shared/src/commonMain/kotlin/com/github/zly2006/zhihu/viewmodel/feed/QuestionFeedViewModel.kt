@@ -20,6 +20,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
 import com.github.zly2006.zhihu.shared.data.target
@@ -32,7 +33,7 @@ class QuestionFeedViewModel(
         private set
 
     override val initialUrl: String
-        get() = "https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20&order=$sortOrder"
+        get() = zhihuQuestionFeedsUrl(questionId, limit = 20, order = sortOrder)
 
     fun updateSortOrder(order: String) {
         if (sortOrder != order) {

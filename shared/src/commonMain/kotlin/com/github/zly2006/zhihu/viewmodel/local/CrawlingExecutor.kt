@@ -17,6 +17,7 @@
 
 package com.github.zly2006.zhihu.viewmodel.local
 
+import com.github.zly2006.zhihu.navigation.zhihuQuestionFeedsUrl
 import com.github.zly2006.zhihu.shared.data.Feed
 import com.github.zly2006.zhihu.shared.data.ZhihuJson
 import kotlinx.coroutines.Dispatchers
@@ -104,7 +105,7 @@ class CrawlingExecutor(
         // 从URL中提取问题ID
         val questionId = extractQuestionIdFromUrl(task.url) ?: return emptyList()
 
-        val feedArray = fetchFeedArray("https://www.zhihu.com/api/v4/questions/$questionId/feeds?limit=20")
+        val feedArray = fetchFeedArray(zhihuQuestionFeedsUrl(questionId, limit = 20))
 
         return feedArray.mapNotNull { feedElement ->
             try {
