@@ -24,6 +24,7 @@ import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AccountData.json
+import com.github.zly2006.zhihu.shared.platform.androidSettingsStore
 import com.github.zly2006.zhihu.shared.util.ZHIHU_WEB_ZSE93
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
 import io.ktor.client.request.HttpRequestBuilder
@@ -60,9 +61,9 @@ fun telemetry(context: Context, usage: String) {
     require(usage in listOf("start", "login")) {
         "Usage must be either 'start' or 'login', but was '$usage'."
     }
-    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
+    val settings = androidSettingsStore(context)
     val data = AccountData.loadData(context)
-    if (preferences.getBoolean("allowTelemetry", true)) {
+    if (settings.getBoolean("allowTelemetry", true)) {
         val versionName = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull() ?: "unknown"
@@ -105,8 +106,7 @@ fun luoTianYiUrlLauncher(context: Context, uri: Uri) {
             return
         }
     }
-    val preferences = context.getSharedPreferences("com.github.zly2006.zhihu.preferences", Context.MODE_PRIVATE)
-    val color = preferences.getInt("luotianyi_color", 0xff_66CCFF.toInt())
+    val color = androidSettingsStore(context).getInt("luotianyi_color", 0xff_66CCFF.toInt())
     val intent = CustomTabsIntent
         .Builder()
         .setDefaultColorSchemeParams(
