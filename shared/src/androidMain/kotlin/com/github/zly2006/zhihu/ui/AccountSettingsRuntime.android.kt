@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
+import com.github.zly2006.zhihu.shared.data.ZHIHU_ME_URL
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.util.clipboardManager
@@ -50,7 +51,7 @@ actual fun rememberAccountSettingsPlatformRuntime(): AccountSettingsRuntime {
         refreshProfile = {
             val data = AccountData.data
             if (data.login) {
-                val response = AccountData.fetchGet(context, "https://www.zhihu.com/api/v4/me") {
+                val response = AccountData.fetchGet(context, ZHIHU_ME_URL) {
                     signFetchRequest()
                 }!!
                 val self = AccountData.decodeJson<com.github.zly2006.zhihu.shared.data.Person>(response)
