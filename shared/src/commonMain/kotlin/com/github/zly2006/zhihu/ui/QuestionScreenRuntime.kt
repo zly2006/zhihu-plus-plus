@@ -41,11 +41,3 @@ fun QuestionCommentsSheet(
         content = content,
     )
 }
-
-@Composable
-expect fun QuestionShareDialog(
-    content: Question,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-)

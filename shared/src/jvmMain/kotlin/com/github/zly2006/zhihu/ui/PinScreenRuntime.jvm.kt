@@ -8,9 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.markdown.RenderMarkdown
-import com.github.zly2006.zhihu.navigation.Account
 import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.navigation.LocalNavigator
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.shared.data.DataHolder
@@ -24,7 +22,6 @@ import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.shared.util.Log
 import com.github.zly2006.zhihu.shared.util.signZhihuFetchRequest
-import com.github.zly2006.zhihu.ui.components.ShareDialogContent
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
 import io.ktor.http.HttpMethod
@@ -105,36 +102,6 @@ actual fun PinHtmlContent(html: String) {
         html = html,
         selectable = true,
         enableScroll = false,
-    )
-}
-
-@Composable
-actual fun PinShareDialog(
-    content: Pin,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-) {
-    val navigator = LocalNavigator.current
-    val userMessages = rememberUserMessageSink()
-
-    ShareDialogContent(
-        showDialog = showDialog,
-        onDismissRequest = onDismissRequest,
-        onShareClick = {
-            onDismissRequest()
-            copyDesktopText(shareText)
-            userMessages.showMessage("已复制分享文本")
-        },
-        onCopyClick = {
-            onDismissRequest()
-            copyDesktopText(shareText)
-            userMessages.showMessage("已复制链接")
-        },
-        onSettingsClick = {
-            onDismissRequest()
-            navigator.onNavigate(Account.AppearanceSettings(setting = "shareAction"))
-        },
     )
 }
 

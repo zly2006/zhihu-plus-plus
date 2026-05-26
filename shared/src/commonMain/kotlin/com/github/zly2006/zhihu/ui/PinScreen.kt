@@ -80,6 +80,7 @@ import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.util.formatCompactCount
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
+import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -276,7 +277,7 @@ private fun PinScreenContent(
                                 shareText,
                             )
                         } else {
-                            PinShareDialog(
+                            ShareDialog(
                                 content = pin,
                                 shareText = shareText,
                                 showDialog = showShareDialog,

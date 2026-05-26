@@ -21,8 +21,8 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
-import com.github.zly2006.zhihu.navigation.Account
-import com.github.zly2006.zhihu.navigation.LocalNavigator
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
@@ -70,38 +70,25 @@ fun handleShareAction(
 }
 
 @Composable
-fun ShareDialog(
-    content: NavDestination,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-    context: Context,
-) {
-    val navigator = LocalNavigator.current
-
-    ShareDialogContent(
-        showDialog = showDialog,
-        onDismissRequest = onDismissRequest,
-        onShareClick = {
-            onDismissRequest()
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, shareText)
-            }
-            val chooserIntent = Intent.createChooser(shareIntent, "分享到")
-            chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(chooserIntent)
-        },
-        onCopyClick = {
-            onDismissRequest()
-            context.articleHost()?.clipboardDestination = content
-            context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
-            androidUserMessageSink(context).showShortMessage("已复制链接")
-        },
-        onSettingsClick = {
-            onDismissRequest()
-            navigator.onNavigate(Account.AppearanceSettings(setting = "shareAction"))
-        },
-    )
+actual fun rememberShareDialogRuntime(): ShareDialogRuntime {
+    val context = LocalContext.current
+    return remember(context) {
+        ShareDialogRuntime(
+            share = { _, shareText ->
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                val chooserIntent = Intent.createChooser(shareIntent, "分享到")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooserIntent)
+            },
+            copyLink = { content, shareText ->
+                context.articleHost()?.clipboardDestination = content
+                context.clipboardManager.setPrimaryClip(ClipData.newPlainText("Link", shareText))
+                androidUserMessageSink(context).showShortMessage("已复制链接")
+            },
+        )
+    }
 }

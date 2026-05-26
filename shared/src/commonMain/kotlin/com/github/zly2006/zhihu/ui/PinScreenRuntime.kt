@@ -38,11 +38,3 @@ fun PinCommentsSheet(
         content = content,
     )
 }
-
-@Composable
-expect fun PinShareDialog(
-    content: Pin,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-)

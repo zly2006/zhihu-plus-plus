@@ -16,7 +16,6 @@ import com.github.zly2006.zhihu.shared.filter.ContentOpenFrom
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.shared.question.QuestionScreenUiState
-import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.util.fuckHonorService
@@ -97,20 +96,4 @@ actual fun QuestionDetailContent(
             enableScroll = false,
         )
     }
-}
-
-@Composable
-actual fun QuestionShareDialog(
-    content: Question,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-) {
-    ShareDialog(
-        content = content,
-        shareText = shareText,
-        showDialog = showDialog,
-        onDismissRequest = onDismissRequest,
-        context = LocalContext.current,
-    )
 }

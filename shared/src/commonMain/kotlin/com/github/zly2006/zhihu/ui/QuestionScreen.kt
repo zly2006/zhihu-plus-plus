@@ -79,6 +79,7 @@ import com.github.zly2006.zhihu.ui.components.FeedCard
 import com.github.zly2006.zhihu.ui.components.FeedPullToRefresh
 import com.github.zly2006.zhihu.ui.components.PaginatedList
 import com.github.zly2006.zhihu.ui.components.ProgressIndicatorFooter
+import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.getShareText
 import com.github.zly2006.zhihu.viewmodel.feed.QuestionFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
@@ -478,7 +479,7 @@ private fun QuestionScreenContent(
             if (showShareDialog) {
                 content { showShareDialog = false }
             }
-        } ?: QuestionShareDialog(
+        } ?: ShareDialog(
             content = question,
             shareText = shareText,
             showDialog = showShareDialog,

@@ -22,7 +22,6 @@ import com.github.zly2006.zhihu.shared.pin.PinLinkCardPreview
 import com.github.zly2006.zhihu.shared.pin.PinScreenUiState
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.components.ShareDialog
 import com.github.zly2006.zhihu.ui.components.WebviewComp
 import com.github.zly2006.zhihu.ui.components.handleShareAction
 import com.github.zly2006.zhihu.ui.components.setupUpWebviewClient
@@ -118,22 +117,6 @@ actual fun PinHtmlContent(html: String) {
             enableScroll = false,
         )
     }
-}
-
-@Composable
-actual fun PinShareDialog(
-    content: Pin,
-    shareText: String,
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit,
-) {
-    ShareDialog(
-        content = content,
-        shareText = shareText,
-        showDialog = showDialog,
-        onDismissRequest = onDismissRequest,
-        context = LocalContext.current,
-    )
 }
 
 private suspend fun fetchAndroidLinkCardPreview(
