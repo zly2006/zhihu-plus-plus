@@ -103,7 +103,7 @@ actual fun PinHtmlWebViewContent(html: String) {
 
 actual fun supportsPinHtmlWebView(): Boolean = false
 
-private suspend fun fetchDesktopPinDetail(
+internal suspend fun fetchDesktopPinDetail(
     store: DesktopAccountStore,
     pin: Pin,
 ): DataHolder.Pin? {
@@ -135,7 +135,7 @@ private suspend fun fetchDesktopPinLike(
     }.getOrNull()
 }
 
-private suspend fun fetchDesktopQuestionDetail(
+internal suspend fun fetchDesktopQuestionDetailForFeedBlock(
     store: DesktopAccountStore,
     question: Question,
 ): DataHolder.Question? {
@@ -183,7 +183,7 @@ private suspend fun fetchDesktopLinkCardPreview(
             }
         }
         is Question -> {
-            fetchDesktopQuestionDetail(store, destination)?.let { detail ->
+            fetchDesktopQuestionDetailForFeedBlock(store, destination)?.let { detail ->
                 PinLinkCardPreview(
                     title = compactTitle(detail.title),
                     preview = compactPreview(detail.detail),

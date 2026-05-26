@@ -3,13 +3,23 @@ package com.github.zly2006.zhihu.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewModelScope
-import com.github.zly2006.zhihu.shared.data.DataHolder
-import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.target
+import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Pin
+import com.github.zly2006.zhihu.navigation.Question
+import com.github.zly2006.zhihu.shared.desktop.DesktopAccountStore
 import com.github.zly2006.zhihu.shared.nlp.KeywordAnalyzerCore
 import com.github.zly2006.zhihu.shared.nlp.KeywordWithWeight
+import com.github.zly2006.zhihu.shared.platform.UserMessageSink
 import com.github.zly2006.zhihu.shared.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.ui.fetchDesktopPinDetail
+import com.github.zly2006.zhihu.ui.fetchDesktopQuestionDetailForFeedBlock
+import com.github.zly2006.zhihu.viewmodel.DesktopArticleViewModelRuntime
+import com.github.zly2006.zhihu.viewmodel.feed.removeFeedItemsByBlockedTopic
+import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedBlockAuthorInfo
+import com.github.zly2006.zhihu.viewmodel.feed.resolveFeedKeywordBlockingContent
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
+import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.KeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.createBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.filter.desktopContentFilterDatabaseFile
@@ -20,11 +30,15 @@ import kotlinx.coroutines.launch
 actual fun rememberFeedBlockActions(): FeedBlockActions {
     val blocklistManager = rememberDesktopBlocklistManager()
     val userMessages = rememberUserMessageSink()
-    return remember(blocklistManager, userMessages) {
+    val store = remember { DesktopAccountStore() }
+    val contentDetailProvider = remember(store, userMessages) {
+        desktopFeedBlockContentDetailProvider(store, userMessages)
+    }
+    return remember(blocklistManager, userMessages, contentDetailProvider) {
         FeedBlockActions(
             handleBlockUser = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
-                    val authorInfo = ensureAuthorInfo(feedItem)
+                    val authorInfo = resolveFeedBlockAuthorInfo(feedItem, contentDetailProvider)
                     if (authorInfo != null) {
                         onShowDialog(authorInfo)
                     } else {
@@ -37,15 +51,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
                     try {
                         blocklistManager.addBlockedTopic(topicId, topicName)
                         userMessages.showShortMessage("已屏蔽主题「$topicName」")
-                        viewModel.displayItems.removeAll {
-                            val topics = when (val content = it.raw) {
-                                is DataHolder.Answer -> content.question.topics
-                                is DataHolder.Article -> content.topics
-                                is DataHolder.Question -> content.topics
-                                else -> null
-                            }
-                            topics?.any { topic -> topic.id == topicId } == true
-                        }
+                        removeFeedItemsByBlockedTopic(viewModel, topicId)
                     } catch (e: Exception) {
                         userMessages.showShortMessage("屏蔽失败: ${e.message}")
                     }
@@ -53,7 +59,7 @@ actual fun rememberFeedBlockActions(): FeedBlockActions {
             },
             handleBlockByKeywords = { viewModel, feedItem, onShowDialog ->
                 viewModel.viewModelScope.launch {
-                    val contentInfo = ensureContentForKeywordBlocking(feedItem)
+                    val contentInfo = resolveFeedKeywordBlockingContent(feedItem, contentDetailProvider)
                     if (contentInfo != null) {
                         onShowDialog(feedItem to contentInfo)
                     } else {
@@ -109,33 +115,25 @@ private fun rememberDesktopBlocklistManager() = remember {
     database.createBlocklistManager()
 }
 
-private fun ensureAuthorInfo(feedItem: FeedDisplayItem): Pair<String, String>? {
-    feedItem.feed?.target?.author?.let { author ->
-        return Pair(author.id, author.name)
-    }
-
-    return when (val content = feedItem.raw) {
-        is DataHolder.Answer -> content.author.let { Pair(it.id, it.name) }
-        is DataHolder.Article -> content.author.let { Pair(it.id, it.name) }
-        else -> null
+private fun desktopFeedBlockContentDetailProvider(
+    store: DesktopAccountStore,
+    userMessages: UserMessageSink,
+): ContentDetailProvider {
+    val articleRuntime = DesktopArticleViewModelRuntime(store, userMessages)
+    return ContentDetailProvider { destination ->
+        fetchDesktopFeedBlockContentDetail(store, articleRuntime, destination)
     }
 }
 
-private fun ensureContentForKeywordBlocking(feedItem: FeedDisplayItem): Triple<String, String, String?>? {
-    val title = feedItem.title
-    val summary = feedItem.summary ?: feedItem.feed?.target?.excerpt ?: ""
-    val content = feedItem.content ?: when (val fullContent = feedItem.raw) {
-        is DataHolder.Answer -> fullContent.content
-        is DataHolder.Article -> fullContent.content
-        is DataHolder.Question -> fullContent.detail
-        else -> null
-    }
-
-    return if (title.isNotEmpty() || summary.isNotEmpty() || content != null) {
-        Triple(title, summary, content)
-    } else {
-        null
-    }
+private suspend fun fetchDesktopFeedBlockContentDetail(
+    store: DesktopAccountStore,
+    articleRuntime: DesktopArticleViewModelRuntime,
+    destination: NavDestination,
+) = when (destination) {
+    is Article -> articleRuntime.getContentDetail(destination)
+    is Question -> fetchDesktopQuestionDetailForFeedBlock(store, destination)
+    is Pin -> fetchDesktopPinDetail(store, destination)
+    else -> null
 }
 
 private fun extractDesktopKeywordsWithWeight(

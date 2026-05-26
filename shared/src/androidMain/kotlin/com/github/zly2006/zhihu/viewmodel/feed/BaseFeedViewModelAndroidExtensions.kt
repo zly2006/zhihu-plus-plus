@@ -13,12 +13,9 @@ import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.getOrFetch
-import com.github.zly2006.zhihu.navigation.Article
-import com.github.zly2006.zhihu.shared.data.DataHolder
 import com.github.zly2006.zhihu.shared.data.FeedDisplayItem
-import com.github.zly2006.zhihu.shared.data.navDestination
-import com.github.zly2006.zhihu.shared.data.target
 import com.github.zly2006.zhihu.shared.platform.androidUserMessageSink
+import com.github.zly2006.zhihu.viewmodel.filter.ContentDetailProvider
 import com.github.zly2006.zhihu.viewmodel.filter.getBlocklistManager
 import com.github.zly2006.zhihu.viewmodel.paginationEnvironment
 import kotlinx.coroutines.Dispatchers
@@ -81,15 +78,7 @@ fun BaseFeedViewModel.handleBlockTopic(
             val blocklistManager = getBlocklistManager(context)
             blocklistManager.addBlockedTopic(topicId, topicName)
             userMessages.showShortMessage("已屏蔽主题「$topicName」")
-            displayItems.removeAll {
-                val topics = when (val content = it.raw) {
-                    is DataHolder.Answer -> content.question.topics
-                    is DataHolder.Article -> content.topics
-                    is DataHolder.Question -> content.topics
-                    else -> null
-                }
-                topics?.any { topic -> topic.id == topicId } == true
-            }
+            removeFeedItemsByBlockedTopic(this@handleBlockTopic, topicId)
         } catch (e: Exception) {
             val message = "屏蔽失败: ${e.message}"
             userMessages.showShortMessage(message)
@@ -101,50 +90,17 @@ private suspend fun ensureAuthorInfo(
     context: Context,
     feedItem: FeedDisplayItem,
 ): Pair<String, String>? = withContext(Dispatchers.IO) {
-    feedItem.feed?.target?.author?.let { author ->
-        return@withContext Pair(author.id, author.name)
-    }
-
-    feedItem.navDestination?.let { navDest ->
-        if (navDest is Article) {
-            when (val fullContent = ContentDetailCache.getOrFetch(context, navDest)) {
-                is DataHolder.Answer -> {
-                    return@withContext fullContent.author.let { Pair(it.id, it.name) }
-                }
-                is DataHolder.Article -> {
-                    return@withContext fullContent.author.let { Pair(it.id, it.name) }
-                }
-                else -> {}
-            }
-        }
-    }
-
-    null
+    resolveFeedBlockAuthorInfo(feedItem, androidContentDetailProvider(context))
 }
 
 private suspend fun ensureContentForKeywordBlocking(
     context: Context,
     feedItem: FeedDisplayItem,
 ): Triple<String, String, String?>? = withContext(Dispatchers.IO) {
-    val title = feedItem.title
-    val summary = feedItem.summary ?: feedItem.feed?.target?.excerpt ?: ""
-    var content = feedItem.content
-
-    if (content == null) {
-        feedItem.navDestination?.let { navDest ->
-            val fullContent = ContentDetailCache.getOrFetch(context, navDest)
-            content = when (fullContent) {
-                is DataHolder.Answer -> fullContent.content
-                is DataHolder.Article -> fullContent.content
-                is DataHolder.Question -> fullContent.detail
-                else -> null
-            }
-        }
-    }
-
-    if (title.isNotEmpty() || summary.isNotEmpty() || content != null) {
-        Triple(title, summary, content)
-    } else {
-        null
-    }
+    resolveFeedKeywordBlockingContent(feedItem, androidContentDetailProvider(context))
 }
+
+private fun androidContentDetailProvider(context: Context): ContentDetailProvider =
+    ContentDetailProvider { destination ->
+        ContentDetailCache.getOrFetch(context, destination)
+    }
